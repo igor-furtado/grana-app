@@ -125,6 +125,70 @@ struct TransactionRepositoryTests {
 
 @Suite("Seed (in-memory)")
 struct SeedTests {
+    private func seededContainer() async throws -> AppContainer {
+        let container = AppContainer.inMemoryForTesting()
+        try await Seed.runIfNeeded(container: container)
+        return container
+    }
+
+    @Test("Categoria raiz padrão mantém o mesmo ID entre instalações limpas")
+    func rootCategoryKeepsStableIDAcrossFreshInstalls() async throws {
+        let first = try await seededContainer()
+        let firstRoot = try #require(
+            try await first.categories.getRootCategories().first { $0.slug == "nao-classificado" }
+        )
+
+        let second = try await seededContainer()
+        let secondRoot = try #require(
+            try await second.categories.getRootCategories().first { $0.slug == "nao-classificado" }
+        )
+
+        #expect(firstRoot.id == secondRoot.id)
+
+        try await first.db.close()
+        try await second.db.close()
+    }
+
+    @Test("Subcategoria padrão mantém o mesmo ID entre instalações limpas")
+    func subcategoryKeepsStableIDAcrossFreshInstalls() async throws {
+        let first = try await seededContainer()
+        let firstRoot = try #require(
+            try await first.categories.getRootCategories().first { $0.slug == "alimentacao" }
+        )
+        let firstSubcategory = try #require(
+            try await first.categories.getSubcategoriesOf(parentId: firstRoot.id)
+                .first { $0.name == "Supermercados" }
+        )
+
+        let second = try await seededContainer()
+        let secondRoot = try #require(
+            try await second.categories.getRootCategories().first { $0.slug == "alimentacao" }
+        )
+        let secondSubcategory = try #require(
+            try await second.categories.getSubcategoriesOf(parentId: secondRoot.id)
+                .first { $0.name == "Supermercados" }
+        )
+
+        #expect(firstSubcategory.id == secondSubcategory.id)
+
+        try await first.db.close()
+        try await second.db.close()
+    }
+
+    @Test("Instituição padrão mantém o mesmo ID entre instalações limpas")
+    func institutionKeepsStableIDAcrossFreshInstalls() async throws {
+        let first = try await seededContainer()
+        let firstInstitution = try #require(try await first.institutions.findByCode("077"))
+
+        let second = try await seededContainer()
+        let secondInstitution = try #require(try await second.institutions.findByCode("077"))
+
+        #expect(firstInstitution.id == secondInstitution.id)
+
+        try await first.db.close()
+        try await second.db.close()
+    }
+
     @Test("Seed insere contas e categorias quando vazio")
     func seedRunsOnEmptyDatabase() async throws {
         let powerSyncDb = PowerSyncDatabase(

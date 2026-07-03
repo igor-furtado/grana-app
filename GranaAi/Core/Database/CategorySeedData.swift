@@ -8,8 +8,8 @@ import Foundation
 ///
 /// **`slug` é id estável da raiz.** Resolve duas coisas: (1) lookup do ícone
 /// via `CategoryIcon.forSlug(_:)` sem precisar gravar `icon` no banco,
-/// (2) anchor estável pra IA na Fase 4 (few-shot prompting). UUIDs do seed
-/// são aleatórios e mudam a cada banco recriado — slug não.
+/// (2) anchor estável pra IA na Fase 4 (few-shot prompting). O seed deriva
+/// UUIDs canônicos do catálogo a partir desses identificadores estáveis.
 ///
 /// **Invariante:** ao adicionar uma raiz nova aqui, **DEVE** existir uma
 /// entrada correspondente em `CategoryIcon+Slug.swift` mapeando o slug pro

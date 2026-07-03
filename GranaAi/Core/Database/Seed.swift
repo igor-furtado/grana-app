@@ -1,3 +1,4 @@
+import CryptoKit
 import Foundation
 import OSLog
 import PowerSync
@@ -72,7 +73,7 @@ enum Seed {
                     parentId = existingId
                     existingSubs = subsByParent[existingId] ?? []
                 } else {
-                    parentId = UUID()
+                    parentId = SeedCatalogID.categoryRoot(slug: definition.slug)
                     try tx.execute(
                         sql: insertSQL,
                         parameters: [
@@ -92,7 +93,10 @@ enum Seed {
                     try tx.execute(
                         sql: insertSQL,
                         parameters: [
-                            UUID().uuidString,
+                            SeedCatalogID.categorySubcategory(
+                                parentSlug: definition.slug,
+                                name: subName
+                            ).uuidString,
                             parentId.uuidString,
                             subName,
                             definition.kind.rawValue,
@@ -128,7 +132,7 @@ enum Seed {
         for kind in InstitutionKind.supported {
             guard let code = kind.defaultCode, !existingCodes.contains(code) else { continue }
             let institution = Institution(
-                id: UUID(),
+                id: SeedCatalogID.institution(code: code),
                 code: code,
                 name: kind.displayName,
                 kind: kind,
@@ -164,7 +168,7 @@ enum Seed {
             """
 
             for definition in CategorySeedData.categories {
-                let parentId = UUID()
+                let parentId = SeedCatalogID.categoryRoot(slug: definition.slug)
                 try tx.execute(
                     sql: insertSQL,
                     parameters: [
@@ -186,7 +190,10 @@ enum Seed {
                     try tx.execute(
                         sql: insertSQL,
                         parameters: [
-                            UUID().uuidString,
+                            SeedCatalogID.categorySubcategory(
+                                parentSlug: definition.slug,
+                                name: subName
+                            ).uuidString,
                             parentId.uuidString,
                             subName,
                             definition.kind.rawValue,
@@ -203,5 +210,38 @@ enum Seed {
             .info(
                 "Seed: \(CategorySeedData.categories.count) raízes + \(total - CategorySeedData.categories.count) subcategorias inseridas (transacional)"
             )
+    }
+}
+
+private enum SeedCatalogID {
+    private static let categoryRootNamespace = "grana-ai:catalog:category-root:v1"
+    private static let categorySubcategoryNamespace = "grana-ai:catalog:category-subcategory:v1"
+    private static let institutionNamespace = "grana-ai:catalog:institution:v1"
+
+    static func categoryRoot(slug: String) -> UUID {
+        stableUUID(namespace: categoryRootNamespace, key: slug)
+    }
+
+    static func categorySubcategory(parentSlug: String, name: String) -> UUID {
+        stableUUID(namespace: categorySubcategoryNamespace, key: "\(parentSlug):\(name)")
+    }
+
+    static func institution(code: String) -> UUID {
+        stableUUID(namespace: institutionNamespace, key: code)
+    }
+
+    private static func stableUUID(namespace: String, key: String) -> UUID {
+        let digest = SHA256.hash(data: Data("\(namespace):\(key)".utf8))
+        var bytes = Array(digest.prefix(16))
+        bytes[6] = (bytes[6] & 0x0F) | 0x80
+        bytes[8] = (bytes[8] & 0x3F) | 0x80
+
+        let raw = uuid_t(
+            bytes[0], bytes[1], bytes[2], bytes[3],
+            bytes[4], bytes[5], bytes[6], bytes[7],
+            bytes[8], bytes[9], bytes[10], bytes[11],
+            bytes[12], bytes[13], bytes[14], bytes[15]
+        )
+        return UUID(uuid: raw)
     }
 }

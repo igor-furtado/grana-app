@@ -60,7 +60,7 @@ final class CategoryRepository: Sendable {
 
     /// Busca uma categoria **raiz** pelo nome exato. Usado pela importação
     /// (Fase 3) pra resolver o ID da categoria "Não Classificado" sem depender
-    /// de UUID hard-coded (que muda a cada seed).
+    /// de UUID hard-coded ou lookup por slug fora da camada de repositório.
     func findRootByName(_ name: String) async throws -> Category? {
         try await db.getOptional(
             sql: """

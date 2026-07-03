@@ -198,4 +198,13 @@ final class AppContainer {
         )
         return AppContainer(db: database)
     }
+
+    static func inMemoryForTesting() -> AppContainer {
+        let database = PowerSyncDatabase(
+            schema: appSchema,
+            dbFilename: ":memory:",
+            logger: DefaultLogger()
+        )
+        return AppContainer(db: database)
+    }
 }
