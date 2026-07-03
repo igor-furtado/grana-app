@@ -66,6 +66,9 @@ final class AppContainer {
     lazy var categorizationCorrections: CategorizationCorrectionRepository =
         .init(db: db)
 
+    @MainActor
+    private var hasStartedSync = false
+
     /// Cliente HTTP da categorização assistida online.
     lazy var categorizationAPIClient: CategorizationAPIClient = .init()
 
@@ -107,6 +110,17 @@ final class AppContainer {
 
         log.database.info("PowerSyncDatabase inicializado em modo local-only (\(dbFilename))")
         return AppContainer(db: database)
+    }
+
+    @MainActor
+    func connectSync(
+        connector: any PowerSyncBackendConnectorProtocol
+    ) async throws {
+        guard !hasStartedSync else { return }
+
+        try await db.connect(connector: connector, options: nil)
+        hasStartedSync = true
+        log.sync.info("PowerSync conectado com credencial autenticada do Supabase.")
     }
 
     /// Compara a versão de schema esperada (em `schemaVersion`) com a salva no

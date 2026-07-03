@@ -132,6 +132,21 @@ struct ContentView: View {
         ["1", "2", "3", "4", "5", "6", "7", "8", "9"]
 
     var body: some View {
+        Group {
+            switch environment.authService.state {
+            case .restoring:
+                ProgressView("Restaurando sessão…")
+                    .frame(maxWidth: .infinity, maxHeight: .infinity)
+            case .unauthenticated:
+                LoginView(authService: environment.authService)
+            case .authenticated:
+                authenticatedContent
+            }
+        }
+        .noticeOverlay()
+    }
+
+    private var authenticatedContent: some View {
         NavigationSplitView {
             sidebar
         } detail: {
@@ -166,9 +181,6 @@ struct ContentView: View {
         // app (200), exige ~960. Arredondado pra 1000 dá folga; 640 de
         // altura mostra ~12 linhas de transação confortavelmente.
         .frame(minWidth: 1000, minHeight: 640)
-        // Toasts globais de erro. Plugado aqui (raiz) pra cobrir qualquer
-        // tela. Stores e services reportam via `NoticeCenter.shared.report(_:)`.
-        .noticeOverlay()
     }
 
     private func toggleTheme() {

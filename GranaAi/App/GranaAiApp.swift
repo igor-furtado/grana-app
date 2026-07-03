@@ -24,14 +24,27 @@ struct GranaAiApp: App {
         WindowGroup {
             ContentView()
                 .environment(environment)
+                .onOpenURL { url in
+                    Task {
+                        do {
+                            try await environment.authService.handleCallback(url)
+                        } catch {
+                            NoticeCenter.shared.report(
+                                error,
+                                title: "Falha ao concluir login"
+                            )
+                        }
+                    }
+                }
                 .task {
                     // Seed roda toda execução, mas é idempotente (checa se as
                     // tabelas estão vazias antes de inserir). `.task` cancela
                     // automaticamente se a janela sumir antes de terminar.
                     do {
                         try await Seed.runIfNeeded(container: environment.container)
+                        try await environment.restoreSessionIfNeeded()
                     } catch {
-                        NoticeCenter.shared.report(error, title: "Falha no seed inicial")
+                        NoticeCenter.shared.report(error, title: "Falha ao iniciar o app")
                     }
                     if let setupError = environment.setupError {
                         NoticeCenter.shared.report(setupError, title: "Falha ao iniciar o banco")

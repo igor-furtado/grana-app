@@ -2,6 +2,12 @@
 
 Este contexto organiza a vida financeira de uma única pessoa a partir de contas, movimentações, categorias e faturas. O produto apoia análise e organização; não movimenta dinheiro nem substitui bancos ou corretoras.
 
+## Identidade e propriedade
+
+**Usuário**:
+Pessoa cuja vida financeira é organizada pelo produto. No contexto atual, cada usuário possui um histórico financeiro isolado dos demais.
+_Evite_: Household, perfil compartilhado, titular secundário
+
 ## Estrutura financeira
 
 **Instituição financeira**:

@@ -13,26 +13,58 @@ import Foundation
 /// - Testabilidade: podemos passar um environment "fake" em previews/testes.
 /// - Escopo explícito: dependências sobem pela árvore de Views, sem estado
 ///   global escondido.
+@MainActor
 @Observable
 final class AppEnvironment {
     let container: AppContainer
+    let authService: AuthService
     /// Quando o setup do banco falha, mantemos o app vivo pra mostrar diagnóstico.
     let setupError: Error?
+    private var hasRestoredSession = false
 
     init() {
-        self.container = AppContainer.setup()
+        let container = AppContainer.setup()
+        let authClient = SupabaseAuthClient()
+        let syncCoordinator = SyncCoordinator(
+            container: container,
+            connector: SupabaseConnector(authClient: authClient)
+        )
+
+        self.container = container
+        self.authService = AuthService(
+            client: authClient,
+            syncCoordinator: syncCoordinator
+        )
         self.setupError = nil
     }
 
-    private init(container: AppContainer?, error: Error?) {
+    private init(
+        container: AppContainer?,
+        authService: AuthService?,
+        error: Error?
+    ) {
         // Construtor de fallback. `setup()` hoje não lança (PowerSyncDatabase
         // é factory síncrona não-throwing), mas mantemos o caminho pronto pra
         // Fase 5, quando `connect(connector:)` vai entrar e poderá falhar.
         self.container = container ?? AppContainer.placeholder()
+        self.authService = authService ?? AuthService(
+            client: SupabaseAuthClient(),
+            syncCoordinator: SyncCoordinator(
+                container: container ?? AppContainer.placeholder(),
+                connector: SupabaseConnector(authClient: SupabaseAuthClient())
+            )
+        )
         self.setupError = error
     }
 
     static func failed(error: Error) -> AppEnvironment {
-        AppEnvironment(container: nil, error: error)
+        AppEnvironment(container: nil, authService: nil, error: error)
+    }
+
+    func restoreSessionIfNeeded() async throws {
+        guard !hasRestoredSession else { return }
+
+        hasRestoredSession = true
+        try await authService.restoreSession()
     }
 }
