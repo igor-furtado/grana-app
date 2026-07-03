@@ -4,6 +4,7 @@ import Foundation
 /// Mensagens em PT-BR pra subir direto pra UI quando necessário.
 enum AIError: LocalizedError {
     case invalidConfiguration(String)
+    case authenticationRequired
     case requestFailed(Error)
     case invalidResponse(String)
     case httpStatus(Int, body: String?)
@@ -16,6 +17,8 @@ enum AIError: LocalizedError {
         switch self {
         case let .invalidConfiguration(key):
             return "Configuração ausente ou inválida para \(key)."
+        case .authenticationRequired:
+            return "É preciso entrar com sua conta para usar a categorização assistida."
         case .requestFailed:
             return "Não foi possível falar com o serviço de categorização."
         case let .invalidResponse(message):

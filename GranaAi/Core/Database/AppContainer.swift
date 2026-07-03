@@ -49,6 +49,7 @@ final class AppContainer {
     /// Por isso a propriedade declara o protocolo, mas `setup()` abaixo
     /// chama `PowerSyncDatabase(...)` como função.
     let db: any PowerSyncDatabaseProtocol
+    private let authClient: (any AuthClientProtocol)?
 
     // Repositories como `lazy var`: só são instanciados na primeira leitura.
     // Decisão consciente: vivem dentro do AppContainer enquanto a superfície é
@@ -70,7 +71,7 @@ final class AppContainer {
     private var hasStartedSync = false
 
     /// Cliente HTTP da categorização assistida online.
-    lazy var categorizationAPIClient: CategorizationAPIClient = .init()
+    lazy var categorizationAPIClient: CategorizationAPIClient = .init(authClient: authClient)
 
     /// Pipeline de categorização automática. Preserva cache e correções
     /// locais do app enquanto a inferência é executada pelo backend online.
@@ -80,12 +81,15 @@ final class AppContainer {
         categories: categories,
         accounts: accounts,
         institutions: institutions,
-        cache: categorizationCache,
-        corrections: categorizationCorrections
+        cache: categorizationCache
     )
 
-    private init(db: any PowerSyncDatabaseProtocol) {
+    private init(
+        db: any PowerSyncDatabaseProtocol,
+        authClient: (any AuthClientProtocol)? = nil
+    ) {
         self.db = db
+        self.authClient = authClient
     }
 
     /// Cria a instância e registra o schema. O PowerSync aplica o schema
@@ -93,7 +97,7 @@ final class AppContainer {
     /// migration tradicional. Mudar o schema entre versões é seguro: o
     /// PowerSync recria as views, sem perda de dados locais (desde que
     /// colunas removidas não sejam o que o app procura).
-    static func setup() -> AppContainer {
+    static func setup(authClient: (any AuthClientProtocol)? = nil) -> AppContainer {
         wipeDatabaseIfSchemaChanged()
 
         let database = PowerSyncDatabase(
@@ -109,7 +113,7 @@ final class AppContainer {
         // `AppEnvironment.failed(error:)` volta a ser usado.
 
         log.database.info("PowerSyncDatabase inicializado em modo local-only (\(dbFilename))")
-        return AppContainer(db: database)
+        return AppContainer(db: database, authClient: authClient)
     }
 
     @MainActor

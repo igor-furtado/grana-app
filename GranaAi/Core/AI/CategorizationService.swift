@@ -63,7 +63,6 @@ final class CategorizationService: Sendable {
     private let accounts: AccountRepository
     private let institutions: InstitutionRepository
     private let cache: CategorizationCacheRepository
-    private let corrections: CategorizationCorrectionRepository
     /// Nome do modelo usado pra lookup/escrita no cache. Exposto pra que o
     /// Store grave entries de correção com o mesmo identificador que o
     /// service usa pra buscar — divergência aqui causa cache miss silencioso.
@@ -76,7 +75,6 @@ final class CategorizationService: Sendable {
         accounts: AccountRepository,
         institutions: InstitutionRepository,
         cache: CategorizationCacheRepository,
-        corrections: CategorizationCorrectionRepository,
         model: String = "openai/gpt-5.4-mini"
     ) {
         self.client = client
@@ -85,7 +83,6 @@ final class CategorizationService: Sendable {
         self.accounts = accounts
         self.institutions = institutions
         self.cache = cache
-        self.corrections = corrections
         self.model = model
     }
 
@@ -168,41 +165,23 @@ final class CategorizationService: Sendable {
 
         progress?(.started(total: drafts.count))
 
-        // Cache lookup batched.
-        let accountTypeById = Dictionary(uniqueKeysWithValues: allAccounts.map { ($0.id, $0.type.rawValue) })
         let hashByDraftId: [UUID: String] = Dictionary(uniqueKeysWithValues:
             drafts.map { draft in
                 let normalized = DescriptionNormalizer.normalize(draft.description)
-                let accountType = accountTypeById[draft.accountId] ?? "unknown"
+                let accountContext = accountContextById[draft.accountId] ?? "Desconhecida"
                 let sign = draft.isSignReliable ? (draft.signedAmount < 0 ? "expense" : "income") : "unknown"
-                let context = "\(normalized)|\(accountType)|\(sign)|taxonomy-\(Config.categorizationTaxonomyVersion)"
-                return (draft.id, DescriptionNormalizer.hashNormalized(context))
+                return (draft.id, Self.descriptionHash(
+                    normalizedDescription: normalized,
+                    accountContext: accountContext,
+                    sign: sign,
+                    taxonomyVersion: Config.categorizationTaxonomyVersion
+                ))
             }
         )
-        let uniqueHashes = Array(Set(hashByDraftId.values))
-        let cacheHits = try await cache.lookupMany(descriptionHashes: uniqueHashes, model: model)
-
         var suggestions: [CategorizationSuggestion] = []
-        var pendingForAI: [TransactionDraft] = []
-        var fromCache = 0
-
-        for draft in drafts {
-            let hash = hashByDraftId[draft.id] ?? DescriptionNormalizer.hash(draft.description)
-            if let hit = cacheHits[hash] {
-                fromCache += 1
-                suggestions.append(buildSuggestion(
-                    draft: draft,
-                    hash: hash,
-                    categoryId: hit.categoryId,
-                    subcategoryId: hit.subcategoryId,
-                    confidence: hit.confidence,
-                    source: .cache
-                ))
-            } else {
-                pendingForAI.append(draft)
-            }
-        }
-        progress?(.cacheChecked(hits: fromCache, misses: pendingForAI.count))
+        let pendingForAI = drafts
+        let fromCache = 0
+        progress?(.cacheChecked(hits: 0, misses: pendingForAI.count))
 
         var fromAI = 0
         var fromFallback = 0
@@ -614,12 +593,10 @@ final class CategorizationService: Sendable {
             )
         }
 
-        let corrections = try await corrections.recent(limit: 10)
         let requestBody = CategorizationPrompt.buildRequest(
             items: items,
             categories: taxonomy.promptOptions(),
             ownAccounts: ownAccounts,
-            fewShots: buildFewShots(corrections: corrections, taxonomy: taxonomy),
             taxonomyVersion: Config.categorizationTaxonomyVersion
         )
         let responseData = try await client.categorize(requestBody)
@@ -815,22 +792,14 @@ final class CategorizationService: Sendable {
         try await transactions.update(updated)
     }
 
-    private func buildFewShots(
-        corrections: [CategorizationCorrection],
-        taxonomy: Taxonomy
-    ) -> [CategorizationPrompt.FewShotExample] {
-        corrections.compactMap { correction in
-            guard let slug = taxonomy.slug(forUUID: correction.correctedCategoryId) else {
-                return nil
-            }
-            let subName = correction.correctedSubcategoryId
-                .flatMap { taxonomy.subcategoryName(for: $0) }
-            return CategorizationPrompt.FewShotExample(
-                normalizedDescription: correction.normalizedDescription,
-                correctedCategorySlug: slug,
-                correctedSubcategoryName: subName
-            )
-        }
+    private nonisolated static func descriptionHash(
+        normalizedDescription: String,
+        accountContext: String,
+        sign: String,
+        taxonomyVersion: Int
+    ) -> String {
+        let context = "\(normalizedDescription)|\(accountContext)|\(sign)|taxonomy-\(taxonomyVersion)"
+        return DescriptionNormalizer.hashNormalized(context)
     }
 }
 
@@ -901,8 +870,14 @@ private struct Taxonomy {
         return roots.map { root in
             let subs = (subcategoriesByParent[root.id] ?? [])
                 .sorted { $0.name < $1.name }
-                .map(\.name)
+                .map { subcategory in
+                    CategorizationPrompt.CategoryOption.SubcategoryOption(
+                        id: subcategory.id,
+                        name: subcategory.name
+                    )
+                }
             return CategorizationPrompt.CategoryOption(
+                id: root.id,
                 slug: root.slug ?? "",
                 name: root.name,
                 kind: root.kind.rawValue,

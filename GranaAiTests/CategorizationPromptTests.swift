@@ -4,7 +4,7 @@ import Testing
 
 @Suite("CategorizationPrompt")
 struct CategorizationPromptTests {
-    @Test("buildRequest preserva taxonomia, contas e exemplos do app")
+    @Test("buildRequest preserva taxonomia e contas do app sem few-shots")
     func buildRequestPreservesClientPayload() throws {
         let request = CategorizationPrompt.buildRequest(
             items: [
@@ -16,13 +16,15 @@ struct CategorizationPromptTests {
                     sourceHint: nil
                 ),
             ],
-            items: [],
             categories: [
                 .init(
+                    id: UUID(),
                     slug: "alimentacao",
                     name: "Alimentação",
                     kind: "expense",
-                    subcategories: ["Supermercados"]
+                    subcategories: [
+                        .init(id: UUID(), name: "Supermercados"),
+                    ]
                 ),
             ],
             ownAccounts: [
@@ -32,13 +34,6 @@ struct CategorizationPromptTests {
                     institutionName: "Inter"
                 ),
             ],
-            fewShots: [
-                .init(
-                    normalizedDescription: "ifood",
-                    correctedCategorySlug: "alimentacao",
-                    correctedSubcategoryName: "Restaurantes"
-                ),
-            ],
             taxonomyVersion: 7
         )
 
@@ -46,9 +41,7 @@ struct CategorizationPromptTests {
         #expect(request.items.count == 1)
         #expect(request.categories.count == 1)
         #expect(request.ownAccounts.count == 1)
-        #expect(request.fewShots.count == 1)
         #expect(request.categories[0].slug == "alimentacao")
-        #expect(request.fewShots[0].correctedCategorySlug == "alimentacao")
     }
 
     @Test("parseResults lê resposta JSON estruturada do backend")

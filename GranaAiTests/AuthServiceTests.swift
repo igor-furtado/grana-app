@@ -65,7 +65,7 @@ struct AuthServiceTests {
 
         #expect(service.state == .authenticated(restoredSession))
         #expect(syncCoordinator.connectCallCount == 1)
-        #expect(authClient.lastHandledURL == callbackURL)
+        #expect(await authClient.handledURL() == callbackURL)
     }
 }
 
@@ -156,6 +156,10 @@ private actor FakeAuthClient: AuthClientProtocol {
     func session(from callbackURL: URL) async throws -> AuthSessionContext {
         lastHandledURL = callbackURL
         return try #require(callbackSession)
+    }
+
+    func handledURL() -> URL? {
+        lastHandledURL
     }
 }
 

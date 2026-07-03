@@ -6,8 +6,8 @@ import OSLog
 /// **Estratégia:**
 /// - O app continua sendo a fonte da taxonomia e envia ao backend as
 ///   categorias e subcategorias válidas do batch.
-/// - O backend recebe transações, few-shots e o recorte taxonômico e monta
-///   o prompt específico do provider.
+/// - O backend recebe transações e o recorte taxonômico; memória pessoal e
+///   configuração operacional são resolvidas server-side.
 /// - A resposta continua sendo JSON estruturado no mesmo contrato lógico.
 ///
 /// **`nonisolated`:** chamado do service rodando off-main.
@@ -39,26 +39,18 @@ nonisolated enum CategorizationPrompt {
         }
     }
 
-    /// Few-shot pulled da tabela `categorization_corrections`. Slug em vez de
-    /// UUID pra alinhar com o output esperado.
-    struct FewShotExample: Encodable {
-        let normalizedDescription: String
-        let correctedCategorySlug: String
-        let correctedSubcategoryName: String?
-
-        enum CodingKeys: String, CodingKey {
-            case normalizedDescription = "normalized_description"
-            case correctedCategorySlug = "corrected_category_slug"
-            case correctedSubcategoryName = "corrected_subcategory_name"
-        }
-    }
-
     /// Categoria raiz exposta pro modelo (resolução slug→UUID acontece no service).
     struct CategoryOption: Encodable {
+        struct SubcategoryOption: Encodable {
+            let id: UUID
+            let name: String
+        }
+
+        let id: UUID
         let slug: String
         let name: String
         let kind: String // "expense" | "income" | "transfer"
-        let subcategories: [String]
+        let subcategories: [SubcategoryOption]
     }
 
     /// Conta do usuário exposta pro modelo. Serve pra decidir se uma
@@ -81,14 +73,12 @@ nonisolated enum CategorizationPrompt {
         let items: [Item]
         let categories: [CategoryOption]
         let ownAccounts: [OwnAccountInfo]
-        let fewShots: [FewShotExample]
 
         enum CodingKeys: String, CodingKey {
             case taxonomyVersion = "taxonomy_version"
             case items
             case categories
             case ownAccounts = "own_accounts"
-            case fewShots = "few_shots"
         }
     }
 
@@ -113,15 +103,13 @@ nonisolated enum CategorizationPrompt {
         items: [Item],
         categories: [CategoryOption],
         ownAccounts: [OwnAccountInfo],
-        fewShots: [FewShotExample],
         taxonomyVersion: Int
     ) -> APIRequest {
         APIRequest(
             taxonomyVersion: taxonomyVersion,
             items: items,
             categories: categories,
-            ownAccounts: ownAccounts,
-            fewShots: fewShots
+            ownAccounts: ownAccounts
         )
     }
 

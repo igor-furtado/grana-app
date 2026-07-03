@@ -37,7 +37,7 @@ enum CategorizationHarnessSupport {
         case .invalidConfiguration, .requestFailed, .invalidResponse, .httpStatus,
              .responseParse, .decoding:
             return true
-        case .unknownCategorySlug, .cancelled:
+        case .authenticationRequired, .unknownCategorySlug, .cancelled:
             return false
         }
     }

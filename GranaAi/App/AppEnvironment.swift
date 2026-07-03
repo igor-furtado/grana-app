@@ -23,8 +23,8 @@ final class AppEnvironment {
     private var hasRestoredSession = false
 
     init() {
-        let container = AppContainer.setup()
         let authClient = SupabaseAuthClient()
+        let container = AppContainer.setup(authClient: authClient)
         let syncCoordinator = SyncCoordinator(
             container: container,
             connector: SupabaseConnector(authClient: authClient)
