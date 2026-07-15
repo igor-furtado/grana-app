@@ -1,5 +1,6 @@
 import Foundation
 import Observation
+import OSLog
 
 @MainActor
 @Observable
@@ -14,6 +15,7 @@ final class AuthService {
     private let syncCoordinator: any SyncCoordinatorProtocol
 
     private(set) var state: State = .restoring
+    private(set) var syncIssueMessage: String?
 
     init(
         client: any AuthClientProtocol,
@@ -31,10 +33,24 @@ final class AuthService {
     }
 
     func restoreSession() async throws {
-        if let session = try await client.validSession() {
+        let session: AuthSessionContext?
+        do {
+            session = try await client.validSession()
+        } catch {
+            guard let storedSession = await client.storedSession() else {
+                throw error
+            }
+            log.sync.notice("Falha ao revalidar sessão remota; mantendo sessão local em modo degradado.")
+            state = .authenticated(storedSession)
+            await connectBestEffort()
+            return
+        }
+
+        if let session {
             state = .authenticated(session)
-            try await syncCoordinator.connect()
+            await connectBestEffort()
         } else {
+            syncIssueMessage = nil
             state = .unauthenticated
         }
     }
@@ -46,6 +62,16 @@ final class AuthService {
     func handleCallback(_ url: URL) async throws {
         let session = try await client.session(from: url)
         state = .authenticated(session)
-        try await syncCoordinator.connect()
+        await connectBestEffort()
+    }
+
+    private func connectBestEffort() async {
+        do {
+            try await syncCoordinator.connect()
+            syncIssueMessage = nil
+        } catch {
+            log.sync.error("Falha ao iniciar sync autenticado; app seguirá em modo local-first.")
+            syncIssueMessage = "Nao foi possivel conectar ao sync agora. O app continua usando os dados locais e tentara sincronizar novamente na proxima abertura."
+        }
     }
 }

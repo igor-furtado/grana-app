@@ -58,6 +58,15 @@ actor SupabaseAuthClient: AuthClientProtocol {
         }
     }
 
+    func storedSession() async -> AuthSessionContext? {
+        guard let client = try? resolvedClient(),
+              let session = client.auth.currentSession
+        else {
+            return nil
+        }
+        return AuthSessionContext(session: session)
+    }
+
     func requestMagicLink(email: String) async throws {
         let client = try resolvedClient()
         try await client.auth.signInWithOTP(

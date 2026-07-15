@@ -87,6 +87,10 @@ private actor FakeCategorizationAuthClient: AuthClientProtocol {
         validSession
     }
 
+    func storedSession() async -> AuthSessionContext? {
+        validSession
+    }
+
     func requestMagicLink(email _: String) async throws {}
 
     func session(from _: URL) async throws -> AuthSessionContext {

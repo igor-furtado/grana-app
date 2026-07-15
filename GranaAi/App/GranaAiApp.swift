@@ -28,6 +28,12 @@ struct GranaAiApp: App {
                     Task {
                         do {
                             try await environment.authService.handleCallback(url)
+                            if let syncIssueMessage = environment.authService.syncIssueMessage {
+                                NoticeCenter.shared.info(
+                                    title: "Sync indisponivel",
+                                    message: syncIssueMessage
+                                )
+                            }
                         } catch {
                             NoticeCenter.shared.report(
                                 error,
@@ -43,6 +49,12 @@ struct GranaAiApp: App {
                     do {
                         try await Seed.runIfNeeded(container: environment.container)
                         try await environment.restoreSessionIfNeeded()
+                        if let syncIssueMessage = environment.authService.syncIssueMessage {
+                            NoticeCenter.shared.info(
+                                title: "Sync indisponivel",
+                                message: syncIssueMessage
+                            )
+                        }
                     } catch {
                         NoticeCenter.shared.report(error, title: "Falha ao iniciar o app")
                     }
