@@ -16,7 +16,10 @@ mostram o estado atual. Em divergências, não normalize silenciosamente: corrij
 
 - App exclusivo para macOS, com SwiftUI, Observation (`@Observable`) e Swift Charts.
 - Target macOS `26.1`, isolamento padrão `MainActor`.
-- Persistência local-first via produto estático `PowerSync`, versão mínima `1.13.1`.
+- Direção aceita: app online-only estrito com Supabase Postgres como fonte única de verdade; veja
+  `docs/adr/0007-app-online-only-com-supabase-como-fonte-da-verdade.md`.
+- Durante a refatoração, PowerSync pode coexistir apenas para fatias ainda não migradas. Não introduza novo código
+  offline-first.
 - Testes com Swift Testing (`import Testing`, `@Suite`, `@Test`, `#expect`).
 - IA via backend online de categorização assistida, com provider ativo configurável e integração inicial prevista para OpenAI `gpt-5.4-mini`.
 - App Sandbox permanece desativado para permitir `Process`.
@@ -27,50 +30,47 @@ mostram o estado atual. Em divergências, não normalize silenciosamente: corrij
 Fluxo obrigatório:
 
 ```text
-SwiftUI View -> @Observable Store -> Repository -> PowerSyncDatabase
+SwiftUI View -> @Observable Store -> Repository -> Supabase backend
 ```
 
-- Views não executam SQL nem instanciam repositories.
+- Views não executam SQL, não chamam Supabase diretamente nem instanciam repositories.
 - Stores recebem `AppContainer`; coordenam estado e operações.
-- Repositories concentram queries, prepared statements e mapeamento entre rows e models.
+- Repositories concentram chamadas remotas, DTOs e mapeamento entre contratos backend e models.
 - `AppContainer` é o composition root e expõe repositories e serviços.
-- O app sempre lê e escreve no PowerSync local. Supabase direto só para autenticação ou dados deliberadamente fora do sync.
-- Use `watch()` para listas reativas; `getAll()` para snapshots e agregações sob demanda.
-- Agregue em SQL quando possível. Para dia e fuso local, carregue apenas as colunas necessárias e agregue em Swift com
-  `Calendar`.
-- Operações consistentes com múltiplas etapas usam `writeTransaction`.
+- O app não persiste dados financeiros localmente. Supabase Auth pode manter sessão/token local; dados financeiros só em
+  memória durante sessão válida.
+- Use `load()` e `refresh()` explícitos por tela. Não introduza `watch()`/Realtime sem decisão específica.
+- Telas compostas consomem read models ou RPCs versionadas do backend; não busque histórico inteiro para agregar no Swift.
+- Operações consistentes com múltiplas etapas usam RPCs transacionais no backend.
+- Tabelas financeiras não recebem escrita direta do app. `INSERT`, `UPDATE` e `DELETE` financeiros passam por funções
+  controladas.
 
 ## Invariantes de implementação
 
 - Toda transação referencia exatamente uma conta e uma categoria; subcategoria é opcional.
 - Dinheiro usa `Decimal` no Swift e `Int64` em centavos no banco. Nunca use `Double`; converta com `Converters`.
 - `Transaction.amount` é sempre magnitude positiva; `CategoryKind` determina receita, despesa ou transferência.
-- Datas são ISO8601 UTC no banco. Comparações diárias usam janela SQL e `Calendar` local; nunca
-  `SUBSTR(occurred_at, ...)`.
+- Instantes usam `timestamptz` no backend e `Date` no Swift; datas civis de fatura usam `date`.
 - Transferências não entram em cards nem gráficos de receitas e despesas.
-- IDs de domínio são UUIDs; FKs são persistidas como `uuidString`.
+- IDs financeiros finais são gerados pelo backend. O app pode enviar IDs temporários ou chaves de idempotência.
 - Moeda padrão: BRL.
 - `accounts` contém apenas campos universais. Dados específicos ficam em `bank_accounts` e `credit_cards`, escritos
-  atomicamente.
+  atomicamente pelo backend.
 - Toda transação de cartão exige fatura. Mudança de conta ou data re-resolve o ciclo.
 - Datas de fechamento e vencimento de uma fatura são snapshots; mudanças futuras no cartão não as alteram.
 - Compra se vincula à fatura por `transactions.statement_id`; pagamento se vincula por `statement_payments`.
-- Escritas que afetam compras ou pagamentos recalculam total e status da fatura na mesma transação de banco.
+- Escritas que afetam compras ou pagamentos recalculam total e status da fatura na mesma transação backend.
 - Categorias são hierárquicas. Apenas raízes têm ícone; subcategorias herdam o ícone na UI.
-- O schema PowerSync não oferece `NOT NULL`; models, inserts e mappers garantem obrigatoriedade.
-
-Detalhes PowerSync:
-
-- `PowerSyncDatabase(...)` é factory; propriedades usam `any PowerSyncDatabaseProtocol`.
-- Use a API direta e o produto `PowerSync`. Não migre para `PowerSyncDynamic`, `PowerSyncGRDB` nem camada GRDB.
-- Passe valores separadamente em prepared statements; nunca interpole parâmetros em SQL.
-- Mappers e utilitários usados em closures PowerSync `@Sendable` devem ser `nonisolated`.
+- Categorias e instituições são catálogos globais somente leitura no MVP. O app resolve catálogos por slug/código, não por
+  IDs conhecidos.
+- Instituições financeiras fora do catálogo suportado bloqueiam criação de conta.
 
 ## Convenções Swift e UI
 
 - Use `@Observable`; não introduza `ObservableObject`, `@Published` nem Combine.
 - Use `async/await`.
 - Estado apenas visual fica em `@State`; dados persistidos ou compartilhados ficam no Store.
+- Dados financeiros não podem ser persistidos em `UserDefaults`, arquivos, SQLite, banco local ou caches em disco.
 - Mantenha Views pequenas e extraia subviews quando acumularem responsabilidades.
 - Não adicione `#Preview`; valide UI executando o app.
 - Ícones de UI vêm de `AppIcon`; ícones de categoria passam por `CategoryIcon` e seus mappings.
@@ -96,18 +96,20 @@ Detalhes PowerSync:
 - `ImportStore.supportedExtensions` é a fonte dos formatos aceitos.
 - Importadores aplicam `abs()` antes de persistir valores.
 - Preserve as regras existentes de deduplicação por formato.
-- Cada `STMTRS` OFX gera um `ImportBatch`; múltiplos extratos são persistidos em uma única `writeTransaction`.
+- Cada `STMTRS` OFX gera um `ImportBatch`; múltiplos extratos são enviados em payload estruturado para commit atômico no
+  backend.
 - `ImportBatch` permanece reversível, sem transações órfãs.
 - A categorização assistida ocorre antes do commit final.
+- Deduplicação de importação é garantia backend com função e constraint; duplicatas são puladas com relatório.
 - Não troque o backend online de categorização assistida, o provider inicial suportado nem a política de pseudonimização sem decisão explícita.
 
 ## Onde alterar
 
 | Necessidade | Local principal |
 |---|---|
-| Nova tabela | `GranaAi/Core/Database/AppSchema.swift`, model e repository |
-| Mudança incompatível de schema local | `AppSchema.swift` e bump de `AppContainer.schemaVersion` |
-| Nova categoria padrão | `GranaAi/Core/Database/CategorySeedData.swift` |
+| Nova tabela, RLS, função ou seed global | migrations Supabase versionadas no repo |
+| Novo read model ou mutação financeira | schema `api`/RPC versionada e repository remoto |
+| Nova categoria padrão | seed/migration Supabase de catálogo global |
 | Novo formato de importação | `GranaAi/Core/Import/`, `ImportStore` e step de revisão |
 | Novo repository ou serviço | Registro no `AppContainer` |
 | Novo ícone de UI | `GranaAi/Shared/Components/AppIcon.swift` |
@@ -147,7 +149,10 @@ swiftlint
 - Rode primeiro a validação mais estreita que cobre a mudança; amplie para build e testes completos quando o impacto for
   transversal.
 - Teste regras de domínio, parsers, conversões, queries e regressões.
-- Para repositories, prefira PowerSync em memória com `dbFilename: ":memory:"`.
+- Para repositories remotos, use clients fake em testes Swift. Testes backend, scripts SQL e verificações formais de
+  backend não são requisito nesta refatoração; mudanças backend dependem de revisão de código/contrato e dos testes do app.
+- Migrations que alteram RLS, grants, RPCs financeiras ou schema financeiro devem ser pequenas, revisáveis e acompanhadas
+  de plano de rollback manual no PR/issue. Sem testes backend, revisão humana é o gate principal dessas mudanças.
 - Injete `Calendar` em comportamento dependente de dia ou fuso.
 - Informe validações não executadas.
 - Não faça stage, commit, push, mudanças destrutivas de banco nem alterações de dependências sem pedido explícito.

@@ -9,7 +9,7 @@ Pessoa cuja vida financeira é organizada pelo produto. No contexto atual, cada 
 _Evite_: Household, perfil compartilhado, titular secundário
 
 **Sessão**:
-Estado de autenticação que permite ao app identificar um usuário e acessar serviços online associados a ele. Pode estar ausente, válida ou degradada quando a identidade local existe mas a conexão remota não está disponível.
+Estado de autenticação remota que permite ao app identificar um usuário e acessar seus dados financeiros. Pode estar ausente ou válida; sem sessão remota válida, o app não exibe dados financeiros.
 _Evite_: Conta, perfil
 
 ## Estrutura financeira
@@ -17,6 +17,10 @@ _Evite_: Conta, perfil
 **Instituição financeira**:
 Organização na qual uma ou mais contas do usuário são mantidas, como banco ou corretora.
 _Evite_: Banco, quando o conceito também puder representar uma corretora
+
+**Instituição financeira suportada**:
+Instituição financeira reconhecida pelo produto para criação de contas. Quando uma instituição não é suportada, o usuário não cria conta para ela até que o produto trate suas particularidades.
+_Evite_: Outra instituição, banco genérico
 
 **Conta**:
 Local financeiro no qual existe dinheiro ou dívida do usuário. Toda transação pertence a exatamente uma conta.
@@ -61,6 +65,10 @@ _Evite_: Favorecido, contraparte
 **Categoria**:
 Classificação principal de uma transação, pertencente a um único tipo: receita, despesa ou transferência.
 _Evite_: Tag, grupo
+
+**Categoria padrão**:
+Categoria disponibilizada pelo produto para todos os usuários. No MVP, usuários classificam transações apenas com categorias padrão.
+_Evite_: Categoria personalizada
 
 **Subcategoria**:
 Classificação específica subordinada a uma categoria e do mesmo tipo dela.
