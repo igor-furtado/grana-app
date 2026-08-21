@@ -1,7 +1,6 @@
 import Foundation
 import Observation
 import OSLog
-import PowerSync
 
 /// Estado observável da feature Transações.
 ///
@@ -21,162 +20,65 @@ import PowerSync
 @Observable
 final class TransactionStore {
     private let container: AppContainer
+    private let pageSize = 50
+    private var nextCursor: TransactionRemotePageCursor?
 
     private(set) var transactions: [Transaction] = []
     private(set) var accounts: [Account] = []
     /// Necessário pra derivar `displayName(for:)` da conta (que precisa do
-    /// nome do banco como prefixo). Tabela pequena e estática — overhead do
-    /// stream é desprezível.
+    /// nome do banco como prefixo). Catálogo pequeno e estático, então vale
+    /// carregar junto do restante do snapshot da tela.
     private(set) var institutions: [Institution] = []
     /// A partir da Fase 4.6 o sufixo do display name (número da conta /
     /// ••••last4) vive nas tabelas-irmãs `bank_accounts` e `credit_cards`.
-    /// Streamamos junto pra não precisar de query síncrona toda vez que a
-    /// lista re-renderiza.
+    /// Esses detalhes entram no mesmo refresh para evitar lookups extras na UI.
     private(set) var bankDetails: [BankAccountDetails] = []
     private(set) var creditCards: [CreditCardDetails] = []
     private(set) var categories: [Category] = []
-    /// Fatura de cartão (Fase 4.7). Streamada pra que a UI da transação
-    /// possa mostrar a qual Fatura aquela compra pertence sem fazer round
-    /// trip ao banco. Tabela pequena (12 por cartão por ano) — cabe em
-    /// memória sem stress.
     private(set) var statements: [Statement] = []
-    /// Junction transferência → fatura paga. Permite ver na UI da
-    /// transferência quais Faturas ela está pagando.
     private(set) var statementPayments: [StatementPayment] = []
     private(set) var isLoading = false
+    private(set) var isLoadingMoreTransactions = false
+    private(set) var hasMoreTransactions = false
     var lastError: Error?
+    let supportsAdvancedCardRules = false
 
     init(container: AppContainer) {
         self.container = container
     }
 
-    // MARK: - Streams
+    // MARK: - Loading
 
-    /// Inicia os três watch streams em paralelo. Esta função **não retorna**
-    /// enquanto o task pai estiver vivo — fica fazendo `for try await` em
-    /// cada stream. SwiftUI chama isso via `.task { await store.start() }`,
-    /// que cancela automaticamente quando a View desaparece.
-    ///
-    /// **`try await` vs `for try await`:**
-    /// - `try await db.execute(...)` espera UMA operação async e segue.
-    /// - `for try await rows in stream { ... }` itera uma **stream** que
-    ///   pode emitir N valores ao longo do tempo. Cada nova emissão entra
-    ///   no corpo do loop. O loop termina quando a stream encerra (cancelamento,
-    ///   erro, ou `finish()`).
-    func start() async {
+    func load() async {
+        await refresh()
+    }
+
+    func refresh() async {
         isLoading = true
         defer { isLoading = false }
 
-        // `async let` roda os quatro em paralelo. Cada um é uma função async
-        // isolada à MainActor — ao atualizar `self.X`, já estamos na main.
-        // O await final só termina quando todas as streams encerrarem
-        // (em prática: só quando o task pai for cancelado).
-        async let t: Void = streamTransactions()
-        async let a: Void = streamAccounts()
-        async let i: Void = streamInstitutions()
-        async let bd: Void = streamBankDetails()
-        async let cd: Void = streamCreditCards()
-        async let s: Void = streamStatements()
-        async let sp: Void = streamStatementPayments()
-        async let c: Void = streamCategories()
-        _ = await (t, a, i, bd, cd, s, sp, c)
-    }
-
-    private func streamTransactions() async {
         do {
-            let stream = try container.transactions.watchAll()
-            for try await rows in stream {
-                transactions = rows
-            }
-        } catch is CancellationError {
-            // .task foi cancelado pela SwiftUI — comportamento esperado.
+            try await refreshSnapshot()
         } catch {
-            lastError = error
-            NoticeCenter.shared.report(error)
+            handleRefreshFailure(error)
         }
     }
 
-    private func streamAccounts() async {
-        do {
-            let stream = try container.accounts.watchAll()
-            for try await rows in stream {
-                accounts = rows
-            }
-        } catch is CancellationError {
-        } catch {
-            lastError = error
-            NoticeCenter.shared.report(error)
-        }
-    }
+    func loadMoreTransactions() async {
+        guard let nextCursor, !isLoadingMoreTransactions else { return }
 
-    private func streamInstitutions() async {
-        do {
-            let stream = try container.institutions.watchAll()
-            for try await rows in stream {
-                institutions = rows
-            }
-        } catch is CancellationError {
-        } catch {
-            lastError = error
-            NoticeCenter.shared.report(error)
-        }
-    }
+        isLoadingMoreTransactions = true
+        defer { isLoadingMoreTransactions = false }
 
-    private func streamBankDetails() async {
         do {
-            for try await rows in try container.accounts.watchAllBankDetails() {
-                bankDetails = rows
-            }
-        } catch is CancellationError {
-        } catch {
-            lastError = error
-            NoticeCenter.shared.report(error)
-        }
-    }
-
-    private func streamCreditCards() async {
-        do {
-            for try await rows in try container.accounts.watchAllCreditCardDetails() {
-                creditCards = rows
-            }
-        } catch is CancellationError {
-        } catch {
-            lastError = error
-            NoticeCenter.shared.report(error)
-        }
-    }
-
-    private func streamStatements() async {
-        do {
-            for try await rows in try container.statements.watchAll() {
-                statements = rows
-            }
-        } catch is CancellationError {
-        } catch {
-            lastError = error
-            NoticeCenter.shared.report(error)
-        }
-    }
-
-    private func streamStatementPayments() async {
-        do {
-            for try await rows in try container.statements.watchAllPayments() {
-                statementPayments = rows
-            }
-        } catch is CancellationError {
-        } catch {
-            lastError = error
-            NoticeCenter.shared.report(error)
-        }
-    }
-
-    private func streamCategories() async {
-        do {
-            let stream = try container.categories.watchAll()
-            for try await rows in stream {
-                categories = rows
-            }
-        } catch is CancellationError {
+            let page = try await container.remoteTransactions.loadPage(
+                cursor: nextCursor,
+                limit: pageSize
+            )
+            transactions.append(contentsOf: page.transactions)
+            self.nextCursor = page.nextCursor
+            hasMoreTransactions = page.nextCursor != nil
+            lastError = nil
         } catch {
             lastError = error
             NoticeCenter.shared.report(error)
@@ -199,9 +101,7 @@ final class TransactionStore {
         destinationAccountId: UUID? = nil,
         refundOfTransactionId: UUID? = nil
     ) async throws {
-        let now = Date()
-        let transaction = Transaction(
-            id: UUID(),
+        let input = TransactionMutationInput(
             accountId: accountId,
             categoryId: categoryId,
             subcategoryId: subcategoryId,
@@ -210,23 +110,34 @@ final class TransactionStore {
             description: description,
             notes: notes,
             destinationAccountId: destinationAccountId,
-            refundOfTransactionId: refundOfTransactionId,
-            createdAt: now,
-            updatedAt: now
+            refundOfTransactionId: refundOfTransactionId
         )
-        try await container.transactions.insert(transaction)
-        // Não precisamos atualizar `self.transactions` manualmente — o watch
-        // stream emite o novo estado automaticamente.
+        try await container.remoteTransactions.create(input: input)
+        try await refreshAfterMutation()
     }
 
     func update(_ transaction: Transaction) async throws {
-        var copy = transaction
-        copy.updatedAt = Date()
-        try await container.transactions.update(copy)
+        let input = TransactionMutationInput(
+            accountId: transaction.accountId,
+            categoryId: transaction.categoryId,
+            subcategoryId: transaction.subcategoryId,
+            amount: transaction.amount,
+            occurredAt: transaction.occurredAt,
+            description: transaction.description,
+            notes: transaction.notes,
+            destinationAccountId: transaction.destinationAccountId,
+            refundOfTransactionId: transaction.refundOfTransactionId
+        )
+        try await container.remoteTransactions.update(
+            transactionId: transaction.id,
+            input: input
+        )
+        try await refreshAfterMutation()
     }
 
     func delete(id: UUID) async throws {
-        try await container.transactions.delete(id: id)
+        try await container.remoteTransactions.delete(transactionId: id)
+        try await refreshAfterMutation()
     }
 
     // MARK: - Helpers para a UI
@@ -251,6 +162,24 @@ final class TransactionStore {
 
     func account(for id: UUID) -> Account? {
         accounts.first { $0.id == id }
+    }
+
+    func supportsBasicMutation(for transaction: Transaction) -> Bool {
+        if transaction.statementId != nil || transaction.refundOfTransactionId != nil {
+            return false
+        }
+
+        if account(for: transaction.accountId)?.type == .creditCard {
+            return false
+        }
+
+        if let destinationAccountId = transaction.destinationAccountId,
+           account(for: destinationAccountId)?.type == .creditCard
+        {
+            return false
+        }
+
+        return true
     }
 
     // MARK: - Statement helpers (Fase 4.7)
@@ -355,5 +284,55 @@ final class TransactionStore {
 
     func subcategories(of parentId: UUID) -> [Category] {
         categories.filter { $0.parentId == parentId }
+    }
+
+    private func refreshAfterMutation() async throws {
+        isLoading = true
+        defer { isLoading = false }
+
+        do {
+            try await refreshSnapshot()
+        } catch {
+            handleRefreshFailure(error)
+            throw error
+        }
+    }
+
+    private func refreshSnapshot() async throws {
+        async let transactionPage = container.remoteTransactions.loadPage(
+            cursor: nil,
+            limit: pageSize
+        )
+        async let accountSnapshot = container.remoteAccounts.load()
+        async let categoryCatalog = container.categoryCatalog.load()
+        async let institutionCatalog = container.institutionCatalog.load()
+        let (page, accountSnapshotValue, categoryCatalogValue, institutionCatalogValue) = try await (
+            transactionPage,
+            accountSnapshot,
+            categoryCatalog,
+            institutionCatalog
+        )
+
+        transactions = page.transactions
+        nextCursor = page.nextCursor
+        hasMoreTransactions = page.nextCursor != nil
+        accounts = accountSnapshotValue.accounts
+        bankDetails = accountSnapshotValue.bankDetails
+        creditCards = accountSnapshotValue.creditCards
+        categories = categoryCatalogValue
+        institutions = institutionCatalogValue
+        // TODO(fase-3): substituir esses placeholders pelo read model remoto
+        // de faturas quando o ticket #21 migrar regras de cartão.
+        statements = []
+        statementPayments = []
+        lastError = nil
+    }
+
+    private func handleRefreshFailure(_ error: any Error) {
+        transactions = []
+        nextCursor = nil
+        hasMoreTransactions = false
+        lastError = error
+        NoticeCenter.shared.report(error)
     }
 }

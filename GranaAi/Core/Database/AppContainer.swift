@@ -53,6 +53,7 @@ final class AppContainer {
     let categoryCatalog: any CategoryCatalogRepositoryProtocol
     let institutionCatalog: any InstitutionCatalogRepositoryProtocol
     let remoteAccounts: any AccountRemoteRepositoryProtocol
+    let remoteTransactions: any TransactionRemoteRepositoryProtocol
 
     // Repositories como `lazy var`: só são instanciados na primeira leitura.
     // Decisão consciente: vivem dentro do AppContainer enquanto a superfície é
@@ -92,7 +93,8 @@ final class AppContainer {
         authClient: (any AuthClientProtocol)? = nil,
         categoryCatalog: (any CategoryCatalogRepositoryProtocol)? = nil,
         institutionCatalog: (any InstitutionCatalogRepositoryProtocol)? = nil,
-        remoteAccounts: (any AccountRemoteRepositoryProtocol)? = nil
+        remoteAccounts: (any AccountRemoteRepositoryProtocol)? = nil,
+        remoteTransactions: (any TransactionRemoteRepositoryProtocol)? = nil
     ) {
         self.db = db
         self.authClient = authClient
@@ -124,6 +126,16 @@ final class AppContainer {
             )
         } else {
             self.remoteAccounts = AuthRequiredAccountRemoteRepository()
+        }
+
+        if let remoteTransactions {
+            self.remoteTransactions = remoteTransactions
+        } else if let authClient {
+            self.remoteTransactions = TransactionRemoteRepository(
+                remoteStore: SupabaseTransactionRemoteStore(authClient: authClient)
+            )
+        } else {
+            self.remoteTransactions = AuthRequiredTransactionRemoteRepository()
         }
     }
 
@@ -259,7 +271,8 @@ final class AppContainer {
     static func inMemoryForTesting(
         categoryCatalog: any CategoryCatalogRepositoryProtocol,
         institutionCatalog: any InstitutionCatalogRepositoryProtocol,
-        remoteAccounts: (any AccountRemoteRepositoryProtocol)? = nil
+        remoteAccounts: (any AccountRemoteRepositoryProtocol)? = nil,
+        remoteTransactions: (any TransactionRemoteRepositoryProtocol)? = nil
     ) -> AppContainer {
         let database = PowerSyncDatabase(
             schema: appSchema,
@@ -270,7 +283,8 @@ final class AppContainer {
             db: database,
             categoryCatalog: categoryCatalog,
             institutionCatalog: institutionCatalog,
-            remoteAccounts: remoteAccounts
+            remoteAccounts: remoteAccounts,
+            remoteTransactions: remoteTransactions
         )
     }
 }

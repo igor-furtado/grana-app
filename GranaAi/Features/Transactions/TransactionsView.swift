@@ -11,13 +11,6 @@ struct TransactionsView: View {
     @State private var pendingDelete: Transaction?
     @State private var searchText = ""
 
-    /// Default = data decrescente (mais recente primeiro), o comportamento
-    /// padrão do `getAll()` no repo. Usuário pode clicar no header da coluna
-    /// pra alternar entre asc/desc ou trocar de coluna.
-    @State private var sortOrder: [KeyPathComparator<Transaction>] = [
-        KeyPathComparator(\Transaction.occurredAt, order: .reverse),
-    ]
-
     var body: some View {
         Group {
             if let store {
@@ -36,16 +29,35 @@ struct TransactionsView: View {
     }
 
     private func content(store: TransactionStore) -> some View {
-        list(store: store)
-            .overlay {
-                if store.transactions.isEmpty && !store.isLoading {
-                    EmptyStateView(
-                        "Sem transações ainda",
-                        icon: .sidebarTransactions,
-                        description: "Adicione uma manualmente ou importe um extrato."
-                    )
+        VStack(spacing: 0) {
+            list(store: store)
+                .overlay {
+                    if store.transactions.isEmpty && !store.isLoading {
+                        EmptyStateView(
+                            "Sem transações ainda",
+                            icon: .sidebarTransactions,
+                            description: "Adicione uma manualmente ou importe um extrato."
+                        )
+                    }
                 }
+
+            if store.hasMoreTransactions || store.isLoadingMoreTransactions {
+                Divider()
+                HStack {
+                    Spacer()
+                    if store.isLoadingMoreTransactions {
+                        ProgressView()
+                            .controlSize(.small)
+                    } else {
+                        Button("Carregar mais") {
+                            Task { await store.loadMoreTransactions() }
+                        }
+                    }
+                    Spacer()
+                }
+                .padding(.vertical, 10)
             }
+        }
             .searchable(text: $searchText, prompt: "Buscar")
             .navigationTitle("Transações")
             .toolbar {
@@ -88,7 +100,11 @@ struct TransactionsView: View {
             ) { transaction in
                 Button("Apagar", role: .destructive) {
                     Task {
-                        try? await store.delete(id: transaction.id)
+                        do {
+                            try await store.delete(id: transaction.id)
+                        } catch {
+                            NoticeCenter.shared.report(error)
+                        }
                         pendingDelete = nil
                     }
                 }
@@ -97,7 +113,7 @@ struct TransactionsView: View {
                 Text(deletePreview(for: transaction, store: store))
             }
             .task {
-                await store.start()
+                await store.load()
             }
     }
 
@@ -123,16 +139,9 @@ struct TransactionsView: View {
     private func list(store: TransactionStore) -> some View {
         // Table nativa do macOS: virtualizada (escala bem com milhares de
         // linhas), colunas redimensionáveis pelo usuário, e segue o padrão
-        // visual do `ImportHistoryView`.
-        //
-        // **Ordenação:** colunas com `value:` ficam clicáveis (chevron sobe/desce
-        // aparece no header). SwiftUI atualiza o `sortOrder` binding mas não
-        // sorta os dados sozinho — fazemos `.sorted(using:)` na chamada.
-        // Categoria/Subcategoria não ganham `value:` porque o que queremos
-        // ordenar ali é o *nome* (`store.category(for:)?.name`), que não é
-        // uma propriedade direta de `Transaction` — adicionar exige um
-        // comparator custom. Fica fora do MVP.
-        Table(filtered(store: store).sorted(using: sortOrder), sortOrder: $sortOrder) {
+        // visual do `ImportHistoryView`. A ordenação canônica vem do backend
+        // via cursor estável; a tabela fica só como renderização.
+        Table(filtered(store: store)) {
             TableColumn("Banco") { transaction in
                 let accountName =
                     store.account(for: transaction.accountId)
@@ -149,7 +158,7 @@ struct TransactionsView: View {
             }
             .width(60)
 
-            TableColumn("Descrição", value: \.description) { transaction in
+            TableColumn("Descrição") { transaction in
                 Text(transaction.description)
                     .lineLimit(1)
             }
@@ -180,14 +189,14 @@ struct TransactionsView: View {
             }
             .width(min: 130, ideal: 160)
 
-            TableColumn("Data", value: \.occurredAt) { transaction in
+            TableColumn("Data") { transaction in
                 Text(transaction.occurredAt.formatted(date: .numeric, time: .omitted))
                     .monospacedDigit()
                     .foregroundStyle(.secondary)
             }
             .width(100)
 
-            TableColumn("Valor", value: \.amount) { transaction in
+            TableColumn("Valor") { transaction in
                 accountingAmount(transaction.amount)
                     .foregroundStyle(amountColor(for: transaction, store: store))
             }
@@ -202,6 +211,8 @@ struct TransactionsView: View {
             .width(70)
 
             TableColumn("") { transaction in
+                let canMutate = store.supportsBasicMutation(for: transaction)
+                let unsupportedMessage = "Transações de cartão serão migradas junto com a fatia de faturas."
                 // `.foregroundStyle(.secondary)` pra acompanhar o tom dos ícones da
                 // toolbar (Importar/Adicionar). Sem isso, `Button` plain renderiza
                 // o ícone na cor primária e fica destoante.
@@ -213,7 +224,8 @@ struct TransactionsView: View {
                             .foregroundStyle(.secondary)
                     }
                     .buttonStyle(.borderless)
-                    .help("Editar")
+                    .disabled(!canMutate)
+                    .help(canMutate ? "Editar" : unsupportedMessage)
 
                     Button(role: .destructive) {
                         pendingDelete = transaction
@@ -222,7 +234,8 @@ struct TransactionsView: View {
                             .foregroundStyle(.secondary)
                     }
                     .buttonStyle(.borderless)
-                    .help("Apagar")
+                    .disabled(!canMutate)
+                    .help(canMutate ? "Apagar" : unsupportedMessage)
                 }
             }
             .width(70)

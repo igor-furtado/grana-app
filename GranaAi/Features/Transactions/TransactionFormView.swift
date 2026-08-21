@@ -58,7 +58,7 @@ struct TransactionFormView: View {
                 // Sem opção "Selecione" — o usuário escolhe da lista direto.
                 // `accountId` é defaultado pra primeira conta em `loadExisting`.
                 Picker("Conta", selection: $accountId) {
-                    ForEach(store.accounts) { account in
+                    ForEach(sourceAccountOptions) { account in
                         Text(store.displayName(for: account)).tag(UUID?.some(account.id))
                     }
                 }
@@ -122,11 +122,14 @@ struct TransactionFormView: View {
                     }
                 }
 
-                if selectedAccountIsCreditCard, selectedCategoryKind != .transfer {
+                if store.supportsAdvancedCardRules,
+                   selectedAccountIsCreditCard,
+                   selectedCategoryKind != .transfer
+                {
                     refundSection
                 }
 
-                if isPayingCreditCard {
+                if store.supportsAdvancedCardRules, isPayingCreditCard {
                     statementPaymentSection
                 }
 
@@ -185,8 +188,8 @@ struct TransactionFormView: View {
             }
             .onAppear(perform: loadExisting)
             // `loadExisting` define os defaults no `onAppear`, mas
-            // `store.accounts`/`store.categories` são populados por streams
-            // (`TransactionStore.start()`) que podem ainda não ter emitido
+            // `store.accounts`/`store.categories` chegam do `load()` async
+            // e podem ainda não ter sido carregados
             // quando o sheet aparece — em "novo" o `canSave` ficaria preso
             // em `false` mesmo com descrição e valor preenchidos. Os onChange
             // abaixo aplicam o default assim que os dados chegam.
@@ -334,8 +337,8 @@ struct TransactionFormView: View {
 
     /// `kind` da categoria atualmente selecionada — usado pra decidir se mostra
     /// o picker de destino, decidir se persiste `destinationAccountId`, etc.
-    /// `nil` se a categoria ainda não foi carregada (race entre `onAppear` e
-    /// o stream de categorias) ou nenhuma foi escolhida.
+    /// `nil` se a categoria ainda não foi carregada no refresh assíncrono
+    /// inicial ou nenhuma foi escolhida.
     private var selectedCategoryKind: CategoryKind? {
         guard let categoryId else { return nil }
         return store.categories.first { $0.id == categoryId }?.kind
@@ -348,8 +351,29 @@ struct TransactionFormView: View {
     private var destinationAccountOptions: [Account] {
         store.accounts.filter { account in
             guard account.id != accountId else { return false }
+            if !store.supportsAdvancedCardRules,
+               account.type == .creditCard,
+               existing?.destinationAccountId != account.id
+            {
+                return false
+            }
             if account.archived {
                 return existing?.destinationAccountId == account.id
+            }
+            return true
+        }
+    }
+
+    private var sourceAccountOptions: [Account] {
+        store.accounts.filter { account in
+            if !store.supportsAdvancedCardRules,
+               account.type == .creditCard,
+               existing?.accountId != account.id
+            {
+                return false
+            }
+            if account.archived {
+                return existing?.accountId == account.id
             }
             return true
         }
