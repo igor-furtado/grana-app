@@ -4,6 +4,7 @@ import PowerSync
 @MainActor
 protocol SyncCoordinatorProtocol: AnyObject {
     func connect() async throws
+    func disconnect() async throws
 }
 
 @MainActor
@@ -21,5 +22,9 @@ final class SyncCoordinator: SyncCoordinatorProtocol {
 
     func connect() async throws {
         try await container.connectSync(connector: connector)
+    }
+
+    func disconnect() async throws {
+        try await container.disconnectSync()
     }
 }

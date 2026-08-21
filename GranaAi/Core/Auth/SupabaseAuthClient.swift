@@ -33,7 +33,7 @@ actor SupabaseAuthClient: AuthClientProtocol {
         )
     }
 
-    nonisolated private static func makeClient(
+    private nonisolated static func makeClient(
         supabaseURL: String,
         supabaseAnonKey: String
     ) throws -> SupabaseClient {
@@ -52,7 +52,7 @@ actor SupabaseAuthClient: AuthClientProtocol {
     func validSession() async throws -> AuthSessionContext? {
         let client = try resolvedClient()
         do {
-            return AuthSessionContext(session: try await client.auth.session)
+            return try AuthSessionContext(session: await client.auth.session)
         } catch AuthError.sessionMissing {
             return nil
         }
@@ -77,18 +77,60 @@ actor SupabaseAuthClient: AuthClientProtocol {
 
     func session(from callbackURL: URL) async throws -> AuthSessionContext {
         let client = try resolvedClient()
-        return AuthSessionContext(
-            session: try await client.auth.session(from: callbackURL)
+        return try AuthSessionContext(
+            session: await client.auth.session(from: callbackURL)
         )
+    }
+
+    func signOut() async throws {
+        let client = try resolvedClient()
+        try await client.auth.signOut(scope: .local)
     }
 }
 
-private extension AuthSessionContext {
+extension AuthSessionContext {
     nonisolated init(session: Session) {
         self.init(
             userID: session.user.id,
             email: session.user.email,
-            accessToken: session.accessToken
+            accessToken: session.accessToken,
+            displayName: Self.displayName(from: session.user.userMetadata),
+            providers: Self.providers(from: session),
+            createdAt: session.user.createdAt,
+            lastSignInAt: session.user.lastSignInAt,
+            emailConfirmedAt: session.user.emailConfirmedAt,
+            expiresAt: Date(timeIntervalSince1970: session.expiresAt)
         )
+    }
+
+    private nonisolated static func displayName(from metadata: [String: AnyJSON]) -> String? {
+        for key in ["display_name", "name", "full_name"] {
+            guard let value = metadata[key]?.stringValue?.trimmingCharacters(in: .whitespacesAndNewlines),
+                  !value.isEmpty
+            else { continue }
+            return value
+        }
+        return nil
+    }
+
+    private nonisolated static func providers(from session: Session) -> [String] {
+        let identityProviders = session.user.identities?.map(\.provider) ?? []
+        let metadataProviders = providers(from: session.user.appMetadata["providers"])
+        let providers = identityProviders + metadataProviders
+
+        return Array(Set(providers.compactMap(normalizedProvider(_:)))).sorted()
+    }
+
+    private nonisolated static func providers(from metadata: AnyJSON?) -> [String] {
+        if let provider = metadata?.stringValue {
+            return [provider]
+        }
+        return metadata?.arrayValue?.compactMap(\.stringValue) ?? []
+    }
+
+    private nonisolated static func normalizedProvider(_ provider: String) -> String? {
+        let value = provider.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !value.isEmpty else { return nil }
+        return value
     }
 }

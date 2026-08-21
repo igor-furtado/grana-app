@@ -1,6 +1,7 @@
+import Auth
 import Foundation
-import PowerSync
 import PostgREST
+import PowerSync
 import Testing
 @testable import GranaAi
 
@@ -116,6 +117,162 @@ struct AuthServiceTests {
         #expect(service.state == .authenticated(session))
         #expect(syncCoordinator.connectCallCount == 1)
         #expect(service.syncIssueMessage != nil)
+    }
+
+    @MainActor
+    @Test("Encerra sessão local, sessão remota e conexão de sync ao sair")
+    func signsOutAndDisconnectsSync() async throws {
+        let session = AuthSessionContext(
+            userID: UUID(),
+            email: "pessoa@exemplo.com",
+            accessToken: "jwt-local"
+        )
+        let authClient = FakeAuthClient(validSession: session)
+        let syncCoordinator = FakeSyncCoordinator()
+        let service = AuthService(
+            client: authClient,
+            syncCoordinator: syncCoordinator
+        )
+
+        try await service.restoreSession()
+        try await service.signOut()
+
+        #expect(service.state == .unauthenticated)
+        #expect(service.syncIssueMessage == nil)
+        #expect(await authClient.signOutCallCount() == 1)
+        #expect(syncCoordinator.disconnectCallCount == 1)
+    }
+
+    @MainActor
+    @Test("Volta para login mesmo quando desconectar sync falha ao sair")
+    func signsOutWhenDisconnectFails() async throws {
+        let session = AuthSessionContext(
+            userID: UUID(),
+            email: "pessoa@exemplo.com",
+            accessToken: "jwt-local"
+        )
+        let authClient = FakeAuthClient(validSession: session)
+        let syncCoordinator = FakeSyncCoordinator(disconnectError: URLError(.cannotCloseFile))
+        let service = AuthService(
+            client: authClient,
+            syncCoordinator: syncCoordinator
+        )
+
+        try await service.restoreSession()
+        try await service.signOut()
+
+        #expect(service.state == .unauthenticated)
+        #expect(service.syncIssueMessage == nil)
+        #expect(await authClient.signOutCallCount() == 1)
+        #expect(syncCoordinator.disconnectCallCount == 1)
+    }
+
+    @MainActor
+    @Test("Volta para login mesmo quando o cliente de auth falha ao sair")
+    func signsOutWhenAuthClientFails() async throws {
+        let session = AuthSessionContext(
+            userID: UUID(),
+            email: "pessoa@exemplo.com",
+            accessToken: "jwt-local"
+        )
+        let authClient = FakeAuthClient(
+            validSession: session,
+            signOutError: URLError(.userAuthenticationRequired)
+        )
+        let syncCoordinator = FakeSyncCoordinator()
+        let service = AuthService(
+            client: authClient,
+            syncCoordinator: syncCoordinator
+        )
+
+        try await service.restoreSession()
+        try await service.signOut()
+
+        #expect(service.state == .unauthenticated)
+        #expect(service.syncIssueMessage == nil)
+        #expect(await authClient.signOutCallCount() == 1)
+        #expect(syncCoordinator.disconnectCallCount == 1)
+    }
+}
+
+@Suite("Dados de perfil da sessão")
+struct AuthSessionContextTests {
+    @Test("Preserva campos humanos vindos do objeto de autenticação")
+    func storesHumanReadableSessionFields() {
+        let userID = UUID()
+        let createdAt = Date(timeIntervalSince1970: 1_800_000_000)
+        let lastSignInAt = Date(timeIntervalSince1970: 1_800_003_600)
+        let emailConfirmedAt = Date(timeIntervalSince1970: 1_800_000_300)
+        let expiresAt = Date(timeIntervalSince1970: 1_800_007_200)
+
+        let session = AuthSessionContext(
+            userID: userID,
+            email: "pessoa@exemplo.com",
+            accessToken: "jwt-atual",
+            displayName: "Pessoa Exemplo",
+            providers: ["email", "google"],
+            createdAt: createdAt,
+            lastSignInAt: lastSignInAt,
+            emailConfirmedAt: emailConfirmedAt,
+            expiresAt: expiresAt
+        )
+
+        #expect(session.userID == userID)
+        #expect(session.email == "pessoa@exemplo.com")
+        #expect(session.displayName == "Pessoa Exemplo")
+        #expect(session.providers == ["email", "google"])
+        #expect(session.createdAt == createdAt)
+        #expect(session.lastSignInAt == lastSignInAt)
+        #expect(session.emailConfirmedAt == emailConfirmedAt)
+        #expect(session.expiresAt == expiresAt)
+    }
+
+    @Test("Mapeia provedores do objeto Session")
+    func mapsProvidersFromSupabaseSession() {
+        let userID = UUID()
+        let date = Date(timeIntervalSince1970: 1_800_000_000)
+        let session = Session(
+            accessToken: "jwt-atual",
+            tokenType: "bearer",
+            expiresIn: 3600,
+            expiresAt: 1_800_003_600,
+            refreshToken: "refresh",
+            user: User(
+                id: userID,
+                appMetadata: ["providers": ["email", "google", " "]],
+                userMetadata: [:],
+                aud: "authenticated",
+                email: "pessoa@exemplo.com",
+                createdAt: date,
+                updatedAt: date,
+                identities: [
+                    UserIdentity(
+                        id: UUID().uuidString,
+                        identityId: UUID(),
+                        userId: userID,
+                        identityData: [:],
+                        provider: "github",
+                        createdAt: date,
+                        lastSignInAt: date,
+                        updatedAt: date
+                    ),
+                    UserIdentity(
+                        id: UUID().uuidString,
+                        identityId: UUID(),
+                        userId: userID,
+                        identityData: [:],
+                        provider: "email",
+                        createdAt: date,
+                        lastSignInAt: date,
+                        updatedAt: date
+                    ),
+                ]
+            )
+        )
+
+        let context = AuthSessionContext(session: session)
+
+        #expect(context.providers == ["email", "github", "google"])
     }
 }
 
@@ -410,18 +567,22 @@ private actor FakeAuthClient: AuthClientProtocol {
     private let validSessionError: (any Error)?
     private let storedSessionContext: AuthSessionContext?
     private let callbackSession: AuthSessionContext?
+    private let signOutError: (any Error)?
     private(set) var lastHandledURL: URL?
+    private var signOutCount = 0
 
     init(
         validSession: AuthSessionContext?,
         validSessionError: (any Error)? = nil,
         storedSession: AuthSessionContext? = nil,
-        callbackSession: AuthSessionContext? = nil
+        callbackSession: AuthSessionContext? = nil,
+        signOutError: (any Error)? = nil
     ) {
         self.validSession = validSession
         self.validSessionError = validSessionError
-        storedSessionContext = storedSession ?? validSession
+        self.storedSessionContext = storedSession ?? validSession
         self.callbackSession = callbackSession ?? validSession
+        self.signOutError = signOutError
     }
 
     func validSession() async throws -> AuthSessionContext? {
@@ -432,7 +593,7 @@ private actor FakeAuthClient: AuthClientProtocol {
     }
 
     func storedSession() async -> AuthSessionContext? {
-        return storedSessionContext
+        storedSessionContext
     }
 
     func requestMagicLink(email _: String) async throws {}
@@ -442,8 +603,19 @@ private actor FakeAuthClient: AuthClientProtocol {
         return try #require(callbackSession)
     }
 
+    func signOut() async throws {
+        signOutCount += 1
+        if let signOutError {
+            throw signOutError
+        }
+    }
+
     func handledURL() -> URL? {
         lastHandledURL
+    }
+
+    func signOutCallCount() -> Int {
+        signOutCount
     }
 }
 
@@ -521,16 +693,29 @@ private actor FakeSyncRemoteStore: SyncRemoteStore {
 @MainActor
 private final class FakeSyncCoordinator: SyncCoordinatorProtocol {
     private(set) var connectCallCount = 0
+    private(set) var disconnectCallCount = 0
     private let connectError: (any Error)?
+    private let disconnectError: (any Error)?
 
-    init(connectError: (any Error)? = nil) {
+    init(
+        connectError: (any Error)? = nil,
+        disconnectError: (any Error)? = nil
+    ) {
         self.connectError = connectError
+        self.disconnectError = disconnectError
     }
 
     func connect() async throws {
         connectCallCount += 1
         if let connectError {
             throw connectError
+        }
+    }
+
+    func disconnect() async throws {
+        disconnectCallCount += 1
+        if let disconnectError {
+            throw disconnectError
         }
     }
 }

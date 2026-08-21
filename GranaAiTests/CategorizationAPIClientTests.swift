@@ -64,10 +64,10 @@ private actor RequestRecorder {
 
     func record(_ request: URLRequest, session _: URLSession) async throws -> (Data, URLResponse) {
         lastRequest = request
-        return (
+        return try (
             Data("{}".utf8),
             HTTPURLResponse(
-                url: try #require(request.url),
+                url: #require(request.url),
                 statusCode: 200,
                 httpVersion: nil,
                 headerFields: nil
@@ -96,4 +96,6 @@ private actor FakeCategorizationAuthClient: AuthClientProtocol {
     func session(from _: URL) async throws -> AuthSessionContext {
         throw CancellationError()
     }
+
+    func signOut() async throws {}
 }

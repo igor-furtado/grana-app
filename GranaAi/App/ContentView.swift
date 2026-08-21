@@ -18,6 +18,7 @@ enum AppSection: String, Hashable, CaseIterable, Identifiable {
     case categorization
     case categories
     case institutions
+    case profile
     case advanced
 
     var id: String {
@@ -31,7 +32,7 @@ enum AppSection: String, Hashable, CaseIterable, Identifiable {
         SidebarGroup(title: nil, items: [.dashboard, .summary, .transactions, .creditCards, .accounts]),
         SidebarGroup(title: "Economias", items: [.planning, .savings, .investments]),
         SidebarGroup(title: "Facilidades", items: [.import, .categorization]),
-        SidebarGroup(title: "Ajustes", items: [.categories, .institutions, .advanced]),
+        SidebarGroup(title: "Ajustes", items: [.categories, .institutions, .profile, .advanced]),
     ]
 
     var title: String {
@@ -48,6 +49,7 @@ enum AppSection: String, Hashable, CaseIterable, Identifiable {
         case .categorization: "Categorização"
         case .categories: "Categorias"
         case .institutions: "Instituições"
+        case .profile: "Perfil"
         case .advanced: "Avançado"
         }
     }
@@ -68,6 +70,7 @@ enum AppSection: String, Hashable, CaseIterable, Identifiable {
         case .categorization: .sidebarCategorization
         case .categories: .sidebarCategories
         case .institutions: .sidebarInstitutions
+        case .profile: .sidebarProfile
         case .advanced: .sidebarAdvanced
         }
     }
@@ -164,6 +167,7 @@ struct ContentView: View {
                 case .categorization: CategorizationSettingsView()
                 case .categories: CategoriesView()
                 case .institutions: SupportedInstitutionsView()
+                case .profile: ProfileView()
                 case .advanced: AdvancedSettingsView()
                 }
             }

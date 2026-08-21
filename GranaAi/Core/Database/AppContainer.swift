@@ -127,6 +127,15 @@ final class AppContainer {
         log.sync.info("PowerSync conectado com credencial autenticada do Supabase.")
     }
 
+    @MainActor
+    func disconnectSync() async throws {
+        guard hasStartedSync else { return }
+
+        try await db.disconnect()
+        hasStartedSync = false
+        log.sync.info("PowerSync desconectado após logout.")
+    }
+
     /// Compara a versão de schema esperada (em `schemaVersion`) com a salva no
     /// `UserDefaults`. Se divergir (ou se não existir), apaga o arquivo do
     /// banco antes de o PowerSync abrir — força um boot limpo com o schema

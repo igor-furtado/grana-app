@@ -65,13 +65,31 @@ final class AuthService {
         await connectBestEffort()
     }
 
+    func signOut() async throws {
+        do {
+            try await client.signOut()
+        } catch {
+            log.sync.notice("Auth local nao confirmou logout; estado do app sera encerrado localmente.")
+        }
+        do {
+            try await syncCoordinator.disconnect()
+        } catch {
+            log.sync.notice("PowerSync nao desconectou durante logout; sessão local foi encerrada.")
+        }
+        syncIssueMessage = nil
+        state = .unauthenticated
+    }
+
     private func connectBestEffort() async {
         do {
             try await syncCoordinator.connect()
             syncIssueMessage = nil
         } catch {
             log.sync.error("Falha ao iniciar sync autenticado; app seguirá em modo local-first.")
-            syncIssueMessage = "Nao foi possivel conectar ao sync agora. O app continua usando os dados locais e tentara sincronizar novamente na proxima abertura."
+            syncIssueMessage = """
+            Nao foi possivel conectar ao sync agora. \
+            O app continua usando os dados locais e tentara sincronizar novamente na proxima abertura.
+            """
         }
     }
 }

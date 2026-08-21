@@ -5,4 +5,5 @@ protocol AuthClientProtocol: Sendable {
     func storedSession() async -> AuthSessionContext?
     func requestMagicLink(email: String) async throws
     func session(from callbackURL: URL) async throws -> AuthSessionContext
+    func signOut() async throws
 }

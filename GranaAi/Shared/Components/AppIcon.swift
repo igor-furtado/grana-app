@@ -28,6 +28,8 @@ enum AppIcon {
     case sort
     case inspectorToggle
     case more
+    case copy
+    case signOut
 
     // MARK: - Métricas / dashboard
 
@@ -37,6 +39,7 @@ enum AppIcon {
     case netResult
 
     // MARK: - Empty states de charts do dashboard
+
     //
     // Um ícone por chart, escolhido pelo eixo semântico do gráfico — assim
     // três cards de chart vazios lado a lado mantêm pistas visuais distintas
@@ -71,6 +74,7 @@ enum AppIcon {
     case sidebarCategorization
     case sidebarCategories
     case sidebarInstitutions
+    case sidebarProfile
     case sidebarAdvanced
 
     // MARK: - Tema
@@ -92,6 +96,8 @@ enum AppIcon {
         case .sort: "chevron.up.chevron.down"
         case .inspectorToggle: "sidebar.right"
         case .more: "ellipsis"
+        case .copy: "doc.on.doc"
+        case .signOut: "rectangle.portrait.and.arrow.right"
         // Métricas
         case .balance: "wallet.pass.fill"
         case .expenseFlow: "arrow.down.right.circle.fill"
@@ -123,6 +129,7 @@ enum AppIcon {
         case .sidebarCategorization: "sparkles"
         case .sidebarCategories: "tag"
         case .sidebarInstitutions: "building.columns"
+        case .sidebarProfile: "person.crop.circle"
         case .sidebarAdvanced: "wrench.and.screwdriver"
         // Tema
         case .themeLight: "sun.max"

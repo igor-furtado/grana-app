@@ -8,6 +8,10 @@ Este contexto organiza a vida financeira de uma única pessoa a partir de contas
 Pessoa cuja vida financeira é organizada pelo produto. No contexto atual, cada usuário possui um histórico financeiro isolado dos demais.
 _Evite_: Household, perfil compartilhado, titular secundário
 
+**Sessão**:
+Estado de autenticação que permite ao app identificar um usuário e acessar serviços online associados a ele. Pode estar ausente, válida ou degradada quando a identidade local existe mas a conexão remota não está disponível.
+_Evite_: Conta, perfil
+
 ## Estrutura financeira
 
 **Instituição financeira**:
