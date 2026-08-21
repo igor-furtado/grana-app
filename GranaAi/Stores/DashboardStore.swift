@@ -2,22 +2,13 @@ import Foundation
 import Observation
 import OSLog
 
-/// Estado observável do Dashboard.
-///
-/// **Diferença em relação ao `TransactionStore` (Fase 1):**
-/// O `TransactionStore` consome **streams** via `watch` e re-renderiza
-/// automaticamente a cada mudança no banco. Este faz **leituras one-shot**
-/// via `getAll` e só recalcula quando `refresh()` é chamado. Trade-off:
-/// dashboard não atualiza se o usuário adicionar uma transação em outra aba
-/// — mas ganha em performance (não recomputa todas as agregações a cada
-/// keystroke num formulário em outra tela).
-///
-/// Quando o usuário voltar pro dashboard, o `.task { await store.refresh() }`
-/// na View dispara o recálculo.
+/// Estado observável do Dashboard com snapshots remotos por período explícito.
 @MainActor
 @Observable
 final class DashboardStore {
     private let container: AppContainer
+    private let todayProvider: @Sendable () -> Date
+    private let timeZoneProvider: @Sendable () -> TimeZone
 
     /// Filtro de período corrente. `didSet` dispara `refresh()` em background
     /// — padrão SwiftUI-friendly: a View binda `$store.filter` no Picker e
@@ -58,89 +49,55 @@ final class DashboardStore {
     private(set) var isLoading = false
     var lastError: Error?
 
-    init(container: AppContainer) {
+    init(
+        container: AppContainer,
+        todayProvider: @escaping @Sendable () -> Date = Date.init,
+        timeZoneProvider: @escaping @Sendable () -> TimeZone = { .current }
+    ) {
         self.container = container
+        self.todayProvider = todayProvider
+        self.timeZoneProvider = timeZoneProvider
     }
 
-    /// Recalcula as agregações. Bifurca pelo `scope` do filtro — em mês único
-    /// roda só queries mensais; em multi-mês roda só longitudinais. Evita 4
-    /// queries SQL inúteis a cada troca de filtro (ex: gráfico diário em
-    /// janela de 12 meses = 360 buckets que ninguém vai renderizar).
-    ///
-    /// Tudo em paralelo via `async let`. PowerSync serializa internamente,
-    /// mas o `async let` deixa o código declarativo e evita latência somada.
+    func load() async {
+        await refresh()
+    }
+
+    /// Recarrega os agregados remotos do dashboard com período explícito.
     func refresh() async {
         isLoading = true
         defer { isLoading = false }
 
-        let (from, to) = filter.dateRange()
-
         do {
-            // Cards do topo: rodam em qualquer escopo de filtro.
-            async let balanceTask = computeTotalBalance()
-            async let expensesTask = container.transactions.sum(kind: .expense, from: from, to: to)
-            async let incomeTask = container.transactions.sum(kind: .income, from: from, to: to)
+            let snapshot = try await container.remoteDashboard.load(
+                filter: filter,
+                timeZone: timeZoneProvider(),
+                today: todayProvider(),
+                timezoneOverride: nil
+            )
 
-            let (balance, expenses, income) =
-                try await (balanceTask, expensesTask, incomeTask)
-
-            totalBalance = balance
-            periodExpenses = expenses
-            periodIncome = income
-
-            switch filter.scope {
-            case .singleMonth:
-                async let byCategoryTask = container.transactions.totalsByCategory(
-                    kind: .expense, from: from, to: to
-                )
-                async let byWeekdayTask = container.transactions.weekdayTotals(
-                    kind: .expense, from: from, to: to
-                )
-                let (byCategory, byWeekday) = try await (byCategoryTask, byWeekdayTask)
-                expensesByCategory = byCategory
-                weekdayExpenses = byWeekday
-                monthlyByKind = []
-
-            case .multiMonth:
-                // `totalsByCategory` na janela 6/12m dá o acumulado por
-                // categoria — mesmo formato consumido pelo `CategoryBarChart`
-                // do singleMonth, só com `from/to` mais largos.
-                async let byCategoryTask = container.transactions.totalsByCategory(
-                    kind: .expense, from: from, to: to
-                )
-                async let monthlyByKindTask = container.transactions.monthlyTotalsByKind(
-                    from: from, to: to
-                )
-                let (byCategory, monthlyKind) =
-                    try await (byCategoryTask, monthlyByKindTask)
-                expensesByCategory = byCategory
-                monthlyByKind = monthlyKind
-                weekdayExpenses = []
-            }
+            totalBalance = snapshot.totalBalance
+            periodExpenses = snapshot.periodExpenses
+            periodIncome = snapshot.periodIncome
+            expensesByCategory = snapshot.expensesByCategory
+            weekdayExpenses = snapshot.weekdayExpenses
+            monthlyByKind = snapshot.monthlyByKind
 
             lastError = nil
         } catch {
+            clearDisplayedData()
             lastError = error
             NoticeCenter.shared.report(error)
         }
     }
 
-    // MARK: - Cálculos derivados
-
-    /// Saldo total = soma de saldos iniciais + (receitas − despesas) lifetime.
-    /// Transferências (`kind = .transfer`) **não entram** — são neutras de
-    /// saldo no MVP (PIX enviado + PIX recebido idealmente zeram).
-    private func computeTotalBalance() async throws -> Decimal {
-        // "Lifetime" = sem filtro de período. Janela gigante via
-        // `Date.distantPast → .distantFuture` cobre qualquer transação real.
-        let lifetimeFrom = Date.distantPast
-        let lifetimeTo = Date.distantFuture
-
-        async let initialTask = container.accounts.sumInitialBalance()
-        async let incomeTask = container.transactions.sum(kind: .income, from: lifetimeFrom, to: lifetimeTo)
-        async let expenseTask = container.transactions.sum(kind: .expense, from: lifetimeFrom, to: lifetimeTo)
-
-        let (initial, income, expense) = try await (initialTask, incomeTask, expenseTask)
-        return initial + income - expense
+    private func clearDisplayedData() {
+        totalBalance = 0
+        periodExpenses = 0
+        periodIncome = 0
+        investmentValue = 0
+        expensesByCategory = []
+        weekdayExpenses = []
+        monthlyByKind = []
     }
 }

@@ -53,6 +53,7 @@ final class AppContainer {
     let categoryCatalog: any CategoryCatalogRepositoryProtocol
     let institutionCatalog: any InstitutionCatalogRepositoryProtocol
     let remoteAccounts: any AccountRemoteRepositoryProtocol
+    let remoteDashboard: any DashboardRemoteRepositoryProtocol
     let remoteStatements: any StatementRemoteRepositoryProtocol
     let remoteTransactions: any TransactionRemoteRepositoryProtocol
 
@@ -95,6 +96,7 @@ final class AppContainer {
         categoryCatalog: (any CategoryCatalogRepositoryProtocol)? = nil,
         institutionCatalog: (any InstitutionCatalogRepositoryProtocol)? = nil,
         remoteAccounts: (any AccountRemoteRepositoryProtocol)? = nil,
+        remoteDashboard: (any DashboardRemoteRepositoryProtocol)? = nil,
         remoteStatements: (any StatementRemoteRepositoryProtocol)? = nil,
         remoteTransactions: (any TransactionRemoteRepositoryProtocol)? = nil
     ) {
@@ -128,6 +130,16 @@ final class AppContainer {
             )
         } else {
             self.remoteAccounts = AuthRequiredAccountRemoteRepository()
+        }
+
+        if let remoteDashboard {
+            self.remoteDashboard = remoteDashboard
+        } else if let authClient {
+            self.remoteDashboard = DashboardRemoteRepository(
+                remoteStore: SupabaseDashboardRemoteStore(authClient: authClient)
+            )
+        } else {
+            self.remoteDashboard = AuthRequiredDashboardRemoteRepository()
         }
 
         if let remoteStatements {
@@ -284,6 +296,7 @@ final class AppContainer {
         categoryCatalog: any CategoryCatalogRepositoryProtocol,
         institutionCatalog: any InstitutionCatalogRepositoryProtocol,
         remoteAccounts: (any AccountRemoteRepositoryProtocol)? = nil,
+        remoteDashboard: (any DashboardRemoteRepositoryProtocol)? = nil,
         remoteStatements: (any StatementRemoteRepositoryProtocol)? = nil,
         remoteTransactions: (any TransactionRemoteRepositoryProtocol)? = nil
     ) -> AppContainer {
@@ -297,6 +310,7 @@ final class AppContainer {
             categoryCatalog: categoryCatalog,
             institutionCatalog: institutionCatalog,
             remoteAccounts: remoteAccounts,
+            remoteDashboard: remoteDashboard,
             remoteStatements: remoteStatements,
             remoteTransactions: remoteTransactions
         )

@@ -64,7 +64,7 @@ struct DashboardView: View {
             .padding()
         }
         .task {
-            await store.refresh()
+            await store.load()
         }
     }
 
