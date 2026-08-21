@@ -11,10 +11,16 @@ struct ProfileView: View {
             case let .authenticated(session):
                 userSection(session)
                 sessionSection(session)
-                syncSection
+                availabilitySection
                 actionsSection
             case .restoring:
                 ProgressView("Restaurando sessão…")
+            case .unavailable:
+                EmptyStateView(
+                    "Backend indisponível",
+                    icon: .sidebarProfile,
+                    description: "Tente novamente para validar sua sessão e carregar o perfil."
+                )
             case .unauthenticated:
                 EmptyStateView(
                     "Sem sessão",
@@ -59,16 +65,12 @@ struct ProfileView: View {
         }
     }
 
-    private var syncSection: some View {
-        Section("Sincronização") {
-            if let message = environment.authService.syncIssueMessage {
-                LabeledContent("Status", value: "Indisponível")
-                Text(message)
-                    .font(.callout)
-                    .foregroundStyle(.secondary)
-            } else {
-                LabeledContent("Status", value: "Ativa")
-            }
+    private var availabilitySection: some View {
+        Section("Backend") {
+            LabeledContent(
+                "Status",
+                value: environment.availabilityState == .available ? "Disponível" : "Indisponível"
+            )
         }
     }
 

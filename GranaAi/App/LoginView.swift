@@ -50,7 +50,7 @@ struct LoginView: View {
                 Text("Conecte seu workspace financeiro")
                     .font(.system(size: 30, weight: .bold, design: .serif))
 
-                Text("Uma única ação libera categorização assistida, histórico local e sincronização autenticada.")
+                Text("Uma única ação valida sua sessão remota e libera o acesso ao backend financeiro.")
                     .foregroundStyle(.secondary)
                     .frame(maxWidth: 520, alignment: .leading)
             }
@@ -79,7 +79,7 @@ struct LoginView: View {
             )
             stepCard(
                 title: "3. Entre na área financeira",
-                message: "Depois da sessão válida, o app libera a navegação e conecta o sync.",
+                message: "Depois da sessão válida, o app inicializa seu perfil remoto e libera a navegação.",
                 icon: "checkmark.seal.fill"
             )
         }

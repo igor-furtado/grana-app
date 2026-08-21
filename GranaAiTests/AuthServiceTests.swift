@@ -8,46 +8,35 @@ import Testing
 @Suite("Sessão autenticada")
 struct AuthServiceTests {
     @MainActor
-    @Test("Restaura sessão persistida e inicia o sync")
-    func restoresStoredSessionAndStartsSync() async throws {
+    @Test("Restaura sessão remota válida e fica autenticado")
+    func restoresValidRemoteSession() async throws {
         let session = AuthSessionContext(
             userID: UUID(),
             email: "pessoa@exemplo.com",
             accessToken: "jwt-restaurado"
         )
         let authClient = FakeAuthClient(validSession: session)
-        let syncCoordinator = FakeSyncCoordinator()
-        let service = AuthService(
-            client: authClient,
-            syncCoordinator: syncCoordinator
-        )
+        let service = AuthService(client: authClient)
 
         try await service.restoreSession()
 
         #expect(service.state == .authenticated(session))
-        #expect(syncCoordinator.connectCallCount == 1)
-        #expect(service.syncIssueMessage == nil)
     }
 
     @MainActor
     @Test("Permanece desautenticado quando não existe sessão persistida")
     func staysSignedOutWithoutStoredSession() async throws {
         let authClient = FakeAuthClient(validSession: nil)
-        let syncCoordinator = FakeSyncCoordinator()
-        let service = AuthService(
-            client: authClient,
-            syncCoordinator: syncCoordinator
-        )
+        let service = AuthService(client: authClient)
 
         try await service.restoreSession()
 
         #expect(service.state == .unauthenticated)
-        #expect(syncCoordinator.connectCallCount == 0)
     }
 
     @MainActor
-    @Test("Processa callback do magic link e inicia o sync")
-    func handlesMagicLinkCallbackAndStartsSync() async throws {
+    @Test("Processa callback do magic link e autentica a sessão")
+    func handlesMagicLinkCallback() async throws {
         let callbackURL = try #require(URL(string: "com.igorfurtado.GranaAi://auth-callback?code=abc"))
         let restoredSession = AuthSessionContext(
             userID: UUID(),
@@ -58,44 +47,17 @@ struct AuthServiceTests {
             validSession: nil,
             callbackSession: restoredSession
         )
-        let syncCoordinator = FakeSyncCoordinator()
-        let service = AuthService(
-            client: authClient,
-            syncCoordinator: syncCoordinator
-        )
+        let service = AuthService(client: authClient)
 
         try await service.handleCallback(callbackURL)
 
         #expect(service.state == .authenticated(restoredSession))
-        #expect(syncCoordinator.connectCallCount == 1)
         #expect(await authClient.handledURL() == callbackURL)
     }
 
     @MainActor
-    @Test("Mantem sessao autenticada quando o sync remoto falha no restore")
-    func keepsAuthenticatedStateWhenSyncFailsDuringRestore() async throws {
-        let session = AuthSessionContext(
-            userID: UUID(),
-            email: "pessoa@exemplo.com",
-            accessToken: "jwt-restaurado"
-        )
-        let authClient = FakeAuthClient(validSession: session)
-        let syncCoordinator = FakeSyncCoordinator(connectError: URLError(.cannotConnectToHost))
-        let service = AuthService(
-            client: authClient,
-            syncCoordinator: syncCoordinator
-        )
-
-        try await service.restoreSession()
-
-        #expect(service.state == .authenticated(session))
-        #expect(syncCoordinator.connectCallCount == 1)
-        #expect(service.syncIssueMessage != nil)
-    }
-
-    @MainActor
-    @Test("Usa sessao local armazenada quando a revalidacao remota falha")
-    func fallsBackToStoredSessionWhenRemoteValidationFails() async throws {
+    @Test("Mostra indisponibilidade global quando a revalidação falha por rede")
+    func marksUnavailableWhenRemoteValidationFailsDueToNetwork() async throws {
         let session = AuthSessionContext(
             userID: UUID(),
             email: "pessoa@exemplo.com",
@@ -106,69 +68,34 @@ struct AuthServiceTests {
             validSessionError: URLError(.networkConnectionLost),
             storedSession: session
         )
-        let syncCoordinator = FakeSyncCoordinator(connectError: URLError(.cannotConnectToHost))
-        let service = AuthService(
-            client: authClient,
-            syncCoordinator: syncCoordinator
-        )
+        let service = AuthService(client: authClient)
 
         try await service.restoreSession()
 
-        #expect(service.state == .authenticated(session))
-        #expect(syncCoordinator.connectCallCount == 1)
-        #expect(service.syncIssueMessage != nil)
+        #expect(service.state == .unavailable)
     }
 
     @MainActor
-    @Test("Encerra sessão local, sessão remota e conexão de sync ao sair")
-    func signsOutAndDisconnectsSync() async throws {
+    @Test("Volta para login quando só existe sessão local sem validação remota")
+    func ignoresStoredSessionWithoutRemoteValidation() async throws {
         let session = AuthSessionContext(
             userID: UUID(),
             email: "pessoa@exemplo.com",
             accessToken: "jwt-local"
         )
-        let authClient = FakeAuthClient(validSession: session)
-        let syncCoordinator = FakeSyncCoordinator()
-        let service = AuthService(
-            client: authClient,
-            syncCoordinator: syncCoordinator
+        let authClient = FakeAuthClient(
+            validSession: nil,
+            storedSession: session
         )
+        let service = AuthService(client: authClient)
 
         try await service.restoreSession()
-        try await service.signOut()
 
         #expect(service.state == .unauthenticated)
-        #expect(service.syncIssueMessage == nil)
-        #expect(await authClient.signOutCallCount() == 1)
-        #expect(syncCoordinator.disconnectCallCount == 1)
     }
 
     @MainActor
-    @Test("Volta para login mesmo quando desconectar sync falha ao sair")
-    func signsOutWhenDisconnectFails() async throws {
-        let session = AuthSessionContext(
-            userID: UUID(),
-            email: "pessoa@exemplo.com",
-            accessToken: "jwt-local"
-        )
-        let authClient = FakeAuthClient(validSession: session)
-        let syncCoordinator = FakeSyncCoordinator(disconnectError: URLError(.cannotCloseFile))
-        let service = AuthService(
-            client: authClient,
-            syncCoordinator: syncCoordinator
-        )
-
-        try await service.restoreSession()
-        try await service.signOut()
-
-        #expect(service.state == .unauthenticated)
-        #expect(service.syncIssueMessage == nil)
-        #expect(await authClient.signOutCallCount() == 1)
-        #expect(syncCoordinator.disconnectCallCount == 1)
-    }
-
-    @MainActor
-    @Test("Volta para login mesmo quando o cliente de auth falha ao sair")
+    @Test("Encerra a sessão mesmo quando o cliente de auth falha ao sair")
     func signsOutWhenAuthClientFails() async throws {
         let session = AuthSessionContext(
             userID: UUID(),
@@ -179,19 +106,122 @@ struct AuthServiceTests {
             validSession: session,
             signOutError: URLError(.userAuthenticationRequired)
         )
-        let syncCoordinator = FakeSyncCoordinator()
-        let service = AuthService(
-            client: authClient,
-            syncCoordinator: syncCoordinator
-        )
+        let service = AuthService(client: authClient)
 
         try await service.restoreSession()
         try await service.signOut()
 
         #expect(service.state == .unauthenticated)
-        #expect(service.syncIssueMessage == nil)
         #expect(await authClient.signOutCallCount() == 1)
-        #expect(syncCoordinator.disconnectCallCount == 1)
+    }
+}
+
+@Suite("Bootstrap autenticado")
+struct AppEnvironmentTests {
+    @MainActor
+    @Test("Inicializa o perfil uma única vez quando a sessão já está autenticada")
+    func ensuresProfileOnceForAuthenticatedSession() async throws {
+        let session = AuthSessionContext(
+            userID: UUID(),
+            email: "pessoa@exemplo.com",
+            accessToken: "jwt-local"
+        )
+        let authClient = FakeAuthClient(validSession: session)
+        let bootstrapper = FakeProfileBootstrapper()
+        let service = AuthService(client: authClient)
+        let environment = AppEnvironment(
+            container: .placeholder(),
+            authService: service,
+            profileBootstrapper: bootstrapper
+        )
+
+        try await environment.restoreSessionIfNeeded()
+        try await environment.restoreSessionIfNeeded()
+
+        #expect(await bootstrapper.ensureProfileCallCount() == 1)
+        #expect(environment.availabilityState == .available)
+        #expect(environment.canShowFinancialData == true)
+    }
+
+    @MainActor
+    @Test("Bloqueia a navegação financeira quando o bootstrap remoto falha por rede")
+    func marksUnavailableWhenProfileBootstrapFailsDueToNetwork() async throws {
+        let session = AuthSessionContext(
+            userID: UUID(),
+            email: "pessoa@exemplo.com",
+            accessToken: "jwt-local"
+        )
+        let authClient = FakeAuthClient(validSession: session)
+        let bootstrapper = FakeProfileBootstrapper(error: URLError(.cannotConnectToHost))
+        let service = AuthService(client: authClient)
+        let environment = AppEnvironment(
+            container: .placeholder(),
+            authService: service,
+            profileBootstrapper: bootstrapper
+        )
+
+        try await environment.restoreSessionIfNeeded()
+
+        #expect(service.state == .authenticated(session))
+        #expect(environment.availabilityState == .unavailable)
+        #expect(environment.canShowFinancialData == false)
+    }
+
+    @MainActor
+    @Test("Volta para login quando o bootstrap remoto rejeita a sessão")
+    func returnsToLoginWhenProfileBootstrapRejectsSession() async throws {
+        let session = AuthSessionContext(
+            userID: UUID(),
+            email: "pessoa@exemplo.com",
+            accessToken: "jwt-local"
+        )
+        let authClient = FakeAuthClient(validSession: session)
+        let bootstrapper = FakeProfileBootstrapper(error: PostgrestError(
+            code: "42501",
+            message: "Authentication required"
+        ))
+        let service = AuthService(client: authClient)
+        let environment = AppEnvironment(
+            container: .placeholder(),
+            authService: service,
+            profileBootstrapper: bootstrapper
+        )
+
+        try await environment.restoreSessionIfNeeded()
+
+        #expect(service.state == .unauthenticated)
+        #expect(environment.availabilityState == .available)
+        #expect(environment.canShowFinancialData == false)
+    }
+
+    @MainActor
+    @Test("Inicializa o perfil após callback mesmo se o boot inicial caiu em login")
+    func bootstrapsProfileAfterMagicLinkCallback() async throws {
+        let callbackURL = try #require(URL(string: "com.igorfurtado.GranaAi://auth-callback?code=abc"))
+        let restoredSession = AuthSessionContext(
+            userID: UUID(),
+            email: "pessoa@exemplo.com",
+            accessToken: "jwt-callback"
+        )
+        let authClient = FakeAuthClient(
+            validSession: nil,
+            callbackSession: restoredSession
+        )
+        let bootstrapper = FakeProfileBootstrapper()
+        let service = AuthService(client: authClient)
+        let environment = AppEnvironment(
+            container: .placeholder(),
+            authService: service,
+            profileBootstrapper: bootstrapper
+        )
+
+        try await environment.restoreSessionIfNeeded()
+        try await service.handleCallback(callbackURL)
+        try await environment.restoreSessionIfNeeded()
+
+        #expect(await bootstrapper.ensureProfileCallCount() == 1)
+        #expect(environment.availabilityState == .available)
+        #expect(environment.canShowFinancialData == true)
     }
 }
 
@@ -619,6 +649,26 @@ private actor FakeAuthClient: AuthClientProtocol {
     }
 }
 
+private actor FakeProfileBootstrapper: ProfileBootstrapRepositoryProtocol {
+    private let error: (any Error)?
+    private var callCount = 0
+
+    init(error: (any Error)? = nil) {
+        self.error = error
+    }
+
+    func ensureProfile() async throws {
+        callCount += 1
+        if let error {
+            throw error
+        }
+    }
+
+    func ensureProfileCallCount() -> Int {
+        callCount
+    }
+}
+
 private actor FakeSyncRemoteStore: SyncRemoteStore {
     struct Operation: Equatable {
         enum Kind: Equatable {
@@ -687,35 +737,5 @@ private actor FakeSyncRemoteStore: SyncRemoteStore {
 
     func operations() -> [Operation] {
         recordedOperations
-    }
-}
-
-@MainActor
-private final class FakeSyncCoordinator: SyncCoordinatorProtocol {
-    private(set) var connectCallCount = 0
-    private(set) var disconnectCallCount = 0
-    private let connectError: (any Error)?
-    private let disconnectError: (any Error)?
-
-    init(
-        connectError: (any Error)? = nil,
-        disconnectError: (any Error)? = nil
-    ) {
-        self.connectError = connectError
-        self.disconnectError = disconnectError
-    }
-
-    func connect() async throws {
-        connectCallCount += 1
-        if let connectError {
-            throw connectError
-        }
-    }
-
-    func disconnect() async throws {
-        disconnectCallCount += 1
-        if let disconnectError {
-            throw disconnectError
-        }
     }
 }

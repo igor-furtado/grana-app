@@ -1,70 +1,101 @@
 import Foundation
 
-/// Container de serviços globais injetado via SwiftUI Environment.
-///
-/// Por que `@Observable` em vez de `ObservableObject`:
-/// - `@Observable` é a macro do Swift 5.9 que substitui o protocolo legado.
-/// - Não precisa marcar propriedades com `@Published`: a macro gera o tracking
-///   por propriedade, então a UI re-renderiza só quando *o campo lido* muda.
-/// - Em SwiftUI moderno (macOS 14+), Views observam classes `@Observable`
-///   automaticamente quando elas vêm do Environment ou de `@State`.
-///
-/// Por que injeção via Environment em vez de singleton:
-/// - Testabilidade: podemos passar um environment "fake" em previews/testes.
-/// - Escopo explícito: dependências sobem pela árvore de Views, sem estado
-///   global escondido.
 @MainActor
 @Observable
 final class AppEnvironment {
-    let container: AppContainer
-    let authService: AuthService
-    /// Quando o setup do banco falha, mantemos o app vivo pra mostrar diagnóstico.
-    let setupError: Error?
-    private var hasRestoredSession = false
-
-    init() {
-        let authClient = SupabaseAuthClient()
-        let container = AppContainer.setup(authClient: authClient)
-        let syncCoordinator = SyncCoordinator(
-            container: container,
-            connector: SupabaseConnector(authClient: authClient)
-        )
-
-        self.container = container
-        self.authService = AuthService(
-            client: authClient,
-            syncCoordinator: syncCoordinator
-        )
-        self.setupError = nil
+    enum AvailabilityState: Equatable {
+        case available
+        case unavailable
     }
 
-    private init(
-        container: AppContainer?,
-        authService: AuthService?,
-        error: Error?
-    ) {
-        // Construtor de fallback. `setup()` hoje não lança (PowerSyncDatabase
-        // é factory síncrona não-throwing), mas mantemos o caminho pronto pra
-        // Fase 5, quando `connect(connector:)` vai entrar e poderá falhar.
-        self.container = container ?? AppContainer.placeholder()
-        self.authService = authService ?? AuthService(
-            client: SupabaseAuthClient(),
-            syncCoordinator: SyncCoordinator(
-                container: container ?? AppContainer.placeholder(),
-                connector: SupabaseConnector(authClient: SupabaseAuthClient())
-            )
+    let container: AppContainer
+    let authService: AuthService
+    let setupError: Error?
+
+    private let profileBootstrapper: any ProfileBootstrapRepositoryProtocol
+    private var hasRestoredSession = false
+    private var hasInitializedProfile = false
+
+    private(set) var availabilityState: AvailabilityState = .available
+
+    convenience init() {
+        let authClient = SupabaseAuthClient()
+        let container = AppContainer.setup(authClient: authClient)
+        let authService = AuthService(client: authClient)
+        let profileBootstrapper = SupabaseProfileBootstrapRepository(authClient: authClient)
+
+        self.init(
+            container: container,
+            authService: authService,
+            profileBootstrapper: profileBootstrapper
         )
+    }
+
+    init(
+        container: AppContainer,
+        authService: AuthService,
+        profileBootstrapper: any ProfileBootstrapRepositoryProtocol,
+        error: Error? = nil
+    ) {
+        self.container = container
+        self.authService = authService
+        self.profileBootstrapper = profileBootstrapper
         self.setupError = error
     }
 
-    static func failed(error: Error) -> AppEnvironment {
-        AppEnvironment(container: nil, authService: nil, error: error)
+    var canShowFinancialData: Bool {
+        availabilityState == .available && authService.isAuthenticated
     }
 
     func restoreSessionIfNeeded() async throws {
-        guard !hasRestoredSession else { return }
+        if !hasRestoredSession {
+            hasRestoredSession = true
+            try await authService.restoreSession()
+        }
 
-        hasRestoredSession = true
-        try await authService.restoreSession()
+        try await ensureAuthenticatedProfileIfNeeded()
+    }
+
+    func retryStartup() async throws {
+        availabilityState = .available
+        hasRestoredSession = false
+        hasInitializedProfile = false
+        try await restoreSessionIfNeeded()
+    }
+
+    private func ensureAuthenticatedProfileIfNeeded() async throws {
+        switch authService.state {
+        case .restoring:
+            return
+        case .unavailable:
+            availabilityState = .unavailable
+            hasInitializedProfile = false
+        case .unauthenticated:
+            availabilityState = .available
+            hasInitializedProfile = false
+        case .authenticated:
+            guard !hasInitializedProfile else {
+                availabilityState = .available
+                return
+            }
+
+            do {
+                try await profileBootstrapper.ensureProfile()
+                hasInitializedProfile = true
+                availabilityState = .available
+            } catch {
+                if NetworkAvailability.isUnavailable(error) {
+                    availabilityState = .unavailable
+                    return
+                }
+                if RemoteSessionFailure.requiresLogin(error) {
+                    hasInitializedProfile = false
+                    availabilityState = .available
+                    try await authService.signOut()
+                    return
+                }
+                throw error
+            }
+        }
     }
 }

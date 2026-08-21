@@ -31,7 +31,7 @@ enum AppConfigurationError: UserFacingError {
 }
 
 enum AppConfigurationValidator {
-    static func supabaseURL(_ rawValue: String) throws -> URL {
+    nonisolated static func supabaseURL(_ rawValue: String) throws -> URL {
         try validatedURL(
             rawValue,
             key: "Config.supabaseURL",
@@ -42,7 +42,7 @@ enum AppConfigurationValidator {
         )
     }
 
-    static func supabaseAnonKey(_ rawValue: String) throws -> String {
+    nonisolated static func supabaseAnonKey(_ rawValue: String) throws -> String {
         try validatedValue(
             rawValue,
             key: "Config.supabaseAnonKey",
@@ -53,7 +53,7 @@ enum AppConfigurationValidator {
         )
     }
 
-    static func powerSyncURL(_ rawValue: String) throws -> String {
+    nonisolated static func powerSyncURL(_ rawValue: String) throws -> String {
         _ = try validatedURL(
             rawValue,
             key: "Config.powerSyncURL",
@@ -65,7 +65,7 @@ enum AppConfigurationValidator {
         return rawValue
     }
 
-    private static func validatedURL(
+    private nonisolated static func validatedURL(
         _ rawValue: String,
         key: String,
         placeholderMarkers: [String]
@@ -81,7 +81,7 @@ enum AppConfigurationValidator {
         return url
     }
 
-    private static func validatedValue(
+    private nonisolated static func validatedValue(
         _ rawValue: String,
         key: String,
         placeholderMarkers: [String]

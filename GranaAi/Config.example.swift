@@ -3,8 +3,10 @@
 // 2. `Config.swift` está no `.gitignore` — nada do que está aqui vaza pro git.
 // 3. Preencha os placeholders conforme as fases:
 //      - Categorização online: `supabaseURL` e `supabaseAnonKey` são usados
-//        pela Edge Function pública `/functions/v1/categorize-import`.
-//      - Sync: `powerSyncURL`.
+//        pela Edge Function pública `/functions/v1/categorize-import` e
+//        pelo bootstrap autenticado `api.v1_ensure_profile()`.
+//      - Compat legado enquanto ainda existir PowerSync em outras fatias:
+//        `powerSyncURL`.
 //
 // Por que `Config.example.swift` versus `.env`:
 // Sem dependência extra, type-safe, e o compilador avisa se você usar uma

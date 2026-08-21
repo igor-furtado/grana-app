@@ -136,17 +136,43 @@ struct ContentView: View {
 
     var body: some View {
         Group {
-            switch environment.authService.state {
-            case .restoring:
-                ProgressView("Restaurando sessão…")
-                    .frame(maxWidth: .infinity, maxHeight: .infinity)
-            case .unauthenticated:
-                LoginView(authService: environment.authService)
-            case .authenticated:
-                authenticatedContent
+            if environment.availabilityState == .unavailable {
+                unavailableContent
+            } else {
+                switch environment.authService.state {
+                case .restoring:
+                    ProgressView("Restaurando sessão…")
+                        .frame(maxWidth: .infinity, maxHeight: .infinity)
+                case .unavailable:
+                    unavailableContent
+                case .unauthenticated:
+                    LoginView(authService: environment.authService)
+                case .authenticated:
+                    authenticatedContent
+                }
             }
         }
         .noticeOverlay()
+    }
+
+    private var unavailableContent: some View {
+        EmptyStateView(
+            "Grana AI indisponível",
+            icon: .sidebarDashboard,
+            description: "Não foi possível falar com o backend agora. Tente novamente para validar a sessão e carregar os dados financeiros."
+        ) {
+            Button("Tentar novamente") {
+                Task {
+                    do {
+                        try await environment.retryStartup()
+                    } catch {
+                        NoticeCenter.shared.report(error, title: "Falha ao tentar novamente")
+                    }
+                }
+            }
+            .buttonStyle(.borderedProminent)
+        }
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
     }
 
     private var authenticatedContent: some View {

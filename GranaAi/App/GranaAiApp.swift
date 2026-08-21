@@ -3,9 +3,6 @@ import SwiftUI
 
 @main
 struct GranaAiApp: App {
-    /// Inicializamos o environment uma única vez aqui. Se a inicialização do banco
-    /// falhar, registramos o erro e seguimos com um environment "vazio" — mais à frente
-    /// (Fase 5) o app exigirá auth e teremos uma tela de erro dedicada.
     @State private var environment: AppEnvironment
 
     init() {
@@ -28,12 +25,7 @@ struct GranaAiApp: App {
                     Task {
                         do {
                             try await environment.authService.handleCallback(url)
-                            if let syncIssueMessage = environment.authService.syncIssueMessage {
-                                NoticeCenter.shared.info(
-                                    title: "Sync indisponivel",
-                                    message: syncIssueMessage
-                                )
-                            }
+                            try await environment.restoreSessionIfNeeded()
                         } catch {
                             NoticeCenter.shared.report(
                                 error,
@@ -43,18 +35,8 @@ struct GranaAiApp: App {
                     }
                 }
                 .task {
-                    // Seed roda toda execução, mas é idempotente (checa se as
-                    // tabelas estão vazias antes de inserir). `.task` cancela
-                    // automaticamente se a janela sumir antes de terminar.
                     do {
-                        try await Seed.runIfNeeded(container: environment.container)
                         try await environment.restoreSessionIfNeeded()
-                        if let syncIssueMessage = environment.authService.syncIssueMessage {
-                            NoticeCenter.shared.info(
-                                title: "Sync indisponivel",
-                                message: syncIssueMessage
-                            )
-                        }
                     } catch {
                         NoticeCenter.shared.report(error, title: "Falha ao iniciar o app")
                     }
