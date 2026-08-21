@@ -3,30 +3,25 @@ import Observation
 import OSLog
 
 /// Estado observável da feature Contas — lista de `Account` + lookups de
-/// `Institution`, `BankAccountDetails` e `CreditCardDetails`. Separado do
-/// `TransactionStore` porque a tela de Contas não precisa carregar
-/// transactions/categories (que são caros pra streamar) e o CRUD de conta tem
-/// sua própria UI.
+/// `Institution`, `BankAccountDetails` e `CreditCardDetails`. Nesta fatia,
+/// contas passam a carregar por contratos remotos explícitos (`load` /
+/// `refresh`) em vez de streams locais.
 @MainActor
 @Observable
 final class AccountStore {
-    /// Container exposto pra Views que precisam abrir streams adicionais
-    /// (ex: `CreditCardDetailView` lista lançamentos por fatura via
-    /// `transactions.watchByStatement`). Mantido `let` — caller usa só
-    /// pra leitura.
+    /// Escape hatch transitório enquanto detalhe de cartão e transações
+    /// ainda não migraram para read models remotos dedicados.
     let container: AppContainer
 
     private(set) var accounts: [Account] = []
     private(set) var institutions: [Institution] = []
     private(set) var bankDetails: [BankAccountDetails] = []
     private(set) var creditCards: [CreditCardDetails] = []
-    /// Faturas de cartão (Fase 4.7). Alimenta o "Próxima fatura" no card e
-    /// no dashboard. Tabela pequena (12 por cartão por ano) — cabe em
-    /// memória sem stress.
+    /// Read model transitório vindo da camada local enquanto a fatia de
+    /// faturas ainda não foi migrada para o backend remoto.
     private(set) var statements: [Statement] = []
-    /// Saldo atual (inicial + Σ transações com sinal) por id de conta. Vazio
-    /// até a primeira emissão do stream — a UI cai pro `initialBalance` nesse
-    /// instante.
+    /// Read model transitório vindo da camada local enquanto transações e
+    /// agregações de conta ainda não migraram para contratos remotos.
     private(set) var balances: [UUID: Decimal] = [:]
     private(set) var isLoading = false
     var lastError: Error?
@@ -35,28 +30,33 @@ final class AccountStore {
         self.container = container
     }
 
-    /// Roda os watch streams em paralelo. Pattern idêntico ao
-    /// `TransactionStore.start()` — `.task` na View garante cancelamento.
-    func start() async {
+    func load() async {
+        await refresh()
+    }
+
+    func refresh() async {
         isLoading = true
         defer { isLoading = false }
 
-        await refreshInstitutions()
-
-        async let a: Void = streamAccounts()
-        async let bd: Void = streamBankDetails()
-        async let cd: Void = streamCreditCards()
-        async let s: Void = streamStatements()
-        async let b: Void = streamBalances()
-        _ = await (a, bd, cd, s, b)
-    }
-
-    private func streamAccounts() async {
         do {
-            for try await rows in try container.accounts.watchAll() {
-                accounts = rows
-            }
-        } catch is CancellationError {
+            async let accountSnapshot = container.remoteAccounts.load()
+            async let institutionCatalog = container.institutionCatalog.load()
+            async let statementRows = container.statements.getAll()
+            async let balanceRows = container.accounts.getBalances()
+            let (snapshot, institutions, statements, balances) = try await (
+                accountSnapshot,
+                institutionCatalog,
+                statementRows,
+                balanceRows
+            )
+
+            accounts = snapshot.accounts
+            bankDetails = snapshot.bankDetails
+            creditCards = snapshot.creditCards
+            self.institutions = institutions
+            self.statements = statements
+            self.balances = balances
+            lastError = nil
         } catch {
             lastError = error
             NoticeCenter.shared.report(error)
@@ -66,54 +66,7 @@ final class AccountStore {
     func refreshInstitutions() async {
         do {
             institutions = try await container.institutionCatalog.load()
-        } catch {
-            lastError = error
-            NoticeCenter.shared.report(error)
-        }
-    }
-
-    private func streamBankDetails() async {
-        do {
-            for try await rows in try container.accounts.watchAllBankDetails() {
-                bankDetails = rows
-            }
-        } catch is CancellationError {
-        } catch {
-            lastError = error
-            NoticeCenter.shared.report(error)
-        }
-    }
-
-    private func streamCreditCards() async {
-        do {
-            for try await rows in try container.accounts.watchAllCreditCardDetails() {
-                creditCards = rows
-            }
-        } catch is CancellationError {
-        } catch {
-            lastError = error
-            NoticeCenter.shared.report(error)
-        }
-    }
-
-    private func streamStatements() async {
-        do {
-            for try await rows in try container.statements.watchAll() {
-                statements = rows
-            }
-        } catch is CancellationError {
-        } catch {
-            lastError = error
-            NoticeCenter.shared.report(error)
-        }
-    }
-
-    private func streamBalances() async {
-        do {
-            for try await dict in try container.accounts.watchBalances() {
-                balances = dict
-            }
-        } catch is CancellationError {
+            lastError = nil
         } catch {
             lastError = error
             NoticeCenter.shared.report(error)
@@ -143,9 +96,8 @@ final class AccountStore {
         creditCards.first { $0.accountId == accountId }
     }
 
-    /// Statement em aberto mais próxima do fechamento pra uma conta-cartão
-    /// (i.e., a "próxima fatura" do usuário). `nil` quando o cartão não
-    /// teve nenhuma compra ainda (sem Statement criada).
+    /// Statement em aberto mais próxima do fechamento pra uma conta-cartão.
+    /// Transitório até a fatia de faturas ganhar seu próprio read model remoto.
     func nextStatement(for accountId: UUID) -> Statement? {
         statements
             .filter {
@@ -155,9 +107,9 @@ final class AccountStore {
             .min(by: { $0.closingDate < $1.closingDate })
     }
 
-    /// Saldo atual da conta. Cai pro `initialBalance` enquanto o stream de
-    /// balances ainda não emitiu (primeira renderização) — evita um "R$ 0,00"
-    /// piscando antes do valor real.
+    /// Saldo atual da conta. Enquanto a fatia de transações ainda não migrou,
+    /// este valor vem do read model local e cai pro saldo inicial se não
+    /// houver agregado calculado.
     func currentBalance(for account: Account) -> Decimal {
         balances[account.id] ?? account.initialBalance
     }
@@ -187,46 +139,17 @@ final class AccountStore {
         bankDetails: BankAccountDetailsInput? = nil,
         creditCardDetails: CreditCardDetailsInput? = nil
     ) async throws {
-        let now = Date()
-        let accountId = UUID()
-        let resolvedInitialBalance: Decimal = type == .creditCard ? 0 : initialBalance
-        let account = Account(
-            id: accountId,
+        let input = AccountMutationInput(
             type: type,
-            initialBalance: resolvedInitialBalance,
+            initialBalance: type == .creditCard ? 0 : initialBalance,
             archived: false,
             institutionId: institutionId,
             currency: currency,
-            createdAt: now,
-            updatedAt: now
+            bankDetails: bankDetails,
+            creditCardDetails: creditCardDetails
         )
-
-        let bank = bankDetails.map {
-            BankAccountDetails(
-                accountId: accountId,
-                branchId: $0.branchId,
-                accountNumber: $0.accountNumber,
-                createdAt: now,
-                updatedAt: now
-            )
-        }
-        let card = creditCardDetails.map {
-            CreditCardDetails(
-                accountId: accountId,
-                cardLastFour: $0.cardLastFour,
-                creditLimit: $0.creditLimit,
-                statementClosingDay: $0.statementClosingDay,
-                paymentDueDay: $0.paymentDueDay,
-                createdAt: now,
-                updatedAt: now
-            )
-        }
-
-        try await container.accounts.insert(
-            account,
-            bankDetails: bank,
-            creditCardDetails: card
-        )
+        try await container.remoteAccounts.create(input: input)
+        await refresh()
     }
 
     func update(
@@ -235,44 +158,26 @@ final class AccountStore {
         creditCardDetails: CreditCardDetailsInput? = nil,
         cycleEffectiveFrom: Date? = nil
     ) async throws {
-        var copy = account
-        if copy.type == .creditCard {
-            copy.initialBalance = 0
-        }
-        copy.updatedAt = Date()
-        let now = copy.updatedAt
-
-        let bank = bankDetails.map {
-            BankAccountDetails(
-                accountId: account.id,
-                branchId: $0.branchId,
-                accountNumber: $0.accountNumber,
-                createdAt: now,
-                updatedAt: now
-            )
-        }
-        let card = creditCardDetails.map {
-            CreditCardDetails(
-                accountId: account.id,
-                cardLastFour: $0.cardLastFour,
-                creditLimit: $0.creditLimit,
-                statementClosingDay: $0.statementClosingDay,
-                paymentDueDay: $0.paymentDueDay,
-                createdAt: now,
-                updatedAt: now
-            )
-        }
-
-        try await container.accounts.update(
-            copy,
-            bankDetails: bank,
-            creditCardDetails: card,
+        let input = AccountMutationInput(
+            type: account.type,
+            initialBalance: account.type == .creditCard ? 0 : account.initialBalance,
+            archived: account.archived,
+            institutionId: account.institutionId,
+            currency: account.currency,
+            bankDetails: bankDetails,
+            creditCardDetails: creditCardDetails
+        )
+        try await container.remoteAccounts.update(
+            accountId: account.id,
+            input: input,
             cycleEffectiveFrom: cycleEffectiveFrom
         )
+        await refresh()
     }
 
     func delete(id: UUID) async throws {
-        try await container.accounts.delete(id: id)
+        try await container.remoteAccounts.delete(accountId: id)
+        await refresh()
     }
 
     /// Toggle de arquivamento. Conta arquivada some dos pickers do form de
@@ -301,12 +206,12 @@ final class AccountStore {
 
 /// DTO de entrada pra `AccountStore.create`/`update`. Carrega só o que o
 /// usuário digitou — `accountId`/`createdAt`/`updatedAt` o store define.
-struct BankAccountDetailsInput: Hashable {
+nonisolated struct BankAccountDetailsInput: Hashable, Sendable {
     var branchId: String?
     var accountNumber: String
 }
 
-struct CreditCardDetailsInput: Hashable {
+nonisolated struct CreditCardDetailsInput: Hashable, Sendable {
     var cardLastFour: String
     var creditLimit: Decimal?
     var statementClosingDay: Int

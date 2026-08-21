@@ -261,6 +261,15 @@ final class AccountRepository: Sendable {
         return Converters.centsToDecimal(cents)
     }
 
+    func getBalances() async throws -> [UUID: Decimal] {
+        let rows = try await db.getAll(
+            sql: Self.balanceQuerySQL,
+            parameters: [],
+            mapper: Self.mapBalanceRow
+        )
+        return Dictionary(uniqueKeysWithValues: rows)
+    }
+
     // MARK: - Streams
 
     func watchAll() throws -> AsyncThrowingStream<[Account], Error> {
@@ -315,37 +324,7 @@ final class AccountRepository: Sendable {
     /// transação reflete no saldo dos cards em tempo real.
     func watchBalances() throws -> AsyncThrowingStream<[UUID: Decimal], Error> {
         let stream = try db.watch(
-            sql: """
-            SELECT a.id AS account_id,
-                   a.initial_balance_cents
-                   + COALESCE((
-                       SELECT SUM(
-                           CASE
-                               WHEN t.refund_of_transaction_id IS NOT NULL
-                                   THEN t.amount_cents
-                               WHEN c.kind = 'income'
-                                   THEN t.amount_cents
-                               WHEN c.kind = 'expense'
-                                   THEN -t.amount_cents
-                               WHEN c.kind = 'transfer'
-                                   THEN CASE WHEN t.destination_account_id IS NOT NULL
-                                             THEN -t.amount_cents ELSE 0 END
-                               ELSE 0
-                           END
-                       )
-                       FROM transactions t
-                       JOIN categories c ON c.id = t.category_id
-                       WHERE t.account_id = a.id
-                   ), 0)
-                   + COALESCE((
-                       SELECT SUM(t.amount_cents)
-                       FROM transactions t
-                       JOIN categories c ON c.id = t.category_id
-                       WHERE t.destination_account_id = a.id
-                         AND c.kind = 'transfer'
-                   ), 0) AS balance_cents
-            FROM accounts a
-            """,
+            sql: Self.balanceQuerySQL,
             parameters: [],
             mapper: Self.mapBalanceRow
         )
@@ -399,6 +378,38 @@ final class AccountRepository: Sendable {
         (id, account_id, effective_from, statement_closing_day,
          payment_due_day, created_at)
     VALUES (?, ?, ?, ?, ?, ?)
+    """
+
+    private nonisolated static let balanceQuerySQL = """
+    SELECT a.id AS account_id,
+           a.initial_balance_cents
+           + COALESCE((
+               SELECT SUM(
+                   CASE
+                       WHEN t.refund_of_transaction_id IS NOT NULL
+                           THEN t.amount_cents
+                       WHEN c.kind = 'income'
+                           THEN t.amount_cents
+                       WHEN c.kind = 'expense'
+                           THEN -t.amount_cents
+                       WHEN c.kind = 'transfer'
+                           THEN CASE WHEN t.destination_account_id IS NOT NULL
+                                     THEN -t.amount_cents ELSE 0 END
+                       ELSE 0
+                   END
+               )
+               FROM transactions t
+               JOIN categories c ON c.id = t.category_id
+               WHERE t.account_id = a.id
+           ), 0)
+           + COALESCE((
+               SELECT SUM(t.amount_cents)
+               FROM transactions t
+               JOIN categories c ON c.id = t.category_id
+               WHERE t.destination_account_id = a.id
+                 AND c.kind = 'transfer'
+           ), 0) AS balance_cents
+    FROM accounts a
     """
 
     private nonisolated static func insertAccountParams(_ account: Account) -> [(any Sendable)?] {

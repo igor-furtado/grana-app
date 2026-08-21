@@ -36,7 +36,7 @@ struct CreditCardsView: View {
         Group {
             if let store {
                 content(store: store)
-                    .task { await store.start() }
+                    .task { await store.load() }
                     .toolbar { toolbarContent(store: store) }
             } else {
                 ProgressView()
@@ -75,12 +75,18 @@ struct CreditCardsView: View {
         ) {
             Button("Apagar", role: .destructive) {
                 guard let id = selectedCardId else { return }
-                Task { try? await store.delete(id: id) }
+                Task {
+                    do {
+                        try await store.delete(id: id)
+                    } catch {
+                        NoticeCenter.shared.report(error)
+                    }
+                }
             }
             Button("Cancelar", role: .cancel) {}
         } message: {
             Text(
-                "Transações vinculadas continuarão no banco mas ficarão órfãs. Considere arquivar em vez de apagar."
+                "O cartão só será apagado se não houver transações, faturas ou lotes de importação vinculados."
             )
         }
         .onChange(of: visibleCards.map(\.id)) { _, ids in
@@ -139,7 +145,11 @@ struct CreditCardsView: View {
 
                 Button {
                     Task {
-                        try? await store.setArchived(selected, archived: !selected.archived)
+                        do {
+                            try await store.setArchived(selected, archived: !selected.archived)
+                        } catch {
+                            NoticeCenter.shared.report(error)
+                        }
                     }
                 } label: {
                     Label(

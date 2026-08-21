@@ -42,7 +42,7 @@ struct AccountsView: View {
         Group {
             if let store {
                 content(store: store)
-                    .task { await store.start() }
+                    .task { await store.load() }
                     .toolbar { toolbarContent(store: store) }
             } else {
                 ProgressView()
@@ -86,12 +86,18 @@ struct AccountsView: View {
         ) {
             Button("Apagar", role: .destructive) {
                 guard let id = selectedAccountId else { return }
-                Task { try? await store.delete(id: id) }
+                Task {
+                    do {
+                        try await store.delete(id: id)
+                    } catch {
+                        NoticeCenter.shared.report(error)
+                    }
+                }
             }
             Button("Cancelar", role: .cancel) {}
         } message: {
             Text(
-                "Transações vinculadas continuarão no banco mas ficarão órfãs. Considere arquivar em vez de apagar."
+                "A conta só será apagada se não houver transações, faturas ou lotes de importação vinculados."
             )
         }
         .onChange(of: visibleAccounts.map(\.id)) { _, ids in
@@ -118,7 +124,13 @@ struct AccountsView: View {
                             formMode = .edit(account)
                         },
                         onToggleArchive: {
-                            Task { try? await store.setArchived(account, archived: !account.archived) }
+                            Task {
+                                do {
+                                    try await store.setArchived(account, archived: !account.archived)
+                                } catch {
+                                    NoticeCenter.shared.report(error)
+                                }
+                            }
                         },
                         onRequestDelete: {
                             selectedAccountId = account.id
@@ -150,7 +162,11 @@ struct AccountsView: View {
 
                 Button {
                     Task {
-                        try? await store.setArchived(selected, archived: !selected.archived)
+                        do {
+                            try await store.setArchived(selected, archived: !selected.archived)
+                        } catch {
+                            NoticeCenter.shared.report(error)
+                        }
                     }
                 } label: {
                     Label(

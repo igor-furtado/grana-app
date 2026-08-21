@@ -52,6 +52,7 @@ final class AppContainer {
     private let authClient: (any AuthClientProtocol)?
     let categoryCatalog: any CategoryCatalogRepositoryProtocol
     let institutionCatalog: any InstitutionCatalogRepositoryProtocol
+    let remoteAccounts: any AccountRemoteRepositoryProtocol
 
     // Repositories como `lazy var`: só são instanciados na primeira leitura.
     // Decisão consciente: vivem dentro do AppContainer enquanto a superfície é
@@ -90,7 +91,8 @@ final class AppContainer {
         db: any PowerSyncDatabaseProtocol,
         authClient: (any AuthClientProtocol)? = nil,
         categoryCatalog: (any CategoryCatalogRepositoryProtocol)? = nil,
-        institutionCatalog: (any InstitutionCatalogRepositoryProtocol)? = nil
+        institutionCatalog: (any InstitutionCatalogRepositoryProtocol)? = nil,
+        remoteAccounts: (any AccountRemoteRepositoryProtocol)? = nil
     ) {
         self.db = db
         self.authClient = authClient
@@ -112,6 +114,16 @@ final class AppContainer {
             )
         } else {
             self.institutionCatalog = AuthRequiredInstitutionCatalogRepository()
+        }
+
+        if let remoteAccounts {
+            self.remoteAccounts = remoteAccounts
+        } else if let authClient {
+            self.remoteAccounts = AccountRemoteRepository(
+                remoteStore: SupabaseAccountRemoteStore(authClient: authClient)
+            )
+        } else {
+            self.remoteAccounts = AuthRequiredAccountRemoteRepository()
         }
     }
 
@@ -246,7 +258,8 @@ final class AppContainer {
 
     static func inMemoryForTesting(
         categoryCatalog: any CategoryCatalogRepositoryProtocol,
-        institutionCatalog: any InstitutionCatalogRepositoryProtocol
+        institutionCatalog: any InstitutionCatalogRepositoryProtocol,
+        remoteAccounts: (any AccountRemoteRepositoryProtocol)? = nil
     ) -> AppContainer {
         let database = PowerSyncDatabase(
             schema: appSchema,
@@ -256,7 +269,8 @@ final class AppContainer {
         return AppContainer(
             db: database,
             categoryCatalog: categoryCatalog,
-            institutionCatalog: institutionCatalog
+            institutionCatalog: institutionCatalog,
+            remoteAccounts: remoteAccounts
         )
     }
 }
