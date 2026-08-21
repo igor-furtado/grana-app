@@ -12,7 +12,14 @@ struct CSVReviewStepView: View {
     }
 
     private var creditCardAccounts: [Account] {
-        store.accounts.filter { $0.type == .creditCard && !$0.archived }
+        store.accounts.filter { account in
+            guard account.type == .creditCard,
+                  !account.archived,
+                  let institutionId = account.institutionId,
+                  let institution = store.institutions.first(where: { $0.id == institutionId })
+            else { return false }
+            return institution.capabilities.supports(.interCreditCardCSV)
+        }
     }
 
     private var totalSelected: Int {

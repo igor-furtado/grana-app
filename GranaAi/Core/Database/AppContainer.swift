@@ -50,6 +50,8 @@ final class AppContainer {
     /// chama `PowerSyncDatabase(...)` como função.
     let db: any PowerSyncDatabaseProtocol
     private let authClient: (any AuthClientProtocol)?
+    let categoryCatalog: any CategoryCatalogRepositoryProtocol
+    let institutionCatalog: any InstitutionCatalogRepositoryProtocol
 
     // Repositories como `lazy var`: só são instanciados na primeira leitura.
     // Decisão consciente: vivem dentro do AppContainer enquanto a superfície é
@@ -86,10 +88,31 @@ final class AppContainer {
 
     private init(
         db: any PowerSyncDatabaseProtocol,
-        authClient: (any AuthClientProtocol)? = nil
+        authClient: (any AuthClientProtocol)? = nil,
+        categoryCatalog: (any CategoryCatalogRepositoryProtocol)? = nil,
+        institutionCatalog: (any InstitutionCatalogRepositoryProtocol)? = nil
     ) {
         self.db = db
         self.authClient = authClient
+        if let categoryCatalog {
+            self.categoryCatalog = categoryCatalog
+        } else if let authClient {
+            self.categoryCatalog = CategoryCatalogRepository(
+                remoteStore: SupabaseCategoryCatalogRemoteStore(authClient: authClient)
+            )
+        } else {
+            self.categoryCatalog = StaticCategoryCatalogRepository(categories: [])
+        }
+
+        if let institutionCatalog {
+            self.institutionCatalog = institutionCatalog
+        } else if let authClient {
+            self.institutionCatalog = InstitutionCatalogRepository(
+                remoteStore: SupabaseInstitutionCatalogRemoteStore(authClient: authClient)
+            )
+        } else {
+            self.institutionCatalog = StaticInstitutionCatalogRepository(institutions: [])
+        }
     }
 
     /// Cria a instância e registra o schema. O PowerSync aplica o schema
@@ -219,5 +242,21 @@ final class AppContainer {
             logger: DefaultLogger()
         )
         return AppContainer(db: database)
+    }
+
+    static func inMemoryForTesting(
+        categoryCatalog: any CategoryCatalogRepositoryProtocol,
+        institutionCatalog: any InstitutionCatalogRepositoryProtocol
+    ) -> AppContainer {
+        let database = PowerSyncDatabase(
+            schema: appSchema,
+            dbFilename: ":memory:",
+            logger: DefaultLogger()
+        )
+        return AppContainer(
+            db: database,
+            categoryCatalog: categoryCatalog,
+            institutionCatalog: institutionCatalog
+        )
     }
 }

@@ -11,8 +11,39 @@ struct Institution: Identifiable, Codable, Hashable {
     var code: String
     var name: String
     var kind: InstitutionKind
+    var capabilities: InstitutionCapabilities = .legacyDefault
     let createdAt: Date
     var updatedAt: Date
+}
+
+struct InstitutionCapabilities: Codable, Hashable, Sendable {
+    var supportedAccountTypes: Set<AccountType>
+    var supportedImportFormats: Set<InstitutionImportFormat>
+
+    func supports(_ accountType: AccountType) -> Bool {
+        supportedAccountTypes.contains(accountType)
+    }
+
+    func supports(_ importFormat: InstitutionImportFormat) -> Bool {
+        supportedImportFormats.contains(importFormat)
+    }
+
+    static let legacyDefault = InstitutionCapabilities(
+        supportedAccountTypes: Set(AccountType.allCases),
+        supportedImportFormats: [.ofx, .interCreditCardCSV]
+    )
+}
+
+enum InstitutionImportFormat: String, Codable, CaseIterable, Hashable, Sendable {
+    case ofx
+    case interCreditCardCSV = "inter_credit_card_csv"
+
+    var displayName: String {
+        switch self {
+        case .ofx: "OFX"
+        case .interCreditCardCSV: "CSV de fatura Inter"
+        }
+    }
 }
 
 /// Conjunto fechado de instituições com suporte "rico" no app — ícone,
@@ -22,9 +53,9 @@ struct Institution: Identifiable, Codable, Hashable {
 ///
 /// **Por que enum em vez de dados editáveis pelo usuário:** identidade visual
 /// de banco é dado público fixo — Inter é laranja, Nubank é roxo, etc. Manter
-/// no código garante consistência visual sem ficar dependendo de seed/import.
-/// Quando um banco novo precisa de suporte rico, adicionar um caso aqui é
-/// uma linha; bancos não listados continuam funcionando via `.other`.
+/// no código garante consistência visual sem depender do payload remoto de
+/// branding. Quando um banco novo precisa de suporte rico, adicionar um caso
+/// aqui é uma linha; bancos não listados continuam funcionando via `.other`.
 enum InstitutionKind: String, Codable, CaseIterable {
     case inter
     case itau
@@ -46,7 +77,7 @@ enum InstitutionKind: String, Codable, CaseIterable {
         }
     }
 
-    /// FEBRABAN/COMPE oficial. Usado pelo seed inicial e pelo auto-detect
+    /// FEBRABAN/COMPE oficial. Usado pelo catálogo global e pelo auto-detect
     /// no OFX (`fromCode("077") == .inter`).
     var defaultCode: String? {
         switch self {
@@ -125,8 +156,25 @@ enum InstitutionKind: String, Codable, CaseIterable {
     }
 
     /// Subconjunto "suportado nativamente" — todos os casos com `defaultCode`
-    /// não-nulo. Usado pela tela de Bancos suportados e pelo seed.
+    /// não-nulo. Usado pela tela de Bancos suportados e pelo catálogo global.
     static var supported: [InstitutionKind] {
         allCases.filter { $0.defaultCode != nil }
+    }
+}
+
+extension Sequence where Element == Institution {
+    func institution(code: String) -> Institution? {
+        let normalized = code.trimmingCharacters(in: .whitespacesAndNewlines)
+        return first { $0.code == normalized }
+    }
+
+    func institution(
+        code: String,
+        supporting importFormat: InstitutionImportFormat
+    ) -> Institution? {
+        let normalized = code.trimmingCharacters(in: .whitespacesAndNewlines)
+        return first {
+            $0.code == normalized && $0.capabilities.supports(importFormat)
+        }
     }
 }

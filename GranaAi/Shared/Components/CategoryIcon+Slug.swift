@@ -10,7 +10,7 @@ import Foundation
 /// "Compras Pessoais" pra "Roupas e Acessórios", o ícone tem que continuar
 /// resolvendo. O slug é o anchor estável; o nome é display.
 extension CategoryIcon {
-    static func forSlug(_ slug: String) -> CategoryIcon? {
+    nonisolated static func forSlug(_ slug: String) -> CategoryIcon? {
         slugToIcon[slug]
     }
 

@@ -7,12 +7,12 @@ import Foundation
 /// do pai pra reduzir ruído visual. No banco, subcategoria tem `slug = NULL`;
 /// a UI consulta o ícone do pai via `TransactionStore.icon(for:)`.
 ///
-/// **Por que slug em vez de coluna `icon`:** categorias são seed estático
-/// (usuário não cria nem edita por enquanto), então gravar o `CategoryIcon`
-/// em cada linha é desperdício — o ícone é função pura do slug. O mapping
-/// `slug → CategoryIcon` vive em `CategoryIcon+Slug.swift`, fonte única
-/// da verdade. Slug também serve como id estável pra IA na Fase 4 (few-shot
-/// prompting) — sem isso precisaríamos de UUIDs hard-coded.
+/// **Por que slug em vez de coluna `icon`:** categorias são catálogo global
+/// somente leitura (usuário não cria nem edita por enquanto), então gravar o
+/// `CategoryIcon` em cada linha é desperdício — o ícone é função pura do slug.
+/// O mapping `slug → CategoryIcon` vive em `CategoryIcon+Slug.swift`, fonte
+/// única da verdade. Slug também serve como id estável pra IA na Fase 4
+/// (few-shot prompting) — sem isso precisaríamos de UUIDs hard-coded.
 struct Category: Identifiable, Codable, Hashable {
     let id: UUID
     var parentId: UUID?
@@ -105,5 +105,11 @@ enum CategoryIcon: String, Codable, CaseIterable {
         case .transfer: "repeat.circle.fill"
         case .education: "graduationcap.fill"
         }
+    }
+}
+
+extension Sequence where Element == Category {
+    func rootCategory(slug: String) -> Category? {
+        first { $0.parentId == nil && $0.slug == slug }
     }
 }

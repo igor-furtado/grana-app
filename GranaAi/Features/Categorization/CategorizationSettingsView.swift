@@ -24,8 +24,6 @@ struct CategorizationSettingsView: View {
 
     @State private var store: CategorizationStore?
     @State private var showingReview = false
-    @State private var isSyncingSeed = false
-    @State private var seedSyncMessage: String?
     var body: some View {
         Form {
             Section {
@@ -83,20 +81,11 @@ struct CategorizationSettingsView: View {
 
                 Divider()
 
-                Button {
-                    runSeedSync()
-                } label: {
-                    Label("Sincronizar categorias padrão", systemImage: "arrow.triangle.2.circlepath")
-                }
-                .disabled(isSyncingSeed)
                 Text(
-                    "Adiciona categorias raiz e subcategorias novas que entraram no app desde a última atualização. Não remove nem renomeia nada que já existe."
+                    "O catálogo de categorias padrão é global e somente leitura. Atualizações entram pelo backend e aparecem no app ao recarregar os dados."
                 )
                 .font(.caption)
                 .foregroundStyle(.secondary)
-                if isSyncingSeed {
-                    ProgressView().controlSize(.small)
-                }
             }
         }
         .formStyle(.grouped)
@@ -116,18 +105,6 @@ struct CategorizationSettingsView: View {
             if let store {
                 CategorizationReviewView(store: store)
             }
-        }
-        .alert(
-            "Categorias sincronizadas",
-            isPresented: Binding(
-                get: { seedSyncMessage != nil },
-                set: { if !$0 { seedSyncMessage = nil } }
-            ),
-            presenting: seedSyncMessage
-        ) { _ in
-            Button("OK", role: .cancel) { seedSyncMessage = nil }
-        } message: { message in
-            Text(message)
         }
     }
 
@@ -162,35 +139,6 @@ struct CategorizationSettingsView: View {
         guard let store else { return }
         showingReview = true
         store.recategorizeUnclassified()
-    }
-
-    private func runSeedSync() {
-        guard !isSyncingSeed else { return }
-        isSyncingSeed = true
-        let container = environment.container
-        Task {
-            defer { isSyncingSeed = false }
-            do {
-                let result = try await Seed.syncFromSeedData(container: container)
-                if result.didChange {
-                    var parts: [String] = []
-                    if result.rootsAdded > 0 {
-                        parts.append("\(result.rootsAdded) categoria(s) raiz")
-                    }
-                    if result.subcategoriesAdded > 0 {
-                        parts.append("\(result.subcategoriesAdded) subcategoria(s)")
-                    }
-                    seedSyncMessage = "Adicionado: \(parts.joined(separator: " + "))."
-                } else {
-                    seedSyncMessage = "Tudo em dia — nenhuma categoria nova pra adicionar."
-                }
-                if let store {
-                    await store.loadCategories()
-                }
-            } catch {
-                NoticeCenter.shared.report(error, title: "Falha ao sincronizar categorias")
-            }
-        }
     }
 
     private func syncThresholdsToStore() {

@@ -131,10 +131,18 @@ struct AccountFormView: View {
     /// vazio e o `canSave` fica false até o usuário escolher manualmente.
     /// No-op em edição (`institutionId` já vem populado de `loadExisting`).
     private func applyDefaultInstitutionIfNeeded() {
-        guard existing == nil, institutionId == nil,
-              let first = store.institutions.first
-        else { return }
-        institutionId = first.id
+        let institutions = availableInstitutions
+        guard !institutions.isEmpty else {
+            institutionId = nil
+            return
+        }
+
+        if let institutionId,
+           institutions.contains(where: { $0.id == institutionId }) {
+            return
+        }
+
+        self.institutionId = institutions.first?.id
     }
 
     // MARK: - Sections
@@ -172,7 +180,7 @@ struct AccountFormView: View {
             }
 
             Picker(type == .creditCard ? "Emissor" : "Banco", selection: $institutionId) {
-                ForEach(store.institutions) { inst in
+                ForEach(availableInstitutions) { inst in
                     Label(inst.name, systemImage: inst.kind.systemImage)
                         .tag(UUID?.some(inst.id))
                 }
@@ -190,6 +198,10 @@ struct AccountFormView: View {
         case .creditCard: return "Novo cartão"
         case .checking: return "Nova conta"
         }
+    }
+
+    private var availableInstitutions: [Institution] {
+        store.supportedInstitutions(for: type)
     }
 
     private var cardDetailsSection: some View {

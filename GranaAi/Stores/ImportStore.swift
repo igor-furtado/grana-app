@@ -164,10 +164,10 @@ final class ImportStore {
     func loadInitialData() async {
         do {
             accounts = try await container.accounts.getAll()
-            institutions = try await container.institutions.getAll()
+            institutions = try await container.institutionCatalog.load()
             bankDetails = try await container.accounts.getAllBankDetails()
             creditCards = try await container.accounts.getAllCreditCardDetails()
-            categories = try await container.categories.getAll()
+            categories = try await container.categoryCatalog.load()
             batches = try await container.importBatches.getAll()
         } catch {
             NoticeCenter.shared.report(error)
@@ -184,12 +184,23 @@ final class ImportStore {
     /// Pattern idêntico a `AccountStore.start()`; o `.task` da View cancela os
     /// streams ao sair.
     func start() async {
+        await refreshCatalogs()
         async let b: Void = streamBatches()
         async let a: Void = streamAccounts()
-        async let i: Void = streamInstitutions()
         async let bd: Void = streamBankDetails()
         async let cd: Void = streamCreditCards()
-        _ = await (b, a, i, bd, cd)
+        _ = await (b, a, bd, cd)
+    }
+
+    func refreshCatalogs() async {
+        do {
+            async let institutionsTask = container.institutionCatalog.load()
+            async let categoriesTask = container.categoryCatalog.load()
+            institutions = try await institutionsTask
+            categories = try await categoriesTask
+        } catch {
+            NoticeCenter.shared.report(error)
+        }
     }
 
     private func streamBatches() async {
@@ -207,17 +218,6 @@ final class ImportStore {
         do {
             for try await rows in try container.accounts.watchAll() {
                 accounts = rows
-            }
-        } catch is CancellationError {
-        } catch {
-            NoticeCenter.shared.report(error)
-        }
-    }
-
-    private func streamInstitutions() async {
-        do {
-            for try await rows in try container.institutions.watchAll() {
-                institutions = rows
             }
         } catch is CancellationError {
         } catch {
@@ -415,7 +415,7 @@ final class ImportStore {
     /// qualquer parte não bater — usuário precisa escolher manualmente.
     private func autoDetectAccountId(for statement: OFXStatement) async throws -> UUID? {
         let code = statement.account.bankId
-        guard let institution = try await container.institutions.findByCode(code) else {
+        guard let institution = institutions.institution(code: code, supporting: .ofx) else {
             return nil
         }
         let existing = try await container.accounts.findByBankIdentity(
@@ -434,7 +434,10 @@ final class ImportStore {
         if let org = statement.institutionHeader.organization, !org.isEmpty {
             return org
         }
-        return InstitutionKind.fromCode(statement.account.bankId).displayName
+        if let institution = institutions.institution(code: statement.account.bankId) {
+            return institution.name
+        }
+        return statement.account.bankId
     }
 
     /// Label da conta vindo do OFX pra exibição. Formata `código · agência ·
@@ -485,11 +488,11 @@ final class ImportStore {
     /// "Renda e Pagamentos" pra alimentar a heurística. As duas últimas são
     /// opcionais (a heurística cai pra unclassified se faltarem).
     private func buildHeuristic() async throws -> OFXCategoryHeuristic {
-        guard let unclassified = try await container.categories.findRootByName("Não Classificado") else {
+        guard let unclassified = categories.rootCategory(slug: "nao-classificado") else {
             throw ImportError.unclassifiedCategoryMissing
         }
-        let transfers = try await container.categories.findRootByName("Transferências")
-        let income = try await container.categories.findRootByName("Renda e Pagamentos")
+        let transfers = categories.rootCategory(slug: "transferencias")
+        let income = categories.rootCategory(slug: "renda-e-pagamentos")
         return OFXCategoryHeuristic(roots: .init(
             unclassified: unclassified.id,
             transfers: transfers?.id,
@@ -807,7 +810,7 @@ final class ImportStore {
             // Resolve `fallbackId` pra drafts cuja categoria suggerida não foi
             // encontrada (paranoia — não deve acontecer).
             let fallback = try await container.categories.findRootByName("Não Classificado")
-            guard let fallbackId = fallback?.id else {
+            guard let fallbackId = fallback?.id ?? categories.rootCategory(slug: "nao-classificado")?.id else {
                 throw ImportError.unclassifiedCategoryMissing
             }
 

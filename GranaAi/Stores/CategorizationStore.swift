@@ -62,9 +62,9 @@ final class CategorizationStore {
 
     func loadCategories() async {
         do {
-            async let cats = container.categories.getAll()
+            async let cats = container.categoryCatalog.load()
             async let accs = container.accounts.getAll()
-            async let insts = container.institutions.getAll()
+            async let insts = container.institutionCatalog.load()
             categories = try await cats
             accounts = try await accs
             institutions = try await insts

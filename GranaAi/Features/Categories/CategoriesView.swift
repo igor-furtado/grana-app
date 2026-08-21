@@ -4,8 +4,8 @@ import SwiftUI
 
 /// Inspeção read-only da taxonomia de categorias (raízes + subcategorias).
 ///
-/// Categorias hoje são **seed estático** — usuário não cria nem edita. Esta
-/// tela existe pra visibilidade: ver o que foi cadastrado, qual ícone tem
+/// Categorias hoje são catálogo global read-only — usuário não cria nem edita.
+/// Esta tela existe pra visibilidade: ver o que foi cadastrado, qual ícone tem
 /// cada raiz, e quais subs caem sob ela. Quando o roadmap permitir edição,
 /// esta vira a tela de CRUD.
 ///
@@ -22,6 +22,7 @@ struct CategoriesView: View {
     @Environment(AppEnvironment.self) private var environment
     @State private var categories: [Category] = []
     @State private var loadError: Error?
+    @State private var isLoading = false
     @State private var selectedId: UUID?
     /// Persiste entre sessões — usuário que ocultou o inspector não quer
     /// vê-lo aparecer de novo na próxima vez que abre o app.
@@ -48,6 +49,15 @@ struct CategoriesView: View {
         .toolbar {
             ToolbarItem(placement: .primaryAction) {
                 Button {
+                    Task { await refresh() }
+                } label: {
+                    Label("Atualizar", systemImage: "arrow.clockwise")
+                }
+                .help("Atualizar catálogo")
+                .disabled(isLoading)
+            }
+            ToolbarItem(placement: .primaryAction) {
+                Button {
                     inspectorPresented.toggle()
                 } label: {
                     Label("Painel de detalhes", systemImage: AppIcon.inspectorToggle.systemImage)
@@ -58,7 +68,7 @@ struct CategoriesView: View {
         }
         .navigationTitle("Categorias")
         .navigationSubtitle(categoriesSubtitle)
-        .task { await watch() }
+        .task { await load() }
         .onChange(of: rootIds) { _, ids in
             reconcileSelection(rootIds: ids)
         }
@@ -156,7 +166,7 @@ struct CategoriesView: View {
     /// `CategoryGroup` referente à seleção atual. Reusa `makeGroups` pra
     /// manter uma única fonte de verdade pra "como se monta um grupo"
     /// (filtragem de raiz + ordenação das subs). Recomputa quando categorias
-    /// ou seleção mudam — barato, lista pequena (~30 raízes no seed).
+    /// ou seleção mudam — barato, lista pequena.
     private var selectedGroup: CategoryGroup? {
         guard let selectedId else { return nil }
         return makeGroups(from: categories).first { $0.id == selectedId }
@@ -190,15 +200,17 @@ struct CategoriesView: View {
         selectedId = rootIds.first
     }
 
-    /// Stream reativa do banco. Usa `watch` (não `getAll`) pra refletir
-    /// imediatamente quando a Fase futura abrir edição de categoria.
-    private func watch() async {
+    private func load() async {
+        guard categories.isEmpty else { return }
+        await refresh()
+    }
+
+    private func refresh() async {
+        isLoading = true
+        defer { isLoading = false }
         do {
-            for try await rows in try environment.container.categories.watchAll() {
-                categories = rows
-            }
-        } catch is CancellationError {
-            // .task cancelado pela SwiftUI — comportamento esperado.
+            loadError = nil
+            categories = try await environment.container.categoryCatalog.load()
         } catch {
             loadError = error
             NoticeCenter.shared.report(error)

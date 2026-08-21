@@ -137,7 +137,13 @@ private struct OFXAccountInfoCard: View {
     /// inesperado. Quem precisa importar tem que desarquivar primeiro.
     private var availableAccounts: [Account] {
         store.accounts
-            .filter { !$0.archived }
+            .filter { account in
+                guard !account.archived,
+                      let institutionId = account.institutionId,
+                      let institution = store.institutions.first(where: { $0.id == institutionId })
+                else { return false }
+                return institution.capabilities.supports(.ofx)
+            }
             .sorted { label(for: $0).localizedCaseInsensitiveCompare(label(for: $1)) == .orderedAscending }
     }
 

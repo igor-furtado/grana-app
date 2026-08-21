@@ -38,7 +38,7 @@ enum ImportError: LocalizedError {
         case let .batchInsertFailed(underlying):
             return "Falha ao gravar o lote no banco: \(underlying.localizedDescription)"
         case .unclassifiedCategoryMissing:
-            return "Categoria \"Não Classificado\" não encontrada. Verifique o seed inicial."
+            return "Categoria \"Não Classificado\" não encontrada. Verifique se o catálogo global foi carregado."
         case .templateInvalidJSON:
             return "Template salvo está corrompido (JSON inválido)."
         case let .csvHeaderMismatch(expected, got):

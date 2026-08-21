@@ -41,13 +41,14 @@ final class AccountStore {
         isLoading = true
         defer { isLoading = false }
 
+        await refreshInstitutions()
+
         async let a: Void = streamAccounts()
-        async let i: Void = streamInstitutions()
         async let bd: Void = streamBankDetails()
         async let cd: Void = streamCreditCards()
         async let s: Void = streamStatements()
         async let b: Void = streamBalances()
-        _ = await (a, i, bd, cd, s, b)
+        _ = await (a, bd, cd, s, b)
     }
 
     private func streamAccounts() async {
@@ -62,12 +63,9 @@ final class AccountStore {
         }
     }
 
-    private func streamInstitutions() async {
+    func refreshInstitutions() async {
         do {
-            for try await rows in try container.institutions.watchAll() {
-                institutions = rows
-            }
-        } catch is CancellationError {
+            institutions = try await container.institutionCatalog.load()
         } catch {
             lastError = error
             NoticeCenter.shared.report(error)
@@ -131,6 +129,10 @@ final class AccountStore {
     func institution(forAccount account: Account) -> Institution? {
         guard let id = account.institutionId else { return nil }
         return institution(for: id)
+    }
+
+    func supportedInstitutions(for accountType: AccountType) -> [Institution] {
+        institutions.filter { $0.capabilities.supportedAccountTypes.contains(accountType) }
     }
 
     func bankDetails(for accountId: UUID) -> BankAccountDetails? {

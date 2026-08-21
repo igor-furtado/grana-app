@@ -34,16 +34,10 @@ actor SupabaseProfileBootstrapRepository: ProfileBootstrapRepositoryProtocol {
             return client
         }
 
-        let validatedURL = try AppConfigurationValidator.supabaseURL(supabaseURL)
-        let validatedAnonKey = try AppConfigurationValidator.supabaseAnonKey(supabaseAnonKey)
-        let client = SupabaseClient(
-            supabaseURL: validatedURL,
-            supabaseKey: validatedAnonKey,
-            options: SupabaseClientOptions(auth: .init(
-                accessToken: { [authClient] in
-                    try await authClient.validSession()?.accessToken
-                }
-            ))
+        let client = try SupabaseAuthenticatedClientFactory.makeClient(
+            authClient: authClient,
+            supabaseURL: supabaseURL,
+            supabaseAnonKey: supabaseAnonKey
         )
         self.client = client
         return client

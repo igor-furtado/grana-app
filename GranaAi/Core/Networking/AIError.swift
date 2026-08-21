@@ -49,7 +49,7 @@ enum CategorizationError: LocalizedError {
         case .noTransactionsToClassify:
             return "Nenhuma transação pendente de categorização."
         case let .categoryNotFound(slug):
-            return "Categoria com slug '\(slug)' não encontrada no banco — seed corrompido?"
+            return "Categoria com slug '\(slug)' não encontrada no catálogo carregado."
         case let .persistFailed(underlying):
             return "Falha ao persistir categorizações: \(underlying.localizedDescription)"
         }
