@@ -12,9 +12,7 @@ struct SupportedInstitutionsView: View {
     private let columns = [
         GridItem(.adaptive(minimum: 240, maximum: 360), spacing: 16),
     ]
-    @State private var institutions: [Institution] = []
-    @State private var loadError: Error?
-    @State private var isLoading = false
+    @State private var store: InstitutionCatalogStore?
 
     var body: some View {
         Group {
@@ -24,8 +22,14 @@ struct SupportedInstitutionsView: View {
                     icon: .warning,
                     description: loadError.localizedDescription
                 )
-            } else if institutions.isEmpty, isLoading {
+            } else if isLoading, !hasLoaded {
                 ProgressView()
+            } else if institutions.isEmpty {
+                EmptyStateView(
+                    "Nenhuma instituição disponível",
+                    icon: .sidebarInstitutions,
+                    description: "O backend não devolveu instituições suportadas para a sessão atual."
+                )
             } else {
                 ScrollView {
                     VStack(alignment: .leading, spacing: 16) {
@@ -61,21 +65,34 @@ struct SupportedInstitutionsView: View {
         .task { await load() }
     }
 
+    private var institutions: [Institution] {
+        store?.institutions ?? []
+    }
+
+    private var loadError: Error? {
+        store?.loadError
+    }
+
+    private var isLoading: Bool {
+        store?.isLoading ?? false
+    }
+
+    private var hasLoaded: Bool {
+        store?.hasLoaded ?? false
+    }
+
     private func load() async {
-        guard institutions.isEmpty else { return }
-        await refresh()
+        if store == nil {
+            store = InstitutionCatalogStore(container: environment.container)
+        }
+        await store?.load()
     }
 
     private func refresh() async {
-        isLoading = true
-        defer { isLoading = false }
-        do {
-            loadError = nil
-            institutions = try await environment.container.institutionCatalog.load()
-        } catch {
-            loadError = error
-            NoticeCenter.shared.report(error)
+        if store == nil {
+            store = InstitutionCatalogStore(container: environment.container)
         }
+        await store?.refresh()
     }
 }
 

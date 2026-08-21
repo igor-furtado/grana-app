@@ -20,9 +20,7 @@ import SwiftUI
 /// como representá-la entra em outra iteração.
 struct CategoriesView: View {
     @Environment(AppEnvironment.self) private var environment
-    @State private var categories: [Category] = []
-    @State private var loadError: Error?
-    @State private var isLoading = false
+    @State private var store: CategoryCatalogStore?
     @State private var selectedId: UUID?
     /// Persiste entre sessões — usuário que ocultou o inspector não quer
     /// vê-lo aparecer de novo na próxima vez que abre o app.
@@ -36,8 +34,14 @@ struct CategoriesView: View {
                     icon: .warning,
                     description: loadError.localizedDescription
                 )
-            } else if categories.isEmpty {
+            } else if isLoading, !hasLoaded {
                 ProgressView()
+            } else if categories.isEmpty {
+                EmptyStateView(
+                    "Nenhuma categoria disponível",
+                    icon: .sidebarCategories,
+                    description: "O backend não devolveu categorias para a sessão atual."
+                )
             } else {
                 grid
             }
@@ -78,6 +82,22 @@ struct CategoriesView: View {
         if categories.isEmpty { return "" }
         let roots = categories.filter { $0.parentId == nil }.count
         return "\(roots) categorias raiz · \(categories.count) totais"
+    }
+
+    private var categories: [Category] {
+        store?.categories ?? []
+    }
+
+    private var loadError: Error? {
+        store?.loadError
+    }
+
+    private var isLoading: Bool {
+        store?.isLoading ?? false
+    }
+
+    private var hasLoaded: Bool {
+        store?.hasLoaded ?? false
     }
 
     /// IDs estáveis das raízes pra reconciliação de seleção (`onChange`).
@@ -201,20 +221,17 @@ struct CategoriesView: View {
     }
 
     private func load() async {
-        guard categories.isEmpty else { return }
-        await refresh()
+        if store == nil {
+            store = CategoryCatalogStore(container: environment.container)
+        }
+        await store?.load()
     }
 
     private func refresh() async {
-        isLoading = true
-        defer { isLoading = false }
-        do {
-            loadError = nil
-            categories = try await environment.container.categoryCatalog.load()
-        } catch {
-            loadError = error
-            NoticeCenter.shared.report(error)
+        if store == nil {
+            store = CategoryCatalogStore(container: environment.container)
         }
+        await store?.refresh()
     }
 }
 

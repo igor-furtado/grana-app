@@ -809,8 +809,7 @@ final class ImportStore {
 
             // Resolve `fallbackId` pra drafts cuja categoria suggerida não foi
             // encontrada (paranoia — não deve acontecer).
-            let fallback = try await container.categories.findRootByName("Não Classificado")
-            guard let fallbackId = fallback?.id ?? categories.rootCategory(slug: "nao-classificado")?.id else {
+            guard let fallbackId = categories.rootCategory(slug: "nao-classificado")?.id else {
                 throw ImportError.unclassifiedCategoryMissing
             }
 

@@ -101,7 +101,7 @@ final class AppContainer {
                 remoteStore: SupabaseCategoryCatalogRemoteStore(authClient: authClient)
             )
         } else {
-            self.categoryCatalog = StaticCategoryCatalogRepository(categories: [])
+            self.categoryCatalog = AuthRequiredCategoryCatalogRepository()
         }
 
         if let institutionCatalog {
@@ -111,7 +111,7 @@ final class AppContainer {
                 remoteStore: SupabaseInstitutionCatalogRemoteStore(authClient: authClient)
             )
         } else {
-            self.institutionCatalog = StaticInstitutionCatalogRepository(institutions: [])
+            self.institutionCatalog = AuthRequiredInstitutionCatalogRepository()
         }
     }
 

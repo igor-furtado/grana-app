@@ -14,7 +14,7 @@ extension CategoryIcon {
         slugToIcon[slug]
     }
 
-    private static let slugToIcon: [String: CategoryIcon] = [
+    nonisolated private static let slugToIcon: [String: CategoryIcon] = [
         // Receitas
         "renda-e-pagamentos": .income,
 

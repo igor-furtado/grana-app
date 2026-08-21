@@ -165,6 +165,90 @@ struct CatalogLoadingTests {
         #expect(store.institutions.map(\.code) == ["341"])
         #expect(store.supportedInstitutions(for: .creditCard).isEmpty)
     }
+
+    @MainActor
+    @Test("ImportStore carrega categorias e instituições remotas por slug e code")
+    func importStoreLoadsRemoteCatalogs() async {
+        let container = AppContainer.inMemoryForTesting(
+            categoryCatalog: StaticCategoryCatalogRepository(categories: [
+                makeCategory(slug: "nao-classificado", name: "Não Classificado", kind: .expense),
+            ]),
+            institutionCatalog: StaticInstitutionCatalogRepository(institutions: [
+                makeInstitution(
+                    code: "077",
+                    name: "Banco Inter",
+                    kind: .inter,
+                    accountTypes: [.checking, .creditCard],
+                    importFormats: [.ofx, .interCreditCardCSV]
+                ),
+            ])
+        )
+        let store = ImportStore(container: container)
+
+        await store.loadInitialData()
+
+        #expect(store.categories.rootCategory(slug: "nao-classificado")?.name == "Não Classificado")
+        #expect(store.institutions.institution(code: "077")?.name == "Banco Inter")
+    }
+
+    @MainActor
+    @Test("CategorizationStore carrega catálogos remotos para os consumidores")
+    func categorizationStoreLoadsRemoteCatalogs() async {
+        let container = AppContainer.inMemoryForTesting(
+            categoryCatalog: StaticCategoryCatalogRepository(categories: [
+                makeCategory(slug: "renda-e-pagamentos", name: "Renda e Pagamentos", kind: .income),
+            ]),
+            institutionCatalog: StaticInstitutionCatalogRepository(institutions: [
+                makeInstitution(
+                    code: "341",
+                    name: "Itaú",
+                    kind: .itau,
+                    accountTypes: [.checking],
+                    importFormats: [.ofx]
+                ),
+            ])
+        )
+        let store = CategorizationStore(container: container)
+
+        await store.loadCategories()
+
+        #expect(store.categories.rootCategory(slug: "renda-e-pagamentos")?.name == "Renda e Pagamentos")
+        #expect(store.institutions.institution(code: "341")?.kind == .itau)
+    }
+
+    @MainActor
+    @Test("CategoryCatalogStore mantém estado vazio após load bem-sucedido")
+    func categoryCatalogStoreSupportsEmptyState() async {
+        let container = AppContainer.inMemoryForTesting(
+            categoryCatalog: StaticCategoryCatalogRepository(categories: []),
+            institutionCatalog: StaticInstitutionCatalogRepository(institutions: [])
+        )
+        let store = CategoryCatalogStore(container: container)
+
+        await store.load()
+
+        #expect(store.hasLoaded)
+        #expect(!store.isLoading)
+        #expect(store.loadError == nil)
+        #expect(store.categories.isEmpty)
+    }
+
+    @MainActor
+    @Test("InstitutionCatalogStore expõe erro remoto")
+    func institutionCatalogStoreExposesErrorState() async {
+        let container = AppContainer.inMemoryForTesting(
+            categoryCatalog: StaticCategoryCatalogRepository(categories: []),
+            institutionCatalog: FailingInstitutionCatalogRepository()
+        )
+        let store = InstitutionCatalogStore(container: container)
+
+        await store.load()
+
+        #expect(!store.hasLoaded)
+        #expect(!store.isLoading)
+        #expect(store.loadError is TestCatalogFailure)
+        #expect(store.institutions.isEmpty)
+    }
 }
 
 private actor FakeCategoryCatalogRemoteStore: CategoryCatalogRemoteStore {
@@ -237,6 +321,27 @@ private func makeInstitution(
         createdAt: now,
         updatedAt: now
     )
+}
+
+private func makeCategory(
+    slug: String,
+    name: String,
+    kind: CategoryKind
+) -> GranaAi.Category {
+    GranaAi.Category(
+        id: UUID(),
+        parentId: nil,
+        name: name,
+        kind: kind,
+        slug: slug,
+        createdAt: Date()
+    )
+}
+
+private struct FailingInstitutionCatalogRepository: InstitutionCatalogRepositoryProtocol {
+    func load() async throws -> [Institution] {
+        throw TestCatalogFailure.unauthorized
+    }
 }
 
 private enum TestCatalogFailure: Error {

@@ -103,3 +103,9 @@ struct StaticInstitutionCatalogRepository: InstitutionCatalogRepositoryProtocol 
         institutions
     }
 }
+
+struct AuthRequiredInstitutionCatalogRepository: InstitutionCatalogRepositoryProtocol {
+    func load() async throws -> [Institution] {
+        throw CatalogRepositoryError.authenticationRequired
+    }
+}

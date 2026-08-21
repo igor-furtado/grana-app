@@ -5,6 +5,17 @@ protocol CategoryCatalogRepositoryProtocol: Sendable {
     func load() async throws -> [Category]
 }
 
+enum CatalogRepositoryError: LocalizedError {
+    case authenticationRequired
+
+    var errorDescription: String? {
+        switch self {
+        case .authenticationRequired:
+            return "É preciso entrar com sua conta para carregar o catálogo global."
+        }
+    }
+}
+
 struct CategoryCatalogRecord: Decodable, Sendable {
     let id: UUID
     let parentId: UUID?
@@ -93,5 +104,11 @@ struct StaticCategoryCatalogRepository: CategoryCatalogRepositoryProtocol {
 
     func load() async throws -> [Category] {
         categories
+    }
+}
+
+struct AuthRequiredCategoryCatalogRepository: CategoryCatalogRepositoryProtocol {
+    func load() async throws -> [Category] {
+        throw CatalogRepositoryError.authenticationRequired
     }
 }
