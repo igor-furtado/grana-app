@@ -31,9 +31,11 @@ nonisolated enum TransactionRemoteRepositoryError: UserFacingError, Equatable {
     case invalidCategory
     case invalidSubcategory
     case invalidTransferDestination
-    case refundsNotSupported
+    case invalidRefund
+    case refundBeforePurchase
+    case refundExceedsPurchase
+    case unappliedPayment
     case linkedRefundsExist
-    case creditCardTransactionsNotSupported
     case transactionNotFound
     case unexpectedResponse
 
@@ -60,12 +62,16 @@ nonisolated enum TransactionRemoteRepositoryError: UserFacingError, Equatable {
             return "A subcategoria selecionada não pertence à categoria informada."
         case .invalidTransferDestination:
             return "Escolha uma conta de destino diferente da conta de origem."
-        case .refundsNotSupported:
-            return "Estornos de cartão serão migrados junto com a fatia de faturas."
+        case .invalidRefund:
+            return "O estorno precisa apontar para uma compra válida do mesmo cartão."
+        case .refundBeforePurchase:
+            return "A data do estorno não pode ser anterior à compra original."
+        case .refundExceedsPurchase:
+            return "A soma dos estornos não pode superar o valor da compra original."
+        case .unappliedPayment:
+            return "O pagamento precisa ser integralmente aplicado às faturas elegíveis nessa data."
         case .linkedRefundsExist:
             return "Não é possível apagar uma transação enquanto houver estornos vinculados."
-        case .creditCardTransactionsNotSupported:
-            return "Transações de cartão serão migradas junto com a fatia de faturas."
         case .transactionNotFound:
             return "A transação não foi encontrada para concluir a operação."
         case .unexpectedResponse:
@@ -85,12 +91,16 @@ nonisolated enum TransactionRemoteRepositoryError: UserFacingError, Equatable {
             return .invalidSubcategory
         case "invalid_transfer_destination":
             return .invalidTransferDestination
-        case "refunds_not_supported":
-            return .refundsNotSupported
+        case "invalid_refund":
+            return .invalidRefund
+        case "refund_before_purchase":
+            return .refundBeforePurchase
+        case "refund_exceeds_purchase":
+            return .refundExceedsPurchase
+        case "unapplied_payment":
+            return .unappliedPayment
         case "linked_refunds_exist":
             return .linkedRefundsExist
-        case "credit_card_transactions_not_supported":
-            return .creditCardTransactionsNotSupported
         case "transaction_not_found":
             return .transactionNotFound
         default:
@@ -287,7 +297,7 @@ final class TransactionRemoteRepository: TransactionRemoteRepositoryProtocol, Se
         }
     }
 
-    private static func mapTransaction(_ row: TransactionRecordRow) -> Transaction {
+    static func mapTransaction(_ row: TransactionRecordRow) -> Transaction {
         Transaction(
             id: row.id,
             accountId: row.accountId,

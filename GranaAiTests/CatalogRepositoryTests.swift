@@ -153,7 +153,8 @@ struct CatalogLoadingTests {
         ])
         let container = AppContainer.inMemoryForTesting(
             categoryCatalog: StaticCategoryCatalogRepository(categories: []),
-            institutionCatalog: repository
+            institutionCatalog: repository,
+            remoteStatements: StaticStatementRemoteRepository(snapshot: .empty)
         )
         let store = AccountStore(container: container)
 

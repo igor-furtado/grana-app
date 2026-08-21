@@ -1,10 +1,8 @@
 import Foundation
 import SwiftUI
 
-/// Lista de lançamentos da fatura selecionada. Stream reativo via
-/// `watchByStatement` — re-emite quando uma transação é editada/inserida/
-/// deletada e o `statement_id` casa. Componente independente pra que sua
-/// `.task(id:)` reinicie sozinha quando o `statementId` muda.
+/// Lista de lançamentos da fatura selecionada. Faz snapshot remoto explícito
+/// quando o `statementId` muda, em linha com a direção online-only da fatia.
 ///
 /// Mantém `[UUID: Category]` carregado uma vez (snapshot) pra resolver o
 /// nome + ícone da categoria de cada row sem segundo round-trip.
@@ -37,7 +35,7 @@ struct StatementTransactionsList: View {
         )
         .task(id: statementId) {
             await loadCategoriesOnce()
-            await streamTransactions()
+            await loadTransactions()
         }
     }
 
@@ -116,16 +114,13 @@ struct StatementTransactionsList: View {
         return f
     }()
 
-    // MARK: - Stream
+    // MARK: - Loading
 
-    private func streamTransactions() async {
+    private func loadTransactions() async {
         isLoading = true
         defer { isLoading = false }
         do {
-            for try await rows in try container.transactions.watchByStatement(statementId: statementId) {
-                transactions = rows
-                isLoading = false
-            }
+            transactions = try await container.remoteStatements.loadTransactions(statementId: statementId)
         } catch is CancellationError {
         } catch {
             NoticeCenter.shared.report(error)

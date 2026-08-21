@@ -53,6 +53,7 @@ final class AppContainer {
     let categoryCatalog: any CategoryCatalogRepositoryProtocol
     let institutionCatalog: any InstitutionCatalogRepositoryProtocol
     let remoteAccounts: any AccountRemoteRepositoryProtocol
+    let remoteStatements: any StatementRemoteRepositoryProtocol
     let remoteTransactions: any TransactionRemoteRepositoryProtocol
 
     // Repositories como `lazy var`: só são instanciados na primeira leitura.
@@ -94,6 +95,7 @@ final class AppContainer {
         categoryCatalog: (any CategoryCatalogRepositoryProtocol)? = nil,
         institutionCatalog: (any InstitutionCatalogRepositoryProtocol)? = nil,
         remoteAccounts: (any AccountRemoteRepositoryProtocol)? = nil,
+        remoteStatements: (any StatementRemoteRepositoryProtocol)? = nil,
         remoteTransactions: (any TransactionRemoteRepositoryProtocol)? = nil
     ) {
         self.db = db
@@ -126,6 +128,16 @@ final class AppContainer {
             )
         } else {
             self.remoteAccounts = AuthRequiredAccountRemoteRepository()
+        }
+
+        if let remoteStatements {
+            self.remoteStatements = remoteStatements
+        } else if let authClient {
+            self.remoteStatements = StatementRemoteRepository(
+                remoteStore: SupabaseStatementRemoteStore(authClient: authClient)
+            )
+        } else {
+            self.remoteStatements = AuthRequiredStatementRemoteRepository()
         }
 
         if let remoteTransactions {
@@ -272,6 +284,7 @@ final class AppContainer {
         categoryCatalog: any CategoryCatalogRepositoryProtocol,
         institutionCatalog: any InstitutionCatalogRepositoryProtocol,
         remoteAccounts: (any AccountRemoteRepositoryProtocol)? = nil,
+        remoteStatements: (any StatementRemoteRepositoryProtocol)? = nil,
         remoteTransactions: (any TransactionRemoteRepositoryProtocol)? = nil
     ) -> AppContainer {
         let database = PowerSyncDatabase(
@@ -284,6 +297,7 @@ final class AppContainer {
             categoryCatalog: categoryCatalog,
             institutionCatalog: institutionCatalog,
             remoteAccounts: remoteAccounts,
+            remoteStatements: remoteStatements,
             remoteTransactions: remoteTransactions
         )
     }

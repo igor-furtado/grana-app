@@ -212,7 +212,7 @@ struct TransactionsView: View {
 
             TableColumn("") { transaction in
                 let canMutate = store.supportsBasicMutation(for: transaction)
-                let unsupportedMessage = "Transações de cartão serão migradas junto com a fatia de faturas."
+                let unsupportedMessage = "A edição desta transação não está disponível nesta configuração."
                 // `.foregroundStyle(.secondary)` pra acompanhar o tom dos ícones da
                 // toolbar (Importar/Adicionar). Sem isso, `Button` plain renderiza
                 // o ícone na cor primária e fica destoante.

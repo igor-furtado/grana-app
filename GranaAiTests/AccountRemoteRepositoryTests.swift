@@ -121,7 +121,8 @@ struct AccountStoreRemoteTests {
         let container = AppContainer.inMemoryForTesting(
             categoryCatalog: StaticCategoryCatalogRepository(categories: []),
             institutionCatalog: StaticInstitutionCatalogRepository(institutions: [institution]),
-            remoteAccounts: repository
+            remoteAccounts: repository,
+            remoteStatements: StaticStatementRemoteRepository(snapshot: .empty)
         )
         let store = AccountStore(container: container)
 
@@ -152,7 +153,8 @@ struct AccountStoreRemoteTests {
         let container = AppContainer.inMemoryForTesting(
             categoryCatalog: StaticCategoryCatalogRepository(categories: []),
             institutionCatalog: StaticInstitutionCatalogRepository(institutions: [institution]),
-            remoteAccounts: repository
+            remoteAccounts: repository,
+            remoteStatements: StaticStatementRemoteRepository(snapshot: .empty)
         )
         let store = AccountStore(container: container)
 
@@ -194,7 +196,8 @@ struct AccountStoreRemoteTests {
         let container = AppContainer.inMemoryForTesting(
             categoryCatalog: StaticCategoryCatalogRepository(categories: []),
             institutionCatalog: StaticInstitutionCatalogRepository(institutions: [institution]),
-            remoteAccounts: repository
+            remoteAccounts: repository,
+            remoteStatements: StaticStatementRemoteRepository(snapshot: .empty)
         )
         let store = AccountStore(container: container)
 
@@ -234,7 +237,8 @@ struct AccountStoreRemoteTests {
         let container = AppContainer.inMemoryForTesting(
             categoryCatalog: StaticCategoryCatalogRepository(categories: []),
             institutionCatalog: StaticInstitutionCatalogRepository(institutions: [institution]),
-            remoteAccounts: repository
+            remoteAccounts: repository,
+            remoteStatements: StaticStatementRemoteRepository(snapshot: .empty)
         )
         let store = AccountStore(container: container)
 
@@ -246,8 +250,8 @@ struct AccountStoreRemoteTests {
         #expect(operations.first?.kind == .delete)
     }
 
-    @Test("Refresh preserva saldo e faturas dos read models transitórios")
-    func refreshKeepsTransitionalReadModels() async throws {
+    @Test("Refresh carrega faturas remotas do cartão")
+    func refreshLoadsRemoteStatements() async throws {
         let institution = makeInstitution(
             id: UUID(),
             code: "077",
@@ -256,69 +260,42 @@ struct AccountStoreRemoteTests {
             accountTypes: [.checking, .creditCard]
         )
         let accountId = UUID()
-        let categoryId = UUID()
         let now = Date()
         let repository = SequencedAccountRemoteRepository(snapshots: [
             makeSnapshot(accounts: [
                 makeCreditCardAccount(id: accountId, institutionId: institution.id),
             ]),
         ])
+        let statement = Statement(
+            id: UUID(),
+            accountId: accountId,
+            closingDate: now,
+            dueDate: now.addingTimeInterval(86_400 * 10),
+            netAmount: 250,
+            creditReceived: 0,
+            paymentApplied: 0,
+            settledAt: nil,
+            createdAt: now,
+            updatedAt: now
+        )
         let container = AppContainer.inMemoryForTesting(
             categoryCatalog: StaticCategoryCatalogRepository(categories: []),
             institutionCatalog: StaticInstitutionCatalogRepository(institutions: [institution]),
-            remoteAccounts: repository
-        )
-
-        try await container.categories.insert(Category(
-            id: categoryId,
-            parentId: nil,
-            name: "Restaurantes",
-            kind: .expense,
-            slug: "restaurantes",
-            createdAt: now
-        ))
-        try await container.accounts.insert(
-            Account(
-                id: accountId,
-                type: .creditCard,
-                initialBalance: 0,
-                archived: false,
-                institutionId: institution.id,
-                currency: "BRL",
-                createdAt: now,
-                updatedAt: now
-            ),
-            creditCardDetails: CreditCardDetails(
-                accountId: accountId,
-                cardLastFour: "1234",
-                creditLimit: 1_000,
-                statementClosingDay: 8,
-                paymentDueDay: 15,
-                createdAt: now,
-                updatedAt: now
+            remoteAccounts: repository,
+            remoteStatements: StaticStatementRemoteRepository(
+                snapshot: StatementRemoteSnapshot(
+                    statements: [statement],
+                    payments: []
+                )
             )
         )
-        try await container.transactions.insert(Transaction(
-            id: UUID(),
-            accountId: accountId,
-            categoryId: categoryId,
-            subcategoryId: nil,
-            amount: 250,
-            occurredAt: now,
-            description: "Jantar",
-            notes: nil,
-            destinationAccountId: nil,
-            refundOfTransactionId: nil,
-            createdAt: now,
-            updatedAt: now
-        ))
 
         let store = AccountStore(container: container)
 
         await store.load()
 
-        #expect(store.currentBalance(for: try #require(store.accounts.first)) == -250)
-        #expect(store.nextStatement(for: accountId) != nil)
+        #expect(store.statements.map(\.id) == [statement.id])
+        #expect(store.nextStatement(for: accountId)?.id == statement.id)
     }
 
     @Test("Propaga erro estável de instituição não suportada")
@@ -326,7 +303,8 @@ struct AccountStoreRemoteTests {
         let container = AppContainer.inMemoryForTesting(
             categoryCatalog: StaticCategoryCatalogRepository(categories: []),
             institutionCatalog: StaticInstitutionCatalogRepository(institutions: []),
-            remoteAccounts: FailingAccountRemoteRepository(error: AccountRemoteRepositoryError.unsupportedInstitution)
+            remoteAccounts: FailingAccountRemoteRepository(error: AccountRemoteRepositoryError.unsupportedInstitution),
+            remoteStatements: StaticStatementRemoteRepository(snapshot: .empty)
         )
         let store = AccountStore(container: container)
 
@@ -347,7 +325,8 @@ struct AccountStoreRemoteTests {
         let container = AppContainer.inMemoryForTesting(
             categoryCatalog: StaticCategoryCatalogRepository(categories: []),
             institutionCatalog: StaticInstitutionCatalogRepository(institutions: []),
-            remoteAccounts: FailingAccountRemoteRepository(error: AccountRemoteRepositoryError.accountHasFinancialHistory)
+            remoteAccounts: FailingAccountRemoteRepository(error: AccountRemoteRepositoryError.accountHasFinancialHistory),
+            remoteStatements: StaticStatementRemoteRepository(snapshot: .empty)
         )
         let store = AccountStore(container: container)
 

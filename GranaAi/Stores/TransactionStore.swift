@@ -41,7 +41,7 @@ final class TransactionStore {
     private(set) var isLoadingMoreTransactions = false
     private(set) var hasMoreTransactions = false
     var lastError: Error?
-    let supportsAdvancedCardRules = false
+    let supportsAdvancedCardRules = true
 
     init(container: AppContainer) {
         self.container = container
@@ -165,6 +165,10 @@ final class TransactionStore {
     }
 
     func supportsBasicMutation(for transaction: Transaction) -> Bool {
+        if supportsAdvancedCardRules {
+            return true
+        }
+
         if transaction.statementId != nil || transaction.refundOfTransactionId != nil {
             return false
         }
@@ -304,11 +308,13 @@ final class TransactionStore {
             limit: pageSize
         )
         async let accountSnapshot = container.remoteAccounts.load()
+        async let statementSnapshot = container.remoteStatements.load()
         async let categoryCatalog = container.categoryCatalog.load()
         async let institutionCatalog = container.institutionCatalog.load()
-        let (page, accountSnapshotValue, categoryCatalogValue, institutionCatalogValue) = try await (
+        let (page, accountSnapshotValue, statementSnapshotValue, categoryCatalogValue, institutionCatalogValue) = try await (
             transactionPage,
             accountSnapshot,
+            statementSnapshot,
             categoryCatalog,
             institutionCatalog
         )
@@ -319,17 +325,17 @@ final class TransactionStore {
         accounts = accountSnapshotValue.accounts
         bankDetails = accountSnapshotValue.bankDetails
         creditCards = accountSnapshotValue.creditCards
+        statements = statementSnapshotValue.statements
+        statementPayments = statementSnapshotValue.payments
         categories = categoryCatalogValue
         institutions = institutionCatalogValue
-        // TODO(fase-3): substituir esses placeholders pelo read model remoto
-        // de faturas quando o ticket #21 migrar regras de cartão.
-        statements = []
-        statementPayments = []
         lastError = nil
     }
 
     private func handleRefreshFailure(_ error: any Error) {
         transactions = []
+        statements = []
+        statementPayments = []
         nextCursor = nil
         hasMoreTransactions = false
         lastError = error

@@ -68,6 +68,43 @@ struct TransactionRemoteRepositoryTests {
         }
     }
 
+    @Test("Mapeia erros estáveis de estorno e pagamento")
+    func mapsCardRuleCodes() async {
+        let invalidRefund = TransactionRemoteRepository(
+            remoteStore: FakeTransactionRemoteStore(
+                createResponse: .init(ok: false, code: "invalid_refund", transactionId: nil)
+            )
+        )
+        let refundBeforePurchase = TransactionRemoteRepository(
+            remoteStore: FakeTransactionRemoteStore(
+                createResponse: .init(ok: false, code: "refund_before_purchase", transactionId: nil)
+            )
+        )
+        let refundExceedsPurchase = TransactionRemoteRepository(
+            remoteStore: FakeTransactionRemoteStore(
+                createResponse: .init(ok: false, code: "refund_exceeds_purchase", transactionId: nil)
+            )
+        )
+        let unappliedPayment = TransactionRemoteRepository(
+            remoteStore: FakeTransactionRemoteStore(
+                createResponse: .init(ok: false, code: "unapplied_payment", transactionId: nil)
+            )
+        )
+
+        await #expect(throws: TransactionRemoteRepositoryError.invalidRefund) {
+            try await invalidRefund.create(input: makeTransactionMutationInput())
+        }
+        await #expect(throws: TransactionRemoteRepositoryError.refundBeforePurchase) {
+            try await refundBeforePurchase.create(input: makeTransactionMutationInput())
+        }
+        await #expect(throws: TransactionRemoteRepositoryError.refundExceedsPurchase) {
+            try await refundExceedsPurchase.create(input: makeTransactionMutationInput())
+        }
+        await #expect(throws: TransactionRemoteRepositoryError.unappliedPayment) {
+            try await unappliedPayment.create(input: makeTransactionMutationInput())
+        }
+    }
+
     @Test("Converte Decimal em centavos nas mutações")
     func mapsDecimalToCentsInMutationRequests() {
         let input = TransactionMutationInput(
@@ -139,6 +176,7 @@ struct TransactionStoreRemoteTests {
             remoteAccounts: StaticAccountRemoteRepository(
                 snapshot: makeRemoteSnapshot(accounts: [account])
             ),
+            remoteStatements: StaticStatementRemoteRepository(snapshot: .empty),
             remoteTransactions: repository
         )
         let store = TransactionStore(container: container)
@@ -196,6 +234,7 @@ struct TransactionStoreRemoteTests {
             remoteAccounts: StaticAccountRemoteRepository(
                 snapshot: makeRemoteSnapshot(accounts: [account])
             ),
+            remoteStatements: StaticStatementRemoteRepository(snapshot: .empty),
             remoteTransactions: repository
         )
         let store = TransactionStore(container: container)
@@ -240,6 +279,7 @@ struct TransactionStoreRemoteTests {
             remoteAccounts: StaticAccountRemoteRepository(
                 snapshot: makeRemoteSnapshot(accounts: [account])
             ),
+            remoteStatements: StaticStatementRemoteRepository(snapshot: .empty),
             remoteTransactions: repository
         )
         let store = TransactionStore(container: container)
@@ -300,6 +340,7 @@ struct TransactionStoreRemoteTests {
             remoteAccounts: StaticAccountRemoteRepository(
                 snapshot: makeRemoteSnapshot(accounts: [account])
             ),
+            remoteStatements: StaticStatementRemoteRepository(snapshot: .empty),
             remoteTransactions: repository
         )
         let store = TransactionStore(container: container)
@@ -346,6 +387,7 @@ struct TransactionStoreRemoteTests {
             remoteAccounts: StaticAccountRemoteRepository(
                 snapshot: makeRemoteSnapshot(accounts: [account])
             ),
+            remoteStatements: StaticStatementRemoteRepository(snapshot: .empty),
             remoteTransactions: repository
         )
         let store = TransactionStore(container: container)
@@ -384,6 +426,7 @@ struct TransactionStoreRemoteTests {
             remoteAccounts: StaticAccountRemoteRepository(
                 snapshot: makeRemoteSnapshot(accounts: [account])
             ),
+            remoteStatements: StaticStatementRemoteRepository(snapshot: .empty),
             remoteTransactions: FailingTransactionRemoteRepository(
                 error: TransactionRemoteRepositoryError.invalidTransferDestination
             )
@@ -434,6 +477,7 @@ struct TransactionStoreRemoteTests {
             remoteAccounts: StaticAccountRemoteRepository(
                 snapshot: makeRemoteSnapshot(accounts: [account])
             ),
+            remoteStatements: StaticStatementRemoteRepository(snapshot: .empty),
             remoteTransactions: repository
         )
         let store = TransactionStore(container: container)
@@ -452,6 +496,71 @@ struct TransactionStoreRemoteTests {
             )
         }
         #expect(store.lastError as? TransactionRemoteRepositoryError == .unexpectedResponse)
+    }
+
+    @Test("Recarrega faturas após mutação de cartão")
+    func refreshesStatementsAfterCardMutation() async throws {
+        let institution = makeRemoteInstitution(
+            id: UUID(),
+            code: "077",
+            name: "Banco Inter",
+            kind: .inter,
+            accountTypes: [.checking, .creditCard]
+        )
+        let category = makeRemoteCategory(
+            id: UUID(),
+            name: "Mercado",
+            kind: .expense,
+            slug: "alimentacao"
+        )
+        let account = makeRemoteCreditCardAccount(
+            id: UUID(),
+            institutionId: institution.id
+        )
+        let statement = makeStatement(accountId: account.id, amount: 55)
+        var transaction = makeTransaction(
+            id: UUID(),
+            accountId: account.id,
+            categoryId: category.id,
+            amount: 55,
+            occurredAt: statement.closingDate.addingTimeInterval(-86_400)
+        )
+        transaction.statementId = statement.id
+        let repository = SequencedTransactionRemoteRepository(pages: [
+            .empty,
+            TransactionRemotePage(transactions: [transaction], nextCursor: nil),
+        ])
+        let container = AppContainer.inMemoryForTesting(
+            categoryCatalog: StaticCategoryCatalogRepository(categories: [category]),
+            institutionCatalog: StaticInstitutionCatalogRepository(institutions: [institution]),
+            remoteAccounts: StaticAccountRemoteRepository(
+                snapshot: makeRemoteSnapshot(accounts: [account])
+            ),
+            remoteStatements: SequencedStatementRemoteRepository(snapshots: [
+                .empty,
+                StatementRemoteSnapshot(
+                    statements: [statement],
+                    payments: []
+                ),
+            ]),
+            remoteTransactions: repository
+        )
+        let store = TransactionStore(container: container)
+
+        await store.load()
+        try await store.add(
+            accountId: account.id,
+            categoryId: category.id,
+            subcategoryId: nil,
+            amount: 55,
+            occurredAt: transaction.occurredAt,
+            description: transaction.description,
+            notes: transaction.notes
+        )
+
+        #expect(store.supportsAdvancedCardRules == true)
+        #expect(store.statements.map(\.id) == [statement.id])
+        #expect(store.statement(for: transaction)?.id == statement.id)
     }
 }
 
@@ -594,6 +703,25 @@ private actor RefreshFailingAfterMutationRepository: TransactionRemoteRepository
     func delete(transactionId _: UUID) async throws {}
 }
 
+private actor SequencedStatementRemoteRepository: StatementRemoteRepositoryProtocol {
+    private var snapshots: [StatementRemoteSnapshot]
+
+    init(snapshots: [StatementRemoteSnapshot]) {
+        self.snapshots = snapshots
+    }
+
+    func load() async throws -> StatementRemoteSnapshot {
+        if snapshots.count > 1 {
+            return snapshots.removeFirst()
+        }
+        return snapshots.first ?? .empty
+    }
+
+    func loadTransactions(statementId _: UUID) async throws -> [Transaction] {
+        []
+    }
+}
+
 private func makeTransactionRecordRow(
     id: UUID,
     accountId: UUID,
@@ -716,12 +844,30 @@ private func makeRemoteCheckingAccount(
     )
 }
 
+private func makeRemoteCreditCardAccount(
+    id: UUID,
+    institutionId: UUID
+) -> Account {
+    Account(
+        id: id,
+        type: .creditCard,
+        initialBalance: 0,
+        archived: false,
+        institutionId: institutionId,
+        currency: "BRL",
+        createdAt: Date(),
+        updatedAt: Date()
+    )
+}
+
 private func makeRemoteSnapshot(
     accounts: [Account]
 ) -> AccountRemoteSnapshot {
     AccountRemoteSnapshot(
         accounts: accounts,
-        bankDetails: accounts.map { account in
+        bankDetails: accounts
+            .filter { $0.type == .checking }
+            .map { account in
             BankAccountDetails(
                 accountId: account.id,
                 branchId: "0001",
@@ -730,6 +876,37 @@ private func makeRemoteSnapshot(
                 updatedAt: account.updatedAt
             )
         },
-        creditCards: []
+        creditCards: accounts
+            .filter { $0.type == .creditCard }
+            .map { account in
+                CreditCardDetails(
+                    accountId: account.id,
+                    cardLastFour: "1234",
+                    creditLimit: 1_000,
+                    statementClosingDay: 8,
+                    paymentDueDay: 15,
+                    createdAt: account.createdAt,
+                    updatedAt: account.updatedAt
+                )
+            }
+    )
+}
+
+private func makeStatement(
+    accountId: UUID,
+    amount: Decimal
+) -> Statement {
+    let now = Date()
+    return Statement(
+        id: UUID(),
+        accountId: accountId,
+        closingDate: now,
+        dueDate: now.addingTimeInterval(86_400 * 10),
+        netAmount: amount,
+        creditReceived: 0,
+        paymentApplied: 0,
+        settledAt: nil,
+        createdAt: now,
+        updatedAt: now
     )
 }

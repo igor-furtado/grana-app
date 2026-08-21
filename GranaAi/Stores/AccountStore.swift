@@ -17,8 +17,6 @@ final class AccountStore {
     private(set) var institutions: [Institution] = []
     private(set) var bankDetails: [BankAccountDetails] = []
     private(set) var creditCards: [CreditCardDetails] = []
-    /// Read model transitório vindo da camada local enquanto a fatia de
-    /// faturas ainda não foi migrada para o backend remoto.
     private(set) var statements: [Statement] = []
     /// Read model transitório vindo da camada local enquanto transações e
     /// agregações de conta ainda não migraram para contratos remotos.
@@ -41,12 +39,12 @@ final class AccountStore {
         do {
             async let accountSnapshot = container.remoteAccounts.load()
             async let institutionCatalog = container.institutionCatalog.load()
-            async let statementRows = container.statements.getAll()
+            async let statementSnapshot = container.remoteStatements.load()
             async let balanceRows = container.accounts.getBalances()
-            let (snapshot, institutions, statements, balances) = try await (
+            let (snapshot, institutions, statementSnapshotValue, balances) = try await (
                 accountSnapshot,
                 institutionCatalog,
-                statementRows,
+                statementSnapshot,
                 balanceRows
             )
 
@@ -54,7 +52,7 @@ final class AccountStore {
             bankDetails = snapshot.bankDetails
             creditCards = snapshot.creditCards
             self.institutions = institutions
-            self.statements = statements
+            statements = statementSnapshotValue.statements
             self.balances = balances
             lastError = nil
         } catch {
