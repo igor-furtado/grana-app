@@ -20,7 +20,7 @@ returns text
 language sql
 stable
 security definer
-set search_path = public, app_private, extensions
+set search_path = app_private, extensions
 as $$
     select coalesce(
         nullif(trim(p_timezone_override), ''),
@@ -42,7 +42,7 @@ returns table (
 language sql
 stable
 security definer
-set search_path = public, app_private, extensions
+set search_path = app_private, extensions
 as $$
     select
         resolved.timezone_name,
@@ -62,7 +62,7 @@ returns table (
 )
 language sql
 security definer
-set search_path = public, app_private, extensions
+set search_path = app_private, extensions
 as $$
     select app_private.v1_user_timezone(auth.uid()) as timezone
 $$;
@@ -79,7 +79,7 @@ returns table (
 )
 language sql
 security definer
-set search_path = public, app_private, extensions
+set search_path = app_private, extensions
 as $$
     with context as (
         select auth.uid() as user_id
@@ -113,7 +113,7 @@ as $$
                     when txn.refund_of_transaction_id is null then txn.amount_cents
                     else -txn.amount_cents
                 end as signed_amount
-            from public.transactions txn
+            from app_private.transactions txn
             join app_private.category_catalog category
                 on category.id = txn.category_id
             where txn.user_id = context.user_id
@@ -140,7 +140,7 @@ as $$
                     when txn.refund_of_transaction_id is null then txn.amount_cents
                     else -txn.amount_cents
                 end as signed_amount
-            from public.transactions txn
+            from app_private.transactions txn
             join app_private.category_catalog category
                 on category.id = txn.category_id
             where txn.user_id = context.user_id
@@ -151,7 +151,7 @@ as $$
         select
             coalesce(sum(account.initial_balance_cents), 0) as cents
         from context
-        left join public.accounts account
+        left join app_private.accounts account
             on account.user_id = context.user_id
            and account.archived = false
     )
@@ -177,7 +177,7 @@ returns table (
 )
 language sql
 security definer
-set search_path = public, app_private, extensions
+set search_path = app_private, extensions
 as $$
     with context as (
         select auth.uid() as user_id
@@ -203,7 +203,7 @@ as $$
             end as signed_amount
         from context
         cross join bounds
-        join public.transactions txn
+        join app_private.transactions txn
             on txn.user_id = context.user_id
         join app_private.category_catalog category
             on category.id = txn.category_id
@@ -235,7 +235,7 @@ returns table (
 )
 language sql
 security definer
-set search_path = public, app_private, extensions
+set search_path = app_private, extensions
 as $$
     with context as (
         select auth.uid() as user_id
@@ -259,7 +259,7 @@ as $$
         count(*)::bigint as count
     from context
     cross join bounds
-    join public.transactions txn
+    join app_private.transactions txn
         on txn.user_id = context.user_id
     join app_private.category_catalog category
         on category.id = txn.category_id
@@ -282,7 +282,7 @@ returns table (
 )
 language sql
 security definer
-set search_path = public, app_private, extensions
+set search_path = app_private, extensions
 as $$
     with context as (
         select auth.uid() as user_id
@@ -312,7 +312,7 @@ as $$
             end as signed_amount
         from context
         cross join bounds
-        join public.transactions txn
+        join app_private.transactions txn
             on txn.user_id = context.user_id
         join app_private.category_catalog category
             on category.id = txn.category_id

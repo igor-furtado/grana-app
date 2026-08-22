@@ -1,5 +1,5 @@
 -- Ticket #20 rollback manual:
--- 1. grant insert, update, delete on table public.transactions to authenticated;
+-- 1. grant insert, update, delete on table app_private.transactions to authenticated;
 -- 2. revoke execute on function api.v1_list_transactions(integer, timestamptz, timestamptz, uuid) from authenticated;
 -- 3. revoke execute on function api.v1_create_transaction(uuid, uuid, uuid, bigint, timestamptz, text, text, uuid, uuid) from authenticated;
 -- 4. revoke execute on function api.v1_update_transaction(uuid, uuid, uuid, uuid, bigint, timestamptz, text, text, uuid, uuid) from authenticated;
@@ -33,7 +33,8 @@ returns table (
     updated_at timestamptz
 )
 language sql
-security invoker
+security definer
+set search_path = ''
 as $$
     select
         t.id,
@@ -51,7 +52,7 @@ as $$
         t.refund_of_transaction_id,
         t.created_at,
         t.updated_at
-    from public.transactions t
+    from app_private.transactions t
     where t.user_id = auth.uid()
       and (
         p_after_occurred_at is null
@@ -84,7 +85,7 @@ create or replace function api.v1_create_transaction(
 returns jsonb
 language plpgsql
 security definer
-set search_path = public, app_private, extensions
+set search_path = app_private, extensions
 as $$
 declare
     v_user_id uuid := auth.uid();
@@ -95,7 +96,7 @@ declare
 begin
     select a.type
     into v_account_type
-    from public.accounts a
+    from app_private.accounts a
     where a.user_id = v_user_id
       and a.id = p_account_id;
 
@@ -145,7 +146,7 @@ begin
 
         select a.type
         into v_destination_type
-        from public.accounts a
+        from app_private.accounts a
         where a.user_id = v_user_id
           and a.id = p_destination_account_id;
 
@@ -158,7 +159,7 @@ begin
         end if;
     end if;
 
-    insert into public.transactions (
+    insert into app_private.transactions (
         user_id,
         account_id,
         category_id,
@@ -206,7 +207,7 @@ create or replace function api.v1_update_transaction(
 returns jsonb
 language plpgsql
 security definer
-set search_path = public, app_private, extensions
+set search_path = app_private, extensions
 as $$
 declare
     v_user_id uuid := auth.uid();
@@ -222,7 +223,7 @@ begin
         t.statement_id,
         t.refund_of_transaction_id
     into v_current
-    from public.transactions t
+    from app_private.transactions t
     where t.user_id = v_user_id
       and t.id = p_transaction_id;
 
@@ -238,7 +239,7 @@ begin
 
     if exists (
         select 1
-        from public.transactions linked
+        from app_private.transactions linked
         where linked.user_id = v_user_id
           and linked.refund_of_transaction_id = p_transaction_id
     ) then
@@ -247,7 +248,7 @@ begin
 
     select a.type
     into v_account_type
-    from public.accounts a
+    from app_private.accounts a
     where a.user_id = v_user_id
       and a.id = p_account_id;
 
@@ -297,7 +298,7 @@ begin
 
         select a.type
         into v_destination_type
-        from public.accounts a
+        from app_private.accounts a
         where a.user_id = v_user_id
           and a.id = p_destination_account_id;
 
@@ -310,7 +311,7 @@ begin
         end if;
     end if;
 
-    update public.transactions
+    update app_private.transactions
     set
         account_id = p_account_id,
         category_id = p_category_id,
@@ -339,7 +340,7 @@ create or replace function api.v1_delete_transaction(
 returns jsonb
 language plpgsql
 security definer
-set search_path = public, app_private, extensions
+set search_path = app_private, extensions
 as $$
 declare
     v_user_id uuid := auth.uid();
@@ -351,8 +352,8 @@ begin
         t.statement_id,
         t.refund_of_transaction_id
     into v_current
-    from public.transactions t
-    left join public.accounts destination
+    from app_private.transactions t
+    left join app_private.accounts destination
         on destination.user_id = v_user_id
        and destination.id = t.destination_account_id
     where t.user_id = v_user_id
@@ -364,7 +365,7 @@ begin
 
     if exists (
         select 1
-        from public.transactions linked
+        from app_private.transactions linked
         where linked.user_id = v_user_id
           and linked.refund_of_transaction_id = p_transaction_id
     ) then
@@ -378,7 +379,7 @@ begin
         return jsonb_build_object('ok', false, 'code', 'credit_card_transactions_not_supported');
     end if;
 
-    delete from public.transactions
+    delete from app_private.transactions
     where user_id = v_user_id
       and id = p_transaction_id;
 
@@ -411,4 +412,4 @@ grant execute on function api.v1_create_transaction(uuid, uuid, uuid, bigint, ti
 grant execute on function api.v1_update_transaction(uuid, uuid, uuid, uuid, bigint, timestamptz, text, text, uuid, uuid) to authenticated;
 grant execute on function api.v1_delete_transaction(uuid) to authenticated;
 
-revoke insert, update, delete on table public.transactions from authenticated;
+revoke insert, update, delete on table app_private.transactions from authenticated;

@@ -193,8 +193,8 @@ async function resolveRuntimeConfig(
   adminClient: ReturnType<typeof createClient>,
   userId: string,
 ): Promise<RuntimeConfig> {
-  const { data, error } = await adminClient.rpc(
-    "resolve_categorization_runtime_config",
+  const { data, error } = await adminClient.schema("api").rpc(
+    "v1_resolve_categorization_runtime_config",
     { target_user_id: userId },
   );
   if (error) throw error;
@@ -219,11 +219,13 @@ async function lookupCache(
   model: string,
 ): Promise<Map<number, CategorizationResult>> {
   const uniqueHashes = [...new Set(items.map((item) => item.description_hash))];
-  const { data, error } = await userClient
-    .from("categorization_cache")
-    .select("description_hash, category_id, subcategory_id, confidence")
-    .in("description_hash", uniqueHashes)
-    .eq("model", model);
+  const { data, error } = await userClient.schema("api").rpc(
+    "v1_lookup_categorization_cache",
+    {
+      p_description_hashes: uniqueHashes,
+      p_model: model,
+    },
+  );
   if (error) throw error;
 
   const byHash = new Map<string, CategorizationResult>();
@@ -259,11 +261,10 @@ async function loadFewShots(
   userClient: ReturnType<typeof createClient>,
   taxonomy: ReturnType<typeof buildTaxonomy>,
 ): Promise<FewShotExample[]> {
-  const { data, error } = await userClient
-    .from("categorization_corrections")
-    .select("normalized_description, corrected_category_id, corrected_subcategory_id")
-    .order("created_at", { ascending: false })
-    .limit(10);
+  const { data, error } = await userClient.schema("api").rpc(
+    "v1_list_categorization_few_shots",
+    { p_limit: 10 },
+  );
   if (error) throw error;
 
   return (data ?? []).flatMap((row) => {

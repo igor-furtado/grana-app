@@ -169,10 +169,7 @@ actor SupabaseAccountRemoteStore: AccountRemoteStore {
     func fetchAccounts() async throws -> [AccountRecordRow] {
         try await resolvedClient()
             .schema("api")
-            .from("v1_account_records")
-            .select()
-            .order("type", ascending: true)
-            .order("created_at", ascending: true)
+            .rpc("v1_list_accounts")
             .execute()
             .value
     }

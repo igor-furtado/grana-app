@@ -1,7 +1,7 @@
 -- Ticket #23 rollback manual:
--- 1. grant insert, update, delete on table public.import_batches to authenticated;
--- 2. grant insert, update, delete on table public.categorization_cache to authenticated;
--- 3. grant insert, update, delete on table public.categorization_corrections to authenticated;
+-- 1. grant insert, update, delete on table app_private.import_batches to authenticated;
+-- 2. grant insert, update, delete on table app_private.categorization_cache to authenticated;
+-- 3. grant insert, update, delete on table app_private.categorization_corrections to authenticated;
 -- 4. revoke execute on function api.v1_list_import_batches() from authenticated;
 -- 5. revoke execute on function api.v1_commit_import(uuid, jsonb, jsonb, jsonb, jsonb) from authenticated;
 -- 6. revoke execute on function api.v1_delete_import_batch(uuid) from authenticated;
@@ -12,12 +12,26 @@
 
 create table if not exists app_private.import_commit_receipts (
     id uuid primary key default gen_random_uuid(),
-    user_id uuid not null references public.profiles (id) on delete cascade,
+    user_id uuid not null references app_private.user_profiles (user_id) on delete cascade,
     idempotency_key uuid not null,
     response jsonb not null,
     created_at timestamptz not null default timezone('utc', now()),
     unique (user_id, idempotency_key)
 );
+
+alter table app_private.import_commit_receipts enable row level security;
+
+create policy import_commit_receipts_select_own
+on app_private.import_commit_receipts
+for select
+to authenticated
+using ((select auth.uid()) is not null and (select auth.uid()) = user_id);
+
+create policy import_commit_receipts_insert_own
+on app_private.import_commit_receipts
+for insert
+to authenticated
+with check ((select auth.uid()) is not null and (select auth.uid()) = user_id);
 
 create or replace function api.v1_list_import_batches()
 returns table (
@@ -30,7 +44,8 @@ returns table (
     updated_at timestamptz
 )
 language sql
-security invoker
+security definer
+set search_path = ''
 as $$
     select
         batch.id,
@@ -40,7 +55,7 @@ as $$
         batch.imported_at,
         batch.created_at,
         batch.updated_at
-    from public.import_batches batch
+    from app_private.import_batches batch
     where batch.user_id = auth.uid()
     order by batch.imported_at desc, batch.created_at desc, batch.id desc
 $$;
@@ -55,7 +70,7 @@ create or replace function api.v1_commit_import(
 returns jsonb
 language plpgsql
 security definer
-set search_path = public, api, app_private, extensions
+set search_path = api, app_private, extensions
 as $$
 declare
     v_user_id uuid := auth.uid();
@@ -171,7 +186,7 @@ begin
         from pg_temp.import_transaction_input tx
         join pg_temp.import_batch_input batch
             on batch.batch_id = tx.batch_id
-        left join public.accounts account
+        left join app_private.accounts account
             on account.user_id = v_user_id
            and account.id = batch.account_id
         where account.id is null
@@ -182,7 +197,7 @@ begin
     if exists (
         select 1
         from pg_temp.import_batch_input batch
-        join public.accounts account
+        join app_private.accounts account
             on account.user_id = v_user_id
            and account.id = batch.account_id
         left join app_private.supported_institutions_catalog institution
@@ -313,7 +328,7 @@ begin
     where tx.external_id is not null
       and exists (
           select 1
-          from public.transactions existing
+          from app_private.transactions existing
           where existing.user_id = v_user_id
             and existing.account_id = tx.account_id
             and existing.external_id = tx.external_id
@@ -368,7 +383,7 @@ begin
           and duplicate_row.description = tx.description
     );
 
-    insert into public.import_batches (
+    insert into app_private.import_batches (
         id,
         user_id,
         source_filename,
@@ -396,7 +411,7 @@ begin
         batch.account_id,
         batch.imported_at;
 
-    insert into public.transactions (
+    insert into app_private.transactions (
         id,
         user_id,
         account_id,
@@ -430,7 +445,7 @@ begin
     from pg_temp.import_insertable_transaction tx
     order by tx.occurred_at asc, tx.transaction_id asc;
 
-    insert into public.categorization_cache (
+    insert into app_private.categorization_cache (
         id,
         user_id,
         description_hash,
@@ -480,7 +495,7 @@ begin
         confidence = excluded.confidence,
         updated_at = excluded.updated_at;
 
-    insert into public.categorization_corrections (
+    insert into app_private.categorization_corrections (
         id,
         user_id,
         description_hash,
@@ -531,7 +546,7 @@ begin
        and corrected_subcategory.name = correction_row.corrected_subcategory_name
     where exists (
         select 1
-        from public.transactions tx
+        from app_private.transactions tx
         where tx.user_id = v_user_id
           and tx.id = correction_row.transaction_id
     );
@@ -550,7 +565,7 @@ begin
         'imported_batch_ids', coalesce(
             (
                 select jsonb_agg(batch.id order by batch.imported_at desc, batch.id desc)
-                from public.import_batches batch
+                from app_private.import_batches batch
                 where batch.user_id = v_user_id
                   and exists (
                       select 1
@@ -624,7 +639,7 @@ create or replace function api.v1_delete_import_batch(
 returns jsonb
 language plpgsql
 security definer
-set search_path = public, api, app_private, extensions
+set search_path = api, app_private, extensions
 as $$
 declare
     v_user_id uuid := auth.uid();
@@ -637,7 +652,7 @@ begin
 
     if not exists (
         select 1
-        from public.import_batches batch
+        from app_private.import_batches batch
         where batch.user_id = v_user_id
           and batch.id = p_batch_id
     ) then
@@ -646,11 +661,11 @@ begin
 
     if exists (
         select 1
-        from public.transactions refund
+        from app_private.transactions refund
         where refund.user_id = v_user_id
           and refund.refund_of_transaction_id in (
               select purchase.id
-              from public.transactions purchase
+              from app_private.transactions purchase
               where purchase.user_id = v_user_id
                 and purchase.import_batch_id = p_batch_id
           )
@@ -665,15 +680,15 @@ begin
 
     insert into pg_temp.import_batch_account (account_id)
     select distinct tx.account_id
-    from public.transactions tx
+    from app_private.transactions tx
     where tx.user_id = v_user_id
       and tx.import_batch_id = p_batch_id;
 
-    delete from public.transactions
+    delete from app_private.transactions
     where user_id = v_user_id
       and import_batch_id = p_batch_id;
 
-    delete from public.import_batches
+    delete from app_private.import_batches
     where user_id = v_user_id
       and id = p_batch_id;
 
@@ -689,9 +704,9 @@ begin
 end;
 $$;
 
-revoke insert, update, delete on table public.import_batches from authenticated;
-revoke insert, update, delete on table public.categorization_cache from authenticated;
-revoke insert, update, delete on table public.categorization_corrections from authenticated;
+revoke insert, update, delete on table app_private.import_batches from authenticated;
+revoke insert, update, delete on table app_private.categorization_cache from authenticated;
+revoke insert, update, delete on table app_private.categorization_corrections from authenticated;
 
 revoke all on function api.v1_list_import_batches() from public;
 revoke all on function api.v1_list_import_batches() from anon;

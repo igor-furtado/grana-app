@@ -38,3 +38,4 @@ Config.swift
 *.orig
 .vscode/
 .idea/
+supabase/.temp/

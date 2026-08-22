@@ -21,7 +21,7 @@ returns text
 language sql
 stable
 security definer
-set search_path = public, app_private, extensions
+set search_path = app_private, extensions
 as $$
     select coalesce(profile.timezone, 'UTC')
     from app_private.user_profiles profile
@@ -36,7 +36,7 @@ returns date
 language sql
 stable
 security definer
-set search_path = public, app_private, extensions
+set search_path = app_private, extensions
 as $$
     select (p_instant at time zone app_private.v1_user_timezone(p_user_id))::date
 $$;
@@ -50,7 +50,7 @@ returns date
 language plpgsql
 immutable
 security definer
-set search_path = public, app_private, extensions
+set search_path = app_private, extensions
 as $$
 declare
     v_month_start date := make_date(p_year, p_month, 1);
@@ -67,7 +67,7 @@ returns timestamptz
 language sql
 immutable
 security definer
-set search_path = public, app_private, extensions
+set search_path = app_private, extensions
 as $$
     select make_timestamptz(
         extract(year from p_day)::integer,
@@ -94,7 +94,7 @@ returns table (
 language plpgsql
 stable
 security definer
-set search_path = public, app_private, extensions
+set search_path = app_private, extensions
 as $$
 declare
     v_transaction_day date := app_private.v1_local_date(p_user_id, p_occurred_at);
@@ -150,11 +150,11 @@ returns boolean
 language sql
 stable
 security definer
-set search_path = public, app_private, extensions
+set search_path = app_private, extensions
 as $$
     select exists (
         select 1
-        from public.accounts a
+        from app_private.accounts a
         where a.user_id = p_user_id
           and a.id = p_account_id
           and a.type = 'creditCard'
@@ -169,7 +169,7 @@ create or replace function app_private.v1_rebuild_card_statements(
 returns void
 language plpgsql
 security definer
-set search_path = public, app_private, extensions
+set search_path = app_private, extensions
 as $$
 declare
     v_now timestamptz := timezone('utc', now());
@@ -249,7 +249,7 @@ begin
             refund.amount_cents,
             refund.occurred_at,
             refund.refund_of_transaction_id
-        from public.transactions refund
+        from app_private.transactions refund
         join app_private.category_catalog category
             on category.id = refund.category_id
         where refund.user_id = p_user_id
@@ -268,7 +268,7 @@ begin
             purchase.refund_of_transaction_id,
             category.kind
         into v_purchase
-        from public.transactions purchase
+        from app_private.transactions purchase
         join app_private.category_catalog category
             on category.id = purchase.category_id
         where purchase.user_id = p_user_id
@@ -288,7 +288,7 @@ begin
 
         select coalesce(sum(refund.amount_cents), 0)
         into v_refunded_total
-        from public.transactions refund
+        from app_private.transactions refund
         where refund.user_id = p_user_id
           and refund.refund_of_transaction_id = v_purchase.id;
 
@@ -299,7 +299,7 @@ begin
         if v_entry.category_id is distinct from v_purchase.category_id
            or v_entry.subcategory_id is distinct from v_purchase.subcategory_id
         then
-            update public.transactions
+            update app_private.transactions
             set
                 category_id = v_purchase.category_id,
                 subcategory_id = v_purchase.subcategory_id,
@@ -315,7 +315,7 @@ begin
             card_entry.amount_cents,
             card_entry.occurred_at,
             card_entry.refund_of_transaction_id
-        from public.transactions card_entry
+        from app_private.transactions card_entry
         join app_private.category_catalog category
             on category.id = card_entry.category_id
         where card_entry.user_id = p_user_id
@@ -327,7 +327,7 @@ begin
             cycle.statement_closing_day,
             cycle.payment_due_day
         into v_cycle
-        from public.credit_card_cycle_configs cycle
+        from app_private.credit_card_cycle_configs cycle
         where cycle.user_id = p_user_id
           and cycle.account_id = p_account_id
           and cycle.effective_from <= v_entry.occurred_at
@@ -339,7 +339,7 @@ begin
                 card.statement_closing_day,
                 card.payment_due_day
             into v_cycle
-            from public.credit_cards card
+            from app_private.credit_cards card
             where card.user_id = p_user_id
               and card.account_id = p_account_id;
         end if;
@@ -361,7 +361,7 @@ begin
             statement.id,
             statement.created_at
         into v_existing
-        from public.statements statement
+        from app_private.statements statement
         where statement.user_id = p_user_id
           and statement.account_id = p_account_id
           and statement.closing_date = v_window.closing_date
@@ -473,7 +473,7 @@ begin
         'payment',
         payment.id,
         payment.amount_cents
-    from public.transactions payment
+    from app_private.transactions payment
     join app_private.category_catalog category
         on category.id = payment.category_id
     where payment.user_id = p_user_id
@@ -620,15 +620,15 @@ begin
         end if;
     end loop;
 
-    delete from public.statement_payments payment
-    using public.statements statement
+    delete from app_private.statement_payments payment
+    using app_private.statements statement
     where payment.user_id = p_user_id
       and statement.user_id = p_user_id
       and statement.account_id = p_account_id
       and payment.statement_id = statement.id;
 
-    delete from public.statement_credit_applications credit
-    using public.statements statement
+    delete from app_private.statement_credit_applications credit
+    using app_private.statements statement
     where credit.user_id = p_user_id
       and statement.user_id = p_user_id
       and statement.account_id = p_account_id
@@ -637,16 +637,16 @@ begin
           or credit.destination_statement_id = statement.id
       );
 
-    delete from public.statements
+    delete from app_private.statements
     where user_id = p_user_id
       and account_id = p_account_id;
 
-    update public.transactions
+    update app_private.transactions
     set statement_id = null
     where user_id = p_user_id
       and account_id = p_account_id;
 
-    insert into public.statements (
+    insert into app_private.statements (
         id,
         user_id,
         account_id,
@@ -674,13 +674,13 @@ begin
     from pg_temp.statement_work work
     order by work.closing_date asc;
 
-    update public.transactions txn
+    update app_private.transactions txn
     set statement_id = tx_map.statement_id
     from pg_temp.statement_tx_map tx_map
     where txn.user_id = p_user_id
       and txn.id = tx_map.transaction_id;
 
-    insert into public.statement_payments (
+    insert into app_private.statement_payments (
         id,
         user_id,
         statement_id,
@@ -699,7 +699,7 @@ begin
         p_reference_date
     from pg_temp.statement_payment_allocation allocation;
 
-    insert into public.statement_credit_applications (
+    insert into app_private.statement_credit_applications (
         id,
         user_id,
         source_statement_id,
@@ -732,7 +732,8 @@ returns table (
     updated_at timestamptz
 )
 language sql
-security invoker
+security definer
+set search_path = ''
 as $$
     select
         statement.id,
@@ -745,7 +746,7 @@ as $$
         statement.settled_at,
         statement.created_at,
         statement.updated_at
-    from public.statements statement
+    from app_private.statements statement
     where statement.user_id = auth.uid()
     order by statement.closing_date desc, statement.created_at desc, statement.id desc
 $$;
@@ -760,7 +761,8 @@ returns table (
     updated_at timestamptz
 )
 language sql
-security invoker
+security definer
+set search_path = ''
 as $$
     select
         payment.id,
@@ -769,7 +771,7 @@ as $$
         payment.applied_amount_cents,
         payment.created_at,
         payment.updated_at
-    from public.statement_payments payment
+    from app_private.statement_payments payment
     where payment.user_id = auth.uid()
     order by payment.created_at desc, payment.id desc
 $$;
@@ -795,7 +797,8 @@ returns table (
     updated_at timestamptz
 )
 language sql
-security invoker
+security definer
+set search_path = ''
 as $$
     select
         txn.id,
@@ -813,7 +816,7 @@ as $$
         txn.refund_of_transaction_id,
         txn.created_at,
         txn.updated_at
-    from public.transactions txn
+    from app_private.transactions txn
     where txn.user_id = auth.uid()
       and txn.statement_id = p_statement_id
     order by txn.occurred_at desc, txn.created_at desc, txn.id desc
@@ -833,7 +836,7 @@ create or replace function api.v1_create_transaction(
 returns jsonb
 language plpgsql
 security definer
-set search_path = public, app_private, extensions
+set search_path = app_private, extensions
 as $$
 declare
     v_user_id uuid := auth.uid();
@@ -845,7 +848,7 @@ declare
 begin
     select a.type
     into v_account_type
-    from public.accounts a
+    from app_private.accounts a
     where a.user_id = v_user_id
       and a.id = p_account_id;
 
@@ -887,7 +890,7 @@ begin
 
         select a.type
         into v_destination_type
-        from public.accounts a
+        from app_private.accounts a
         where a.user_id = v_user_id
           and a.id = p_destination_account_id;
 
@@ -910,7 +913,7 @@ begin
     end if;
 
     begin
-        insert into public.transactions (
+        insert into app_private.transactions (
             user_id,
             account_id,
             category_id,
@@ -988,7 +991,7 @@ create or replace function api.v1_update_transaction(
 returns jsonb
 language plpgsql
 security definer
-set search_path = public, app_private, extensions
+set search_path = app_private, extensions
 as $$
 declare
     v_user_id uuid := auth.uid();
@@ -1003,7 +1006,7 @@ begin
         t.account_id,
         t.destination_account_id
     into v_current
-    from public.transactions t
+    from app_private.transactions t
     where t.user_id = v_user_id
       and t.id = p_transaction_id;
 
@@ -1013,7 +1016,7 @@ begin
 
     if exists (
         select 1
-        from public.transactions linked
+        from app_private.transactions linked
         where linked.user_id = v_user_id
           and linked.refund_of_transaction_id = p_transaction_id
     ) then
@@ -1022,7 +1025,7 @@ begin
 
     select a.type
     into v_account_type
-    from public.accounts a
+    from app_private.accounts a
     where a.user_id = v_user_id
       and a.id = p_account_id;
 
@@ -1064,7 +1067,7 @@ begin
 
         select a.type
         into v_destination_type
-        from public.accounts a
+        from app_private.accounts a
         where a.user_id = v_user_id
           and a.id = p_destination_account_id;
 
@@ -1086,7 +1089,7 @@ begin
     end if;
 
     begin
-        update public.transactions
+        update app_private.transactions
         set
             account_id = p_account_id,
             category_id = p_category_id,
@@ -1154,7 +1157,7 @@ create or replace function api.v1_delete_transaction(
 returns jsonb
 language plpgsql
 security definer
-set search_path = public, app_private, extensions
+set search_path = app_private, extensions
 as $$
 declare
     v_user_id uuid := auth.uid();
@@ -1166,7 +1169,7 @@ begin
         t.account_id,
         t.destination_account_id
     into v_current
-    from public.transactions t
+    from app_private.transactions t
     where t.user_id = v_user_id
       and t.id = p_transaction_id;
 
@@ -1176,7 +1179,7 @@ begin
 
     if exists (
         select 1
-        from public.transactions linked
+        from app_private.transactions linked
         where linked.user_id = v_user_id
           and linked.refund_of_transaction_id = p_transaction_id
     ) then
@@ -1184,7 +1187,7 @@ begin
     end if;
 
     begin
-        delete from public.transactions
+        delete from app_private.transactions
         where user_id = v_user_id
           and id = p_transaction_id;
 
@@ -1253,7 +1256,7 @@ grant execute on function api.v1_create_transaction(uuid, uuid, uuid, bigint, ti
 grant execute on function api.v1_update_transaction(uuid, uuid, uuid, uuid, bigint, timestamptz, text, text, uuid, uuid) to authenticated;
 grant execute on function api.v1_delete_transaction(uuid) to authenticated;
 
-revoke insert, update, delete on table public.transactions from authenticated;
-revoke insert, update, delete on table public.statements from authenticated;
-revoke insert, update, delete on table public.statement_payments from authenticated;
-revoke insert, update, delete on table public.statement_credit_applications from authenticated;
+revoke insert, update, delete on table app_private.transactions from authenticated;
+revoke insert, update, delete on table app_private.statements from authenticated;
+revoke insert, update, delete on table app_private.statement_payments from authenticated;
+revoke insert, update, delete on table app_private.statement_credit_applications from authenticated;

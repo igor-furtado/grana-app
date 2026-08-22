@@ -38,6 +38,60 @@ create table if not exists app_private.supported_institutions_catalog (
     updated_at timestamptz not null default timezone('utc', now())
 );
 
+alter table app_private.accounts
+    add constraint accounts_institution_id_fkey
+    foreign key (institution_id)
+    references app_private.supported_institutions_catalog (id)
+    on delete restrict;
+
+alter table app_private.transactions
+    add constraint transactions_category_id_fkey
+    foreign key (category_id)
+    references app_private.category_catalog (id)
+    on delete restrict;
+
+alter table app_private.transactions
+    add constraint transactions_subcategory_id_fkey
+    foreign key (subcategory_id)
+    references app_private.category_catalog (id)
+    on delete restrict;
+
+alter table app_private.categorization_cache
+    add constraint categorization_cache_category_id_fkey
+    foreign key (category_id)
+    references app_private.category_catalog (id)
+    on delete restrict;
+
+alter table app_private.categorization_cache
+    add constraint categorization_cache_subcategory_id_fkey
+    foreign key (subcategory_id)
+    references app_private.category_catalog (id)
+    on delete restrict;
+
+alter table app_private.categorization_corrections
+    add constraint categorization_corrections_original_category_id_fkey
+    foreign key (original_category_id)
+    references app_private.category_catalog (id)
+    on delete restrict;
+
+alter table app_private.categorization_corrections
+    add constraint categorization_corrections_original_subcategory_id_fkey
+    foreign key (original_subcategory_id)
+    references app_private.category_catalog (id)
+    on delete restrict;
+
+alter table app_private.categorization_corrections
+    add constraint categorization_corrections_corrected_category_id_fkey
+    foreign key (corrected_category_id)
+    references app_private.category_catalog (id)
+    on delete restrict;
+
+alter table app_private.categorization_corrections
+    add constraint categorization_corrections_corrected_subcategory_id_fkey
+    foreign key (corrected_subcategory_id)
+    references app_private.category_catalog (id)
+    on delete restrict;
+
 create or replace view api.v1_category_catalog as
 select
     id,

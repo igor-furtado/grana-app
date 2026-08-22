@@ -1,73 +1,89 @@
--- Smoke tests for issue #10.
--- Execute against a non-production Supabase project after the migration.
-
 begin;
 
--- The trigger should anchor a minimal profile row for each authenticated user.
-insert into auth.users (id, email, created_at, updated_at)
-values
-    ('11111111-1111-1111-1111-111111111111', 'user1@example.com', timezone('utc', now()), timezone('utc', now())),
-    ('22222222-2222-2222-2222-222222222222', 'user2@example.com', timezone('utc', now()), timezone('utc', now()));
+select plan(7);
 
-select count(*) = 2 as profiles_created
-from public.profiles
-where id in (
-    '11111111-1111-1111-1111-111111111111',
-    '22222222-2222-2222-2222-222222222222'
+select is(
+    (select count(*)::integer
+     from pg_class relation
+     join pg_namespace namespace on namespace.oid = relation.relnamespace
+     where namespace.nspname = 'public'
+       and relation.relkind in ('r', 'v', 'm', 'f', 'p')
+       and relation.relname in (
+           'profiles',
+           'accounts',
+           'bank_accounts',
+           'credit_cards',
+           'transactions',
+           'statements',
+           'import_batches',
+           'categorization_cache',
+           'categorization_corrections'
+       )),
+    0,
+    'no product tables or views are created in public'
 );
 
-set local role authenticated;
-select set_config('request.jwt.claim.sub', '11111111-1111-1111-1111-111111111111', true);
+select ok(
+    not has_table_privilege('authenticated', 'app_private.accounts', 'select'),
+    'authenticated has no direct table access to private financial storage'
+);
 
-insert into public.accounts (
-    id,
-    user_id,
-    type,
-    initial_balance_cents,
-    archived,
-    institution_id,
-    currency,
-    created_at,
-    updated_at
-)
+select ok(
+    has_schema_privilege('service_role', 'api', 'usage'),
+    'service role can reach api schema for Edge Function RPCs'
+);
+
+select ok(
+    (select relrowsecurity
+     from pg_class relation
+     join pg_namespace namespace on namespace.oid = relation.relnamespace
+     where namespace.nspname = 'app_private'
+       and relation.relname = 'accounts'),
+    'private account storage has RLS enabled'
+);
+
+insert into auth.users (id, instance_id, aud, role, email, encrypted_password, raw_app_meta_data, raw_user_meta_data, created_at, updated_at)
 values (
-    'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa',
     '11111111-1111-1111-1111-111111111111',
-    'checking',
-    0,
-    false,
-    '33333333-3333-3333-3333-333333333333',
-    'BRL',
+    '00000000-0000-0000-0000-000000000000',
+    'authenticated',
+    'authenticated',
+    'baseline@example.com',
+    crypt('senha-segura', gen_salt('bf')),
+    '{"provider":"email","providers":["email"]}'::jsonb,
+    '{}'::jsonb,
     timezone('utc', now()),
     timezone('utc', now())
 );
 
-select count(*) = 1 as own_account_visible
-from public.accounts;
+set local role authenticated;
+set local request.jwt.claim.role = 'authenticated';
+set local request.jwt.claim.sub = '11111111-1111-1111-1111-111111111111';
 
--- Expect 0 rows because RLS should hide another user's rows.
-select set_config('request.jwt.claim.sub', '22222222-2222-2222-2222-222222222222', true);
-
-select count(*) = 0 as foreign_account_hidden
-from public.accounts
-where id = 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa';
+select lives_ok(
+    'select * from api.v1_ensure_profile()',
+    'authenticated user can bootstrap profile through api RPC'
+);
 
 reset role;
 
--- Composite FK between bank_accounts and accounts must exist.
-select exists (
-    select 1
-    from pg_constraint
-    where conname = 'bank_accounts_user_id_account_id_fkey'
-) as bank_account_fk_present;
+select is(
+    (select count(*)::integer
+     from app_private.user_profiles
+     where user_id = '11111111-1111-1111-1111-111111111111'),
+    1,
+    'authenticated bootstrap creates private user profile'
+);
 
--- Local catalogs remain local in this phase: no server FK to categories/institutions.
-select count(*) = 0 as no_server_fk_to_local_catalogs
-from pg_constraint
-where contype = 'f'
-  and (
-    pg_get_constraintdef(oid) ilike '%categories%'
-    or pg_get_constraintdef(oid) ilike '%institutions%'
-  );
+select ok(
+    exists (
+        select 1
+        from pg_constraint
+        where conname = 'bank_accounts_user_id_account_id_fkey'
+    ),
+    'bank account storage keeps composite owner/account FK'
+);
+
+select * from finish();
 
 rollback;

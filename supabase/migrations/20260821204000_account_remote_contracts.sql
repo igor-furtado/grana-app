@@ -1,53 +1,71 @@
 -- Ticket #19 rollback manual:
--- 1. grant insert, update, delete on table public.accounts to authenticated;
--- 2. grant insert, update, delete on table public.bank_accounts to authenticated;
--- 3. grant insert, update, delete on table public.credit_cards to authenticated;
--- 4. grant insert, update, delete on table public.credit_card_cycle_configs to authenticated;
+-- 1. grant insert, update, delete on table app_private.accounts to authenticated;
+-- 2. grant insert, update, delete on table app_private.bank_accounts to authenticated;
+-- 3. grant insert, update, delete on table app_private.credit_cards to authenticated;
+-- 4. grant insert, update, delete on table app_private.credit_card_cycle_configs to authenticated;
 -- 5. revoke execute on function api.v1_create_account(text, bigint, boolean, uuid, text, text, text, text, bigint, integer, integer) from authenticated;
 -- 6. revoke execute on function api.v1_update_account(uuid, text, bigint, boolean, uuid, text, text, text, text, bigint, integer, integer, timestamptz) from authenticated;
 -- 7. revoke execute on function api.v1_delete_account(uuid) from authenticated;
 -- 8. drop function if exists api.v1_delete_account(uuid);
 -- 9. drop function if exists api.v1_update_account(uuid, text, bigint, boolean, uuid, text, text, text, text, bigint, integer, integer, timestamptz);
 -- 10. drop function if exists api.v1_create_account(text, bigint, boolean, uuid, text, text, text, text, bigint, integer, integer);
--- 11. revoke select on table api.v1_account_records from authenticated;
--- 12. drop view if exists api.v1_account_records;
+-- 11. revoke execute on function api.v1_list_accounts() from authenticated;
+-- 12. drop function if exists api.v1_list_accounts();
 
-create or replace view api.v1_account_records
-with (security_invoker = true) as
-select
-    a.id,
-    a.type,
-    a.initial_balance_cents,
-    a.archived,
-    a.institution_id,
-    a.currency,
-    a.created_at,
-    a.updated_at,
-    b.branch_id,
-    b.account_number,
-    b.created_at as bank_created_at,
-    b.updated_at as bank_updated_at,
-    c.card_last_four,
-    c.credit_limit_cents,
-    c.statement_closing_day,
-    c.payment_due_day,
-    c.created_at as card_created_at,
-    c.updated_at as card_updated_at
-from public.accounts a
-left join public.bank_accounts b
-    on b.user_id = a.user_id
-   and b.account_id = a.id
-left join public.credit_cards c
-    on c.user_id = a.user_id
-   and c.account_id = a.id
-where a.user_id = auth.uid();
-
-revoke all on table api.v1_account_records from public;
-revoke all on table api.v1_account_records from anon;
-revoke all on table api.v1_account_records from authenticated;
-
-grant usage on schema api to authenticated;
-grant select on table api.v1_account_records to authenticated;
+create or replace function api.v1_list_accounts()
+returns table (
+    id uuid,
+    type text,
+    initial_balance_cents bigint,
+    archived boolean,
+    institution_id uuid,
+    currency text,
+    created_at timestamptz,
+    updated_at timestamptz,
+    branch_id text,
+    account_number text,
+    bank_created_at timestamptz,
+    bank_updated_at timestamptz,
+    card_last_four text,
+    credit_limit_cents bigint,
+    statement_closing_day integer,
+    payment_due_day integer,
+    card_created_at timestamptz,
+    card_updated_at timestamptz
+)
+language sql
+security definer
+set search_path = ''
+as $$
+    select
+        a.id,
+        a.type,
+        a.initial_balance_cents,
+        a.archived,
+        a.institution_id,
+        a.currency,
+        a.created_at,
+        a.updated_at,
+        b.branch_id,
+        b.account_number,
+        b.created_at as bank_created_at,
+        b.updated_at as bank_updated_at,
+        c.card_last_four,
+        c.credit_limit_cents,
+        c.statement_closing_day,
+        c.payment_due_day,
+        c.created_at as card_created_at,
+        c.updated_at as card_updated_at
+    from app_private.accounts a
+    left join app_private.bank_accounts b
+        on b.user_id = a.user_id
+       and b.account_id = a.id
+    left join app_private.credit_cards c
+        on c.user_id = a.user_id
+       and c.account_id = a.id
+    where a.user_id = auth.uid()
+    order by a.type asc, a.created_at asc
+$$;
 
 create or replace function api.v1_create_account(
     p_type text,
@@ -111,7 +129,7 @@ begin
         return jsonb_build_object('ok', false, 'code', 'invalid_account_type');
     end if;
 
-    insert into public.accounts (
+    insert into app_private.accounts (
         user_id,
         type,
         initial_balance_cents,
@@ -133,7 +151,7 @@ begin
     returning id into v_account_id;
 
     if p_type = 'checking' then
-        insert into public.bank_accounts (
+        insert into app_private.bank_accounts (
             user_id,
             account_id,
             branch_id,
@@ -149,7 +167,7 @@ begin
             v_now
         );
     else
-        insert into public.credit_cards (
+        insert into app_private.credit_cards (
             user_id,
             account_id,
             card_last_four,
@@ -169,7 +187,7 @@ begin
             v_now
         );
 
-        insert into public.credit_card_cycle_configs (
+        insert into app_private.credit_card_cycle_configs (
             user_id,
             account_id,
             effective_from,
@@ -223,7 +241,7 @@ begin
 
     if not exists (
         select 1
-        from public.accounts a
+        from app_private.accounts a
         where a.user_id = v_user_id
           and a.id = p_account_id
     ) then
@@ -262,7 +280,7 @@ begin
         return jsonb_build_object('ok', false, 'code', 'invalid_account_type');
     end if;
 
-    update public.accounts
+    update app_private.accounts
     set
         type = p_type,
         initial_balance_cents = case when p_type = 'creditCard' then 0 else p_initial_balance_cents end,
@@ -273,20 +291,20 @@ begin
     where user_id = v_user_id
       and id = p_account_id;
 
-    delete from public.credit_card_cycle_configs
+    delete from app_private.credit_card_cycle_configs
     where user_id = v_user_id
       and account_id = p_account_id;
 
-    delete from public.bank_accounts
+    delete from app_private.bank_accounts
     where user_id = v_user_id
       and account_id = p_account_id;
 
-    delete from public.credit_cards
+    delete from app_private.credit_cards
     where user_id = v_user_id
       and account_id = p_account_id;
 
     if p_type = 'checking' then
-        insert into public.bank_accounts (
+        insert into app_private.bank_accounts (
             user_id,
             account_id,
             branch_id,
@@ -302,7 +320,7 @@ begin
             v_now
         );
     else
-        insert into public.credit_cards (
+        insert into app_private.credit_cards (
             user_id,
             account_id,
             card_last_four,
@@ -322,7 +340,7 @@ begin
             v_now
         );
 
-        insert into public.credit_card_cycle_configs (
+        insert into app_private.credit_card_cycle_configs (
             user_id,
             account_id,
             effective_from,
@@ -359,7 +377,7 @@ begin
 
     if not exists (
         select 1
-        from public.accounts a
+        from app_private.accounts a
         where a.user_id = v_user_id
           and a.id = p_account_id
     ) then
@@ -368,30 +386,34 @@ begin
 
     if exists (
         select 1
-        from public.transactions t
+        from app_private.transactions t
         where t.user_id = v_user_id
           and t.account_id = p_account_id
     ) or exists (
         select 1
-        from public.statements s
+        from app_private.statements s
         where s.user_id = v_user_id
           and s.account_id = p_account_id
     ) or exists (
         select 1
-        from public.import_batches ib
+        from app_private.import_batches ib
         where ib.user_id = v_user_id
           and ib.account_id = p_account_id
     ) then
         return jsonb_build_object('ok', false, 'code', 'account_has_financial_history');
     end if;
 
-    delete from public.accounts
+    delete from app_private.accounts
     where user_id = v_user_id
       and id = p_account_id;
 
     return jsonb_build_object('ok', true, 'account_id', p_account_id);
 end;
 $$;
+
+revoke all on function api.v1_list_accounts() from public;
+revoke all on function api.v1_list_accounts() from anon;
+revoke all on function api.v1_list_accounts() from authenticated;
 
 revoke all on function api.v1_create_account(text, bigint, boolean, uuid, text, text, text, text, bigint, integer, integer) from public;
 revoke all on function api.v1_create_account(text, bigint, boolean, uuid, text, text, text, text, bigint, integer, integer) from anon;
@@ -405,11 +427,12 @@ revoke all on function api.v1_delete_account(uuid) from public;
 revoke all on function api.v1_delete_account(uuid) from anon;
 revoke all on function api.v1_delete_account(uuid) from authenticated;
 
+grant execute on function api.v1_list_accounts() to authenticated;
 grant execute on function api.v1_create_account(text, bigint, boolean, uuid, text, text, text, text, bigint, integer, integer) to authenticated;
 grant execute on function api.v1_update_account(uuid, text, bigint, boolean, uuid, text, text, text, text, bigint, integer, integer, timestamptz) to authenticated;
 grant execute on function api.v1_delete_account(uuid) to authenticated;
 
-revoke insert, update, delete on table public.accounts from authenticated;
-revoke insert, update, delete on table public.bank_accounts from authenticated;
-revoke insert, update, delete on table public.credit_cards from authenticated;
-revoke insert, update, delete on table public.credit_card_cycle_configs from authenticated;
+revoke insert, update, delete on table app_private.accounts from authenticated;
+revoke insert, update, delete on table app_private.bank_accounts from authenticated;
+revoke insert, update, delete on table app_private.credit_cards from authenticated;
+revoke insert, update, delete on table app_private.credit_card_cycle_configs from authenticated;
