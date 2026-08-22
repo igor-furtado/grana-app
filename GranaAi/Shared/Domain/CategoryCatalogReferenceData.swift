@@ -1,35 +1,37 @@
 import Foundation
 
-/// Taxonomia padrão de categorias (espelha `CategoriesSeedData.dart` do
-/// projeto anterior do mesmo usuário). Cada categoria raiz tem N subcategorias.
+/// Referência local do catálogo global de categorias mantido no Supabase.
+///
+/// Este arquivo não é fonte de verdade em runtime e não cria categorias. A
+/// migration do backend define o catálogo canônico; esta cópia existe para
+/// testes de consistência de ícones e contratos de slug usados pela UI.
+/// Cada categoria raiz tem N subcategorias.
 ///
 /// Subcategoria sempre herda o `CategoryKind` da raiz — não há mistura de
 /// kinds dentro de uma mesma árvore.
 ///
 /// **`slug` é id estável da raiz.** Resolve duas coisas: (1) lookup do ícone
-/// via `CategoryIcon.forSlug(_:)` sem precisar gravar `icon` no banco,
-/// (2) anchor estável pra IA na Fase 4 (few-shot prompting). O seed deriva
-/// UUIDs canônicos do catálogo a partir desses identificadores estáveis.
+/// via `CategoryIcon.forSlug(_:)` sem depender de IDs do backend,
+/// (2) anchor estável pra IA na Fase 4 (few-shot prompting).
 ///
 /// **Invariante:** ao adicionar uma raiz nova aqui, **DEVE** existir uma
 /// entrada correspondente em `CategoryIcon+Slug.swift` mapeando o slug pro
 /// ícone — caso contrário a UI renderiza sem ícone (silencioso). O teste
-/// `CategorySeedConsistencyTests.everySeedSlugHasIcon` quebra em CI se o
-/// mapping ficar faltando.
-struct CategorySeedDefinition {
+/// `CategoryCatalogReferenceConsistencyTests.everyCatalogRootHasIcon` quebra em
+/// CI se o mapping ficar faltando.
+struct CategoryCatalogReference {
     let slug: String
     let name: String
     let kind: CategoryKind
     let subcategories: [String]
 }
 
-// `nonisolated`: acessado de dentro do closure `@Sendable` do `writeTransaction`
-// no Seed — não pode ser MainActor.
-nonisolated enum CategorySeedData {
-    static let categories: [CategorySeedDefinition] = [
+// `nonisolated`: usado por testes e mappers sem depender do MainActor global.
+nonisolated enum CategoryCatalogReferenceData {
+    static let categories: [CategoryCatalogReference] = [
         // MARK: - Receitas
 
-        CategorySeedDefinition(slug: "renda-e-pagamentos", name: "Renda e Pagamentos", kind: .income, subcategories: [
+        CategoryCatalogReference(slug: "renda-e-pagamentos", name: "Renda e Pagamentos", kind: .income, subcategories: [
             "Salário",
             "Freelance",
             "13º Salário",
@@ -44,7 +46,7 @@ nonisolated enum CategorySeedData {
 
         // MARK: - Despesas
 
-        CategorySeedDefinition(slug: "compras", name: "Compras", kind: .expense, subcategories: [
+        CategoryCatalogReference(slug: "compras", name: "Compras", kind: .expense, subcategories: [
             "Roupas e Calçados",
             "Acessórios e Joias",
             "Presentes",
@@ -52,20 +54,20 @@ nonisolated enum CategorySeedData {
             "Hobbies e Coleções",
         ]),
 
-        CategorySeedDefinition(slug: "cuidados-pessoais", name: "Cuidados Pessoais", kind: .expense, subcategories: [
+        CategoryCatalogReference(slug: "cuidados-pessoais", name: "Cuidados Pessoais", kind: .expense, subcategories: [
             "Barbearia",
             "Massagem",
             "Cosméticos e Higiene",
         ]),
 
-        CategorySeedDefinition(slug: "mobilidade", name: "Mobilidade", kind: .expense, subcategories: [
+        CategoryCatalogReference(slug: "mobilidade", name: "Mobilidade", kind: .expense, subcategories: [
             "Uber e 99",
             "Táxi",
             "Transporte Público",
             "Pedágio",
         ]),
 
-        CategorySeedDefinition(slug: "moto", name: "Moto", kind: .expense, subcategories: [
+        CategoryCatalogReference(slug: "moto", name: "Moto", kind: .expense, subcategories: [
             "Combustível",
             "Manutenção e Mecânica",
             "Estacionamento",
@@ -75,7 +77,7 @@ nonisolated enum CategorySeedData {
             "Equipamentos e Acessórios",
         ]),
 
-        CategorySeedDefinition(slug: "viagem", name: "Viagem", kind: .expense, subcategories: [
+        CategoryCatalogReference(slug: "viagem", name: "Viagem", kind: .expense, subcategories: [
             "Passagens Aéreas",
             "Hospedagem",
             "Pacotes de Viagem",
@@ -85,7 +87,7 @@ nonisolated enum CategorySeedData {
             "Câmbio",
         ]),
 
-        CategorySeedDefinition(
+        CategoryCatalogReference(
             slug: "entretenimento",
             name: "Entretenimento",
             kind: .expense,
@@ -97,7 +99,7 @@ nonisolated enum CategorySeedData {
             ]
         ),
 
-        CategorySeedDefinition(
+        CategoryCatalogReference(
             slug: "festas",
             name: "Festas",
             kind: .expense,
@@ -109,7 +111,7 @@ nonisolated enum CategorySeedData {
             ]
         ),
 
-        CategorySeedDefinition(
+        CategoryCatalogReference(
             slug: "danca",
             name: "Dança",
             kind: .expense,
@@ -121,12 +123,12 @@ nonisolated enum CategorySeedData {
             ]
         ),
 
-        CategorySeedDefinition(slug: "trabalho", name: "Trabalho", kind: .expense, subcategories: [
+        CategoryCatalogReference(slug: "trabalho", name: "Trabalho", kind: .expense, subcategories: [
             "Hardware",
             "Conferências e Eventos Tech",
         ]),
 
-        CategorySeedDefinition(slug: "educacao", name: "Educação", kind: .expense, subcategories: [
+        CategoryCatalogReference(slug: "educacao", name: "Educação", kind: .expense, subcategories: [
             "Mensalidades",
             "Cursos",
             "Certificações",
@@ -134,7 +136,7 @@ nonisolated enum CategorySeedData {
             "Material Escolar",
         ]),
 
-        CategorySeedDefinition(
+        CategoryCatalogReference(
             slug: "alimentacao",
             name: "Alimentação",
             kind: .expense,
@@ -151,7 +153,7 @@ nonisolated enum CategorySeedData {
             ]
         ),
 
-        CategorySeedDefinition(slug: "moradia", name: "Moradia", kind: .expense, subcategories: [
+        CategoryCatalogReference(slug: "moradia", name: "Moradia", kind: .expense, subcategories: [
             "Aluguel",
             "Entrada e Encargos",
             "Condomínio",
@@ -168,7 +170,7 @@ nonisolated enum CategorySeedData {
             "Ferramentas",
         ]),
 
-        CategorySeedDefinition(slug: "streaming-e-apps", name: "Streaming e Apps", kind: .expense, subcategories: [
+        CategoryCatalogReference(slug: "streaming-e-apps", name: "Streaming e Apps", kind: .expense, subcategories: [
             "Streaming de Vídeo",
             "Streaming de Música",
             "IA e Produtividade",
@@ -176,19 +178,19 @@ nonisolated enum CategorySeedData {
             "Jogos",
         ]),
 
-        CategorySeedDefinition(slug: "conectividade", name: "Conectividade", kind: .expense, subcategories: [
+        CategoryCatalogReference(slug: "conectividade", name: "Conectividade", kind: .expense, subcategories: [
             "Internet Banda Larga",
             "Celular",
         ]),
 
-        CategorySeedDefinition(slug: "exercicios", name: "Exercícios", kind: .expense, subcategories: [
+        CategoryCatalogReference(slug: "exercicios", name: "Exercícios", kind: .expense, subcategories: [
             "Academia",
             "Personal Trainer",
             "Crossfit",
             "Pilates",
         ]),
 
-        CategorySeedDefinition(
+        CategoryCatalogReference(
             slug: "servicos-profissionais",
             name: "Serviços Profissionais",
             kind: .expense,
@@ -200,7 +202,7 @@ nonisolated enum CategorySeedData {
             ]
         ),
 
-        CategorySeedDefinition(slug: "saude", name: "Saúde", kind: .expense, subcategories: [
+        CategoryCatalogReference(slug: "saude", name: "Saúde", kind: .expense, subcategories: [
             "Plano de Saúde",
             "Consultas Médicas",
             "Consultas Dentárias",
@@ -217,7 +219,7 @@ nonisolated enum CategorySeedData {
             "Suplementos",
         ]),
 
-        CategorySeedDefinition(
+        CategoryCatalogReference(
             slug: "investimentos",
             name: "Investimentos",
             kind: .expense,
@@ -235,7 +237,7 @@ nonisolated enum CategorySeedData {
             ]
         ),
 
-        CategorySeedDefinition(slug: "impostos", name: "Impostos", kind: .expense, subcategories: [
+        CategoryCatalogReference(slug: "impostos", name: "Impostos", kind: .expense, subcategories: [
             "Imposto de Renda",
             "DAS",
             "INSS Autônomo",
@@ -246,18 +248,18 @@ nonisolated enum CategorySeedData {
             "IOF",
         ]),
 
-        CategorySeedDefinition(slug: "saques", name: "Saques", kind: .expense, subcategories: [
+        CategoryCatalogReference(slug: "saques", name: "Saques", kind: .expense, subcategories: [
             "Saque em Agência",
             "Taxa de Saque",
         ]),
 
-        CategorySeedDefinition(slug: "nao-classificado", name: "Não Classificado", kind: .expense, subcategories: [
+        CategoryCatalogReference(slug: "nao-classificado", name: "Não Classificado", kind: .expense, subcategories: [
             "Pendente de Revisão",
         ]),
 
         // MARK: - Transferências
 
-        CategorySeedDefinition(slug: "transferencias", name: "Transferências", kind: .transfer, subcategories: [
+        CategoryCatalogReference(slug: "transferencias", name: "Transferências", kind: .transfer, subcategories: [
             "PIX Enviado",
             "PIX Recebido",
             "TED Enviada",

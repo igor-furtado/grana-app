@@ -6,9 +6,9 @@ import Foundation
 /// `Double` é IEEE-754 binário — `0.1 + 0.2 == 0.30000000000000004`. Em
 /// finanças isso vira erro acumulado em totalizações. `Decimal` representa
 /// números em base 10 (até 38 dígitos) e é exato para as quatro operações
-/// quando os operandos cabem na precisão. No SQLite armazenamos como
-/// **inteiro de centavos** (ver `Converters`) porque `real` (Double)
-/// perderia a precisão de novo.
+/// quando os operandos cabem na precisão. No backend armazenamos como
+/// **inteiro de centavos** (ver `Converters`) porque `Double` perderia a
+/// precisão de novo.
 struct Transaction: Identifiable, Codable, Hashable {
     let id: UUID
     var accountId: UUID

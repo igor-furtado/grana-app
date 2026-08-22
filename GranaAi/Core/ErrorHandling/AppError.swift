@@ -2,10 +2,10 @@ import Foundation
 
 /// Protocolo opcional pra erros que querem controlar o **título** exibido no
 /// toast global. Sem implementar, o `NoticeCenter` cai num título genérico
-/// derivado do tipo do erro ("DatabaseError", "ImportError", …).
+/// derivado do tipo do erro ("ImportError", "AIError", …).
 ///
 /// A *mensagem* sempre vem de `LocalizedError.errorDescription`, então os
-/// enums de domínio já existentes (`DatabaseError`, `ImportError`, `AIError`,
+/// enums de domínio já existentes (`ImportError`, `AIError`,
 /// `CategorizationError`) funcionam sem precisar conformar a este protocolo.
 protocol UserFacingError: LocalizedError {
     /// Cabeçalho curto do toast. Padrão: nome legível do caso.
@@ -114,7 +114,6 @@ struct AppErrorPresentation: Equatable {
     /// rótulos em PT-BR; tipos desconhecidos viram "Erro inesperado".
     private static func defaultTitle(for error: Error) -> String {
         switch error {
-        case is DatabaseError: return "Erro no banco"
         case is ImportError: return "Erro na importação"
         case is AppConfigurationError: return "Erro de configuração"
         case is AIError: return "Erro na IA"

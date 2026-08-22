@@ -1,12 +1,8 @@
 import Foundation
-import OSLog
 
 /// Composition Root da camada de dados online-only. Concentra repositories e
 /// serviços remotos expostos pras Stores.
 final class AppContainer {
-    private static let legacyDatabaseFilename = "grana_ai.sqlite"
-    private static let legacyDatabaseCleanupDefaultsKey = "GranaAi.didCleanupLegacyLocalDatabase"
-
     private let authClient: (any AuthClientProtocol)?
     let categoryCatalog: any CategoryCatalogRepositoryProtocol
     let institutionCatalog: any InstitutionCatalogRepositoryProtocol
@@ -123,35 +119,7 @@ final class AppContainer {
     }
 
     static func setup(authClient: (any AuthClientProtocol)? = nil) -> AppContainer {
-        cleanupLegacyDatabaseIfNeeded()
         return AppContainer(authClient: authClient)
-    }
-
-    /// Limpa artefatos do banco financeiro legado no primeiro boot da versão
-    /// online-only. Depois disso o app não volta a criar esses arquivos.
-    private static func cleanupLegacyDatabaseIfNeeded() {
-        guard !UserDefaults.standard.bool(forKey: legacyDatabaseCleanupDefaultsKey) else { return }
-        deleteLegacyDatabaseFiles()
-        UserDefaults.standard.set(true, forKey: legacyDatabaseCleanupDefaultsKey)
-    }
-
-    private static func deleteLegacyDatabaseFiles() {
-        let fm = FileManager.default
-        guard let appSupport = try? fm.url(
-            for: .applicationSupportDirectory,
-            in: .userDomainMask,
-            appropriateFor: nil,
-            create: false
-        ) else {
-            log.database.error("Não foi possível resolver diretório do banco pra wipe.")
-            return
-        }
-
-        let dir = appSupport.appendingPathComponent("databases", isDirectory: true)
-        for suffix in ["", "-wal", "-shm"] {
-            let url = dir.appendingPathComponent(legacyDatabaseFilename + suffix)
-            try? fm.removeItem(at: url)
-        }
     }
 
     static func placeholder() -> AppContainer {

@@ -1,7 +1,8 @@
 import Foundation
 
-/// Resolver de janela de Fatura: dado o ciclo de fechamento configurado num
-/// cartão (`statementClosingDay`/`paymentDueDay`) e a data de uma transação,
+/// Resolver de janela de Fatura no domínio de cartão: dado o ciclo de
+/// fechamento configurado num cartão (`statementClosingDay`/`paymentDueDay`) e
+/// a data de uma transação,
 /// devolve `(closingDate, dueDate)` da Fatura que cobre aquela transação.
 ///
 /// **Regra do fechamento:** a Fatura "fecha em X" inclui transações de
