@@ -40,12 +40,14 @@ final class AccountStore {
             async let accountSnapshot = container.remoteAccounts.load()
             async let institutionCatalog = container.institutionCatalog.load()
             async let statementSnapshot = container.remoteStatements.load()
-            async let balanceRows = container.accounts.getBalances()
-            let (snapshot, institutions, statementSnapshotValue, balances) = try await (
+            async let categoryCatalog = container.categoryCatalog.load()
+            async let remoteTransactions = container.remoteTransactions.loadAll()
+            let (snapshot, institutions, statementSnapshotValue, categories, loadedTransactions) = try await (
                 accountSnapshot,
                 institutionCatalog,
                 statementSnapshot,
-                balanceRows
+                categoryCatalog,
+                remoteTransactions
             )
 
             accounts = snapshot.accounts
@@ -53,7 +55,11 @@ final class AccountStore {
             creditCards = snapshot.creditCards
             self.institutions = institutions
             statements = statementSnapshotValue.statements
-            self.balances = balances
+            balances = Self.calculateBalances(
+                accounts: snapshot.accounts,
+                categories: categories,
+                transactions: loadedTransactions
+            )
             lastError = nil
         } catch {
             lastError = error
@@ -199,6 +205,32 @@ final class AccountStore {
                 )
             }
         try await update(copy, bankDetails: bank, creditCardDetails: card)
+    }
+
+    private static func calculateBalances(
+        accounts: [Account],
+        categories: [Category],
+        transactions: [Transaction]
+    ) -> [UUID: Decimal] {
+        let categoryKinds = Dictionary(uniqueKeysWithValues: categories.map { ($0.id, $0.kind) })
+        var balances = Dictionary(uniqueKeysWithValues: accounts.map { ($0.id, $0.initialBalance) })
+
+        for transaction in transactions {
+            guard let kind = categoryKinds[transaction.categoryId] else { continue }
+
+            switch kind {
+            case .income:
+                balances[transaction.accountId, default: 0] += transaction.amount
+            case .expense:
+                balances[transaction.accountId, default: 0] -= transaction.amount
+            case .transfer:
+                guard let destinationAccountId = transaction.destinationAccountId else { continue }
+                balances[transaction.accountId, default: 0] -= transaction.amount
+                balances[destinationAccountId, default: 0] += transaction.amount
+            }
+        }
+
+        return balances
     }
 }
 

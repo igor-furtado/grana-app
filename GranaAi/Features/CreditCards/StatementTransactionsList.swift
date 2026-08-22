@@ -133,7 +133,7 @@ struct StatementTransactionsList: View {
     private func loadCategoriesOnce() async {
         guard categoryById.isEmpty else { return }
         do {
-            let categories = try await container.categories.getAll()
+            let categories = try await container.categoryCatalog.load()
             categoryById = Dictionary(uniqueKeysWithValues: categories.map { ($0.id, $0) })
         } catch {
             // Não bloqueante — sem categoria a row mostra só descrição.

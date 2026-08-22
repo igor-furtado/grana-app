@@ -13,6 +13,8 @@ import OSLog
 @MainActor
 @Observable
 final class ImportStore {
+    static let didMutateImportsNotification = Notification.Name("ImportStore.didMutateImports")
+
     enum Phase: Equatable {
         case idle
         /// Após o file picker, antes do `ofxReview`. Parsing + dedup
@@ -60,7 +62,8 @@ final class ImportStore {
     // nenhum caller fora do store precisa ler — fluxo é confirm → categorize
     // → finalize, todo dentro deste arquivo.
     private var pendingDrafts: [TransactionDraft] = []
-    private var pendingBatchesWithDrafts: [(batch: ImportBatch, draftIds: [UUID])] = []
+    private var pendingBatches: [PendingImportBatch] = []
+    private let makeIdempotencyKey: @Sendable () -> UUID
 
     /// Contexto do arquivo aberto. Fica fora do `Phase` pra sobreviver às
     /// transições.
@@ -92,9 +95,13 @@ final class ImportStore {
     /// no meio do `.categorizing` deixa um loop rodando indefinidamente.
     private var categorizationWaitTask: Task<Void, Never>?
 
-    init(container: AppContainer) {
+    init(
+        container: AppContainer,
+        makeIdempotencyKey: @escaping @Sendable () -> UUID = UUID.init
+    ) {
         self.container = container
         self.categorization = CategorizationStore(container: container)
+        self.makeIdempotencyKey = makeIdempotencyKey
     }
 
     // MARK: - Categorização pré-commit (Fase 4)
@@ -162,34 +169,44 @@ final class ImportStore {
     /// Por isso aqui é `getAll` sequencial (garante populado ao retornar), não
     /// stream. A tela de histórico usa `start()` em vez disso.
     func loadInitialData() async {
+        async let institutionsTask = container.institutionCatalog.load()
+        async let categoriesTask = container.categoryCatalog.load()
+
         do {
-            accounts = try await container.accounts.getAll()
-            institutions = try await container.institutionCatalog.load()
-            bankDetails = try await container.accounts.getAllBankDetails()
-            creditCards = try await container.accounts.getAllCreditCardDetails()
-            categories = try await container.categoryCatalog.load()
-            batches = try await container.importBatches.getAll()
+            institutions = try await institutionsTask
+        } catch {
+            NoticeCenter.shared.report(error)
+        }
+
+        do {
+            categories = try await categoriesTask
+        } catch {
+            NoticeCenter.shared.report(error)
+        }
+
+        do {
+            let accountSnapshot = try await container.remoteAccounts.load()
+            accounts = accountSnapshot.accounts
+            bankDetails = accountSnapshot.bankDetails
+            creditCards = accountSnapshot.creditCards
+        } catch {
+            NoticeCenter.shared.report(error)
+        }
+
+        do {
+            batches = try await container.remoteImports.loadBatches()
         } catch {
             NoticeCenter.shared.report(error)
         }
     }
 
-    /// Abre os watch streams que alimentam a tela de Histórico de Importações
-    /// (`ImportHistoryView`). Diferente de `loadInitialData()`, aqui a lista de
-    /// lotes + os lookups (conta/instituição/details, pra nome e logo de cada
-    /// card) ficam **reativos**: concluir uma importação no wizard — que roda
-    /// numa instância separada do store — ou desfazer um lote reflete na hora,
-    /// sem refresh manual.
-    ///
-    /// Pattern idêntico a `AccountStore.start()`; o `.task` da View cancela os
-    /// streams ao sair.
+    /// Snapshot explícito que alimenta a tela de Histórico de Importações.
     func start() async {
-        await refreshCatalogs()
-        async let b: Void = streamBatches()
-        async let a: Void = streamAccounts()
-        async let bd: Void = streamBankDetails()
-        async let cd: Void = streamCreditCards()
-        _ = await (b, a, bd, cd)
+        await refresh()
+    }
+
+    func refresh() async {
+        await loadInitialData()
     }
 
     func refreshCatalogs() async {
@@ -198,50 +215,6 @@ final class ImportStore {
             async let categoriesTask = container.categoryCatalog.load()
             institutions = try await institutionsTask
             categories = try await categoriesTask
-        } catch {
-            NoticeCenter.shared.report(error)
-        }
-    }
-
-    private func streamBatches() async {
-        do {
-            for try await rows in try container.importBatches.watchAll() {
-                batches = rows
-            }
-        } catch is CancellationError {
-        } catch {
-            NoticeCenter.shared.report(error)
-        }
-    }
-
-    private func streamAccounts() async {
-        do {
-            for try await rows in try container.accounts.watchAll() {
-                accounts = rows
-            }
-        } catch is CancellationError {
-        } catch {
-            NoticeCenter.shared.report(error)
-        }
-    }
-
-    private func streamBankDetails() async {
-        do {
-            for try await rows in try container.accounts.watchAllBankDetails() {
-                bankDetails = rows
-            }
-        } catch is CancellationError {
-        } catch {
-            NoticeCenter.shared.report(error)
-        }
-    }
-
-    private func streamCreditCards() async {
-        do {
-            for try await rows in try container.accounts.watchAllCreditCardDetails() {
-                creditCards = rows
-            }
-        } catch is CancellationError {
         } catch {
             NoticeCenter.shared.report(error)
         }
@@ -262,8 +235,11 @@ final class ImportStore {
     }
 
     func refreshBatches() async {
-        do { batches = try await container.importBatches.getAll() }
-        catch { NoticeCenter.shared.report(error) }
+        do {
+            batches = try await container.remoteImports.loadBatches()
+        } catch {
+            NoticeCenter.shared.report(error)
+        }
     }
 
     func account(for id: UUID) -> Account? {
@@ -357,7 +333,7 @@ final class ImportStore {
         // transações isso é a diferença entre <1s e 30+s.
         let existingExternalIds: Set<String>
         if let matchedAccountId {
-            existingExternalIds = (try? await container.transactions.externalIds(forAccount: matchedAccountId)) ?? []
+            existingExternalIds = (try? await container.remoteTransactions.externalIds(forAccount: matchedAccountId)) ?? []
         } else {
             existingExternalIds = []
         }
@@ -418,12 +394,12 @@ final class ImportStore {
         guard let institution = institutions.institution(code: code, supporting: .ofx) else {
             return nil
         }
-        let existing = try await container.accounts.findByBankIdentity(
-            institutionId: institution.id,
-            branchId: statement.account.branchId,
-            accountNumber: statement.account.accountId
-        )
-        return existing?.id
+        return accounts.first { account in
+            guard account.institutionId == institution.id else { return false }
+            guard let details = bankDetails.first(where: { $0.accountId == account.id }) else { return false }
+            return details.accountNumber == statement.account.accountId
+                && details.branchId == statement.account.branchId
+        }?.id
     }
 
     /// Label do banco vindo do OFX pra exibição no header da Section. Usa o
@@ -463,7 +439,7 @@ final class ImportStore {
 
         let existingExternalIds: Set<String>
         if let accountId {
-            existingExternalIds = (try? await container.transactions.externalIds(forAccount: accountId)) ?? []
+            existingExternalIds = (try? await container.remoteTransactions.externalIds(forAccount: accountId)) ?? []
         } else {
             existingExternalIds = []
         }
@@ -605,7 +581,7 @@ final class ImportStore {
     }
 
     private func loadCSVRefundPurchases(accountId: UUID) async {
-        let all = (try? await container.transactions.getAll()) ?? []
+        let all = (try? await container.remoteTransactions.loadAll()) ?? []
         csvRefundPurchases = all.filter { $0.accountId == accountId }
     }
 
@@ -613,7 +589,7 @@ final class ImportStore {
         _ resolution: CSVStatementResolution,
         accountId: UUID
     ) async -> CSVStatementResolution {
-        let existing: Set<String> = (try? await container.transactions.externalIds(forAccount: accountId)) ?? []
+        let existing: Set<String> = (try? await container.remoteTransactions.externalIds(forAccount: accountId)) ?? []
         var updated = resolution
         for idx in updated.rows.indices {
             let isDup = existing.contains(updated.rows[idx].externalId)
@@ -700,7 +676,12 @@ final class ImportStore {
         })
 
         pendingDrafts = drafts
-        pendingBatchesWithDrafts = [(batch, drafts.map(\.id))]
+        pendingBatches = [
+            PendingImportBatch(
+                batch: batch,
+                importFormat: .interCreditCardCSV
+            ),
+        ]
 
         startCategorization()
     }
@@ -739,7 +720,7 @@ final class ImportStore {
         }
 
         let now = Date()
-        var batchesWithDrafts: [(batch: ImportBatch, draftIds: [UUID])] = []
+        var batches: [PendingImportBatch] = []
         var allDrafts: [TransactionDraft] = []
 
         for (resolution, accountId) in resolved {
@@ -770,7 +751,7 @@ final class ImportStore {
                 )
             }
             allDrafts.append(contentsOf: drafts)
-            batchesWithDrafts.append((batch, drafts.map(\.id)))
+            batches.append(PendingImportBatch(batch: batch, importFormat: .ofx))
         }
 
         if allDrafts.isEmpty {
@@ -779,7 +760,7 @@ final class ImportStore {
         }
 
         pendingDrafts = allDrafts
-        pendingBatchesWithDrafts = batchesWithDrafts
+        pendingBatches = batches
 
         startCategorization()
     }
@@ -805,63 +786,33 @@ final class ImportStore {
         phase = .confirming
 
         do {
-            let now = Date()
-
-            // Resolve `fallbackId` pra drafts cuja categoria suggerida não foi
-            // encontrada (paranoia — não deve acontecer).
-            guard let fallbackId = categories.rootCategory(slug: "nao-classificado")?.id else {
-                throw ImportError.unclassifiedCategoryMissing
-            }
-
-            // Monta transactions por batch usando a categoria atual da sugestão.
-            var batchesWithTransactions: [(batch: ImportBatch, transactions: [Transaction])] = []
-            for (batch, draftIds) in pendingBatchesWithDrafts {
-                let draftsForBatch = pendingDrafts.filter { draftIds.contains($0.id) }
-                let txs: [Transaction] = draftsForBatch.map { draft in
-                    let resolved = categorization.resolvedCategory(forTransactionId: draft.id)
-                    return Transaction(
-                        id: draft.id,
-                        accountId: draft.accountId,
-                        categoryId: resolved?.categoryId ?? fallbackId,
-                        subcategoryId: resolved?.subcategoryId,
-                        amount: abs(draft.signedAmount),
-                        occurredAt: draft.occurredAt,
-                        description: draft.description,
-                        notes: draft.notes,
-                        importBatchId: batch.id,
-                        externalId: draft.externalId,
-                        refundOfTransactionId: draft.refundOfTransactionId,
-                        createdAt: now,
-                        updatedAt: now
-                    )
-                }
-                batchesWithTransactions.append((batch, txs))
+            let reviewedRows = pendingDrafts.map { draft in
+                let resolved = categorization.resolvedCategory(forTransactionId: draft.id)
+                return ReviewedImportRow(
+                    draft: draft,
+                    categoryId: resolved?.categoryId,
+                    subcategoryId: resolved?.subcategoryId
+                )
             }
 
             let corrections = categorization.buildPendingCorrections()
             let cacheEntries = categorization.pendingCacheEntries
-
-            do {
-                try await container.transactions.commitImport(
-                    batchesWithTransactions: batchesWithTransactions,
-                    cacheEntries: cacheEntries,
-                    corrections: corrections
-                )
-            } catch {
-                throw ImportError.batchInsertFailed(underlying: error)
-            }
-
-            await refreshBatches()
-
-            let totalRows = batchesWithTransactions.reduce(0) { $0 + $1.transactions.count }
-            let batchIds = batchesWithTransactions.map { $0.batch.id }
+            let input = try Self.buildCommitInput(
+                idempotencyKey: makeIdempotencyKey(),
+                reviewedRows: reviewedRows,
+                pendingBatches: pendingBatches,
+                categories: categories,
+                cacheEntries: cacheEntries,
+                corrections: corrections
+            )
+            let result = try await commitReviewedImport(input: input)
 
             // Limpa estado em voo agora que tudo foi commitado.
             clearPendingState()
 
             log.import
                 .info(
-                    "Import concluído: \(totalRows, privacy: .public) linhas em \(batchIds.count, privacy: .public) lote(s)"
+                    "Import concluído: \(result.importedRowCount, privacy: .public) linhas em \(result.batchIds.count, privacy: .public) lote(s)"
                 )
 
             // Confirmação pelo NoticeCenter (toast verde + botão de undo).
@@ -870,7 +821,7 @@ final class ImportStore {
             // continua ao alcance de um clique sem precisar passar pela tela
             // de histórico.
             //
-            // O closure captura `container.importBatches` direto (não `self`)
+            // O closure captura `container.remoteImports` direto (não `self`)
             // porque a sheet vai fechar, o `ImportStore` do wizard vira
             // candidato a dealloc, e o repository é safe pra usar em qualquer
             // lugar — chamada idempotente do ponto de vista do banco.
@@ -882,19 +833,25 @@ final class ImportStore {
             // de vista do dashboard. Quando virar suporte multi-banco
             // rotineiro, mover pro repo (`deleteMany(ids:)` em
             // `writeTransaction`).
-            let importBatches = container.importBatches
+            let remoteImports = container.remoteImports
+            let duplicateSuffix = if result.duplicateCount > 0 {
+                " \(result.duplicateCount) \(result.duplicateCount == 1 ? "duplicada foi ignorada" : "duplicadas foram ignoradas")."
+            } else {
+                ""
+            }
             NoticeCenter.shared.success(
                 title: "Importação concluída",
-                message: "\(totalRows) \(totalRows == 1 ? "transação importada" : "transações importadas") em \(batchIds.count) \(batchIds.count == 1 ? "lote" : "lotes").",
-                actions: [
+                message: "\(result.importedRowCount) \(result.importedRowCount == 1 ? "transação importada" : "transações importadas") em \(result.batchIds.count) \(result.batchIds.count == 1 ? "lote" : "lotes").\(duplicateSuffix)",
+                actions: result.batchIds.isEmpty ? [] : [
                     NoticeCenter.Action(
-                        title: batchIds.count == 1 ? "Desfazer" : "Desfazer todos",
+                        title: result.batchIds.count == 1 ? "Desfazer" : "Desfazer todos",
                         role: .destructive
                     ) {
                         Task {
-                            for id in batchIds {
+                            for id in result.batchIds {
                                 do {
-                                    try await importBatches.delete(id: id)
+                                    try await remoteImports.delete(batchId: id)
+                                    await Self.notifyImportMutation()
                                 } catch {
                                     NoticeCenter.shared.report(error, title: "Falha ao desfazer importação")
                                 }
@@ -904,7 +861,7 @@ final class ImportStore {
                 ]
             )
 
-            phase = .done(batchIds: batchIds, rowCount: totalRows)
+            phase = .done(batchIds: result.batchIds, rowCount: result.importedRowCount)
         } catch {
             fail(with: error)
         }
@@ -926,18 +883,87 @@ final class ImportStore {
 
     private func clearPendingState() {
         pendingDrafts = []
-        pendingBatchesWithDrafts = []
+        pendingBatches = []
     }
 
     // MARK: - Undo
 
     func undo(batchId: UUID) async {
         do {
-            try await container.importBatches.delete(id: batchId)
-            await refreshBatches()
+            try await container.remoteImports.delete(batchId: batchId)
+            await refresh()
+            await Self.notifyImportMutation()
         } catch {
             NoticeCenter.shared.report(error, title: "Falha ao desfazer importação")
         }
+    }
+
+    func commitReviewedImport(input: ImportCommitInput) async throws -> ImportCommitResult {
+        let result = try await container.remoteImports.commit(input: input)
+        await refresh()
+        await Self.notifyImportMutation()
+        return result
+    }
+
+    static func notifyImportMutation() async {
+        await MainActor.run {
+            NotificationCenter.default.post(name: didMutateImportsNotification, object: nil)
+        }
+    }
+
+    static func buildCommitInput(
+        idempotencyKey: UUID,
+        reviewedRows: [ReviewedImportRow],
+        pendingBatches: [PendingImportBatch],
+        categories: [Category],
+        cacheEntries: [CategorizationPendingCacheEntry],
+        corrections: [CategorizationPendingCorrection]
+    ) throws -> ImportCommitInput {
+        guard let fallbackSlug = categories.rootCategory(slug: "nao-classificado")?.slug else {
+            throw ImportError.unclassifiedCategoryMissing
+        }
+
+        let rootSlugsById = Dictionary(
+            uniqueKeysWithValues: categories
+                .filter { $0.parentId == nil }
+                .compactMap { category in
+                    category.slug.map { (category.id, $0) }
+                }
+        )
+
+        let batchIds = Set(pendingBatches.map(\.batch.id))
+        let rows = reviewedRows
+            .filter { batchIds.contains($0.draft.importBatchId) }
+            .map { row in
+                ImportTransactionCommitInput(
+                    transactionId: row.draft.id,
+                    batchId: row.draft.importBatchId,
+                    categorySlug: row.categoryId.flatMap { rootSlugsById[$0] } ?? fallbackSlug,
+                    subcategoryId: row.subcategoryId,
+                    amount: abs(row.draft.signedAmount),
+                    occurredAt: row.draft.occurredAt,
+                    description: row.draft.description,
+                    notes: row.draft.notes,
+                    externalId: row.draft.externalId,
+                    refundOfTransactionId: row.draft.refundOfTransactionId
+                )
+            }
+
+        return ImportCommitInput(
+            idempotencyKey: idempotencyKey,
+            batches: pendingBatches.map {
+                ImportBatchCommitInput(
+                    batchId: $0.batch.id,
+                    sourceFilename: $0.batch.sourceFilename,
+                    accountId: $0.batch.accountId,
+                    importedAt: $0.batch.importedAt,
+                    importFormat: $0.importFormat
+                )
+            },
+            rows: rows,
+            cacheEntries: cacheEntries.map(ImportCacheEntryCommitInput.init(entry:)),
+            corrections: corrections.map(ImportCorrectionCommitInput.init(correction:))
+        )
     }
 }
 
@@ -1018,6 +1044,17 @@ struct CSVPreviewRow: Identifiable, Hashable {
     let externalId: String
     var isDuplicate: Bool
     var selected: Bool
+}
+
+struct PendingImportBatch: Hashable {
+    let batch: ImportBatch
+    let importFormat: InstitutionImportFormat
+}
+
+struct ReviewedImportRow: Hashable {
+    let draft: TransactionDraft
+    let categoryId: UUID?
+    let subcategoryId: UUID?
 }
 
 struct OFXPreviewRow: Identifiable, Hashable {

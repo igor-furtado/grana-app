@@ -53,18 +53,6 @@ enum AppConfigurationValidator {
         )
     }
 
-    nonisolated static func powerSyncURL(_ rawValue: String) throws -> String {
-        _ = try validatedURL(
-            rawValue,
-            key: "Config.powerSyncURL",
-            placeholderMarkers: [
-                "your_instance",
-                "your-instance",
-            ]
-        )
-        return rawValue
-    }
-
     private nonisolated static func validatedURL(
         _ rawValue: String,
         key: String,

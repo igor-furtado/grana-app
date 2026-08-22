@@ -7,7 +7,6 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
-		28AC0A052FB3C9F8008BAD35 /* PowerSync in Frameworks */ = {isa = PBXBuildFile; productRef = 28AC0A042FB3C9F8008BAD35 /* PowerSync */; };
 		28AC0A0C2FB3CA67008BAD35 /* Auth in Frameworks */ = {isa = PBXBuildFile; productRef = 28AC0A0B2FB3CA67008BAD35 /* Auth */; };
 		28AC0A0E2FB3CA67008BAD35 /* Functions in Frameworks */ = {isa = PBXBuildFile; productRef = 28AC0A0D2FB3CA67008BAD35 /* Functions */; };
 		28AC0A102FB3CA67008BAD35 /* PostgREST in Frameworks */ = {isa = PBXBuildFile; productRef = 28AC0A0F2FB3CA67008BAD35 /* PostgREST */; };
@@ -52,7 +51,6 @@
 				28AC0A122FB3CA67008BAD35 /* Realtime in Frameworks */,
 				28AC0A102FB3CA67008BAD35 /* PostgREST in Frameworks */,
 				28AC0A0E2FB3CA67008BAD35 /* Functions in Frameworks */,
-				28AC0A052FB3C9F8008BAD35 /* PowerSync in Frameworks */,
 				28AC0A142FB3CA67008BAD35 /* Storage in Frameworks */,
 				28AC0A162FB3CA67008BAD35 /* Supabase in Frameworks */,
 				28AC0A0C2FB3CA67008BAD35 /* Auth in Frameworks */,
@@ -108,7 +106,6 @@
 			);
 			name = GranaAi;
 			packageProductDependencies = (
-				28AC0A042FB3C9F8008BAD35 /* PowerSync */,
 				28AC0A0B2FB3CA67008BAD35 /* Auth */,
 				28AC0A0D2FB3CA67008BAD35 /* Functions */,
 				28AC0A0F2FB3CA67008BAD35 /* PostgREST */,
@@ -172,7 +169,6 @@
 			mainGroup = 2898A1AB2FB3C58D0070C51B;
 			minimizedProjectReferenceProxies = 1;
 			packageReferences = (
-				28AC0A032FB3C9F8008BAD35 /* XCRemoteSwiftPackageReference "powersync-swift" */,
 				28AC0A0A2FB3CA67008BAD35 /* XCRemoteSwiftPackageReference "supabase-swift" */,
 			);
 			preferredProjectObjectVersion = 77;
@@ -542,14 +538,6 @@
 /* End XCConfigurationList section */
 
 /* Begin XCRemoteSwiftPackageReference section */
-		28AC0A032FB3C9F8008BAD35 /* XCRemoteSwiftPackageReference "powersync-swift" */ = {
-			isa = XCRemoteSwiftPackageReference;
-			repositoryURL = "https://github.com/powersync-ja/powersync-swift";
-			requirement = {
-				kind = upToNextMajorVersion;
-				minimumVersion = 1.13.1;
-			};
-		};
 		28AC0A0A2FB3CA67008BAD35 /* XCRemoteSwiftPackageReference "supabase-swift" */ = {
 			isa = XCRemoteSwiftPackageReference;
 			repositoryURL = "https://github.com/supabase/supabase-swift";
@@ -561,11 +549,6 @@
 /* End XCRemoteSwiftPackageReference section */
 
 /* Begin XCSwiftPackageProductDependency section */
-		28AC0A042FB3C9F8008BAD35 /* PowerSync */ = {
-			isa = XCSwiftPackageProductDependency;
-			package = 28AC0A032FB3C9F8008BAD35 /* XCRemoteSwiftPackageReference "powersync-swift" */;
-			productName = PowerSync;
-		};
 		28AC0A0B2FB3CA67008BAD35 /* Auth */ = {
 			isa = XCSwiftPackageProductDependency;
 			package = 28AC0A0A2FB3CA67008BAD35 /* XCRemoteSwiftPackageReference "supabase-swift" */;

@@ -45,44 +45,42 @@ final class CategorizationService: Sendable {
     struct DraftClassificationResult {
         let suggestions: [CategorizationSuggestion]
         /// Uma entrada por hash distinto que veio da IA com confidence ≥
-        /// absoluteMinimum. Cache hits não geram nova entrada (já existem).
-        let pendingCacheEntries: [CategorizationCacheEntry]
+        /// absoluteMinimum. Usa o contrato remoto estável consumido pelo
+        /// backend no commit final.
+        let pendingCacheEntries: [CategorizationPendingCacheEntry]
         let hadHarnessFailures: Bool
     }
 
     private struct AIChunkResult {
         var suggestions: [CategorizationSuggestion]
-        var cacheEntries: [CategorizationCacheEntry]
+        var cacheEntries: [CategorizationPendingCacheEntry]
         var unresolvedDrafts: [TransactionDraft]
         var failedChunks: Int
     }
 
-    private let client: CategorizationAPIClient
-    private let transactions: TransactionRepository
-    private let categories: CategoryRepository
-    private let accounts: AccountRepository
-    private let institutions: InstitutionRepository
-    private let cache: CategorizationCacheRepository
+    private let remote: any CategorizationRemoteRepositoryProtocol
+    private let transactions: any TransactionRemoteRepositoryProtocol
+    private let categories: any CategoryCatalogRepositoryProtocol
+    private let accounts: any AccountRemoteRepositoryProtocol
+    private let institutions: any InstitutionCatalogRepositoryProtocol
     /// Nome do modelo usado pra lookup/escrita no cache. Exposto pra que o
     /// Store grave entries de correção com o mesmo identificador que o
     /// service usa pra buscar — divergência aqui causa cache miss silencioso.
     let model: String
 
     init(
-        client: CategorizationAPIClient,
-        transactions: TransactionRepository,
-        categories: CategoryRepository,
-        accounts: AccountRepository,
-        institutions: InstitutionRepository,
-        cache: CategorizationCacheRepository,
+        remote: any CategorizationRemoteRepositoryProtocol,
+        categories: any CategoryCatalogRepositoryProtocol,
+        institutions: any InstitutionCatalogRepositoryProtocol,
+        accounts: any AccountRemoteRepositoryProtocol,
+        transactions: any TransactionRemoteRepositoryProtocol,
         model: String = "openai/gpt-5.4-mini"
     ) {
-        self.client = client
-        self.transactions = transactions
+        self.remote = remote
         self.categories = categories
-        self.accounts = accounts
         self.institutions = institutions
-        self.cache = cache
+        self.accounts = accounts
+        self.transactions = transactions
         self.model = model
     }
 
@@ -125,15 +123,16 @@ final class CategorizationService: Sendable {
         }
         let startedAt = Date()
 
-        async let allCategoriesTask = categories.getAll()
-        async let allAccountsTask = accounts.getAll()
-        async let allInstitutionsTask = institutions.getAll()
-        let (allCategories, allAccounts, allInstitutions) =
+        async let allCategoriesTask = categories.load()
+        async let accountSnapshotTask = accounts.load()
+        async let allInstitutionsTask = institutions.load()
+        let (allCategories, accountSnapshot, allInstitutions) =
             try await (
                 allCategoriesTask,
-                allAccountsTask,
+                accountSnapshotTask,
                 allInstitutionsTask
             )
+        let allAccounts = accountSnapshot.accounts
 
         let institutionNamesById: [UUID: String] = Dictionary(
             uniqueKeysWithValues: allInstitutions.map { ($0.id, $0.name) }
@@ -141,8 +140,14 @@ final class CategorizationService: Sendable {
         let ownAccounts: [CategorizationPrompt.OwnAccountInfo] = allAccounts
             .filter { !$0.archived }
             .map { account in
-                CategorizationPrompt.OwnAccountInfo(
-                    name: account.institutionId.flatMap { institutionNamesById[$0] } ?? account.type.displayName,
+                let displayName = Account.displayName(
+                    for: account,
+                    institutions: allInstitutions,
+                    bankAccounts: accountSnapshot.bankDetails,
+                    creditCards: accountSnapshot.creditCards
+                )
+                return CategorizationPrompt.OwnAccountInfo(
+                    name: displayName,
                     typeDisplay: account.type.displayName,
                     institutionName: account.institutionId.flatMap { institutionNamesById[$0] }
                 )
@@ -154,9 +159,17 @@ final class CategorizationService: Sendable {
         // "Desconhecida". `displayName(for:)` já carrega o tipo no formato curto
         // (ex: "Inter Cartão · ••••1234"), então não concatenamos o
         // `type.displayName` de novo — economiza tokens e evita ruído.
-        let accountContextById: [UUID: String] = Dictionary(
-            uniqueKeysWithValues: allAccounts.map { ($0.id, $0.type.displayName) }
-        )
+        let accountContextById: [UUID: String] = Dictionary(uniqueKeysWithValues: allAccounts.map { account in
+            (
+                account.id,
+                Account.displayName(
+                    for: account,
+                    institutions: allInstitutions,
+                    bankAccounts: accountSnapshot.bankDetails,
+                    creditCards: accountSnapshot.creditCards
+                )
+            )
+        })
 
         let taxonomy = Taxonomy(categories: allCategories)
         guard let fallbackId = taxonomy.fallbackCategoryId else {
@@ -186,7 +199,7 @@ final class CategorizationService: Sendable {
         var fromAI = 0
         var fromFallback = 0
         var failedChunks = 0
-        var pendingCacheEntries: [String: CategorizationCacheEntry] = [:]
+        var pendingCacheEntries: [String: CategorizationPendingCacheEntry] = [:]
 
         if !pendingForAI.isEmpty {
             progress?(.aiCallStarted(misses: pendingForAI.count))
@@ -271,22 +284,19 @@ final class CategorizationService: Sendable {
     // MARK: - Pós-commit (Settings: recategorizar antigas)
 
     /// Re-classifica todas as transações que ainda estão em "Não Classificado"
-    /// no banco. Diferente do `classifyDrafts`, este caminho persiste o cache
-    /// imediatamente (não há "cancelar import" pra invalidar). A aplicação
-    /// nas transactions é por confirmação explícita do usuário no modal de
-    /// revisão — alinhado com o resto do app, onde mudança no banco só
-    /// acontece depois de "Confirmar".
+    /// no backend. A aplicação nas transactions segue por confirmação
+    /// explícita do usuário no modal de revisão.
     func recategorizeUnclassified(
         thresholds: ConfidenceThresholds = .default,
         progress: ProgressHandler? = nil
     ) async throws -> [CategorizationSuggestion] {
-        let allCats = try await categories.getAll()
+        let allCats = try await categories.load()
         let taxonomy = Taxonomy(categories: allCats)
         guard let fallbackId = taxonomy.fallbackCategoryId else {
             throw CategorizationError.categoryNotFound(slug: "nao-classificado")
         }
 
-        let all = try await transactions.getAll()
+        let all = try await transactions.loadAll()
         let pending = all.filter { $0.categoryId == fallbackId }
         guard !pending.isEmpty else {
             progress?(.finished(total: 0, fromCache: 0, fromAI: 0, fallback: 0))
@@ -307,64 +317,28 @@ final class CategorizationService: Sendable {
                 occurredAt: tx.occurredAt,
                 description: tx.description,
                 notes: tx.notes,
-                externalId: tx.externalId
+                externalId: tx.externalId,
+                destinationAccountId: tx.destinationAccountId,
+                refundOfTransactionId: tx.refundOfTransactionId
             )
         }
 
         let result = try await classifyDrafts(drafts, thresholds: thresholds, progress: progress)
 
-        // Persiste cache entries (não há "cancelar import" nesse caminho — o
-        // usuário disparou o opt-in explicitamente).
-        try await cache.upsertMany(result.pendingCacheEntries)
-
         return result.suggestions
     }
 
-    /// Aplica correção manual pós-commit (usuário corrige uma sugestão de
-    /// `recategorizeUnclassified`). Insere correction + refresca cache +
-    /// atualiza transaction em **uma única `writeTransaction`** — sem isso,
-    /// falha entre os passos deixa correção apontando pra categoria que não
-    /// está na transação nem no cache (envenenando os few-shots futuros).
+    /// Aplica correção manual pós-commit reaproveitando o contrato remoto de
+    /// update de transação.
     func applyCorrectionPostCommit(
         suggestion: CategorizationSuggestion,
         correctedCategoryId: UUID,
         correctedSubcategoryId: UUID?
     ) async throws {
-        let normalized = DescriptionNormalizer.normalize(suggestion.transactionDescription)
-        let hash = suggestion.descriptionHash
-        let now = Date()
-
-        let correction = CategorizationCorrection(
-            id: UUID(),
-            descriptionHash: hash,
-            normalizedDescription: normalized,
-            originalCategoryId: suggestion.originalCategoryId,
-            originalSubcategoryId: suggestion.originalSubcategoryId,
-            correctedCategoryId: correctedCategoryId,
-            correctedSubcategoryId: correctedSubcategoryId,
-            transactionId: suggestion.transactionId,
-            createdAt: now
-        )
-
-        let cacheEntry = CategorizationCacheEntry(
-            id: UUID(),
-            descriptionHash: hash,
-            normalizedDescription: normalized,
+        try await updateTransactionCategory(
+            suggestion: suggestion,
             categoryId: correctedCategoryId,
-            subcategoryId: correctedSubcategoryId,
-            confidence: 1.0,
-            model: model,
-            createdAt: now,
-            updatedAt: now
-        )
-
-        try await transactions.applyPostCommitCorrection(
-            correction: correction,
-            cacheEntry: cacheEntry,
-            transactionId: suggestion.transactionId,
-            newCategoryId: correctedCategoryId,
-            newSubcategoryId: correctedSubcategoryId,
-            updatedAt: now
+            subcategoryId: correctedSubcategoryId
         )
     }
 
@@ -373,7 +347,7 @@ final class CategorizationService: Sendable {
     /// pós-commit.
     func confirmExistingSuggestion(_ suggestion: CategorizationSuggestion) async throws {
         try await updateTransactionCategory(
-            transactionId: suggestion.transactionId,
+            suggestion: suggestion,
             categoryId: suggestion.categoryId,
             subcategoryId: suggestion.subcategoryId
         )
@@ -556,10 +530,13 @@ final class CategorizationService: Sendable {
             buildSuggestion(
                 draft: draft,
                 hash: hashByDraftId[draft.id] ?? DescriptionNormalizer.hash(draft.description),
+                normalizedDescription: DescriptionNormalizer.normalize(draft.description),
                 categoryId: fallbackId,
                 subcategoryId: nil,
                 confidence: 0,
-                source: .fallback
+                source: .fallback,
+                originalCategorySlug: nil,
+                originalSubcategoryName: nil
             )
         }
         return AIChunkResult(
@@ -586,7 +563,7 @@ final class CategorizationService: Sendable {
             let hint: String? = (trimmed?.isEmpty == false) ? trimmed : nil
             return CategorizationPrompt.Item(
                 index: idx,
-                description: DescriptionNormalizer.normalize(draft.description),
+                description: draft.description,
                 sign: draft.isSignReliable ? (draft.signedAmount < 0 ? "expense" : "income") : "unknown",
                 accountContext: accountContextById[draft.accountId] ?? "Desconhecida",
                 sourceHint: hint
@@ -599,12 +576,13 @@ final class CategorizationService: Sendable {
             ownAccounts: ownAccounts,
             taxonomyVersion: Config.categorizationTaxonomyVersion
         )
-        let responseData = try await client.categorize(requestBody)
-        let results = try CategorizationPrompt.parseResults(from: responseData)
+        let remoteResult = try await remote.classify(request: requestBody)
+        let results = remoteResult.suggestions
+        let effectiveModel = remoteResult.metadata?.model ?? model
 
         var duplicateIndices: Set<Int> = []
         var seenIndices: Set<Int> = []
-        var byIndex: [Int: CategorizationPrompt.ClassificationResult] = [:]
+        var byIndex: [Int: CategorizationRemoteSuggestion] = [:]
         for r in results {
             guard drafts.indices.contains(r.index) else { continue }
             if !seenIndices.insert(r.index).inserted {
@@ -629,6 +607,8 @@ final class CategorizationService: Sendable {
         struct HashWinner {
             let categoryId: UUID
             let subcategoryId: UUID?
+            let categorySlug: String
+            let subcategoryName: String?
             let confidence: Double
             let normalizedDescription: String
         }
@@ -647,7 +627,7 @@ final class CategorizationService: Sendable {
                 unresolvedDraftIds.insert(draft.id)
                 continue
             }
-            let hash = hashByDraftId[draft.id] ?? DescriptionNormalizer.hash(draft.description)
+            let hash = result.descriptionHash
 
             guard let resolvedCategoryId = taxonomy.uuid(forSlug: result.categorySlug) else {
                 if reportedUnknownSlugs.insert(result.categorySlug).inserted {
@@ -691,13 +671,15 @@ final class CategorizationService: Sendable {
             bestByHash[hash] = HashWinner(
                 categoryId: resolvedCategoryId,
                 subcategoryId: subcategoryId,
+                categorySlug: result.categorySlug,
+                subcategoryName: result.subcategoryName,
                 confidence: effectiveConfidence,
-                normalizedDescription: DescriptionNormalizer.normalize(draft.description)
+                normalizedDescription: result.normalizedDescription
             )
         }
 
         let now = Date()
-        var cacheByHash: [String: CategorizationCacheEntry] = [:]
+        var cacheByHash: [String: CategorizationPendingCacheEntry] = [:]
         var suggestions: [CategorizationSuggestion] = []
         var unresolvedDrafts: [TransactionDraft] = []
 
@@ -710,20 +692,22 @@ final class CategorizationService: Sendable {
                 suggestions.append(buildSuggestion(
                     draft: draft,
                     hash: hash,
+                    normalizedDescription: winner.normalizedDescription,
                     categoryId: winner.categoryId,
                     subcategoryId: winner.subcategoryId,
                     confidence: winner.confidence,
-                    source: .ai
+                    source: .ai,
+                    originalCategorySlug: winner.categorySlug,
+                    originalSubcategoryName: winner.subcategoryName
                 ))
                 if cacheByHash[hash] == nil {
-                    cacheByHash[hash] = CategorizationCacheEntry(
-                        id: UUID(),
+                    cacheByHash[hash] = CategorizationPendingCacheEntry(
                         descriptionHash: hash,
                         normalizedDescription: winner.normalizedDescription,
-                        categoryId: winner.categoryId,
-                        subcategoryId: winner.subcategoryId,
+                        categorySlug: winner.categorySlug,
+                        subcategoryName: winner.subcategoryName,
                         confidence: winner.confidence,
-                        model: model,
+                        model: effectiveModel,
                         createdAt: now,
                         updatedAt: now
                     )
@@ -732,10 +716,13 @@ final class CategorizationService: Sendable {
                 suggestions.append(buildSuggestion(
                     draft: draft,
                     hash: hash,
+                    normalizedDescription: DescriptionNormalizer.normalize(draft.description),
                     categoryId: fallbackId,
                     subcategoryId: nil,
                     confidence: lowConfidenceByDraft[draft.id] ?? 0.0,
-                    source: .fallback
+                    source: .fallback,
+                    originalCategorySlug: nil,
+                    originalSubcategoryName: nil
                 ))
             }
         }
@@ -751,10 +738,13 @@ final class CategorizationService: Sendable {
     private func buildSuggestion(
         draft: TransactionDraft,
         hash: String,
+        normalizedDescription: String,
         categoryId: UUID,
         subcategoryId: UUID?,
         confidence: Double,
-        source: CategorizationSuggestion.Source
+        source: CategorizationSuggestion.Source,
+        originalCategorySlug: String?,
+        originalSubcategoryName: String?
     ) -> CategorizationSuggestion {
         // `originalCategoryId` é o categoryId atual exceto pra fallback (onde
         // não há "sugestão real" — `nil` sinaliza correção sempre necessária).
@@ -765,31 +755,45 @@ final class CategorizationService: Sendable {
             id: UUID(),
             transactionId: draft.id,
             descriptionHash: hash,
+            normalizedDescription: normalizedDescription,
             categoryId: categoryId,
             subcategoryId: subcategoryId,
             confidence: confidence,
             source: source,
             originalCategoryId: originalCategoryId,
             originalSubcategoryId: originalSubcategoryId,
+            originalCategorySlug: source == .fallback ? nil : originalCategorySlug,
+            originalSubcategoryName: source == .fallback ? nil : originalSubcategoryName,
             transactionDescription: draft.description,
             transactionAmount: abs(draft.signedAmount),
             transactionOccurredAt: draft.occurredAt,
             transactionAccountId: draft.accountId,
+            transactionNotes: draft.notes,
+            transactionDestinationAccountId: draft.destinationAccountId,
+            transactionRefundOfTransactionId: draft.refundOfTransactionId,
             isReviewed: false
         )
     }
 
     private func updateTransactionCategory(
-        transactionId: UUID,
+        suggestion: CategorizationSuggestion,
         categoryId: UUID,
         subcategoryId: UUID?
     ) async throws {
-        guard let existing = try await transactions.getById(transactionId) else { return }
-        var updated = existing
-        updated.categoryId = categoryId
-        updated.subcategoryId = subcategoryId
-        updated.updatedAt = Date()
-        try await transactions.update(updated)
+        try await transactions.update(
+            transactionId: suggestion.transactionId,
+            input: TransactionMutationInput(
+                accountId: suggestion.transactionAccountId,
+                categoryId: categoryId,
+                subcategoryId: subcategoryId,
+                amount: suggestion.transactionAmount,
+                occurredAt: suggestion.transactionOccurredAt,
+                description: suggestion.transactionDescription,
+                notes: suggestion.transactionNotes,
+                destinationAccountId: suggestion.transactionDestinationAccountId,
+                refundOfTransactionId: suggestion.transactionRefundOfTransactionId
+            )
+        )
     }
 
     private nonisolated static func descriptionHash(

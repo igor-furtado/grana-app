@@ -126,7 +126,7 @@ struct DashboardRemoteRepositoryTests {
 @MainActor
 @Suite("DashboardStoreRemote")
 struct DashboardStoreRemoteTests {
-    @Test("Load usa agregações remotas em vez do histórico local")
+    @Test("Load usa agregações remotas")
     func loadUsesRemoteAggregations() async throws {
         let snapshot = DashboardRemoteSnapshot(
             totalBalance: 321,
@@ -150,27 +150,6 @@ struct DashboardStoreRemoteTests {
             institutionCatalog: StaticInstitutionCatalogRepository(institutions: []),
             remoteDashboard: StaticDashboardRemoteRepository(snapshot: snapshot)
         )
-        let now = makeDate(year: 2026, month: 8, day: 21, hour: 10)
-        let account = Account(
-            id: UUID(),
-            type: .checking,
-            initialBalance: 9_999,
-            archived: false,
-            createdAt: now,
-            updatedAt: now
-        )
-        try await container.accounts.insert(account)
-        try await container.transactions.insert(Transaction(
-            id: UUID(),
-            accountId: account.id,
-            categoryId: UUID(),
-            amount: 5_000,
-            occurredAt: now,
-            description: "PIX entre contas",
-            destinationAccountId: UUID(),
-            createdAt: now,
-            updatedAt: now
-        ))
         let store = DashboardStore(container: container)
 
         await store.load()

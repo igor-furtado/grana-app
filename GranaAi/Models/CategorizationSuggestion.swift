@@ -26,6 +26,8 @@ struct CategorizationSuggestion: Identifiable, Hashable {
     /// Hash SHA256 da descrição normalizada — chave do cache, propagação de
     /// correções entre sugestões com mesma descrição.
     let descriptionHash: String
+    /// Descrição pseudonimizada/normalizada sob contrato do backend.
+    let normalizedDescription: String
 
     var categoryId: UUID
     var subcategoryId: UUID?
@@ -36,12 +38,17 @@ struct CategorizationSuggestion: Identifiable, Hashable {
     /// `nil` quando `source == .fallback` (não há "sugestão original" real).
     let originalCategoryId: UUID?
     let originalSubcategoryId: UUID?
+    let originalCategorySlug: String?
+    let originalSubcategoryName: String?
 
     /// Snapshot do draft pra renderizar a row sem precisar voltar no `ImportStore`.
     var transactionDescription: String
     var transactionAmount: Decimal // magnitude (`abs`) — UI renderiza assim
     var transactionOccurredAt: Date
     var transactionAccountId: UUID
+    var transactionNotes: String?
+    var transactionDestinationAccountId: UUID?
+    var transactionRefundOfTransactionId: UUID?
     /// Marca de revisão. Quando o usuário aceita explicitamente (botão de
     /// confirm), vira true. Correção também marca como reviewed automaticamente.
     var isReviewed: Bool

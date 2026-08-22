@@ -5,16 +5,15 @@ import Foundation
 /// **`nonisolated` no enum:** o target tem `SWIFT_DEFAULT_ACTOR_ISOLATION =
 /// MainActor`, então tipos sem anotação ficam MainActor-isolated por padrão.
 /// Os conversores são chamados de mappers `@Sendable` (rodam off-main no
-/// PowerSync) e de closures de `writeTransaction` — precisam ser nonisolated
-/// pra serem chamáveis de qualquer contexto.
+/// pipeline de repositories e em fluxos de mutação — precisam ser
+/// `nonisolated` pra serem chamáveis de qualquer contexto.
 ///
 /// **Por que armazenamos dinheiro como Int64 de centavos:**
-/// PowerSync expõe apenas três tipos de coluna no schema (`text`, `integer`,
-/// `real`). `real` é Double — perde precisão em operações decimais (clássico
-/// `0.1 + 0.2 != 0.3`). `integer` é exato. Multiplicamos o `Decimal` por 100
-/// e arredondamos pra fora os centavos, persistimos como Int64, e na leitura
-/// dividimos de volta. Toda a aritmética monetária em runtime continua em
-/// `Decimal` — o `Int64` só vive no banco.
+/// Persistimos como `Int64` de centavos porque `real`/`Double` perde precisão
+/// em operações decimais (clássico `0.1 + 0.2 != 0.3`). `integer` é exato.
+/// Multiplicamos o `Decimal` por 100 e arredondamos pra fora os centavos,
+/// persistimos como Int64, e na leitura dividimos de volta. Toda a aritmética
+/// monetária em runtime continua em `Decimal` — o `Int64` só vive no banco.
 nonisolated enum Converters {
     /// Decimal real → Int64 de centavos. Arredonda half-up (.plain) na 2ª casa.
     static func decimalToCents(_ value: Decimal) -> Int64 {

@@ -36,6 +36,13 @@ struct ImportHistoryView: View {
             if let store {
                 content(store: store)
                     .task { await store.start() }
+                    .task {
+                        for await _ in NotificationCenter.default.notifications(
+                            named: ImportStore.didMutateImportsNotification
+                        ) {
+                            await store.refresh()
+                        }
+                    }
             } else {
                 ProgressView()
                     .frame(maxWidth: .infinity, maxHeight: .infinity)
@@ -57,10 +64,17 @@ struct ImportHistoryView: View {
             }
         }
         .animation(.easeOut(duration: 0.18), value: isDropTargeted)
-        .sheet(item: $importContext) { context in
-            ImportView(initialFile: context.file)
-                .environment(environment)
-        }
+        .sheet(
+            item: $importContext,
+            onDismiss: {
+                guard let store else { return }
+                Task { await store.refresh() }
+            },
+            content: { context in
+                ImportView(initialFile: context.file)
+                    .environment(environment)
+            }
+        )
         .toolbar {
             ToolbarItem(placement: .primaryAction) {
                 Button {

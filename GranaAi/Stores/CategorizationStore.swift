@@ -40,9 +40,8 @@ final class CategorizationStore {
     private(set) var status: Status = .idle
     private(set) var suggestions: [CategorizationSuggestion] = []
     /// Entries de cache geradas pela IA, a serem commitadas atomicamente pelo
-    /// `ImportStore`. Não usadas no modo pós-commit (lá o service persiste
-    /// direto).
-    private(set) var pendingCacheEntries: [CategorizationCacheEntry] = []
+    /// `ImportStore` no contrato remoto estável consumido pelo backend.
+    private(set) var pendingCacheEntries: [CategorizationPendingCacheEntry] = []
     private(set) var mode: Mode = .preCommit
 
     private(set) var categories: [Category] = []
@@ -63,11 +62,16 @@ final class CategorizationStore {
     func loadCategories() async {
         do {
             async let cats = container.categoryCatalog.load()
-            async let accs = container.accounts.getAll()
+            async let accountSnapshot = container.remoteAccounts.load()
             async let insts = container.institutionCatalog.load()
-            categories = try await cats
-            accounts = try await accs
-            institutions = try await insts
+            let (loadedCategories, snapshot, loadedInstitutions) = try await (
+                cats,
+                accountSnapshot,
+                insts
+            )
+            categories = loadedCategories
+            accounts = snapshot.accounts
+            institutions = loadedInstitutions
         } catch {
             NoticeCenter.shared.report(error)
         }
@@ -227,7 +231,7 @@ final class CategorizationStore {
                 hash: hash,
                 categoryId: correctedCategoryId,
                 subcategoryId: correctedSubcategoryId,
-                normalizedDescription: DescriptionNormalizer.normalize(suggestions[index].transactionDescription)
+                normalizedDescription: suggestions[index].normalizedDescription
             )
         case .postCommit:
             let suggestion = suggestions[index]
@@ -267,6 +271,7 @@ final class CategorizationStore {
         subcategoryId: UUID?,
         normalizedDescription: String
     ) {
+        guard let categorySlug = category(for: categoryId)?.slug else { return }
         let now = Date()
         // Usa o mesmo model name do service pra que o cache lookup futuro
         // bata (chave composta é hash+model).
@@ -276,12 +281,11 @@ final class CategorizationStore {
         pendingCacheEntries.removeAll { $0.descriptionHash == hash }
 
         // Adiciona uma nova com a correção do usuário (confidence 1.0).
-        pendingCacheEntries.append(CategorizationCacheEntry(
-            id: UUID(),
+        pendingCacheEntries.append(CategorizationPendingCacheEntry(
             descriptionHash: hash,
             normalizedDescription: normalizedDescription,
-            categoryId: categoryId,
-            subcategoryId: subcategoryId,
+            categorySlug: categorySlug,
+            subcategoryName: subcategoryId.flatMap(subcategoryName(for:)),
             confidence: 1.0,
             model: model,
             createdAt: now,
@@ -293,20 +297,21 @@ final class CategorizationStore {
 
     /// Constrói as `CategorizationCorrection` a serem persistidas no commit
     /// final. Uma por sugestão que diverge da original.
-    func buildPendingCorrections() -> [CategorizationCorrection] {
+    func buildPendingCorrections() -> [CategorizationPendingCorrection] {
         let now = Date()
         return suggestions
             .filter { $0.wasCorrected }
-            .map { suggestion in
-                let normalized = DescriptionNormalizer.normalize(suggestion.transactionDescription)
-                return CategorizationCorrection(
-                    id: UUID(),
+            .compactMap { suggestion in
+                guard let correctedCategorySlug = category(for: suggestion.categoryId)?.slug else {
+                    return nil
+                }
+                return CategorizationPendingCorrection(
                     descriptionHash: suggestion.descriptionHash,
-                    normalizedDescription: normalized,
-                    originalCategoryId: suggestion.originalCategoryId,
-                    originalSubcategoryId: suggestion.originalSubcategoryId,
-                    correctedCategoryId: suggestion.categoryId,
-                    correctedSubcategoryId: suggestion.subcategoryId,
+                    normalizedDescription: suggestion.normalizedDescription,
+                    originalCategorySlug: suggestion.originalCategorySlug,
+                    originalSubcategoryName: suggestion.originalSubcategoryName,
+                    correctedCategorySlug: correctedCategorySlug,
+                    correctedSubcategoryName: suggestion.subcategoryId.flatMap(subcategoryName(for:)),
                     transactionId: suggestion.transactionId,
                     createdAt: now
                 )
@@ -319,6 +324,10 @@ final class CategorizationStore {
     func resolvedCategory(forTransactionId id: UUID) -> (categoryId: UUID, subcategoryId: UUID?)? {
         guard let s = suggestions.first(where: { $0.transactionId == id }) else { return nil }
         return (s.categoryId, s.subcategoryId)
+    }
+
+    private func subcategoryName(for id: UUID) -> String? {
+        category(for: id)?.name
     }
 
     // MARK: - Progress

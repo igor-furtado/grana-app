@@ -7,8 +7,8 @@ import Foundation
 /// finanças isso vira erro acumulado em totalizações. `Decimal` representa
 /// números em base 10 (até 38 dígitos) e é exato para as quatro operações
 /// quando os operandos cabem na precisão. No SQLite armazenamos como
-/// **inteiro de centavos** (ver `Converters`) porque PowerSync só oferece
-/// `text`/`integer`/`real` e `real` (Double) perderia a precisão de novo.
+/// **inteiro de centavos** (ver `Converters`) porque `real` (Double)
+/// perderia a precisão de novo.
 struct Transaction: Identifiable, Codable, Hashable {
     let id: UUID
     var accountId: UUID
@@ -32,8 +32,8 @@ struct Transaction: Identifiable, Codable, Hashable {
     var destinationAccountId: UUID?
     /// Fase 4.7: vínculo "esta compra entrou nesta fatura". Só preenchido
     /// quando `accountId` aponta pra conta-cartão — invariante validada no
-    /// `TransactionRepository.insert/update` (PowerSync não tem NOT NULL).
-    /// O resolver de janela cria/encontra a Statement lazy no insert.
+    /// backend ao criar/atualizar a transação. O resolver de janela
+    /// cria/encontra a Statement lazy no fluxo de escrita.
     /// **Distinto de `StatementPayment`**: aqui é compra→fatura; lá é
     /// transferência→fatura paga.
     var statementId: UUID?

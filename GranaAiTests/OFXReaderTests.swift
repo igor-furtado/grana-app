@@ -189,11 +189,11 @@ struct OFXReaderTests {
 
     @Test("decode CHARSET:1252 traz acentos corretos")
     func decodeCP1252() throws {
-        // "ção" em Windows-1252: 0x63 0xE7 0xE3 0x6F (c, ç, ã, o).
+        // "cção" em Windows-1252: 0x63 0xE7 0xE3 0x6F (c, ç, ã, o).
         let bytes: [UInt8] = [0x63, 0xE7, 0xE3, 0x6F]
         let data = Data(bytes)
         let decoded = try #require(OFXReader.decode(data: data, charsetHint: "1252"))
-        #expect(decoded == "ção")
+        #expect(decoded == "cção")
     }
 }
 

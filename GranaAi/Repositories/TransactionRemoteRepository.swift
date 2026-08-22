@@ -24,6 +24,30 @@ protocol TransactionRemoteRepositoryProtocol: Sendable {
     func delete(transactionId: UUID) async throws
 }
 
+extension TransactionRemoteRepositoryProtocol {
+    func loadAll(pageSize: Int = 200) async throws -> [Transaction] {
+        var cursor: TransactionRemotePageCursor?
+        var all: [Transaction] = []
+
+        repeat {
+            let page = try await loadPage(cursor: cursor, limit: pageSize)
+            all.append(contentsOf: page.transactions)
+            cursor = page.nextCursor
+        } while cursor != nil
+
+        return all
+    }
+
+    func externalIds(forAccount accountId: UUID, pageSize: Int = 200) async throws -> Set<String> {
+        Set(
+            try await loadAll(pageSize: pageSize)
+                .lazy
+                .filter { $0.accountId == accountId }
+                .compactMap(\.externalId)
+        )
+    }
+}
+
 nonisolated enum TransactionRemoteRepositoryError: UserFacingError, Equatable {
     case authenticationRequired
     case invalidAmount

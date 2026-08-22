@@ -28,9 +28,12 @@ type CategorizationRequest = {
 
 type CategorizationResult = {
   index: number;
+  description_hash: string;
+  normalized_description: string;
   category_slug: string;
   subcategory_name: string | null;
   confidence: number;
+  source: "cache" | "ai" | "fallback";
 };
 
 type RuntimeConfig = {
@@ -58,7 +61,7 @@ Deno.serve(async (request: Request) => {
   try {
     const authHeader = request.headers.get("Authorization");
     if (!authHeader?.startsWith("Bearer ")) {
-      return jsonResponse({ error: "missing_authorization" }, 401);
+      return jsonResponse({ code: "missing_authorization" }, 401);
     }
 
     const userClient = createClient(
@@ -83,32 +86,37 @@ Deno.serve(async (request: Request) => {
       error: userError,
     } = await userClient.auth.getUser(token);
     if (userError || !user) {
-      return jsonResponse({ error: "invalid_user_jwt" }, 401);
+      return jsonResponse({ code: "invalid_user_jwt" }, 401);
     }
 
     const body = (await request.json()) as CategorizationRequest;
     const taxonomy = buildTaxonomy(body.categories);
     const runtimeConfig = await resolveRuntimeConfig(adminClient, user.id);
-    const itemHashes = await Promise.all(
-      body.items.map((item) =>
-        descriptionHash(
-          item.description,
-          item.account_context,
-          item.sign,
-          body.taxonomy_version,
-        )
-      ),
+    const preparedItems = await Promise.all(
+      body.items.map(async (item) => {
+        const normalizedDescription = pseudonymizeDescription(item.description);
+        return {
+          ...item,
+          normalized_description: normalizedDescription,
+          description_hash: await descriptionHash(
+            normalizedDescription,
+            item.account_context,
+            item.sign,
+            body.taxonomy_version,
+          ),
+        };
+      }),
     );
 
     const cachedResults = await lookupCache(
       userClient,
       taxonomy,
-      itemHashes,
+      preparedItems,
       runtimeConfig.model,
     );
     const fewShots = await loadFewShots(userClient, taxonomy);
 
-    const misses = body.items.filter((item, index) => !cachedResults.has(index));
+    const misses = preparedItems.filter((item) => !cachedResults.has(item.index));
     const aiResults = misses.length === 0
       ? []
       : await classifyWithOpenAI({
@@ -118,12 +126,15 @@ Deno.serve(async (request: Request) => {
         runtimeConfig,
       });
 
-    const results = body.items.map((item) =>
+    const results = preparedItems.map((item) =>
       cachedResults.get(item.index) ?? aiResults.find((result) => result.index === item.index) ?? {
         index: item.index,
+        description_hash: item.description_hash,
+        normalized_description: item.normalized_description,
         category_slug: "nao-classificado",
         subcategory_name: null,
         confidence: 0,
+        source: "fallback",
       }
     );
 
@@ -139,7 +150,7 @@ Deno.serve(async (request: Request) => {
     });
   } catch (error) {
     const message = error instanceof Error ? error.message : "unexpected_error";
-    return jsonResponse({ error: message }, 500);
+    return jsonResponse({ code: message }, 500);
   }
 });
 
@@ -200,10 +211,14 @@ async function resolveRuntimeConfig(
 async function lookupCache(
   userClient: ReturnType<typeof createClient>,
   taxonomy: ReturnType<typeof buildTaxonomy>,
-  itemHashes: string[],
+  items: Array<{
+    index: number;
+    description_hash: string;
+    normalized_description: string;
+  }>,
   model: string,
 ): Promise<Map<number, CategorizationResult>> {
-  const uniqueHashes = [...new Set(itemHashes)];
+  const uniqueHashes = [...new Set(items.map((item) => item.description_hash))];
   const { data, error } = await userClient
     .from("categorization_cache")
     .select("description_hash, category_id, subcategory_id, confidence")
@@ -217,17 +232,25 @@ async function lookupCache(
     if (!resolved) continue;
     byHash.set(row.description_hash, {
       index: -1,
+      description_hash: row.description_hash,
+      normalized_description: "",
       category_slug: resolved.category_slug,
       subcategory_name: resolved.subcategory_name,
       confidence: clampConfidence(row.confidence),
+      source: "cache",
     });
   }
 
   const byIndex = new Map<number, CategorizationResult>();
-  itemHashes.forEach((hash, index) => {
-    const cached = byHash.get(hash);
+  items.forEach((item) => {
+    const cached = byHash.get(item.description_hash);
     if (!cached) return;
-    byIndex.set(index, { ...cached, index });
+    byIndex.set(item.index, {
+      ...cached,
+      index: item.index,
+      description_hash: item.description_hash,
+      normalized_description: item.normalized_description,
+    });
   });
   return byIndex;
 }
@@ -259,7 +282,10 @@ async function loadFewShots(
 
 async function classifyWithOpenAI(args: {
   request: CategorizationRequest;
-  misses: CategorizationRequest["items"];
+  misses: Array<CategorizationRequest["items"][number] & {
+    normalized_description: string;
+    description_hash: string;
+  }>;
   fewShots: FewShotExample[];
   runtimeConfig: RuntimeConfig;
 }): Promise<CategorizationResult[]> {
@@ -285,7 +311,13 @@ async function classifyWithOpenAI(args: {
           role: "user",
           content: JSON.stringify({
             taxonomy_version: args.request.taxonomy_version,
-            items: args.misses,
+            items: args.misses.map((item) => ({
+              index: item.index,
+              description: item.normalized_description,
+              sign: item.sign,
+              account_context: item.account_context,
+              source_hint: item.source_hint ?? null,
+            })),
             categories: args.request.categories,
             own_accounts: args.request.own_accounts,
             few_shots: args.fewShots,
@@ -333,11 +365,15 @@ async function classifyWithOpenAI(args: {
   }
 
   const decoded = JSON.parse(content) as { results: CategorizationResult[] };
+  const missByIndex = new Map(args.misses.map((item) => [item.index, item]));
   return (decoded.results ?? []).map((result) => ({
     index: result.index,
+    description_hash: missByIndex.get(result.index)?.description_hash ?? "",
+    normalized_description: missByIndex.get(result.index)?.normalized_description ?? "",
     category_slug: result.category_slug,
     subcategory_name: result.subcategory_name ?? null,
     confidence: clampConfidence(result.confidence),
+    source: "ai",
   }));
 }
 
@@ -368,6 +404,21 @@ function jsonResponse(body: unknown, status = 200) {
       "Content-Type": "application/json",
     },
   });
+}
+
+function pseudonymizeDescription(raw: string) {
+  const folded = raw
+    .normalize("NFD")
+    .replace(/\p{M}/gu, "")
+    .toLowerCase();
+
+  const withoutLongDigits = folded.replace(/\d{4,}/g, "");
+
+  return withoutLongDigits
+    .split(/\s+/)
+    .filter(Boolean)
+    .join(" ")
+    .trim();
 }
 
 function requireEnv(name: string) {

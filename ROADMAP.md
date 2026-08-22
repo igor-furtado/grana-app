@@ -1,8 +1,19 @@
 # ROADMAP.md — Fases de desenvolvimento
 
+## Direção ativa da refatoração
+
+O roadmap registra fases e contexto histórico do produto. A direção ativa da
+refatoração de dados é a decisão aceita em
+`docs/adr/0007-app-online-only-com-supabase-como-fonte-da-verdade.md`,
+executada pelo plano em `docs/online-only-supabase-refactor-plan.md`.
+
+Este arquivo não substitui a ADR nem o plano operacional. Referências antigas
+ao modelo local-first/PowerSync nas fases já concluídas devem ser lidas como
+contexto histórico do MVP, não como estado futuro desejado.
+
 ## Fase 0 — Fundação (setup do projeto) ✅
 
-## Fase 1 — Schema PowerSync e CRUD de transações (manual, local-only) ✅
+## Fase 1 — Schema local do MVP e CRUD de transações (manual) ✅
 
 ## Fase 2 — Dashboard básico ✅
 
@@ -16,24 +27,28 @@
 
 ## Fase 4.7 — Faturas (Statements) de cartão ✅
 
-## Fase 5 — Sync via PowerSync + Supabase
+## Fase 5 — Refatoração online-only com Supabase (direção ativa)
 
-**Objetivo:** dados ficam num backend remoto (Postgres via Supabase) com sync bidirecional, garantindo backup off-machine e abrindo caminho pra outros clientes no futuro se o roadmap mudar.
+**Objetivo:** migrar o app para modo online-only estrito, com Supabase Postgres
+como fonte única de verdade para dados financeiros.
 
-**Entregáveis:**
-- Schema Supabase (Postgres) espelhando schema PowerSync (script SQL versionado)
-- Row Level Security (RLS) configurado no Supabase
-- Sync Streams configuradas no PowerSync Dashboard pra o usuário só ver seus dados
-- `SupabaseConnector` implementando `PowerSyncBackendConnectorProtocol`:
-  - `fetchCredentials()` → token JWT do Supabase
-  - `uploadData()` → aplica writes da queue local no Postgres via Supabase client
-- `AuthService` com magic link Supabase
-- Tela de login (mostrada quando não autenticado)
-- Chamada `db.connect(connector:)` após login
-- Indicador visual de status de sync na UI (sync rodando / pendente / erro / offline)
-- Tratamento gracioso: app continua funcionando offline, sync retoma sozinho
+**Referências canônicas:**
+- ADR: `docs/adr/0007-app-online-only-com-supabase-como-fonte-da-verdade.md`
+- Plano operacional: `docs/online-only-supabase-refactor-plan.md`
 
-**Sem isto, não avança:** desligar a máquina, voltar depois e ter os dados intactos vindos do Supabase; reinstalar o app e recuperar tudo via sync.
+**Escopo executivo desta fase:**
+- Migrar contas, transações, faturas, dashboard e importação para contratos
+  remotos no backend.
+- Remover PowerSync, `watch()`, schema local, seeds financeiras locais e
+  persistência financeira em disco.
+- Manter apenas sessão/token de autenticação local; dados financeiros ficam
+  só no backend e em memória durante sessão válida.
+
+**Critérios finais de aceite da refatoração:**
+- O app compila sem PowerSync.
+- Não há persistência local de dados financeiros.
+- Supabase é a fonte única de verdade.
+- Contas, transações, faturas, dashboard e importação usam o backend.
 
 ---
 
@@ -62,7 +77,7 @@
 - Tela de chat (Mac)
 - Tool use: IA tem ferramentas pra consultar o banco (`getTransactions`, `getCategoryTotal`, `getHoldings`)
 - Sistema de prompt com contexto do usuário (período corrente, taxonomia, padrões)
-- Histórico de conversas salvo (tabela `chat_messages` — sincronizada via PowerSync também)
+- Histórico de conversas salvo no backend online-only
 - Streaming de resposta
 - Citação de transações específicas nas respostas (clicáveis)
 

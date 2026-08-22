@@ -15,6 +15,8 @@ nonisolated enum CategorizationPrompt {
     /// Item de input pra IA — descrição + valor + data + conta por linha.
     struct Item: Encodable {
         let index: Int
+        /// Descrição crua da transação. O backend é o dono da
+        /// pseudonimização/normalização antes de consultar cache ou IA.
         let description: String
         /// Valor com sinal pra IA inferir kind do contexto (CSV/XLSX trazem
         /// sinal antes de normalizar; isso ajuda o modelo a decidir income vs
@@ -118,9 +120,17 @@ nonisolated enum CategorizationPrompt {
     /// Resultado decodificado do JSON estruturado.
     struct ClassificationResult: Hashable {
         let index: Int
+        let descriptionHash: String
+        let normalizedDescription: String
         let categorySlug: String
         let subcategoryName: String?
         let confidence: Double
+        let source: CategorizationRemoteSuggestionSource
+    }
+
+    struct ResponseEnvelope: Hashable {
+        let results: [ClassificationResult]
+        let metadata: APIMetadata?
     }
 
     /// Wrapper externo devolvido pelo backend.
@@ -130,41 +140,52 @@ nonisolated enum CategorizationPrompt {
 
         struct ResultItem: Decodable {
             let index: Int
+            let descriptionHash: String
+            let normalizedDescription: String
             let categorySlug: String
             let subcategoryName: String?
             let confidence: Double?
+            let source: CategorizationRemoteSuggestionSource?
 
             enum CodingKeys: String, CodingKey {
                 case index
+                case descriptionHash = "description_hash"
+                case normalizedDescription = "normalized_description"
                 case categorySlug = "category_slug"
                 case subcategoryName = "subcategory_name"
                 case confidence
+                case source
             }
         }
     }
 
     /// Decodifica a resposta JSON estruturada devolvida pelo backend.
-    static func parseResults(from data: Data) throws -> [ClassificationResult] {
+    static func parseResponse(from data: Data) throws -> ResponseEnvelope {
         let decoder = JSONDecoder()
         do {
             let decoded = try decoder.decode(StructuredResponse.self, from: data)
-            return decoded.results.map(Self.normalize)
+            return ResponseEnvelope(
+                results: decoded.results.map(Self.normalize),
+                metadata: decoded.metadata
+            )
         } catch {
-            let preview = String(data: data, encoding: .utf8)?.prefix(500) ?? "<não-UTF8>"
-            log.ai
-                .error(
-                    "CategorizationPrompt: resposta não-JSON do backend — preview: \(String(preview), privacy: .public)"
-                )
             throw AIError.decoding(error)
         }
+    }
+
+    static func parseResults(from data: Data) throws -> [ClassificationResult] {
+        try parseResponse(from: data).results
     }
 
     private static func normalize(_ item: StructuredResponse.ResultItem) -> ClassificationResult {
         ClassificationResult(
             index: item.index,
+            descriptionHash: item.descriptionHash,
+            normalizedDescription: item.normalizedDescription,
             categorySlug: item.categorySlug,
             subcategoryName: item.subcategoryName.flatMap { $0.isEmpty ? nil : $0 },
-            confidence: item.confidence.map { max(0.0, min(1.0, $0)) } ?? 0.0
+            confidence: item.confidence.map { max(0.0, min(1.0, $0)) } ?? 0.0,
+            source: item.source ?? .fallback
         )
     }
 }

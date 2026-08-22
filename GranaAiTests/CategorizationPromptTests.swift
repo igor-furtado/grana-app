@@ -47,15 +47,18 @@ struct CategorizationPromptTests {
     @Test("parseResults lê resposta JSON estruturada do backend")
     func parseResultsStructuredBackendJSON() throws {
         let payload = """
-        {"results":[{"index":0,"category_slug":"alimentacao","subcategory_name":"Supermercados","confidence":0.91}],"metadata":{"provider":"openai","model":"gpt-5.4-mini","from_cache":0,"from_ai":1,"fallback_count":0}}
+        {"results":[{"index":0,"description_hash":"abc123","normalized_description":"mercado","category_slug":"alimentacao","subcategory_name":"Supermercados","confidence":0.91,"source":"ai"}],"metadata":{"provider":"openai","model":"gpt-5.4-mini","from_cache":0,"from_ai":1,"fallback_count":0}}
         """
 
         let results = try CategorizationPrompt.parseResults(from: Data(payload.utf8))
 
         #expect(results.count == 1)
         #expect(results[0].index == 0)
+        #expect(results[0].descriptionHash == "abc123")
+        #expect(results[0].normalizedDescription == "mercado")
         #expect(results[0].categorySlug == "alimentacao")
         #expect(results[0].subcategoryName == "Supermercados")
         #expect(results[0].confidence == 0.91)
+        #expect(results[0].source == .ai)
     }
 }

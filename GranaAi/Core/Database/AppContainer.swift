@@ -1,54 +1,12 @@
 import Foundation
 import OSLog
-import PowerSync
 
-/// Composition Root da camada de dados. Concentra a instância do banco
-/// (`PowerSyncDatabase`), os Repositories e os serviços que dependem do banco.
-/// As Views nunca tocam SQL — elas falam com Stores `@Observable`, que falam
-/// com Repositories expostos aqui.
-///
-/// Por que "Container" e não "Database": esta classe **não é** o banco. O banco
-/// é a propriedade `db`. O Container é o lugar único onde tudo é amarrado
-/// (banco + repositories + serviços), seguindo o padrão Composition Root
-/// documentado em `AGENTS.md`.
-///
-/// Conceito-chave: **modo local-only**.
-/// `PowerSyncDatabase` funciona perfeitamente como um SQLite local sem chamar
-/// `connect(connector:)`. Isso significa que durante as Fases 0–4 o app já
-/// persiste tudo localmente, e na Fase 5 *adicionamos* sync simplesmente
-/// chamando `connect()` após o login. Não precisamos reescrever camada de
-/// dados pra ativar o sync.
+/// Composition Root da camada de dados online-only. Concentra repositories e
+/// serviços remotos expostos pras Stores.
 final class AppContainer {
-    /// Nome do arquivo SQLite. O PowerSync coloca isso em
-    /// `Application Support/databases/<dbFilename>` por padrão (subpasta fixa
-    /// do SDK, não derivada do bundleId — `deleteDatabaseFiles()` depende disso).
-    static let dbFilename = "grana_ai.sqlite"
+    private static let legacyDatabaseFilename = "grana_ai.sqlite"
+    private static let legacyDatabaseCleanupDefaultsKey = "GranaAi.didCleanupLegacyLocalDatabase"
 
-    /// Versão do schema **lógico** do app (não confundir com a versão do
-    /// SQLite/PowerSync). Toda mudança *incompatível* (remoção de coluna,
-    /// renomeação, divisão de tabela) deve bumpar este número junto com a
-    /// edição do `appSchema`. No próximo boot, `setup()` detecta a divergência
-    /// com a versão salva em `UserDefaults` e **apaga o banco local** antes de
-    /// recriar — migração destrutiva, viável enquanto não há sync.
-    ///
-    /// Histórico:
-    /// - v1: schema inicial (Fase 0–4.5).
-    /// - v2 (Fase 4.6): `accounts` perde `branch_id`, `account_number`,
-    ///   `card_last_four`. Nascem `bank_accounts` e `credit_cards` 1:1.
-    /// - v3 (Fase 4.7 revisada): projeção determinística de faturas,
-    ///   estornos vinculados, créditos e histórico de configuração.
-    static let schemaVersion = 3
-
-    private static let schemaVersionDefaultsKey = "GranaAi.schemaVersion"
-
-    /// Acesso interno (Repositories). Mantido `internal` (default) — Views
-    /// não devem importar isso.
-    ///
-    /// Detalhe do SDK: `PowerSyncDatabase` é uma **função factory** (não
-    /// uma classe), que retorna um valor que adota `PowerSyncDatabaseProtocol`.
-    /// Por isso a propriedade declara o protocolo, mas `setup()` abaixo
-    /// chama `PowerSyncDatabase(...)` como função.
-    let db: any PowerSyncDatabaseProtocol
     private let authClient: (any AuthClientProtocol)?
     let categoryCatalog: any CategoryCatalogRepositoryProtocol
     let institutionCatalog: any InstitutionCatalogRepositoryProtocol
@@ -56,51 +14,32 @@ final class AppContainer {
     let remoteDashboard: any DashboardRemoteRepositoryProtocol
     let remoteStatements: any StatementRemoteRepositoryProtocol
     let remoteTransactions: any TransactionRemoteRepositoryProtocol
-
-    // Repositories como `lazy var`: só são instanciados na primeira leitura.
-    // Decisão consciente: vivem dentro do AppContainer enquanto a superfície é
-    // pequena. Quando crescer (ou se precisarmos trocar a implementação por
-    // mocks em testes), separar em protocols + implementações por feature.
-    lazy var transactions: TransactionRepository = .init(db: db)
-    lazy var accounts: AccountRepository = .init(db: db)
-    lazy var categories: CategoryRepository = .init(db: db)
-    lazy var institutions: InstitutionRepository = .init(db: db)
-    lazy var statements: StatementRepository = .init(db: db)
-    lazy var importBatches: ImportBatchRepository = .init(db: db)
-    lazy var categorizationCache: CategorizationCacheRepository = .init(
-        db: db
-    )
-    lazy var categorizationCorrections: CategorizationCorrectionRepository =
-        .init(db: db)
-
-    @MainActor
-    private var hasStartedSync = false
+    let remoteImports: any ImportRemoteRepositoryProtocol
+    let remoteCategorization: any CategorizationRemoteRepositoryProtocol
 
     /// Cliente HTTP da categorização assistida online.
     lazy var categorizationAPIClient: CategorizationAPIClient = .init(authClient: authClient)
 
-    /// Pipeline de categorização automática. Preserva cache e correções
-    /// locais do app enquanto a inferência é executada pelo backend online.
+    /// Pipeline de categorização automática em contratos remotos explícitos.
     lazy var categorization: CategorizationService = .init(
-        client: categorizationAPIClient,
-        transactions: transactions,
-        categories: categories,
-        accounts: accounts,
-        institutions: institutions,
-        cache: categorizationCache
+        remote: remoteCategorization,
+        categories: categoryCatalog,
+        institutions: institutionCatalog,
+        accounts: remoteAccounts,
+        transactions: remoteTransactions
     )
 
     private init(
-        db: any PowerSyncDatabaseProtocol,
         authClient: (any AuthClientProtocol)? = nil,
         categoryCatalog: (any CategoryCatalogRepositoryProtocol)? = nil,
         institutionCatalog: (any InstitutionCatalogRepositoryProtocol)? = nil,
         remoteAccounts: (any AccountRemoteRepositoryProtocol)? = nil,
         remoteDashboard: (any DashboardRemoteRepositoryProtocol)? = nil,
         remoteStatements: (any StatementRemoteRepositoryProtocol)? = nil,
-        remoteTransactions: (any TransactionRemoteRepositoryProtocol)? = nil
+        remoteTransactions: (any TransactionRemoteRepositoryProtocol)? = nil,
+        remoteImports: (any ImportRemoteRepositoryProtocol)? = nil,
+        remoteCategorization: (any CategorizationRemoteRepositoryProtocol)? = nil
     ) {
-        self.db = db
         self.authClient = authClient
         if let categoryCatalog {
             self.categoryCatalog = categoryCatalog
@@ -161,83 +100,42 @@ final class AppContainer {
         } else {
             self.remoteTransactions = AuthRequiredTransactionRemoteRepository()
         }
+
+        if let remoteImports {
+            self.remoteImports = remoteImports
+        } else if let authClient {
+            self.remoteImports = ImportRemoteRepository(
+                remoteStore: SupabaseImportRemoteStore(authClient: authClient)
+            )
+        } else {
+            self.remoteImports = AuthRequiredImportRemoteRepository()
+        }
+
+        if let remoteCategorization {
+            self.remoteCategorization = remoteCategorization
+        } else {
+            self.remoteCategorization = CategorizationRemoteRepository(
+                remoteStore: SupabaseCategorizationRemoteStore(
+                    client: CategorizationAPIClient(authClient: authClient)
+                )
+            )
+        }
     }
 
-    /// Cria a instância e registra o schema. O PowerSync aplica o schema
-    /// criando *views SQLite em runtime* sobre tabelas internas — não é
-    /// migration tradicional. Mudar o schema entre versões é seguro: o
-    /// PowerSync recria as views, sem perda de dados locais (desde que
-    /// colunas removidas não sejam o que o app procura).
     static func setup(authClient: (any AuthClientProtocol)? = nil) -> AppContainer {
-        wipeDatabaseIfSchemaChanged()
-
-        let database = PowerSyncDatabase(
-            schema: appSchema,
-            dbFilename: dbFilename,
-            logger: log.powerSyncLogger
-        )
-
-        // NOTA: NÃO chamamos `database.connect(connector:)` aqui.
-        // Isso é o que define o "modo local-only" — sem sync com Supabase.
-        // A chamada de `connect` virá no `AuthService` da Fase 5, depois
-        // do login bem-sucedido — aí esse método volta a ser `throws` e o
-        // `AppEnvironment.failed(error:)` volta a ser usado.
-
-        log.database.info("PowerSyncDatabase inicializado em modo local-only (\(dbFilename))")
-        return AppContainer(db: database, authClient: authClient)
+        cleanupLegacyDatabaseIfNeeded()
+        return AppContainer(authClient: authClient)
     }
 
-    @MainActor
-    func connectSync(
-        connector: any PowerSyncBackendConnectorProtocol
-    ) async throws {
-        guard !hasStartedSync else { return }
-
-        try await db.connect(connector: connector, options: nil)
-        hasStartedSync = true
-        log.sync.info("PowerSync conectado com credencial autenticada do Supabase.")
+    /// Limpa artefatos do banco financeiro legado no primeiro boot da versão
+    /// online-only. Depois disso o app não volta a criar esses arquivos.
+    private static func cleanupLegacyDatabaseIfNeeded() {
+        guard !UserDefaults.standard.bool(forKey: legacyDatabaseCleanupDefaultsKey) else { return }
+        deleteLegacyDatabaseFiles()
+        UserDefaults.standard.set(true, forKey: legacyDatabaseCleanupDefaultsKey)
     }
 
-    @MainActor
-    func disconnectSync() async throws {
-        guard hasStartedSync else { return }
-
-        try await db.disconnect()
-        hasStartedSync = false
-        log.sync.info("PowerSync desconectado após logout.")
-    }
-
-    /// Compara a versão de schema esperada (em `schemaVersion`) com a salva no
-    /// `UserDefaults`. Se divergir (ou se não existir), apaga o arquivo do
-    /// banco antes de o PowerSync abrir — força um boot limpo com o schema
-    /// novo. Salva a versão nova depois pra próxima vez não disparar.
-    ///
-    /// **Por que destrutivo:** estamos pré-Fase 5 (sem sync), e mudanças
-    /// estruturais como divisão de tabelas (`accounts` → `accounts` +
-    /// `bank_accounts` + `credit_cards`) não casam com a abordagem do PowerSync
-    /// (views sobre tabelas internas; remover/renomear coluna deixa dados
-    /// órfãos). Re-importar é o caminho aceito — confirmado na decisão da
-    /// Fase 4.6.
-    private static func wipeDatabaseIfSchemaChanged() {
-        let stored = UserDefaults.standard.integer(forKey: schemaVersionDefaultsKey)
-        // Default `0` quando a chave nunca existiu (first install). Como
-        // `schemaVersion` começou em `1` e bumpou pra `2`, qualquer instalação
-        // pré-versionamento (que carrega dados do schema antigo) cai aqui e
-        // toma o wipe. Single-user app, aceitável.
-        guard stored != schemaVersion else { return }
-
-        log.database.notice(
-            "Schema mudou (\(stored) → \(schemaVersion)). Apagando banco local."
-        )
-        deleteDatabaseFiles()
-        UserDefaults.standard.set(schemaVersion, forKey: schemaVersionDefaultsKey)
-    }
-
-    /// Apaga o `.sqlite` e seus side-files (`-wal`, `-shm`). PowerSync coloca
-    /// tudo dentro de `Application Support/databases/` (subpasta fixa do SDK,
-    /// não derivada do bundleId). Se o diretório não existir (primeira
-    /// execução), os removes são no-op.
-    private static func deleteDatabaseFiles() {
+    private static func deleteLegacyDatabaseFiles() {
         let fm = FileManager.default
         guard let appSupport = try? fm.url(
             for: .applicationSupportDirectory,
@@ -251,45 +149,26 @@ final class AppContainer {
 
         let dir = appSupport.appendingPathComponent("databases", isDirectory: true)
         for suffix in ["", "-wal", "-shm"] {
-            let url = dir.appendingPathComponent(dbFilename + suffix)
+            let url = dir.appendingPathComponent(legacyDatabaseFilename + suffix)
             try? fm.removeItem(at: url)
         }
     }
 
-    /// Apaga o banco local do disco por solicitação explícita do usuário (ação
-    /// "Apagar banco de dados" em Ajustes → Avançado). Espelha o que o
-    /// `wipeDatabaseIfSchemaChanged` faz no boot, mas em runtime e disparado
-    /// pela UI.
-    ///
-    /// **Caller obrigatoriamente encerra o app em seguida** (`NSApp.terminate`)
-    /// — o PowerSync mantém handles abertos enquanto o processo vive, então
-    /// apagar com a app rodando deixa o estado em memória inconsistente. O OS
-    /// libera os handles no exit, e o próximo boot recria do zero pelo
-    /// `Seed.runIfNeeded`.
-    static func wipeLocalDatabase() {
-        log.database.notice("Apagando banco local por solicitação do usuário.")
-        deleteDatabaseFiles()
-    }
-
-    /// Usado apenas pelo fallback de `AppEnvironment` quando o setup real
-    /// falha. Cria uma instância "vazia" pra manter o app compilável; qualquer
-    /// query lança erro porque não há banco real por trás.
     static func placeholder() -> AppContainer {
-        let database = PowerSyncDatabase(
-            schema: appSchema,
-            dbFilename: "placeholder.sqlite",
-            logger: log.powerSyncLogger
-        )
-        return AppContainer(db: database)
+        AppContainer()
     }
 
     static func inMemoryForTesting() -> AppContainer {
-        let database = PowerSyncDatabase(
-            schema: appSchema,
-            dbFilename: ":memory:",
-            logger: DefaultLogger()
+        AppContainer(
+            categoryCatalog: StaticCategoryCatalogRepository(categories: []),
+            institutionCatalog: StaticInstitutionCatalogRepository(institutions: []),
+            remoteAccounts: StaticAccountRemoteRepository(snapshot: .empty),
+            remoteDashboard: StaticDashboardRemoteRepository(snapshot: .empty),
+            remoteStatements: StaticStatementRemoteRepository(snapshot: .empty),
+            remoteTransactions: StaticTransactionRemoteRepository(page: .empty),
+            remoteImports: StaticImportRemoteRepository(batches: []),
+            remoteCategorization: StaticCategorizationRemoteRepository()
         )
-        return AppContainer(db: database)
     }
 
     static func inMemoryForTesting(
@@ -298,21 +177,19 @@ final class AppContainer {
         remoteAccounts: (any AccountRemoteRepositoryProtocol)? = nil,
         remoteDashboard: (any DashboardRemoteRepositoryProtocol)? = nil,
         remoteStatements: (any StatementRemoteRepositoryProtocol)? = nil,
-        remoteTransactions: (any TransactionRemoteRepositoryProtocol)? = nil
+        remoteTransactions: (any TransactionRemoteRepositoryProtocol)? = nil,
+        remoteImports: (any ImportRemoteRepositoryProtocol)? = nil,
+        remoteCategorization: (any CategorizationRemoteRepositoryProtocol)? = nil
     ) -> AppContainer {
-        let database = PowerSyncDatabase(
-            schema: appSchema,
-            dbFilename: ":memory:",
-            logger: DefaultLogger()
-        )
-        return AppContainer(
-            db: database,
+        AppContainer(
             categoryCatalog: categoryCatalog,
             institutionCatalog: institutionCatalog,
-            remoteAccounts: remoteAccounts,
-            remoteDashboard: remoteDashboard,
-            remoteStatements: remoteStatements,
-            remoteTransactions: remoteTransactions
+            remoteAccounts: remoteAccounts ?? StaticAccountRemoteRepository(snapshot: .empty),
+            remoteDashboard: remoteDashboard ?? StaticDashboardRemoteRepository(snapshot: .empty),
+            remoteStatements: remoteStatements ?? StaticStatementRemoteRepository(snapshot: .empty),
+            remoteTransactions: remoteTransactions ?? StaticTransactionRemoteRepository(page: .empty),
+            remoteImports: remoteImports ?? StaticImportRemoteRepository(batches: []),
+            remoteCategorization: remoteCategorization ?? StaticCategorizationRemoteRepository()
         )
     }
 }

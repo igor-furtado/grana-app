@@ -5,8 +5,6 @@
 //      - Categorização online: `supabaseURL` e `supabaseAnonKey` são usados
 //        pela Edge Function pública `/functions/v1/categorize-import` e
 //        pelo bootstrap autenticado `api.v1_ensure_profile()`.
-//      - Compat legado enquanto ainda existir PowerSync em outras fatias:
-//        `powerSyncURL`.
 //
 // Por que `Config.example.swift` versus `.env`:
 // Sem dependência extra, type-safe, e o compilador avisa se você usar uma
@@ -22,7 +20,6 @@
     enum Config {
         static let supabaseURL = "https://YOUR_PROJECT.supabase.co"
         static let supabaseAnonKey = "YOUR_ANON_KEY"
-        static let powerSyncURL = "https://YOUR_INSTANCE.powersync.journeyapps.com"
 
         static let categorizationTaxonomyVersion = 1
     }

@@ -25,6 +25,7 @@ struct TransactionDraft: Identifiable, Hashable {
     let notes: String?
     /// FITID do OFX, quando existir. CSV/XLSX = nil.
     let externalId: String?
+    let destinationAccountId: UUID?
     /// Categoria fornecida pelo sistema de origem (ex: coluna "Categoria"
     /// do CSV do Inter: SUPERMERCADO, TRANSPORTE, BARES…). **Não é nossa
     /// taxonomia** — vai pra IA só como hint adicional pra reduzir incerteza.
@@ -42,6 +43,7 @@ struct TransactionDraft: Identifiable, Hashable {
         description: String,
         notes: String?,
         externalId: String?,
+        destinationAccountId: UUID? = nil,
         sourceCategoryHint: String? = nil,
         refundOfTransactionId: UUID? = nil
     ) {
@@ -54,6 +56,7 @@ struct TransactionDraft: Identifiable, Hashable {
         self.description = description
         self.notes = notes
         self.externalId = externalId
+        self.destinationAccountId = destinationAccountId
         self.sourceCategoryHint = sourceCategoryHint
         self.refundOfTransactionId = refundOfTransactionId
     }

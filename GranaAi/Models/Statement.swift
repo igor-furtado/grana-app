@@ -2,7 +2,7 @@ import Foundation
 
 /// Fatura de cartão de crédito (ciclo de fechamento).
 ///
-/// Criada **lazy** pelo `TransactionRepository`: quando uma transação em
+/// Criada **lazy** pelo backend: quando uma transação em
 /// conta-cartão entra, o resolver de janela calcula `(closingDate, dueDate)`
 /// do ciclo que cobre `occurredAt`; se não há Statement com esse
 /// `closingDate`, uma nova é criada antes do insert da transação.
@@ -74,9 +74,8 @@ enum StatementStatus: String, Codable, Hashable {
 /// 1+ transferências (adiantamento). Cada linha registra **quanto** desta
 /// transferência foi aplicado a esta Fatura específica.
 ///
-/// **Constraint não no schema** (PowerSync sem NOT NULL/CHECK): a soma dos
-/// `appliedAmount` de payments com mesmo `transactionId` não deve exceder
-/// `transactions.amount` daquela transferência. Validado no Repository.
+/// A soma dos `appliedAmount` de payments com mesmo `transactionId` não deve
+/// exceder `transactions.amount` daquela transferência. Validado no backend.
 struct StatementPayment: Identifiable, Codable, Hashable {
     let id: UUID
     let statementId: UUID
