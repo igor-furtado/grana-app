@@ -351,7 +351,7 @@ begin
         'BRL',
         'UTC'
     )
-    on conflict (user_id) do update
+    on conflict on constraint user_profiles_pkey do update
     set updated_at = profile.updated_at
     returning
         profile.user_id,

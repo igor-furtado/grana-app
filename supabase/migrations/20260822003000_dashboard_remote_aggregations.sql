@@ -97,11 +97,11 @@ as $$
     period_totals as (
         select
             coalesce(sum(case
-                when category.kind = 'expense' then signed_amount
+                when period_rows.kind = 'expense' then signed_amount
                 else 0
             end), 0) as expense_cents,
             coalesce(sum(case
-                when category.kind = 'income' then signed_amount
+                when period_rows.kind = 'income' then signed_amount
                 else 0
             end), 0) as income_cents
         from context
@@ -125,11 +125,11 @@ as $$
     lifetime_totals as (
         select
             coalesce(sum(case
-                when category.kind = 'income' then signed_amount
+                when lifetime_rows.kind = 'income' then signed_amount
                 else 0
             end), 0) as income_cents,
             coalesce(sum(case
-                when category.kind = 'expense' then signed_amount
+                when lifetime_rows.kind = 'expense' then signed_amount
                 else 0
             end), 0) as expense_cents
         from context
