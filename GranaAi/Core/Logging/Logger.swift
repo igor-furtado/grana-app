@@ -6,11 +6,10 @@ import OSLog
 /// - Aparece no Console.app filtrado por subsystem/category — útil pra debug.
 /// - Não precisa de dependência externa.
 ///
-/// Uso: `log.database.info("texto")`, `log.sync.error("...")`.
+/// Uso: `log.ui.info("texto")`, `log.sync.error("...")`.
 struct Log {
     private static let subsystem = Bundle.main.bundleIdentifier ?? "com.granaai.app"
 
-    let database = Logger(subsystem: subsystem, category: "database")
     let sync = Logger(subsystem: subsystem, category: "sync")
     let network = Logger(subsystem: subsystem, category: "network")
     let ui = Logger(subsystem: subsystem, category: "ui")

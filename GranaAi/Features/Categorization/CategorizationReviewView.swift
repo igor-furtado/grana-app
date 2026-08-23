@@ -199,7 +199,6 @@ struct CategorizationReviewView: View {
         // Caption omitida — stats de revisão vivem no `summaryRow` da lista.
         BottomActionBar {
             Button("Fechar") { onClose() }
-                .keyboardShortcut(.cancelAction)
             Button("Voltar") { onBack() }
             Button {
                 Task { await onImport() }

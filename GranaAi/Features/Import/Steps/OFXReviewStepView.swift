@@ -36,12 +36,10 @@ struct OFXReviewStepView: View {
 
             BottomActionBar(caption: selectionCaption) {
                 Button("Fechar") { dismiss() }
-                    .keyboardShortcut(.cancelAction)
                 Button("Avançar com \(totalSelected) \(totalSelected == 1 ? "transação" : "transações")") {
                     Task { await store.confirmOFXImport() }
                 }
                 .buttonStyle(.borderedProminent)
-                .keyboardShortcut(.defaultAction)
                 .disabled(totalSelected == 0 || !allAccountsSelected)
             }
         }

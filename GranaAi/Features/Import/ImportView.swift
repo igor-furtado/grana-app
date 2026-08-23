@@ -234,10 +234,8 @@ private struct FailedStepView: View {
         EmptyStateView("A importação falhou", icon: .warning, description: message) {
             HStack(spacing: 12) {
                 Button("Fechar") { onClose() }
-                    .keyboardShortcut(.cancelAction)
                 Button("Recomeçar") { onRetry() }
                     .buttonStyle(.borderedProminent)
-                    .keyboardShortcut(.defaultAction)
             }
         }
     }

@@ -2,7 +2,9 @@
 // 1. Copie este arquivo para `Config.swift` (mesma pasta).
 // 2. `Config.swift` está no `.gitignore` — nada do que está aqui vaza pro git.
 // 3. Preencha os placeholders conforme as fases:
-//      - Categorização online: `supabaseURL` e `supabaseAnonKey` são usados
+//      - Categorização online: `supabaseURL` e `supabaseAnonKey` são usados.
+//        Em `supabaseAnonKey`, copie a publishable key do projeto atual
+//        (`sb_publishable_...`) em Settings > API Keys.
 //        pela Edge Function pública `/functions/v1/categorize-import` e
 //        pelo bootstrap autenticado `api.v1_ensure_profile()`.
 //
@@ -19,7 +21,7 @@
 
     enum Config {
         static let supabaseURL = "https://YOUR_PROJECT.supabase.co"
-        static let supabaseAnonKey = "YOUR_ANON_KEY"
+        static let supabaseAnonKey = "YOUR_PUBLISHABLE_KEY"
 
         static let categorizationTaxonomyVersion = 1
     }

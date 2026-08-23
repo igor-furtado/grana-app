@@ -67,7 +67,6 @@ struct CategoriesView: View {
                     Label("Painel de detalhes", systemImage: AppIcon.inspectorToggle.systemImage)
                 }
                 .help(inspectorPresented ? "Ocultar painel de detalhes" : "Mostrar painel de detalhes")
-                .keyboardShortcut("i", modifiers: [.command, .option])
             }
         }
         .navigationTitle("Categorias")

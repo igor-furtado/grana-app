@@ -330,6 +330,34 @@ struct SupabaseAuthClientTests {
             try await client.requestMagicLink(email: "pessoa@exemplo.com")
         }
     }
+
+    @Test("Traduz invalid API key para erro de configuração acionável")
+    func mapsInvalidAPIKeyToConfigurationError() {
+        let mapped = SupabaseAuthClient.normalizedRequestMagicLinkError(
+            NSError(domain: "Auth", code: 401, userInfo: [
+                NSLocalizedDescriptionKey: "Invalid API key",
+            ])
+        )
+
+        let error = mapped as? AppConfigurationError
+        #expect(error == .invalidAPIKey("Config.supabaseAnonKey"))
+    }
+}
+
+@Suite("Apresentação de erros")
+struct AppErrorPresentationTests {
+    @Test("Traduz schema api não exposto para erro de configuração")
+    func mapsInvalidSchemaToConfigurationError() {
+        let presentation = AppErrorPresentation.from(PostgrestError(
+            detail: nil,
+            hint: "Only the following schemas are exposed: public, graphql_public",
+            code: "PGRST106",
+            message: "Invalid schema: api"
+        ))
+
+        #expect(presentation.title == "Configuração inválida")
+        #expect(presentation.message == "Exponha o schema api em Data API > Exposed schemas no projeto Supabase.")
+    }
 }
 
 private actor FakeAuthClient: AuthClientProtocol {

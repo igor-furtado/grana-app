@@ -40,7 +40,8 @@ actor SupabaseAuthClient: AuthClientProtocol {
         let validatedURL = try AppConfigurationValidator.supabaseURL(supabaseURL)
         let validatedAnonKey = try AppConfigurationValidator.supabaseAnonKey(supabaseAnonKey)
         let options = SupabaseClientOptions(auth: .init(
-            redirectToURL: AuthCallback.redirectURL
+            redirectToURL: AuthCallback.redirectURL,
+            emitLocalSessionAsInitialSession: true
         ))
         return SupabaseClient(
             supabaseURL: validatedURL,
@@ -69,10 +70,14 @@ actor SupabaseAuthClient: AuthClientProtocol {
 
     func requestMagicLink(email: String) async throws {
         let client = try resolvedClient()
-        try await client.auth.signInWithOTP(
-            email: email,
-            redirectTo: AuthCallback.redirectURL
-        )
+        do {
+            try await client.auth.signInWithOTP(
+                email: email,
+                redirectTo: AuthCallback.redirectURL
+            )
+        } catch {
+            throw Self.normalizedRequestMagicLinkError(error)
+        }
     }
 
     func session(from callbackURL: URL) async throws -> AuthSessionContext {
@@ -85,6 +90,14 @@ actor SupabaseAuthClient: AuthClientProtocol {
     func signOut() async throws {
         let client = try resolvedClient()
         try await client.auth.signOut(scope: .local)
+    }
+
+    nonisolated static func normalizedRequestMagicLinkError(_ error: any Error) -> any Error {
+        let message = (error as NSError).localizedDescription
+        if message.localizedCaseInsensitiveContains("Invalid API key") {
+            return AppConfigurationError.invalidAPIKey("Config.supabaseAnonKey")
+        }
+        return error
     }
 }
 

@@ -1,4 +1,5 @@
 import Foundation
+import PostgREST
 
 /// Protocolo opcional pra erros que querem controlar o **título** exibido no
 /// toast global. Sem implementar, o `NoticeCenter` cai num título genérico
@@ -15,6 +16,8 @@ protocol UserFacingError: LocalizedError {
 enum AppConfigurationError: UserFacingError {
     case placeholderValue(String)
     case invalidURL(String)
+    case invalidAPIKey(String)
+    case invalidExposedSchema(String)
 
     var errorTitle: String {
         "Configuração inválida"
@@ -26,6 +29,10 @@ enum AppConfigurationError: UserFacingError {
             return "Preencha \(key) com o valor real antes de usar este recurso."
         case let .invalidURL(key):
             return "A URL informada em \(key) é inválida."
+        case let .invalidAPIKey(key):
+            return "Atualize \(key) com a publishable key do projeto Supabase atual."
+        case let .invalidExposedSchema(schema):
+            return "Exponha o schema \(schema) em Data API > Exposed schemas no projeto Supabase."
         }
     }
 }
@@ -49,6 +56,8 @@ enum AppConfigurationValidator {
             placeholderMarkers: [
                 "your_anon_key",
                 "your-anon-key",
+                "your_publishable_key",
+                "your-publishable-key",
             ]
         )
     }
@@ -94,20 +103,37 @@ struct AppErrorPresentation: Equatable {
     /// erros tipados do app (todos `LocalizedError` em PT-BR) e degrada
     /// gracioso pra `NSError`/`Error` cru.
     static func from(_ error: Error, overrideTitle: String? = nil) -> AppErrorPresentation {
+        let normalizedError = normalized(error)
         let message: String
-        if let localized = error as? LocalizedError, let desc = localized.errorDescription {
+        if let localized = normalizedError as? LocalizedError, let desc = localized.errorDescription {
             message = desc
         } else {
-            message = (error as NSError).localizedDescription
+            message = (normalizedError as NSError).localizedDescription
         }
 
         let title: String = {
             if let overrideTitle { return overrideTitle }
-            if let userFacing = error as? UserFacingError { return userFacing.errorTitle }
-            return defaultTitle(for: error)
+            if let userFacing = normalizedError as? UserFacingError { return userFacing.errorTitle }
+            return defaultTitle(for: normalizedError)
         }()
 
         return AppErrorPresentation(title: title, message: message)
+    }
+
+    private static func normalized(_ error: Error) -> Error {
+        guard let postgrestError = error as? PostgrestError else {
+            return error
+        }
+
+        if postgrestError.code == "PGRST106",
+           let schema = postgrestError.message.split(separator: ":").last?
+               .trimmingCharacters(in: .whitespacesAndNewlines),
+           !schema.isEmpty
+        {
+            return AppConfigurationError.invalidExposedSchema(schema)
+        }
+
+        return error
     }
 
     /// Título "amigável" derivado do tipo. Mapeia os enums conhecidos pra

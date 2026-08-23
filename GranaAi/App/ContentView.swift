@@ -25,9 +25,7 @@ enum AppSection: String, Hashable, CaseIterable, Identifiable {
         rawValue
     }
 
-    /// Ordem é **parte do contrato de UI**: os 9 primeiros itens nesta
-    /// ordem ganham atalho `⌘1..⌘9` (ver `ContentView.shortcutOrder`).
-    /// Reordenar aqui muda os atalhos do usuário silenciosamente.
+    /// Ordem é **parte do contrato de UI** da sidebar.
     static let groups: [SidebarGroup] = [
         SidebarGroup(title: nil, items: [.dashboard, .summary, .transactions, .creditCards, .accounts]),
         SidebarGroup(title: "Economias", items: [.planning, .savings, .investments]),
@@ -123,16 +121,6 @@ struct ContentView: View {
             }
         )
     }
-
-    /// Atalhos ⌘1..⌘9 — primeiras 9 seções na ordem visual da sidebar.
-    /// Segue convenção do macOS (Safari, Mail, Notes usam ⌘1..⌘N pra
-    /// alternar entre seções/abas/contas). As seções restantes ficam sem
-    /// atalho — são acessadas via clique, e ⌘0 colide com "tamanho real"
-    /// em vários contextos macOS.
-    private static let shortcutOrder: [AppSection] =
-        Array(AppSection.groups.flatMap(\.items).prefix(9))
-    private static let shortcutKeys: [KeyEquivalent] =
-        ["1", "2", "3", "4", "5", "6", "7", "8", "9"]
 
     var body: some View {
         Group {
@@ -237,20 +225,6 @@ struct ContentView: View {
             }
         }
         .navigationSplitViewColumnWidth(min: 200, ideal: 220, max: 280)
-        .background {
-            // Atalhos ⌘1..⌘9 — Buttons invisíveis que capturam os shortcuts
-            // e setam a seleção. `Label` dentro do `List(selection:)` não
-            // aceita `.keyboardShortcut` direto, daí o workaround.
-            Group {
-                ForEach(Array(zip(Self.shortcutOrder, Self.shortcutKeys)), id: \.0) { section, key in
-                    Button(section.title) {
-                        selectionRaw = section.rawValue
-                    }
-                    .keyboardShortcut(key, modifiers: .command)
-                }
-            }
-            .hidden()
-        }
         .toolbar {
             ToolbarItem(placement: .primaryAction) {
                 Button(action: toggleTheme) {

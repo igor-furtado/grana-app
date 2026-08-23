@@ -289,7 +289,6 @@ private struct EmptyStateDropZone: View {
                 }
                 .buttonStyle(.borderedProminent)
                 .controlSize(.large)
-                .keyboardShortcut(.defaultAction)
             }
             .padding(.top, 4)
         }
