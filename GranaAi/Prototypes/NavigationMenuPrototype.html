@@ -531,15 +531,9 @@ Run by opening this file in a browser.
     const groups = [
       { title: null, items: [
         ["dashboard", "Dashboard", "pie"],
-        ["summary", "Resumo", "doc"],
         ["transactions", "Transações", "list"],
         ["creditCards", "Cartões", "card"],
         ["accounts", "Contas", "bank"]
-      ] },
-      { title: "Economias", items: [
-        ["planning", "Planejamento", "target"],
-        ["savings", "Cofrinho", "vault"],
-        ["investments", "Investimentos", "trend"]
       ] },
       { title: "Facilidades", items: [
         ["import", "Importar", "import"],
@@ -548,13 +542,11 @@ Run by opening this file in a browser.
       { title: "Ajustes", items: [
         ["categories", "Categorias", "tag"],
         ["institutions", "Instituições", "bank"],
-        ["profile", "Perfil", "user"],
-        ["advanced", "Avançado", "wrench"]
+        ["profile", "Perfil", "user"]
       ] }
     ];
 
     const primary = groups[0].items;
-    const economy = groups[1].items;
     const activeId = "dashboard";
 
     function icon(name) {
@@ -608,13 +600,11 @@ Run by opening this file in a browser.
     }
 
     function variantA() {
-      const top = primary.concat(economy);
       return `
         <nav class="rail-variant glass" aria-label="Navegação principal">
-          <div class="rail-stack">${top.map(section => item(section, { text: false })).join("")}</div>
+          <div class="rail-stack">${primary.map(section => item(section, { text: false })).join("")}</div>
           <div class="rail-bottom">
             ${item(["profile", "Perfil", "user"], { text: false })}
-            ${item(["advanced", "Avançado", "wrench"], { text: false })}
           </div>
         </nav>
       `;

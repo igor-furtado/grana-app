@@ -56,6 +56,7 @@ final class CategorizationService: Sendable {
         var cacheEntries: [CategorizationPendingCacheEntry]
         var unresolvedDrafts: [TransactionDraft]
         var failedChunks: Int
+        var harnessIssue: CategorizationHarnessStatusCenter.Issue?
     }
 
     private let remote: any CategorizationRemoteRepositoryProtocol
@@ -199,6 +200,7 @@ final class CategorizationService: Sendable {
         var fromAI = 0
         var fromFallback = 0
         var failedChunks = 0
+        var representativeIssue: CategorizationHarnessStatusCenter.Issue?
         var pendingCacheEntries: [String: CategorizationPendingCacheEntry] = [:]
 
         if !pendingForAI.isEmpty {
@@ -223,19 +225,26 @@ final class CategorizationService: Sendable {
                 }
             }
             suggestions.append(contentsOf: result.suggestions)
+            if representativeIssue == nil {
+                representativeIssue = result.harnessIssue
+            }
             for entry in result.cacheEntries {
                 pendingCacheEntries[entry.descriptionHash] = entry
             }
             progress?(.aiChunkFinished(processed: totalItems, total: totalItems))
 
             if failedChunks > 0 {
+                let issue = representativeIssue ?? .init(
+                    title: "Categorização online indisponível",
+                    message: CategorizationHarnessSupport.recoveryMessage
+                )
                 Task { @MainActor in
                     CategorizationHarnessStatusCenter.shared.markUnavailable(
-                        message: CategorizationHarnessSupport.recoveryMessage
+                        message: issue.message
                     )
                     NoticeCenter.shared.error(
-                        title: "Categorização online indisponível",
-                        message: "A importação continua com Não Classificado porque o serviço de categorização não respondeu.",
+                        title: issue.title,
+                        message: issue.message,
                         actions: [CategorizationHarnessSupport.recoveryAction()]
                     )
                 }
@@ -391,7 +400,8 @@ final class CategorizationService: Sendable {
                 suggestions: result.suggestions + retry.suggestions,
                 cacheEntries: result.cacheEntries + retry.cacheEntries,
                 unresolvedDrafts: [],
-                failedChunks: result.failedChunks + retry.failedChunks
+                failedChunks: result.failedChunks + retry.failedChunks,
+                harnessIssue: result.harnessIssue ?? retry.harnessIssue
             )
         } catch {
             log.ai
@@ -405,7 +415,8 @@ final class CategorizationService: Sendable {
                 fallbackId: fallbackId,
                 ownAccounts: ownAccounts,
                 accountContextById: accountContextById,
-                thresholds: thresholds
+                thresholds: thresholds,
+                triggeringError: error
             )
         }
     }
@@ -452,14 +463,17 @@ final class CategorizationService: Sendable {
                 suggestions: result.suggestions + retry.suggestions,
                 cacheEntries: result.cacheEntries + retry.cacheEntries,
                 unresolvedDrafts: [],
-                failedChunks: result.failedChunks + retry.failedChunks
+                failedChunks: result.failedChunks + retry.failedChunks,
+                harnessIssue: result.harnessIssue ?? retry.harnessIssue
             )
         } catch {
             log.ai
                 .error(
                     "Reenvio parcial falhou (\(drafts.count) drafts): \(error.localizedDescription, privacy: .public)"
                 )
-            return fallbackResult(drafts: drafts, hashByDraftId: hashByDraftId, fallbackId: fallbackId)
+            var result = fallbackResult(drafts: drafts, hashByDraftId: hashByDraftId, fallbackId: fallbackId)
+            result.harnessIssue = CategorizationHarnessSupport.issue(for: error)
+            return result
         }
     }
 
@@ -470,13 +484,15 @@ final class CategorizationService: Sendable {
         fallbackId: UUID,
         ownAccounts: [CategorizationPrompt.OwnAccountInfo],
         accountContextById: [UUID: String],
-        thresholds: ConfidenceThresholds
+        thresholds: ConfidenceThresholds,
+        triggeringError: Error
     ) async -> AIChunkResult {
         guard Self.shouldSplitFailedChunk(drafts.count),
               let split = Self.splitDraftsForRetry(drafts)
         else {
             var result = fallbackResult(drafts: drafts, hashByDraftId: hashByDraftId, fallbackId: fallbackId)
             result.failedChunks = 1
+            result.harnessIssue = CategorizationHarnessSupport.issue(for: triggeringError)
             return result
         }
 
@@ -502,7 +518,8 @@ final class CategorizationService: Sendable {
             suggestions: left.suggestions + right.suggestions,
             cacheEntries: left.cacheEntries + right.cacheEntries,
             unresolvedDrafts: [],
-            failedChunks: left.failedChunks + right.failedChunks
+            failedChunks: left.failedChunks + right.failedChunks,
+            harnessIssue: left.harnessIssue ?? right.harnessIssue
         )
     }
 
@@ -543,7 +560,8 @@ final class CategorizationService: Sendable {
             suggestions: suggestions,
             cacheEntries: [],
             unresolvedDrafts: [],
-            failedChunks: 0
+            failedChunks: 0,
+            harnessIssue: nil
         )
     }
 
@@ -731,7 +749,8 @@ final class CategorizationService: Sendable {
             suggestions: suggestions,
             cacheEntries: Array(cacheByHash.values),
             unresolvedDrafts: unresolvedDrafts,
-            failedChunks: 0
+            failedChunks: 0,
+            harnessIssue: nil
         )
     }
 

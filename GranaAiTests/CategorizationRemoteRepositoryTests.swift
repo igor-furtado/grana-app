@@ -71,6 +71,52 @@ struct CategorizationRemoteRepositoryTests {
             )
         }
     }
+
+    @Test("Mapeia falta de cota da OpenAI para erro específico")
+    func mapsOpenAIInsufficientQuota() async {
+        let repository = CategorizationRemoteRepository(
+            remoteStore: FakeCategorizationRemoteStore(
+                error: AIError.httpStatus(
+                    429,
+                    body: #"{"code":"openai_insufficient_quota","provider_status":429}"#
+                )
+            )
+        )
+
+        await #expect(throws: CategorizationRemoteRepositoryError.quotaExceeded) {
+            _ = try await repository.classify(
+                request: CategorizationPrompt.buildRequest(
+                    items: [],
+                    categories: [],
+                    ownAccounts: [],
+                    taxonomyVersion: 1
+                )
+            )
+        }
+    }
+
+    @Test("Mapeia limite de taxa da OpenAI preservando retry-after")
+    func mapsOpenAIRateLimit() async {
+        let repository = CategorizationRemoteRepository(
+            remoteStore: FakeCategorizationRemoteStore(
+                error: AIError.httpStatus(
+                    429,
+                    body: #"{"code":"openai_rate_limit_exceeded","provider_status":429,"retry_after_seconds":17}"#
+                )
+            )
+        )
+
+        await #expect(throws: CategorizationRemoteRepositoryError.rateLimited(retryAfterSeconds: 17)) {
+            _ = try await repository.classify(
+                request: CategorizationPrompt.buildRequest(
+                    items: [],
+                    categories: [],
+                    ownAccounts: [],
+                    taxonomyVersion: 1
+                )
+            )
+        }
+    }
 }
 
 private actor FakeCategorizationRemoteStore: CategorizationRemoteStore {

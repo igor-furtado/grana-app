@@ -47,6 +47,13 @@ type FewShotExample = {
   corrected_subcategory_name: string | null;
 };
 
+type ErrorResponseBody = {
+  code: string;
+  message?: string;
+  provider_status?: number;
+  retry_after_seconds?: number;
+};
+
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers": "authorization, apikey, content-type",
@@ -66,7 +73,7 @@ Deno.serve(async (request: Request) => {
 
     const userClient = createClient(
       requireEnv("SUPABASE_URL"),
-      requireEnv("SUPABASE_ANON_KEY"),
+      requirePublishableKey(),
       {
         global: {
           headers: {
@@ -77,7 +84,7 @@ Deno.serve(async (request: Request) => {
     );
     const adminClient = createClient(
       requireEnv("SUPABASE_URL"),
-      requireEnv("SUPABASE_SERVICE_ROLE_KEY"),
+      requireSecretKey(),
     );
 
     const token = authHeader.replace("Bearer ", "");
@@ -149,8 +156,9 @@ Deno.serve(async (request: Request) => {
       },
     });
   } catch (error) {
-    const message = error instanceof Error ? error.message : "unexpected_error";
-    return jsonResponse({ code: message }, 500);
+    const normalized = normalizeError(error);
+    console.error("categorize-import failed", normalized);
+    return jsonResponse(normalized.body, normalized.status);
   }
 });
 
@@ -356,7 +364,35 @@ async function classifyWithOpenAI(args: {
     }),
   });
   if (!response.ok) {
-    throw new Error(`openai_http_${response.status}`);
+    const body = await safeParseJSON(response);
+    const retryAfterSeconds = parseRetryAfterSeconds(response);
+    if (response.status === 429) {
+      const upstreamCode = body?.error?.code ?? body?.error?.type ?? null;
+      if (upstreamCode === "insufficient_quota") {
+        throw new EdgeFunctionError({
+          code: "openai_insufficient_quota",
+          message: "OpenAI billing or quota unavailable for categorization runtime.",
+          status: 429,
+          providerStatus: response.status,
+          retryAfterSeconds,
+        });
+      }
+      throw new EdgeFunctionError({
+        code: "openai_rate_limit_exceeded",
+        message: "OpenAI rate limit exceeded for categorization runtime.",
+        status: 429,
+        providerStatus: response.status,
+        retryAfterSeconds,
+      });
+    }
+
+    throw new EdgeFunctionError({
+      code: `openai_http_${response.status}`,
+      message: `OpenAI upstream returned HTTP ${response.status}.`,
+      status: 502,
+      providerStatus: response.status,
+      retryAfterSeconds,
+    });
   }
 
   const payload = await response.json();
@@ -407,6 +443,95 @@ function jsonResponse(body: unknown, status = 200) {
   });
 }
 
+class EdgeFunctionError extends Error {
+  readonly code: string;
+  readonly status: number;
+  readonly providerStatus?: number;
+  readonly retryAfterSeconds?: number;
+
+  constructor(args: {
+    code: string;
+    message: string;
+    status: number;
+    providerStatus?: number;
+    retryAfterSeconds?: number;
+  }) {
+    super(args.message);
+    this.name = "EdgeFunctionError";
+    this.code = args.code;
+    this.status = args.status;
+    this.providerStatus = args.providerStatus;
+    this.retryAfterSeconds = args.retryAfterSeconds;
+  }
+}
+
+function normalizeError(error: unknown): { status: number; body: ErrorResponseBody } {
+  if (error instanceof EdgeFunctionError) {
+    return {
+      status: error.status,
+      body: {
+        code: error.code,
+        message: error.message,
+        provider_status: error.providerStatus,
+        retry_after_seconds: error.retryAfterSeconds,
+      },
+    };
+  }
+
+  if (error instanceof Error) {
+    return {
+      status: 500,
+      body: {
+        code: error.message,
+      },
+    };
+  }
+
+  return {
+    status: 500,
+    body: {
+      code: "unexpected_error",
+    },
+  };
+}
+
+async function safeParseJSON(response: Response) {
+  const text = await response.text();
+  if (!text) return null;
+
+  try {
+    return JSON.parse(text) as {
+      error?: {
+        code?: string;
+        type?: string;
+        message?: string;
+      };
+    };
+  } catch {
+    return null;
+  }
+}
+
+function parseRetryAfterSeconds(response: Response) {
+  const retryAfter = response.headers.get("retry-after");
+  if (retryAfter) {
+    const numeric = Number(retryAfter);
+    if (Number.isFinite(numeric) && numeric > 0) {
+      return Math.ceil(numeric);
+    }
+  }
+
+  const resetSeconds = response.headers.get("x-ratelimit-reset-requests");
+  if (resetSeconds) {
+    const numeric = Number(resetSeconds);
+    if (Number.isFinite(numeric) && numeric > 0) {
+      return Math.ceil(numeric);
+    }
+  }
+
+  return undefined;
+}
+
 function pseudonymizeDescription(raw: string) {
   const folded = raw
     .normalize("NFD")
@@ -426,4 +551,49 @@ function requireEnv(name: string) {
   const value = Deno.env.get(name);
   if (!value) throw new Error(`missing_env:${name}`);
   return value;
+}
+
+function requirePublishableKey() {
+  return requireNamedKey({
+    jsonEnv: "SUPABASE_PUBLISHABLE_KEYS",
+    singleEnv: "SUPABASE_PUBLISHABLE_KEY",
+    legacyEnv: "SUPABASE_ANON_KEY",
+    keyName: "default",
+  });
+}
+
+function requireSecretKey() {
+  return requireNamedKey({
+    jsonEnv: "SUPABASE_SECRET_KEYS",
+    singleEnv: "SUPABASE_SECRET_KEY",
+    legacyEnv: "SUPABASE_SERVICE_ROLE_KEY",
+    keyName: "default",
+  });
+}
+
+function requireNamedKey(args: {
+  jsonEnv: string;
+  singleEnv: string;
+  legacyEnv: string;
+  keyName: string;
+}) {
+  const jsonValue = Deno.env.get(args.jsonEnv);
+  if (jsonValue) {
+    const parsed = JSON.parse(jsonValue) as Record<string, string>;
+    const key = parsed[args.keyName];
+    if (!key) throw new Error(`missing_env:${args.jsonEnv}.${args.keyName}`);
+    return key;
+  }
+
+  const singleValue = Deno.env.get(args.singleEnv);
+  if (singleValue) {
+    return singleValue;
+  }
+
+  const legacyValue = Deno.env.get(args.legacyEnv);
+  if (legacyValue) {
+    return legacyValue;
+  }
+
+  throw new Error(`missing_env:${args.jsonEnv}`);
 }

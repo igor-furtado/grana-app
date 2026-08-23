@@ -11,6 +11,8 @@ nonisolated enum CategorizationRemoteRepositoryError: UserFacingError, Equatable
     case invalidConfiguration
     case unsupportedProvider
     case invalidRequest
+    case quotaExceeded
+    case rateLimited(retryAfterSeconds: Int?)
     case unavailable
     case unexpectedResponse
 
@@ -28,6 +30,13 @@ nonisolated enum CategorizationRemoteRepositoryError: UserFacingError, Equatable
             return "O provider remoto configurado para categorização não é suportado."
         case .invalidRequest:
             return "O payload enviado para categorização ficou inválido."
+        case .quotaExceeded:
+            return "A chave remota da OpenAI ficou sem cota ou sem billing ativo para a categorização assistida."
+        case let .rateLimited(retryAfterSeconds):
+            if let retryAfterSeconds, retryAfterSeconds > 0 {
+                return "A OpenAI atingiu o limite de taxa agora. Tente novamente em cerca de \(retryAfterSeconds) segundos."
+            }
+            return "A OpenAI atingiu o limite de taxa agora. Tente novamente em instantes."
         case .unavailable:
             return "Não foi possível falar com o serviço de categorização."
         case .unexpectedResponse:
@@ -35,7 +44,7 @@ nonisolated enum CategorizationRemoteRepositoryError: UserFacingError, Equatable
         }
     }
 
-    static func from(code: String) -> CategorizationRemoteRepositoryError {
+    static func from(code: String, retryAfterSeconds: Int? = nil) -> CategorizationRemoteRepositoryError {
         switch code {
         case "missing_authorization", "invalid_user_jwt":
             return .authenticationRequired
@@ -43,6 +52,10 @@ nonisolated enum CategorizationRemoteRepositoryError: UserFacingError, Equatable
             return .invalidRequest
         case "missing_runtime_config":
             return .invalidConfiguration
+        case "openai_insufficient_quota":
+            return .quotaExceeded
+        case "openai_rate_limit_exceeded":
+            return .rateLimited(retryAfterSeconds: retryAfterSeconds)
         default:
             if code.hasPrefix("missing_env:") {
                 return .invalidConfiguration
@@ -136,21 +149,26 @@ final class CategorizationRemoteRepository: CategorizationRemoteRepositoryProtoc
         case .invalidConfiguration:
             return .invalidConfiguration
         case let .httpStatus(_, body):
-            guard let code = backendCode(from: body) else {
+            guard let payload = backendError(from: body) else {
                 return .unexpectedResponse
             }
-            let mapped = CategorizationRemoteRepositoryError.from(code: code)
+            guard let code = payload.code ?? payload.error else {
+                return .unexpectedResponse
+            }
+            let mapped = CategorizationRemoteRepositoryError.from(
+                code: code,
+                retryAfterSeconds: payload.retryAfterSeconds
+            )
             return mapped == .unexpectedResponse ? .unavailable : mapped
         case .invalidResponse, .responseParse, .decoding, .unknownCategorySlug:
             return .unexpectedResponse
         }
     }
 
-    private static func backendCode(from body: String?) -> String? {
+    private static func backendError(from body: String?) -> CategorizationErrorBody? {
         guard let body, !body.isEmpty else { return nil }
         guard let data = body.data(using: .utf8) else { return nil }
-        let response = try? JSONDecoder().decode(CategorizationErrorBody.self, from: data)
-        return response?.code ?? response?.error
+        return try? JSONDecoder().decode(CategorizationErrorBody.self, from: data)
     }
 }
 
@@ -178,4 +196,13 @@ struct AuthRequiredCategorizationRemoteRepo: CategorizationRemoteRepositoryProto
 private struct CategorizationErrorBody: Decodable {
     let code: String?
     let error: String?
+    let message: String?
+    let retryAfterSeconds: Int?
+
+    enum CodingKeys: String, CodingKey {
+        case code
+        case error
+        case message
+        case retryAfterSeconds = "retry_after_seconds"
+    }
 }

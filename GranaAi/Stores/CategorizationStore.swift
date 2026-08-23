@@ -376,13 +376,15 @@ final class CategorizationStore {
 
     private func handleCategorizationFailure(_ error: Error) {
         if CategorizationHarnessSupport.isHarnessIssue(error) {
-            status = .failed(message: CategorizationHarnessSupport.recoveryMessage)
-            CategorizationHarnessStatusCenter.shared.markUnavailable(
+            let issue = CategorizationHarnessSupport.issue(for: error) ?? .init(
+                title: "Categorização online indisponível",
                 message: CategorizationHarnessSupport.recoveryMessage
             )
+            status = .failed(message: issue.message)
+            CategorizationHarnessStatusCenter.shared.markUnavailable(message: issue.message)
             NoticeCenter.shared.error(
-                title: "Categorização online indisponível",
-                message: "A importação continua com Não Classificado porque o serviço de categorização não respondeu.",
+                title: issue.title,
+                message: issue.message,
                 actions: [CategorizationHarnessSupport.recoveryAction()]
             )
             return

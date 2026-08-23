@@ -63,19 +63,14 @@ enum AppIcon {
     // MARK: - Sidebar / Seções
 
     case sidebarDashboard
-    case sidebarSummary
     case sidebarTransactions
     case sidebarCreditCards
     case sidebarAccounts
-    case sidebarPlanning
-    case sidebarSavings
-    case sidebarInvestments
     case sidebarImport
     case sidebarCategorization
     case sidebarCategories
     case sidebarInstitutions
     case sidebarProfile
-    case sidebarAdvanced
 
     // MARK: - Tema
 
@@ -118,19 +113,14 @@ enum AppIcon {
         case .invalidAmount: "dollarsign.circle.trianglebadge.exclamationmark"
         // Sidebar
         case .sidebarDashboard: "chart.pie"
-        case .sidebarSummary: "doc.text"
         case .sidebarTransactions: "list.bullet"
         case .sidebarCreditCards: "creditcard"
         case .sidebarAccounts: "building.columns"
-        case .sidebarPlanning: "trophy"
-        case .sidebarSavings: "mountain.2"
-        case .sidebarInvestments: "chart.line.uptrend.xyaxis"
         case .sidebarImport: "tray.and.arrow.down"
         case .sidebarCategorization: "sparkles"
         case .sidebarCategories: "tag"
         case .sidebarInstitutions: "building.columns"
         case .sidebarProfile: "person.crop.circle"
-        case .sidebarAdvanced: "wrench.and.screwdriver"
         // Tema
         case .themeLight: "sun.max"
         case .themeDark: "moon"

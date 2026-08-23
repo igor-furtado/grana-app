@@ -2,53 +2,47 @@ import SwiftUI
 
 /// Seções principais do app, exibidas na sidebar do `NavigationSplitView`.
 ///
-/// A sidebar é dividida em grupos via `SidebarGroup` (topo sem header,
-/// depois "Economias", "Facilidades", "Ajustes"). A ordem visual é
-/// determinada por `AppSection.groups`, não pela ordem do `enum`.
+/// A ordem visual da sidebar é determinada por `AppSection.sidebarItems`,
+/// não pela ordem do `enum`.
 enum AppSection: String, Hashable, CaseIterable, Identifiable {
     case dashboard
-    case summary
     case transactions
     case creditCards
     case accounts
-    case planning
-    case savings
-    case investments
     case `import`
     case categorization
     case categories
     case institutions
     case profile
-    case advanced
 
     var id: String {
         rawValue
     }
 
     /// Ordem é **parte do contrato de UI** da sidebar.
-    static let groups: [SidebarGroup] = [
-        SidebarGroup(title: nil, items: [.dashboard, .summary, .transactions, .creditCards, .accounts]),
-        SidebarGroup(title: "Economias", items: [.planning, .savings, .investments]),
-        SidebarGroup(title: "Facilidades", items: [.import, .categorization]),
-        SidebarGroup(title: "Ajustes", items: [.categories, .institutions, .profile, .advanced]),
+    static let sidebarItems: [AppSection] = [
+        .dashboard,
+        .transactions,
+        .creditCards,
+        .accounts,
+        .import,
+        .categorization,
+        .categories,
+        .institutions,
+        .profile,
     ]
 
     var title: String {
         switch self {
         case .dashboard: "Dashboard"
-        case .summary: "Resumo"
         case .transactions: "Transações"
         case .creditCards: "Cartões de crédito"
         case .accounts: "Contas"
-        case .planning: "Planejamento"
-        case .savings: "Cofrinho"
-        case .investments: "Investimentos"
         case .import: "Importar dados"
         case .categorization: "Categorização"
         case .categories: "Categorias"
         case .institutions: "Instituições"
         case .profile: "Perfil"
-        case .advanced: "Avançado"
         }
     }
 
@@ -57,31 +51,15 @@ enum AppSection: String, Hashable, CaseIterable, Identifiable {
     var icon: AppIcon {
         switch self {
         case .dashboard: .sidebarDashboard
-        case .summary: .sidebarSummary
         case .transactions: .sidebarTransactions
         case .creditCards: .sidebarCreditCards
         case .accounts: .sidebarAccounts
-        case .planning: .sidebarPlanning
-        case .savings: .sidebarSavings
-        case .investments: .sidebarInvestments
         case .import: .sidebarImport
         case .categorization: .sidebarCategorization
         case .categories: .sidebarCategories
         case .institutions: .sidebarInstitutions
         case .profile: .sidebarProfile
-        case .advanced: .sidebarAdvanced
         }
-    }
-}
-
-/// Grupo de itens da sidebar. `title` nulo significa "sem header" — usado
-/// no primeiro bloco (Dashboard, Resumo, Transações, etc.) que fica solto no
-/// topo sem rótulo.
-struct SidebarGroup: Identifiable {
-    let title: String?
-    let items: [AppSection]
-    var id: String {
-        title ?? "_top"
     }
 }
 
@@ -170,19 +148,14 @@ struct ContentView: View {
             Group {
                 switch selection {
                 case .dashboard: DashboardView()
-                case .summary: placeholder(for: .summary)
                 case .transactions: TransactionsView()
                 case .creditCards: CreditCardsView()
                 case .accounts: AccountsView()
-                case .planning: placeholder(for: .planning)
-                case .savings: placeholder(for: .savings)
-                case .investments: placeholder(for: .investments)
                 case .import: ImportHistoryView()
                 case .categorization: CategorizationSettingsView()
                 case .categories: CategoriesView()
                 case .institutions: SupportedInstitutionsView()
                 case .profile: ProfileView()
-                case .advanced: AdvancedSettingsView()
                 }
             }
         }
@@ -211,17 +184,9 @@ struct ContentView: View {
     /// Highlight de seleção usa `AccentColor`.
     private var sidebar: some View {
         List(selection: selectionBinding) {
-            ForEach(AppSection.groups) { group in
-                Section {
-                    ForEach(group.items) { section in
-                        Label(section.title, systemImage: section.icon.systemImage)
-                            .tag(section)
-                    }
-                } header: {
-                    if let title = group.title {
-                        Text(title)
-                    }
-                }
+            ForEach(AppSection.sidebarItems) { section in
+                Label(section.title, systemImage: section.icon.systemImage)
+                    .tag(section)
             }
         }
         .navigationSplitViewColumnWidth(min: 200, ideal: 220, max: 280)
@@ -240,11 +205,4 @@ struct ContentView: View {
         }
     }
 
-    private func placeholder(for section: AppSection) -> some View {
-        EmptyStateView(
-            "Em breve",
-            icon: section.icon,
-            description: "Esta seção entra numa próxima atualização."
-        )
-    }
 }
