@@ -1,86 +1,92 @@
-# Plano da refatoração online-only Supabase
+# Estado online-only Supabase
 
-Este plano operacionaliza a decisão registrada em `docs/adr/0007-app-online-only-com-supabase-como-fonte-da-verdade.md`.
-A ADR explica o porquê; este documento guia a ordem de execução.
+Este documento registra o estado atual alcançado pela refatoração descrita em
+`docs/adr/0007-app-online-only-com-supabase-como-fonte-da-verdade.md`. Ele não é
+mais um plano de migração local-first para remoto; é um checklist operacional
+para manter o GranaApp alinhado ao modelo online-only.
 
-## Estratégia
+## Estado atual
 
-A refatoração deve avançar por fatias verticais. Em cada fatia, crie primeiro o contrato backend, migre a feature no app e
-remova o equivalente local daquela área. PowerSync pode coexistir temporariamente apenas para fatias ainda não migradas.
-Não use feature flag local/remoto: como não há usuários reais nem migração de dados, cada fatia migra direto para o modelo
-remoto.
+- O GranaApp compila sem PowerSync, SQLite, schema local ou seeds financeiras
+  locais.
+- Supabase Postgres é a fonte única de verdade para dados financeiros.
+- Supabase Auth controla sessão remota; sem sessão válida, o app não exibe
+  dados financeiros.
+- O app mantém dados financeiros apenas em memória durante a sessão.
+- Views SwiftUI falam com Stores; Stores falam com repositories; repositories
+  falam com Supabase.
+- O schema `api` expõe contratos `v1_*`; `app_private` guarda tabelas base,
+  helpers e lógica interna.
+- O GranaApp não chama Edge Functions de categorização nem provedores externos
+  de IA.
 
-Cada fatia deve terminar compilando e com a validação mais estreita executada. O estado final da refatoração exige build sem
-PowerSync e sem banco financeiro local.
+## Superfície backend atual
 
-Como backend não terá testes automatizados, scripts SQL ou verificação formal nesta refatoração, migrations sensíveis devem
-ser pequenas e revisáveis. Mudanças em RLS, grants, RPCs financeiras ou schema financeiro precisam de revisão humana
-cuidadosa e plano de rollback manual no PR/issue.
+### Base
 
-## Fase 1: base Supabase
+- Migrations Supabase versionadas no repo.
+- Schemas `api` e `app_private`.
+- Grants mínimos, RLS e revogação de exposição não intencional.
+- RPC idempotente `api.v1_ensure_profile()` para perfil mínimo no primeiro boot
+  autenticado.
 
-- Criar estrutura Supabase no repo com migrations versionadas.
-- Criar schemas `api` para a superfície consumida pelo app e `app_private` para tabelas base, helpers e lógica interna.
-- Configurar grants mínimos, RLS e revogação de exposição não intencional.
-- Criar catálogos globais somente leitura de categorias e instituições suportadas.
-- Expor catálogos globais por views em `api`, mantendo tabelas base em `app_private`.
-- Declarar capacidades das instituições suportadas: tipos de conta e formatos de importação aceitos.
-- Criar RPC idempotente `api.v1_ensure_profile()` para perfil/configuração mínima no primeiro boot autenticado.
-- Persistir timezone padrão do usuário e permitir override por request em agregações.
+### Catálogos e contas
 
-## Fase 2: catálogos e contas
+- Catálogos globais de categorias e instituições em `app_private`.
+- Views `api.v1_category_catalog` e `api.v1_supported_institution_catalog`.
+- Instituições declaram capacidades suportadas: tipos de conta e formatos de
+  importação.
+- RPCs versionadas para listar, criar, editar e excluir contas.
+- Criação de conta bloqueada para instituição não suportada.
+- Exclusão de conta bloqueada quando há transações, faturas ou importações.
 
-- Expor read models de categorias e instituições globais.
-- Criar RPCs versionadas para criar, editar e excluir contas.
-- Bloquear criação de conta para instituição financeira não suportada.
-- Bloquear exclusão de conta com transações, faturas ou importações.
-- Migrar repositories/stores de contas para Supabase remoto com `load()` e `refresh()`.
-- Remover uso de seeds locais de categorias/instituições nessa fatia.
+### Transações e faturas
 
-## Fase 3: transações e faturas
+- Tabelas financeiras com `user_id` e RLS.
+- Escritas financeiras mediadas por RPCs, sem escrita direta do app.
+- Faturas materializadas no backend com snapshots, totais, status e data de
+  quitação.
+- Saldo credor e recálculo cronológico implementados no backend.
+- Read models para lista de transações, faturas, pagamentos e detalhes.
+- Paginação por cursor em listas grandes.
 
-- Criar tabelas financeiras com `user_id`, RLS e sem escrita direta pelo app.
-- Criar RPCs versionadas para criar, editar e excluir transações.
-- Materializar faturas no backend com snapshots, totais, status e data de quitação.
-- Migrar as regras de saldo credor e recálculo cronológico para funções backend.
-- Expor read models paginados para lista de transações, detalhes de fatura e pagamentos.
-- Usar paginação por cursor; transações ordenam por `occurred_at desc, created_at desc, id desc`.
+### Dashboard
 
-## Fase 4: dashboard
+- Dashboard consome agregações prontas por período.
+- Transferências não entram em receitas/despesas.
+- O app não busca histórico inteiro para somar em Swift.
+- Timezone vem do perfil, com override por request quando necessário.
 
-- Criar RPC/read models de agregações por período.
-- Garantir que transferências não entram em receitas/despesas.
-- Migrar dashboard para buscar agregações prontas, sem somar histórico inteiro no Swift.
+### Importação e classificação
 
-## Fase 5: importação e classificação manual
+- Parsing e preview OFX/CSV ficam no app.
+- Commit de importação usa payload estruturado e `idempotency_key`.
+- Backend revalida conta, categoria, instituição, duplicidade, fatura e estorno.
+- Deduplicação é garantida por função e constraint única.
+- `ImportBatch` é persistido para permitir desfazer importação sem transações
+  órfãs.
+- Enquanto o projeto local de inteligência não existir, transações entram como
+  **Não Classificado** e passam por revisão manual.
 
-- Manter parsing e preview OFX/CSV no app.
-- Enviar payload estruturado revisado para commit atômico no backend.
-- Validar no backend conta, categoria, instituição, duplicidade, fatura e estorno.
-- Implementar deduplicação por função e constraint única adequada.
-- Pular duplicatas e retornar relatório.
-- Persistir `ImportBatch` no backend para desfazer importação sem transações órfãs.
-- Usar `idempotency_key` por usuário e operação para retries de importação.
-- Enquanto o projeto local de IA não existir, enviar transações como **Não Classificado** para revisão manual.
+## Regras para próximas mudanças
 
-## Fase 6: remoção PowerSync e limpeza local
+- Não reintroduzir PowerSync, SQLite, `watch()`, schema local ou persistência
+  financeira em disco.
+- Não persistir dados financeiros em `UserDefaults`, arquivos, banco local ou
+  caches em disco.
+- Não chamar APIs públicas de IA a partir do GranaApp.
+- Não expor tabelas financeiras base como contrato do app.
+- Criar ou alterar contratos backend por migrations pequenas e revisáveis.
+- Manter RPCs e read models versionados.
+- Usar clients fake nos testes Swift de repositories/stores.
+- Mudanças em RLS, grants, RPCs financeiras ou schema financeiro precisam de
+  revisão humana cuidadosa e plano de rollback manual.
 
-- Remover PowerSync do projeto Xcode, imports, testes e resolução de pacotes.
-- Remover uso funcional de SQLite, `watch()`, `AppSchema`, schema local e seeds locais.
-- Remover ação de apagar banco local da UI.
-- Limpar arquivos antigos `grana_app.sqlite`, `-wal` e `-shm` no primeiro boot pós-refatoração.
-- Manter `Converters` apenas para `Decimal` no Swift e centavos inteiros nos DTOs remotos.
-- Garantir que dados financeiros não sejam persistidos em `UserDefaults`, arquivos, banco local ou caches em disco.
+## Critérios de saúde
 
-## Critérios finais de aceite
-
-- O app compila sem PowerSync.
-- Não há persistência local de dados financeiros.
-- Supabase Postgres é a fonte única de verdade.
-- Login online-only funciona com tela global de indisponibilidade para falha de rede e login para sessão inválida.
-- Contas, transações, faturas, dashboard e importação usam backend.
-- Tabelas financeiras não têm escrita direta pelo app.
-- Read models e RPCs são versionados e revisáveis por código/contrato.
-- Testes cobrem a camada Swift remota com clients fake; testes backend automatizados, scripts SQL e verificações formais
-  de backend não são requisito desta refatoração.
-- Mudanças sensíveis de backend têm revisão humana e plano de rollback manual.
+- `xcodebuild build` passa.
+- `xcodebuild test` passa.
+- Buscas por PowerSync, SQLite, Edge Function de categorização e runtime de IA
+  remota não retornam uso funcional.
+- O app permanece capaz de importar, revisar, commitar e desfazer lotes usando
+  o backend.

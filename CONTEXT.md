@@ -146,6 +146,7 @@ _Evite_: Sincronização, integração bancária
 Conjunto de transações incorporadas a partir de um mesmo extrato de conta, tratado como uma unidade reversível.
 _Evite_: Arquivo, upload
 
-**Categorização assistida**:
-Sugestão de categorias para transações importadas antes de sua incorporação definitiva, sujeita à revisão do usuário.
-_Evite_: Categorização automática, quando houver revisão humana
+**Classificação pré-commit**:
+Classificação aplicada às transações importadas antes de sua incorporação definitiva. No estado atual, o GranaApp usa
+fallback em **Não Classificado** e exige revisão manual.
+_Evite_: Categorização automática, categorização por IA remota

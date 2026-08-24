@@ -1,15 +1,16 @@
 # ROADMAP.md — Fases de desenvolvimento
 
-## Direção ativa da refatoração
+## Estado atual da refatoração
 
-O roadmap registra fases e contexto histórico do produto. A direção ativa da
-refatoração de dados é a decisão aceita em
+O roadmap registra fases e contexto histórico do produto. O estado atual da
+camada de dados é a decisão aceita em
 `docs/adr/0007-app-online-only-com-supabase-como-fonte-da-verdade.md`,
-executada pelo plano em `docs/online-only-supabase-refactor-plan.md`.
+resumida pelo registro operacional em
+`docs/online-only-supabase-refactor-plan.md`.
 
-Este arquivo não substitui a ADR nem o plano operacional. Referências antigas
-ao modelo local-first/PowerSync nas fases já concluídas devem ser lidas como
-contexto histórico do MVP, não como estado futuro desejado.
+Este arquivo não substitui as ADRs nem o registro operacional. Referências
+antigas ao modelo local-first/PowerSync nas fases já concluídas devem ser lidas
+como contexto histórico do MVP, não como estado futuro desejado.
 
 ## Fase 0 — Fundação (setup do projeto) ✅
 
@@ -21,8 +22,8 @@ contexto histórico do MVP, não como estado futuro desejado.
 
 ## Fase 4 — Categorização automática via API externa (histórico removido)
 
-O código dessa fase foi removido do GranaApp. A direção de produto passou a
-ser IA local em processo/projeto separado, sem chamadas do app principal a
+O código dessa fase foi removido do GranaApp. A direção de produto passou a ser
+IA local em processo/projeto separado, sem chamadas do app principal a
 provedores externos.
 
 ## Fase 4.5 — Cartões de Crédito ✅
@@ -31,24 +32,24 @@ provedores externos.
 
 ## Fase 4.7 — Faturas (Statements) de cartão ✅
 
-## Fase 5 — Refatoração online-only com Supabase (direção ativa)
+## Fase 5 — Refatoração online-only com Supabase ✅
 
-**Objetivo:** migrar o app para modo online-only estrito, com Supabase Postgres
+**Objetivo concluído:** app em modo online-only estrito, com Supabase Postgres
 como fonte única de verdade para dados financeiros.
 
 **Referências canônicas:**
 - ADR: `docs/adr/0007-app-online-only-com-supabase-como-fonte-da-verdade.md`
-- Plano operacional: `docs/online-only-supabase-refactor-plan.md`
+- Registro operacional: `docs/online-only-supabase-refactor-plan.md`
 
-**Escopo executivo desta fase:**
-- Migrar contas, transações, faturas, dashboard e importação para contratos
-  remotos no backend.
-- Remover PowerSync, `watch()`, schema local, seeds financeiras locais e
-  persistência financeira em disco.
-- Manter apenas sessão/token de autenticação local; dados financeiros ficam
-  só no backend e em memória durante sessão válida.
+**Escopo concluído desta fase:**
+- Contas, transações, faturas, dashboard e importação usam contratos remotos no
+  backend.
+- PowerSync, `watch()`, schema local, seeds financeiras locais e persistência
+  financeira em disco foram removidos do fluxo real.
+- Apenas sessão/token de autenticação podem existir localmente; dados
+  financeiros ficam no backend e em memória durante sessão válida.
 
-**Critérios finais de aceite da refatoração:**
+**Critérios finais atendidos:**
 - O app compila sem PowerSync.
 - Não há persistência local de dados financeiros.
 - Supabase é a fonte única de verdade.
@@ -76,6 +77,10 @@ como fonte única de verdade para dados financeiros.
 ## Fase 7 — Chat local sobre suas finanças
 
 **Objetivo:** conversar com IA sobre seus dados financeiros.
+
+Essa fase pertence à fronteira GranaApp + projeto/processo local de inteligência
+descrita em `docs/adr/0009-granaapp-sem-ia-remota.md`. O GranaApp não deve
+chamar provedor externo de IA.
 
 **Entregáveis:**
 - Tela de chat (Mac)
