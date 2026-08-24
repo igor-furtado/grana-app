@@ -113,7 +113,7 @@ struct LoginView: View {
         .padding(34)
         .frame(width: 420, alignment: .leading)
         .frame(minHeight: 520, alignment: .leading)
-        .granaSurface(.glass, cornerRadius: GranaTheme.Radius.hero)
+        .granaSurface(.subtle, cornerRadius: GranaTheme.Radius.hero)
     }
 
     private var logoMark: some View {

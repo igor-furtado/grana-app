@@ -80,11 +80,14 @@ struct NoticeCard: View {
         }
         .padding(14)
         .frame(maxWidth: .infinity, alignment: .leading)
-        .granaSurface(.glass, cornerRadius: 14)
-        .overlay(
-            RoundedRectangle(cornerRadius: 14, style: .continuous)
-                .stroke(notice.kind.tint.opacity(0.5), lineWidth: 1)
-        )
+        .granaSurface(.subtle, cornerRadius: 14)
+        .overlay(alignment: .leading) {
+            RoundedRectangle(cornerRadius: 2, style: .continuous)
+                .fill(notice.kind.tint.opacity(0.62))
+                .frame(width: 4)
+                .padding(.vertical, 12)
+                .padding(.leading, 2)
+        }
     }
 
     private var actionsRow: some View {

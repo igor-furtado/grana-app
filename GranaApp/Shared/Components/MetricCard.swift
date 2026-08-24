@@ -37,6 +37,6 @@ struct MetricCard: View {
         }
         .padding(18)
         .frame(maxWidth: .infinity, minHeight: 132, alignment: .leading)
-        .granaSurface(.glass, cornerRadius: GranaTheme.Radius.card)
+        .granaSurface(.subtle, cornerRadius: GranaTheme.Radius.card)
     }
 }

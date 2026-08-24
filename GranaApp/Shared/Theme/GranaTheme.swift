@@ -39,6 +39,8 @@ enum GranaTheme {
 
     enum Shadow {
         static let glassColor = Color(red: 0.161, green: 0.129, blue: 0.086).opacity(0.14)
+        static let cardColor = Palette.ink.opacity(0.07)
+        static let rowColor = Palette.ink.opacity(0.04)
         static let accentColor = Palette.teal.opacity(0.22)
     }
 
@@ -104,19 +106,23 @@ private struct GranaSurfaceModifier: ViewModifier {
     let cornerRadius: CGFloat
 
     func body(content: Content) -> some View {
-        content
+        let shadow = surfaceShadow
+
+        return content
             .background {
                 surfaceFill
             }
             .overlay {
-                RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
-                    .strokeBorder(borderColor, lineWidth: contrast == .increased ? 1.4 : 1)
+                if prominence == .solid {
+                    RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
+                        .strokeBorder(borderColor, lineWidth: contrast == .increased ? 1.4 : 1)
+                }
             }
             .shadow(
-                color: shadowColor,
-                radius: shadowRadius,
+                color: shadow.color,
+                radius: shadow.radius,
                 x: 0,
-                y: shadowY
+                y: shadow.y
             )
     }
 
@@ -146,16 +152,15 @@ private struct GranaSurfaceModifier: ViewModifier {
         contrast == .increased ? GranaTheme.Palette.ink.opacity(0.28) : GranaTheme.Palette.line
     }
 
-    private var shadowColor: Color {
-        prominence == .glass && !reduceTransparency ? GranaTheme.Shadow.glassColor : .clear
-    }
-
-    private var shadowRadius: CGFloat {
-        prominence == .glass ? 36 : 0
-    }
-
-    private var shadowY: CGFloat {
-        prominence == .glass ? 16 : 0
+    private var surfaceShadow: (color: Color, radius: CGFloat, y: CGFloat) {
+        switch prominence {
+        case .glass:
+            (GranaTheme.Shadow.glassColor, 30, 14)
+        case .subtle:
+            (GranaTheme.Shadow.cardColor, 14, 6)
+        case .solid:
+            (GranaTheme.Shadow.rowColor, 7, 3)
+        }
     }
 }
 
@@ -193,7 +198,7 @@ struct GranaSecondaryButtonStyle: ButtonStyle {
 
 extension View {
     func granaSurface(
-        _ prominence: GranaSurfaceProminence = .glass,
+        _ prominence: GranaSurfaceProminence = .subtle,
         cornerRadius: CGFloat = GranaTheme.Radius.panel
     ) -> some View {
         modifier(GranaSurfaceModifier(prominence: prominence, cornerRadius: cornerRadius))

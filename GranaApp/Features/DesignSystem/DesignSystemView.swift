@@ -19,12 +19,17 @@ struct DesignSystemView: View {
         PaletteToken(name: "creamText", value: "#fff9ed", color: GranaTheme.Palette.creamText),
     ]
 
-    private let radiusTokens: [MetricToken] = [
-        MetricToken(name: "control", value: "\(Int(GranaTheme.Radius.control)) pt"),
-        MetricToken(name: "card", value: "\(Int(GranaTheme.Radius.card)) pt"),
-        MetricToken(name: "panel", value: "\(Int(GranaTheme.Radius.panel)) pt"),
-        MetricToken(name: "hero", value: "\(Int(GranaTheme.Radius.hero)) pt"),
-        MetricToken(name: "rail", value: "\(Int(GranaTheme.Radius.rail)) pt"),
+    private let radiusTokens: [RadiusToken] = [
+        RadiusToken(name: "control", radius: GranaTheme.Radius.control, description: "menor canto do sistema"),
+        RadiusToken(name: "card", radius: GranaTheme.Radius.card, description: "cards de conteúdo"),
+        RadiusToken(
+            name: "panel",
+            radius: GranaTheme.Radius.panel,
+            description: "mesmo raio de card",
+            matchesCard: true
+        ),
+        RadiusToken(name: "rail", radius: GranaTheme.Radius.rail, description: "shell lateral"),
+        RadiusToken(name: "hero", radius: GranaTheme.Radius.hero, description: "maior agrupamento visual"),
     ]
 
     var body: some View {
@@ -33,18 +38,30 @@ struct DesignSystemView: View {
                 header
 
                 section("Paleta") {
-                    LazyVGrid(columns: [GridItem(.adaptive(minimum: 170), spacing: 12)], spacing: 12) {
+                    VStack(spacing: 8) {
                         ForEach(paletteTokens) { token in
-                            PaletteSwatch(token: token)
+                            PaletteTokenRow(token: token)
                         }
                     }
                 }
 
                 section("Superfícies") {
                     LazyVGrid(columns: [GridItem(.adaptive(minimum: 240), spacing: 12)], spacing: 12) {
-                        SurfaceSample(title: "Glass", subtitle: "Shell, login, empty states", prominence: .glass)
-                        SurfaceSample(title: "Subtle", subtitle: "Cards secundarios e paineis", prominence: .subtle)
-                        SurfaceSample(title: "Solid", subtitle: "Listas densas e formularios", prominence: .solid)
+                        SurfaceSample(
+                            title: "Shell glass",
+                            subtitle: "Apenas shell, rail e chrome estrutural",
+                            prominence: .glass
+                        )
+                        SurfaceSample(
+                            title: "Content card",
+                            subtitle: "Cards sem blur, com preenchimento e sombra baixa",
+                            prominence: .subtle
+                        )
+                        SurfaceSample(
+                            title: "Solid row",
+                            subtitle: "Listas densas e tabelas, único papel com linha",
+                            prominence: .solid
+                        )
                     }
                 }
 
@@ -92,11 +109,12 @@ struct DesignSystemView: View {
                     }
                 }
 
-                section("Raios e Semântica") {
+                section("Raios") {
+                    RadiusComparisonBoard(tokens: radiusTokens)
+                }
+
+                section("Estados semânticos") {
                     LazyVGrid(columns: [GridItem(.adaptive(minimum: 150), spacing: 12)], spacing: 12) {
-                        ForEach(radiusTokens) { token in
-                            RadiusCard(token: token)
-                        }
                         SemanticColorCard(title: "Receita", color: .income)
                         SemanticColorCard(title: "Despesa", color: .expense)
                         SemanticColorCard(title: "Transferência", color: .transfer)
@@ -137,7 +155,7 @@ struct DesignSystemView: View {
         }
         .padding(20)
         .frame(maxWidth: .infinity, alignment: .leading)
-        .granaSurface(.glass, cornerRadius: GranaTheme.Radius.hero)
+        .granaSurface(.subtle, cornerRadius: GranaTheme.Radius.hero)
     }
 
     private var sampleCategory: Category {
@@ -187,16 +205,22 @@ private struct PaletteToken: Identifiable {
     }
 }
 
-private struct MetricToken: Identifiable {
+private struct RadiusToken: Identifiable {
     let name: String
-    let value: String
+    let radius: CGFloat
+    let description: String
+    var matchesCard = false
 
     var id: String {
         name
     }
+
+    var value: String {
+        "\(Int(radius)) pt"
+    }
 }
 
-private struct PaletteSwatch: View {
+private struct PaletteTokenRow: View {
     let token: PaletteToken
 
     var body: some View {
@@ -274,31 +298,72 @@ private struct ComponentPanel<Content: View>: View {
     }
 }
 
-private struct RadiusCard: View {
-    let token: MetricToken
+private struct RadiusComparisonBoard: View {
+    let tokens: [RadiusToken]
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 10) {
-            Text(token.name)
-                .font(.system(size: 13, weight: .bold).monospaced())
-                .foregroundStyle(GranaTheme.Palette.ink)
-            Text(token.value)
-                .font(.system(size: 12, weight: .semibold).monospaced())
-                .foregroundStyle(GranaTheme.Palette.muted)
-            RoundedRectangle(cornerRadius: displayedRadius, style: .continuous)
-                .fill(GranaTheme.Palette.teal.opacity(0.18))
-                .frame(height: 46)
-                .overlay {
-                    RoundedRectangle(cornerRadius: displayedRadius, style: .continuous)
-                        .strokeBorder(GranaTheme.Palette.teal, lineWidth: 1)
-                }
-        }
-        .padding(12)
-        .granaSurface(.solid, cornerRadius: GranaTheme.Radius.control)
-    }
+        VStack(spacing: 8) {
+            ForEach(tokens) { token in
+                HStack(spacing: 16) {
+                    ZStack(alignment: .topLeading) {
+                        RoundedRectangle(cornerRadius: token.radius, style: .continuous)
+                            .fill(GranaTheme.Palette.teal.opacity(0.14))
+                            .frame(width: 142, height: 82)
 
-    private var displayedRadius: CGFloat {
-        CGFloat(Int(token.value.components(separatedBy: " ").first ?? "0") ?? 0)
+                        RoundedRectangle(cornerRadius: token.radius, style: .continuous)
+                            .strokeBorder(GranaTheme.Palette.teal.opacity(0.82), lineWidth: 1.4)
+                            .frame(width: 142, height: 82)
+
+                        Path { path in
+                            let value = token.radius
+                            path.move(to: CGPoint(x: value, y: 0))
+                            path.addLine(to: CGPoint(x: value, y: value))
+                            path.addLine(to: CGPoint(x: 0, y: value))
+                        }
+                        .stroke(
+                            GranaTheme.Palette.tealDeep.opacity(0.45),
+                            style: StrokeStyle(lineWidth: 1, dash: [4, 4])
+                        )
+                    }
+
+                    VStack(alignment: .leading, spacing: 4) {
+                        HStack(spacing: 8) {
+                            Text(token.name)
+                                .font(.system(size: 12, weight: .black).monospaced())
+                                .foregroundStyle(GranaTheme.Palette.ink)
+
+                            if token.matchesCard {
+                                RadiusBadge(text: "igual a card")
+                            }
+                        }
+
+                        Text(token.value)
+                            .font(.system(size: 12, weight: .semibold).monospaced())
+                            .foregroundStyle(GranaTheme.Palette.muted)
+
+                        Text(token.description)
+                            .font(.system(size: 11, weight: .semibold))
+                            .foregroundStyle(GranaTheme.Palette.muted)
+                    }
+                }
+                .padding(14)
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .granaSurface(.solid, cornerRadius: GranaTheme.Radius.control)
+            }
+        }
+    }
+}
+
+private struct RadiusBadge: View {
+    let text: String
+
+    var body: some View {
+        Text(text)
+            .font(.system(size: 10, weight: .black).monospaced())
+            .foregroundStyle(GranaTheme.Palette.tealDeep)
+            .padding(.horizontal, 7)
+            .padding(.vertical, 4)
+            .background(GranaTheme.Palette.teal.opacity(0.10), in: Capsule())
     }
 }
 
@@ -317,6 +382,6 @@ private struct SemanticColorCard: View {
         }
         .padding(12)
         .frame(maxWidth: .infinity, minHeight: 104, alignment: .leading)
-        .granaSurface(.solid, cornerRadius: GranaTheme.Radius.control)
+        .granaSurface(.subtle, cornerRadius: GranaTheme.Radius.control)
     }
 }

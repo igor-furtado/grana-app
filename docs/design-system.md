@@ -34,13 +34,16 @@ teal nao substitui automaticamente receita, despesa ou transferencia.
 
 ## Superficies
 
-Use glass forte em shell, login, estados vazios e cards principais. Glass e
-material nativo com overlay quente, borda `line` e sombra ampla. Quando o macOS
-reduzir transparencia ou aumentar contraste, glass deve degradar para superficie
-quente mais solida com borda mais evidente.
+Use glass apenas no shell estrutural, como o rail autenticado. Glass e material
+nativo com overlay quente, sem contorno aparente e com sombra mais ampla para
+separar o chrome da tela.
 
-Listas densas, tabelas, formularios e rows repetidas usam `paper`/`paperSolid`
-semi-opaco sem blur pesado. O objetivo e manter leitura e performance.
+Cards de conteudo usam superficie `subtle`: preenchimento quente sem blur,
+sem borda externa e com sombra baixa para separar grupos analiticos.
+
+Listas densas, tabelas, formularios e rows repetidas usam `solid`: preenchimento
+quente solido, sombra baixa e linha `line`. `solid` e a unica superficie base
+com contorno de linha aparente.
 
 ## Navegacao
 
