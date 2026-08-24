@@ -1,5 +1,5 @@
 ---
-status: superseded by ADR-0007
+status: superseded by ADR-0004
 ---
 
 # IDs estáveis para catálogos locais semeados
@@ -23,4 +23,4 @@ usar `slug` de categoria ou `code` de instituição.
 ## Consequência
 
 Esta ADR permanece apenas como registro histórico. A decisão vigente está em
-`docs/adr/0007-app-online-only-com-supabase-como-fonte-da-verdade.md`.
+`docs/adr/0004-app-online-only-com-supabase-como-fonte-da-verdade.md`.

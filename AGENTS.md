@@ -17,11 +17,11 @@ mostram o estado atual. Em divergências, não normalize silenciosamente: corrij
 - App exclusivo para macOS, com SwiftUI, Observation (`@Observable`) e Swift Charts.
 - Target macOS `26.1`, isolamento padrão `MainActor`.
 - Direção aceita: app online-only estrito com Supabase Postgres como fonte única de verdade; veja
-  `docs/adr/0007-app-online-only-com-supabase-como-fonte-da-verdade.md`.
+  `docs/adr/0004-app-online-only-com-supabase-como-fonte-da-verdade.md`.
 - PowerSync, SQLite, schema local e fluxos offline-first foram removidos. Não reintroduza persistência financeira local.
 - Testes com Swift Testing (`import Testing`, `@Suite`, `@Test`, `#expect`).
 - O GranaApp não chama provedores externos de IA nem Edge Functions de categorização. Veja
-  `docs/adr/0009-granaapp-sem-ia-remota.md`.
+  `docs/adr/0006-granaapp-sem-ia-remota.md`.
 - App Sandbox permanece desativado para permitir `Process`.
 - Não adicione dependências nem troque a stack sem pedido explícito.
 

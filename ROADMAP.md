@@ -1,62 +1,5 @@
 # ROADMAP.md — Fases de desenvolvimento
 
-## Estado atual da refatoração
-
-O roadmap registra fases e contexto histórico do produto. O estado atual da
-camada de dados é a decisão aceita em
-`docs/adr/0007-app-online-only-com-supabase-como-fonte-da-verdade.md`,
-resumida pelo registro operacional em
-`docs/online-only-supabase-refactor-plan.md`.
-
-Este arquivo não substitui as ADRs nem o registro operacional. Referências
-antigas ao modelo local-first/PowerSync nas fases já concluídas devem ser lidas
-como contexto histórico do MVP, não como estado futuro desejado.
-
-## Fase 0 — Fundação (setup do projeto) ✅
-
-## Fase 1 — Schema local do MVP e CRUD de transações (manual) ✅
-
-## Fase 2 — Dashboard básico ✅
-
-## Fase 3 — Importação de planilhas (XLSX e CSV) e extratos OFX ✅
-
-## Fase 4 — Categorização automática via API externa (histórico removido)
-
-O código dessa fase foi removido do GranaApp. A direção de produto passou a ser
-IA local em processo/projeto separado, sem chamadas do app principal a
-provedores externos.
-
-## Fase 4.5 — Cartões de Crédito ✅
-
-## Fase 4.6 — Refator estrutural de `Account` ✅
-
-## Fase 4.7 — Faturas (Statements) de cartão ✅
-
-## Fase 5 — Refatoração online-only com Supabase ✅
-
-**Objetivo concluído:** app em modo online-only estrito, com Supabase Postgres
-como fonte única de verdade para dados financeiros.
-
-**Referências canônicas:**
-- ADR: `docs/adr/0007-app-online-only-com-supabase-como-fonte-da-verdade.md`
-- Registro operacional: `docs/online-only-supabase-refactor-plan.md`
-
-**Escopo concluído desta fase:**
-- Contas, transações, faturas, dashboard e importação usam contratos remotos no
-  backend.
-- PowerSync, `watch()`, schema local, seeds financeiras locais e persistência
-  financeira em disco foram removidos do fluxo real.
-- Apenas sessão/token de autenticação podem existir localmente; dados
-  financeiros ficam no backend e em memória durante sessão válida.
-
-**Critérios finais atendidos:**
-- O app compila sem PowerSync.
-- Não há persistência local de dados financeiros.
-- Supabase é a fonte única de verdade.
-- Contas, transações, faturas, dashboard e importação usam o backend.
-
----
-
 ## Fase 6 — Investimentos: Holdings e Quotes
 
 **Objetivo:** registrar carteira de investimentos e ver patrimônio.
@@ -79,7 +22,7 @@ como fonte única de verdade para dados financeiros.
 **Objetivo:** conversar com IA sobre seus dados financeiros.
 
 Essa fase pertence à fronteira GranaApp + projeto/processo local de inteligência
-descrita em `docs/adr/0009-granaapp-sem-ia-remota.md`. O GranaApp não deve
+descrita em `docs/adr/0006-granaapp-sem-ia-remota.md`. O GranaApp não deve
 chamar provedor externo de IA.
 
 **Entregáveis:**

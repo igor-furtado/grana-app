@@ -23,7 +23,7 @@ RPCs e read models em `api`, não por escrita direta nas tabelas base.
 
 Edge Functions não fazem parte do baseline atual. Categorização inteligente por
 IA fica fora do GranaApp e fora do backend remoto de categorização; a fronteira
-vigente está registrada em `docs/adr/0009-granaapp-sem-ia-remota.md`.
+vigente está registrada em `docs/adr/0006-granaapp-sem-ia-remota.md`.
 
 ## Consequências
 
