@@ -1,19 +1,26 @@
 import Foundation
+import OSLog
 
-/// Pipeline local mínimo de classificação pré-commit.
+/// Pipeline local de classificação pré-commit.
 ///
-/// Nesta etapa do produto o GranaApp não chama IA remota nem persiste memória
-/// de categorização. Toda transação importada entra como "Não Classificado" e
-/// segue para revisão manual antes do commit final.
+/// O GranaApp pode chamar o executável local GranaAI via contrato JSON. Quando
+/// o executável não está configurado ou retorna algo não validável contra a
+/// taxonomia carregada, a transação entra em "Não Classificado" para revisão
+/// manual antes do commit final.
 final class CategorizationService: Sendable {
     struct DraftClassificationResult {
         let suggestions: [CategorizationSuggestion]
     }
 
     private let categories: any CategoryCatalogRepositoryProtocol
+    private let granaAI: (any GranaAIClassificationClientProtocol)?
 
-    init(categories: any CategoryCatalogRepositoryProtocol) {
+    init(
+        categories: any CategoryCatalogRepositoryProtocol,
+        granaAI: (any GranaAIClassificationClientProtocol)? = nil
+    ) {
         self.categories = categories
+        self.granaAI = granaAI
     }
 
     typealias ProgressHandler = @Sendable (Progress) -> Void
@@ -40,20 +47,91 @@ final class CategorizationService: Sendable {
             throw CategorizationError.categoryNotFound(slug: "nao-classificado")
         }
 
-        let suggestions = drafts.map { draft in
-            buildFallbackSuggestion(
+        let fallbackSuggestions = drafts.map { draft in
+            buildSuggestion(
                 draft: draft,
-                fallbackCategoryId: fallbackId
+                categoryId: fallbackId,
+                subcategoryId: nil,
+                source: .fallback
             )
         }
 
-        progress?(.finished(total: drafts.count, fallback: drafts.count))
-        return DraftClassificationResult(suggestions: suggestions)
+        guard let granaAI else {
+            progress?(.finished(total: drafts.count, fallback: drafts.count))
+            return DraftClassificationResult(suggestions: fallbackSuggestions)
+        }
+
+        do {
+            let taxonomy = GranaAITaxonomyMapping(categories: allCategories)
+            let response = try await granaAI.classify(
+                GranaAIClassificationRequest(
+                    version: GranaAIContract.version,
+                    transactions: drafts.map { draft in
+                        GranaAIClassificationRequest.Transaction(
+                            id: draft.id.uuidString,
+                            description: draft.description,
+                            amountInMinorUnits: Converters.decimalToCents(draft.signedAmount),
+                            currencyCode: "BRL"
+                        )
+                    },
+                    taxonomy: taxonomy.requestTaxonomy,
+                    context: .init(locale: "pt-BR")
+                )
+            )
+            let suggestions = buildSuggestions(
+                drafts: drafts,
+                response: response,
+                taxonomy: taxonomy,
+                fallbackSuggestions: fallbackSuggestions
+            )
+            let fallbackCount = suggestions.filter { $0.source == .fallback }.count
+            progress?(.finished(total: drafts.count, fallback: fallbackCount))
+            return DraftClassificationResult(suggestions: suggestions)
+        } catch is CancellationError {
+            throw CancellationError()
+        } catch {
+            log.ai.error("GranaAI classification failed; using local fallback: \(error.localizedDescription)")
+            progress?(.finished(total: drafts.count, fallback: drafts.count))
+            return DraftClassificationResult(suggestions: fallbackSuggestions)
+        }
     }
 
-    private func buildFallbackSuggestion(
+    private func buildSuggestions(
+        drafts: [TransactionDraft],
+        response: GranaAIClassificationResponse,
+        taxonomy: GranaAITaxonomyMapping,
+        fallbackSuggestions: [CategorizationSuggestion]
+    ) -> [CategorizationSuggestion] {
+        var resultsByTransactionId: [String: GranaAIClassificationResponse.Result] = [:]
+        for result in response.results {
+            resultsByTransactionId[result.transactionId] = result
+        }
+
+        return drafts.enumerated().map { index, draft in
+            guard let result = resultsByTransactionId[draft.id.uuidString] else {
+                return fallbackSuggestions[index]
+            }
+
+            guard case let .classified(categoryId, subcategoryId) = result.outcome,
+                  let selection = taxonomy.resolve(categoryId: categoryId, subcategoryId: subcategoryId)
+            else {
+                return fallbackSuggestions[index]
+            }
+
+            return buildSuggestion(
+                draft: draft,
+                categoryId: selection.categoryId,
+                subcategoryId: selection.subcategoryId,
+                source: .granaAI
+            )
+        }
+    }
+
+    private func buildSuggestion(
         draft: TransactionDraft,
-        fallbackCategoryId: UUID
+        categoryId: UUID,
+        subcategoryId: UUID?,
+        source: CategorizationSuggestion.Source
     ) -> CategorizationSuggestion {
         let normalizedDescription = DescriptionNormalizer.normalize(draft.description)
         return CategorizationSuggestion(
@@ -61,9 +139,9 @@ final class CategorizationService: Sendable {
             transactionId: draft.id,
             descriptionHash: DescriptionNormalizer.hashNormalized(normalizedDescription),
             normalizedDescription: normalizedDescription,
-            categoryId: fallbackCategoryId,
-            subcategoryId: nil,
-            source: .fallback,
+            categoryId: categoryId,
+            subcategoryId: subcategoryId,
+            source: source,
             originalCategoryId: nil,
             originalSubcategoryId: nil,
             originalCategorySlug: nil,

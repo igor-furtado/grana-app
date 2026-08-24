@@ -11,11 +11,14 @@ final class AppContainer {
     let remoteStatements: any StatementRemoteRepositoryProtocol
     let remoteTransactions: any TransactionRemoteRepositoryProtocol
     let remoteImports: any ImportRemoteRepositoryProtocol
+    private let granaAI: (any GranaAIClassificationClientProtocol)?
 
     /// Pipeline local mínimo de classificação para revisão de importação.
     lazy var categorization: CategorizationService = .init(
-        categories: categoryCatalog
+        categories: categoryCatalog,
+        granaAI: granaAI
     )
+    lazy var categorizationFeedback: GranaAIFeedbackService = .init(granaAI: granaAI)
 
     private init(
         authClient: (any AuthClientProtocol)? = nil,
@@ -25,9 +28,11 @@ final class AppContainer {
         remoteDashboard: (any DashboardRemoteRepositoryProtocol)? = nil,
         remoteStatements: (any StatementRemoteRepositoryProtocol)? = nil,
         remoteTransactions: (any TransactionRemoteRepositoryProtocol)? = nil,
-        remoteImports: (any ImportRemoteRepositoryProtocol)? = nil
+        remoteImports: (any ImportRemoteRepositoryProtocol)? = nil,
+        granaAI: (any GranaAIClassificationClientProtocol)? = GranaAIProcessClient.defaultIfAvailable()
     ) {
         self.authClient = authClient
+        self.granaAI = granaAI
         if let categoryCatalog {
             self.categoryCatalog = categoryCatalog
         } else if let authClient {
@@ -115,7 +120,8 @@ final class AppContainer {
             remoteDashboard: StaticDashboardRemoteRepository(snapshot: .empty),
             remoteStatements: StaticStatementRemoteRepository(snapshot: .empty),
             remoteTransactions: StaticTransactionRemoteRepository(page: .empty),
-            remoteImports: StaticImportRemoteRepository(batches: [])
+            remoteImports: StaticImportRemoteRepository(batches: []),
+            granaAI: nil
         )
     }
 
@@ -126,7 +132,8 @@ final class AppContainer {
         remoteDashboard: (any DashboardRemoteRepositoryProtocol)? = nil,
         remoteStatements: (any StatementRemoteRepositoryProtocol)? = nil,
         remoteTransactions: (any TransactionRemoteRepositoryProtocol)? = nil,
-        remoteImports: (any ImportRemoteRepositoryProtocol)? = nil
+        remoteImports: (any ImportRemoteRepositoryProtocol)? = nil,
+        granaAI: (any GranaAIClassificationClientProtocol)? = nil
     ) -> AppContainer {
         AppContainer(
             categoryCatalog: categoryCatalog,
@@ -135,7 +142,8 @@ final class AppContainer {
             remoteDashboard: remoteDashboard ?? StaticDashboardRemoteRepository(snapshot: .empty),
             remoteStatements: remoteStatements ?? StaticStatementRemoteRepository(snapshot: .empty),
             remoteTransactions: remoteTransactions ?? StaticTransactionRemoteRepository(page: .empty),
-            remoteImports: remoteImports ?? StaticImportRemoteRepository(batches: [])
+            remoteImports: remoteImports ?? StaticImportRemoteRepository(batches: []),
+            granaAI: granaAI
         )
     }
 }

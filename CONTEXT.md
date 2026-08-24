@@ -147,6 +147,19 @@ Conjunto de transações incorporadas a partir de um mesmo extrato de conta, tra
 _Evite_: Arquivo, upload
 
 **Classificação pré-commit**:
-Classificação aplicada às transações importadas antes de sua incorporação definitiva. No estado atual, o GranaApp usa
-fallback em **Não Classificado** e exige revisão manual.
+Classificação inicial aplicada às transações importadas antes de sua incorporação definitiva. Ela serve como ponto de
+partida para revisão manual, mas não representa ainda a decisão final do usuário.
 _Evite_: Categorização automática, categorização por IA remota
+
+**Classificação confirmada**:
+Classificação final de uma transação importada após revisão do usuário e confirmação do lote de importação.
+_Evite_: Sugestão, rascunho, palpite
+
+**Feedback de classificação**:
+Envio das classificações confirmadas pelo usuário ao classificador local para influenciar classificações futuras.
+_Evite_: Persistência no backend, revisão parcial, cache do app
+
+**Memória de classificação**:
+Conjunto de classificações confirmadas usado pelo classificador local para influenciar classificações futuras. Essa
+memória pertence exclusivamente ao GranaAI e não integra o histórico financeiro persistido do produto.
+_Evite_: Histórico financeiro do produto, cache do app, dado do backend

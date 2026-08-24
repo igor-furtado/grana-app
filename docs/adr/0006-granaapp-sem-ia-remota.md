@@ -14,22 +14,34 @@ no macOS em um projeto/processo separado do app principal.
 O GranaApp não chama provedores externos de IA, não chama Edge Functions de
 categorização e não mantém runtime config de provider/modelo.
 
-No estado atual, o contrato de classificação dentro do GranaApp é mínimo:
-transações importadas recebem fallback local em **Não Classificado** e seguem
-para revisão manual antes do commit. O backend recebe apenas as transações
-revisadas/categorizadas pelo app e continua sendo a fonte de verdade.
+O GranaApp pode executar um processo local dedicado de inteligência via
+contrato explícito em `stdin/stdout`. Esse processo continua fora do app
+principal e fora do backend.
 
-O projeto local de inteligência será tratado separadamente. Ele poderá evoluir
-de contrato simples para regras determinísticas, memória global, classificador
-clássico e LLM local, mas essa evolução não pertence ao GranaApp enquanto o
-novo projeto não existir.
+O contrato local possui dois fluxos distintos:
+
+- classificação pré-commit: o app envia o lote inteiro de transações
+  importadas para classificação inicial antes da revisão manual;
+- aprendizado pós-revisão: ao confirmar o lote, o app envia ao processo local
+  as classificações finais válidas confirmadas pelo usuário.
+
+O GranaApp não mantém memória local de revisões confirmadas e o backend também
+não a persiste. A memória de classificação pertence exclusivamente ao projeto
+local de inteligência, que decide como normalizar, armazenar e sobrescrever
+essas confirmações.
+
+O backend continua sendo a fonte de verdade do histórico financeiro já
+importado, mas não conhece provider, modelo, prompt, cache de IA nem memória
+de classificação.
 
 ## Consequências
 
 - O GranaApp fica livre de custos e dependências de IA remota.
-- O backend não precisa conhecer provider, modelo, prompt, cache de IA ou
-  correções de categorização.
-- A importação continua possível com revisão manual.
-- A fronteira futura com o processo local deve ser desenhada como contrato
-  explícito, sem acoplar o app principal à implementação interna da
-  inteligência.
+- O backend não precisa conhecer provider, modelo, prompt, cache de IA,
+  correções de categorização nem memória de classificação.
+- A revisão manual continua obrigatória antes do commit final.
+- O contrato com o processo local precisa validar a taxonomia atual enviada
+  pelo app tanto para classificar quanto para aprender.
+- Falha no aprendizado local impede a conclusão do commit final da importação.
+- A fronteira com o processo local permanece explícita, sem acoplar o app
+  principal à implementação interna da inteligência.

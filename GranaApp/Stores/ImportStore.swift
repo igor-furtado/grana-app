@@ -313,7 +313,8 @@ final class ImportStore {
         // transações isso é a diferença entre <1s e 30+s.
         let existingExternalIds: Set<String>
         if let matchedAccountId {
-            existingExternalIds = (try? await container.remoteTransactions.externalIds(forAccount: matchedAccountId)) ?? []
+            existingExternalIds = (try? await container.remoteTransactions.externalIds(forAccount: matchedAccountId)) ??
+                []
         } else {
             existingExternalIds = []
         }
@@ -778,7 +779,14 @@ final class ImportStore {
                 pendingBatches: pendingBatches,
                 categories: categories
             )
-            let result = try await commitReviewedImport(input: input)
+            let learnRequest = try GranaAIFeedbackService.buildLearningRequest(
+                suggestions: categorization.suggestions,
+                categories: categories
+            )
+            let result = try await commitReviewedImport(
+                input: input,
+                learnRequest: learnRequest
+            )
 
             // Limpa estado em voo agora que tudo foi commitado.
             clearPendingState()
@@ -871,7 +879,13 @@ final class ImportStore {
         }
     }
 
-    func commitReviewedImport(input: ImportCommitInput) async throws -> ImportCommitResult {
+    func commitReviewedImport(
+        input: ImportCommitInput,
+        learnRequest: GranaAIClassificationLearningRequest? = nil
+    ) async throws -> ImportCommitResult {
+        if let learnRequest {
+            try await container.categorizationFeedback.learnConfirmedClassifications(request: learnRequest)
+        }
         let result = try await container.remoteImports.commit(input: input)
         await refresh()
         await Self.notifyImportMutation()

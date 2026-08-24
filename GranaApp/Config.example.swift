@@ -4,6 +4,12 @@
 // 3. Preencha os placeholders do Supabase:
 //      - Em `supabaseAnonKey`, copie a publishable key do projeto atual
 //        (`sb_publishable_...`) em Settings > API Keys.
+// 4. Para usar o GranaAI em desenvolvimento, defina a variável de ambiente
+//    `GRANA_AI_EXECUTABLE_PATH` no scheme do Xcode apontando para:
+//      /Users/furtadino/Developer/projects/pessoais/grana_ai/.build/debug/grana-ai
+// 5. Se quiser isolar a memória local do GranaAI em desenvolvimento/testes,
+//    defina também `GRANA_AI_MEMORY_PATH`, por exemplo:
+//      /tmp/grana-ai-memory.v1.json
 //
 // Por que `Config.example.swift` versus `.env`:
 // Sem dependência extra, type-safe, e o compilador avisa se você usar uma

@@ -3,7 +3,7 @@ import Observation
 
 /// Estado observável da revisão de classificação durante a importação.
 ///
-/// O GranaApp não executa categorização remota. O fluxo local cria sugestões
+/// O fluxo usa categorização local quando o GranaAI está disponível e mantém
 /// fallback em "Não Classificado" para que o usuário revise e escolha a
 /// categoria final antes do commit.
 @MainActor

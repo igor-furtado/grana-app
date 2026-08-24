@@ -5,9 +5,11 @@ import Foundation
 ///
 /// `source` distingue:
 /// - `.fallback` — transação entra em "Não Classificado" para revisão manual.
+/// - `.granaAI` — sugestão veio do classificador local validada contra a taxonomia.
 struct CategorizationSuggestion: Identifiable, Hashable {
     enum Source: String, Hashable {
         case fallback
+        case granaAI
     }
 
     let id: UUID
