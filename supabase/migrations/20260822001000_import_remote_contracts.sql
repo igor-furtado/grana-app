@@ -1,14 +1,12 @@
 -- Ticket #23 rollback manual:
 -- 1. grant insert, update, delete on table app_private.import_batches to authenticated;
--- 2. grant insert, update, delete on table app_private.categorization_cache to authenticated;
--- 3. grant insert, update, delete on table app_private.categorization_corrections to authenticated;
--- 4. revoke execute on function api.v1_list_import_batches() from authenticated;
--- 5. revoke execute on function api.v1_commit_import(uuid, jsonb, jsonb, jsonb, jsonb) from authenticated;
--- 6. revoke execute on function api.v1_delete_import_batch(uuid) from authenticated;
--- 7. drop function if exists api.v1_delete_import_batch(uuid);
--- 8. drop function if exists api.v1_commit_import(uuid, jsonb, jsonb, jsonb, jsonb);
--- 9. drop function if exists api.v1_list_import_batches();
--- 10. drop table if exists app_private.import_commit_receipts;
+-- 2. revoke execute on function api.v1_list_import_batches() from authenticated;
+-- 3. revoke execute on function api.v1_commit_import(uuid, jsonb, jsonb) from authenticated;
+-- 4. revoke execute on function api.v1_delete_import_batch(uuid) from authenticated;
+-- 5. drop function if exists api.v1_delete_import_batch(uuid);
+-- 6. drop function if exists api.v1_commit_import(uuid, jsonb, jsonb);
+-- 7. drop function if exists api.v1_list_import_batches();
+-- 8. drop table if exists app_private.import_commit_receipts;
 
 create table if not exists app_private.import_commit_receipts (
     id uuid primary key default gen_random_uuid(),
@@ -63,9 +61,7 @@ $$;
 create or replace function api.v1_commit_import(
     p_idempotency_key uuid,
     p_batches jsonb,
-    p_transactions jsonb,
-    p_cache_entries jsonb default '[]'::jsonb,
-    p_corrections jsonb default '[]'::jsonb
+    p_transactions jsonb
 )
 returns jsonb
 language plpgsql
@@ -445,112 +441,6 @@ begin
     from pg_temp.import_insertable_transaction tx
     order by tx.occurred_at asc, tx.transaction_id asc;
 
-    insert into app_private.categorization_cache (
-        id,
-        user_id,
-        description_hash,
-        normalized_description,
-        category_id,
-        subcategory_id,
-        confidence,
-        model,
-        created_at,
-        updated_at
-    )
-    select
-        gen_random_uuid(),
-        v_user_id,
-        cache_row.description_hash,
-        cache_row.normalized_description,
-        category.id,
-        subcategory.id,
-        cache_row.confidence,
-        cache_row.model,
-        cache_row.created_at,
-        cache_row.updated_at
-    from jsonb_to_recordset(coalesce(p_cache_entries, '[]'::jsonb)) as cache_row(
-        description_hash text,
-        normalized_description text,
-        category_slug text,
-        subcategory_name text,
-        confidence double precision,
-        model text,
-        created_at timestamptz,
-        updated_at timestamptz
-    )
-    join app_private.category_catalog category
-        on category.parent_id is null
-       and category.slug = cache_row.category_slug
-    left join app_private.category_catalog subcategory
-        on subcategory.parent_id = category.id
-       and cache_row.subcategory_name is not null
-       and subcategory.name = cache_row.subcategory_name
-    where cache_row.subcategory_name is null
-       or subcategory.id is not null
-    on conflict (user_id, description_hash, model) do update
-    set
-        normalized_description = excluded.normalized_description,
-        category_id = excluded.category_id,
-        subcategory_id = excluded.subcategory_id,
-        confidence = excluded.confidence,
-        updated_at = excluded.updated_at;
-
-    insert into app_private.categorization_corrections (
-        id,
-        user_id,
-        description_hash,
-        normalized_description,
-        original_category_id,
-        original_subcategory_id,
-        corrected_category_id,
-        corrected_subcategory_id,
-        transaction_id,
-        created_at
-    )
-    select
-        gen_random_uuid(),
-        v_user_id,
-        correction_row.description_hash,
-        correction_row.normalized_description,
-        original_category.id,
-        original_subcategory.id,
-        corrected_category.id,
-        corrected_subcategory.id,
-        correction_row.transaction_id,
-        correction_row.created_at
-    from jsonb_to_recordset(coalesce(p_corrections, '[]'::jsonb)) as correction_row(
-        description_hash text,
-        normalized_description text,
-        original_category_slug text,
-        original_subcategory_name text,
-        corrected_category_slug text,
-        corrected_subcategory_name text,
-        transaction_id uuid,
-        created_at timestamptz
-    )
-    left join app_private.category_catalog original_category
-        on correction_row.original_category_slug is not null
-       and original_category.parent_id is null
-       and original_category.slug = correction_row.original_category_slug
-    left join app_private.category_catalog original_subcategory
-        on original_category.id is not null
-       and correction_row.original_subcategory_name is not null
-       and original_subcategory.parent_id = original_category.id
-       and original_subcategory.name = correction_row.original_subcategory_name
-    join app_private.category_catalog corrected_category
-        on corrected_category.parent_id is null
-       and corrected_category.slug = correction_row.corrected_category_slug
-    left join app_private.category_catalog corrected_subcategory
-        on correction_row.corrected_subcategory_name is not null
-       and corrected_subcategory.parent_id = corrected_category.id
-       and corrected_subcategory.name = correction_row.corrected_subcategory_name
-    where exists (
-        select 1
-        from app_private.transactions tx
-        where tx.user_id = v_user_id
-          and tx.id = correction_row.transaction_id
-    );
-
     for v_account_id in
         select distinct tx.account_id
         from pg_temp.import_insertable_transaction tx
@@ -705,20 +595,18 @@ end;
 $$;
 
 revoke insert, update, delete on table app_private.import_batches from authenticated;
-revoke insert, update, delete on table app_private.categorization_cache from authenticated;
-revoke insert, update, delete on table app_private.categorization_corrections from authenticated;
 
 revoke all on function api.v1_list_import_batches() from public;
 revoke all on function api.v1_list_import_batches() from anon;
 revoke all on function api.v1_list_import_batches() from authenticated;
-revoke all on function api.v1_commit_import(uuid, jsonb, jsonb, jsonb, jsonb) from public;
-revoke all on function api.v1_commit_import(uuid, jsonb, jsonb, jsonb, jsonb) from anon;
-revoke all on function api.v1_commit_import(uuid, jsonb, jsonb, jsonb, jsonb) from authenticated;
+revoke all on function api.v1_commit_import(uuid, jsonb, jsonb) from public;
+revoke all on function api.v1_commit_import(uuid, jsonb, jsonb) from anon;
+revoke all on function api.v1_commit_import(uuid, jsonb, jsonb) from authenticated;
 revoke all on function api.v1_delete_import_batch(uuid) from public;
 revoke all on function api.v1_delete_import_batch(uuid) from anon;
 revoke all on function api.v1_delete_import_batch(uuid) from authenticated;
 
 grant usage on schema api to authenticated;
 grant execute on function api.v1_list_import_batches() to authenticated;
-grant execute on function api.v1_commit_import(uuid, jsonb, jsonb, jsonb, jsonb) to authenticated;
+grant execute on function api.v1_commit_import(uuid, jsonb, jsonb) to authenticated;
 grant execute on function api.v1_delete_import_batch(uuid) to authenticated;

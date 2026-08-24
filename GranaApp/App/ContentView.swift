@@ -10,7 +10,6 @@ enum AppSection: String, Hashable, CaseIterable, Identifiable {
     case creditCards
     case accounts
     case `import`
-    case categorization
     case categories
     case institutions
     case profile
@@ -26,7 +25,6 @@ enum AppSection: String, Hashable, CaseIterable, Identifiable {
         .creditCards,
         .accounts,
         .import,
-        .categorization,
         .categories,
         .institutions,
         .profile,
@@ -39,7 +37,6 @@ enum AppSection: String, Hashable, CaseIterable, Identifiable {
         case .creditCards: "Cartões de crédito"
         case .accounts: "Contas"
         case .import: "Importar dados"
-        case .categorization: "Categorização"
         case .categories: "Categorias"
         case .institutions: "Instituições"
         case .profile: "Perfil"
@@ -55,7 +52,6 @@ enum AppSection: String, Hashable, CaseIterable, Identifiable {
         case .creditCards: .sidebarCreditCards
         case .accounts: .sidebarAccounts
         case .import: .sidebarImport
-        case .categorization: .sidebarCategorization
         case .categories: .sidebarCategories
         case .institutions: .sidebarInstitutions
         case .profile: .sidebarProfile
@@ -152,7 +148,6 @@ struct ContentView: View {
                 case .creditCards: CreditCardsView()
                 case .accounts: AccountsView()
                 case .import: ImportHistoryView()
-                case .categorization: CategorizationSettingsView()
                 case .categories: CategoriesView()
                 case .institutions: SupportedInstitutionsView()
                 case .profile: ProfileView()
@@ -204,5 +199,4 @@ struct ContentView: View {
             }
         }
     }
-
 }

@@ -93,8 +93,6 @@ nonisolated struct ImportCommitInput: Hashable, Sendable {
     var idempotencyKey: UUID
     var batches: [ImportBatchCommitInput]
     var rows: [ImportTransactionCommitInput]
-    var cacheEntries: [ImportCacheEntryCommitInput]
-    var corrections: [ImportCorrectionCommitInput]
 }
 
 nonisolated struct ImportBatchCommitInput: Hashable, Sendable {
@@ -116,50 +114,6 @@ nonisolated struct ImportTransactionCommitInput: Hashable, Sendable {
     var notes: String?
     var externalId: String?
     var refundOfTransactionId: UUID?
-}
-
-nonisolated struct ImportCacheEntryCommitInput: Hashable, Sendable {
-    var descriptionHash: String
-    var normalizedDescription: String
-    var categorySlug: String
-    var subcategoryName: String?
-    var confidence: Double
-    var model: String
-    var createdAt: Date
-    var updatedAt: Date
-
-    init(entry: CategorizationPendingCacheEntry) {
-        descriptionHash = entry.descriptionHash
-        normalizedDescription = entry.normalizedDescription
-        categorySlug = entry.categorySlug
-        subcategoryName = entry.subcategoryName
-        confidence = entry.confidence
-        model = entry.model
-        createdAt = entry.createdAt
-        updatedAt = entry.updatedAt
-    }
-}
-
-nonisolated struct ImportCorrectionCommitInput: Hashable, Sendable {
-    var descriptionHash: String
-    var normalizedDescription: String
-    var originalCategorySlug: String?
-    var originalSubcategoryName: String?
-    var correctedCategorySlug: String
-    var correctedSubcategoryName: String?
-    var transactionId: UUID
-    var createdAt: Date
-
-    init(correction: CategorizationPendingCorrection) {
-        descriptionHash = correction.descriptionHash
-        normalizedDescription = correction.normalizedDescription
-        originalCategorySlug = correction.originalCategorySlug
-        originalSubcategoryName = correction.originalSubcategoryName
-        correctedCategorySlug = correction.correctedCategorySlug
-        correctedSubcategoryName = correction.correctedSubcategoryName
-        transactionId = correction.transactionId
-        createdAt = correction.createdAt
-    }
 }
 
 nonisolated struct ImportCommitDuplicateRow: Decodable, Equatable, Sendable {
@@ -401,23 +355,17 @@ nonisolated struct CommitImportRequest: Encodable, Sendable {
     let pIdempotencyKey: UUID
     let pBatches: [CommitImportBatchRequest]
     let pTransactions: [CommitImportTransactionRequest]
-    let pCacheEntries: [CommitImportCacheEntryRequest]
-    let pCorrections: [CommitImportCorrectionRequest]
 
     init(input: ImportCommitInput) {
         pIdempotencyKey = input.idempotencyKey
         pBatches = input.batches.map(CommitImportBatchRequest.init)
         pTransactions = input.rows.map(CommitImportTransactionRequest.init)
-        pCacheEntries = input.cacheEntries.map(CommitImportCacheEntryRequest.init)
-        pCorrections = input.corrections.map(CommitImportCorrectionRequest.init)
     }
 
     enum CodingKeys: String, CodingKey {
         case pIdempotencyKey = "p_idempotency_key"
         case pBatches = "p_batches"
         case pTransactions = "p_transactions"
-        case pCacheEntries = "p_cache_entries"
-        case pCorrections = "p_corrections"
     }
 }
 
@@ -481,72 +429,6 @@ nonisolated struct CommitImportTransactionRequest: Encodable, Hashable, Sendable
         case notes
         case externalId = "external_id"
         case refundOfTransactionId = "refund_of_transaction_id"
-    }
-}
-
-nonisolated struct CommitImportCacheEntryRequest: Encodable, Hashable, Sendable {
-    let descriptionHash: String
-    let normalizedDescription: String
-    let categorySlug: String
-    let subcategoryName: String?
-    let confidence: Double
-    let model: String
-    let createdAt: Date
-    let updatedAt: Date
-
-    init(input: ImportCacheEntryCommitInput) {
-        descriptionHash = input.descriptionHash
-        normalizedDescription = input.normalizedDescription
-        categorySlug = input.categorySlug
-        subcategoryName = input.subcategoryName
-        confidence = input.confidence
-        model = input.model
-        createdAt = input.createdAt
-        updatedAt = input.updatedAt
-    }
-
-    enum CodingKeys: String, CodingKey {
-        case descriptionHash = "description_hash"
-        case normalizedDescription = "normalized_description"
-        case categorySlug = "category_slug"
-        case subcategoryName = "subcategory_name"
-        case confidence
-        case model
-        case createdAt = "created_at"
-        case updatedAt = "updated_at"
-    }
-}
-
-nonisolated struct CommitImportCorrectionRequest: Encodable, Hashable, Sendable {
-    let descriptionHash: String
-    let normalizedDescription: String
-    let originalCategorySlug: String?
-    let originalSubcategoryName: String?
-    let correctedCategorySlug: String
-    let correctedSubcategoryName: String?
-    let transactionId: UUID
-    let createdAt: Date
-
-    init(input: ImportCorrectionCommitInput) {
-        descriptionHash = input.descriptionHash
-        normalizedDescription = input.normalizedDescription
-        originalCategorySlug = input.originalCategorySlug
-        originalSubcategoryName = input.originalSubcategoryName
-        correctedCategorySlug = input.correctedCategorySlug
-        correctedSubcategoryName = input.correctedSubcategoryName
-        transactionId = input.transactionId
-        createdAt = input.createdAt
-    }
-
-    enum CodingKeys: String, CodingKey {
-        case descriptionHash = "description_hash"
-        case normalizedDescription = "normalized_description"
-        case originalCategorySlug = "original_category_slug"
-        case originalSubcategoryName = "original_subcategory_name"
-        case correctedCategorySlug = "corrected_category_slug"
-        case correctedSubcategoryName = "corrected_subcategory_name"
-        case transactionId = "transaction_id"
-        case createdAt = "created_at"
     }
 }
 

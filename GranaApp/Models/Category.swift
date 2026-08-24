@@ -11,8 +11,8 @@ import Foundation
 /// somente leitura (usuário não cria nem edita por enquanto), então gravar o
 /// `CategoryIcon` em cada linha é desperdício — o ícone é função pura do slug.
 /// O mapping `slug → CategoryIcon` vive em `CategoryIcon+Slug.swift`, fonte
-/// única da verdade. Slug também serve como id estável pra IA na Fase 4
-/// (few-shot prompting) — sem isso precisaríamos de UUIDs hard-coded.
+/// única da verdade. Slug também é o identificador estável usado nos contratos
+/// de importação para evitar UUIDs hard-coded no app.
 struct Category: Identifiable, Codable, Hashable {
     let id: UUID
     var parentId: UUID?

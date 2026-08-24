@@ -30,7 +30,7 @@ struct InterCreditCardCSVReader {
         let description: String
         /// Categoria do Inter (SUPERMERCADO, TRANSPORTE, etc). Mantida como
         /// `notes` da transação — útil pra usuário ver o que o Inter sugeriu,
-        /// mas **não** é usada pra mapear na nossa taxonomia (a IA faz).
+        /// mas **não** é usada pra mapear na nossa taxonomia.
         let interCategory: String
         /// "Compra à vista" ou "Parcela N/M". Vai pra `notes` também e entra
         /// no `external_id` sintético pra distinguir parcelas do mesmo mês.
@@ -294,7 +294,7 @@ struct InterCreditCardCSVReader {
     /// O Inter grava descrições com colchete largo de espaços pra alinhar
     /// "merchant + cidade" em colunas de monoespaço (ex:
     /// `"Uber UBER  TRIP HELP U SAO PAULO     BRA"`). Compacta múltiplos
-    /// espaços em um único — o dedup e a IA respondem melhor sem o ruído.
+    /// espaços em um único para reduzir ruído na revisão e no dedup.
     static func normalizeDescription(_ raw: String) -> String {
         let trimmed = raw.trimmingCharacters(in: .whitespacesAndNewlines)
         // Regex `\s+` cobre NBSP também — `isWhitespace` na lib do Swift

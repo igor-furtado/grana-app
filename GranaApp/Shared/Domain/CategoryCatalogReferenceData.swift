@@ -12,7 +12,7 @@ import Foundation
 ///
 /// **`slug` é id estável da raiz.** Resolve duas coisas: (1) lookup do ícone
 /// via `CategoryIcon.forSlug(_:)` sem depender de IDs do backend,
-/// (2) anchor estável pra IA na Fase 4 (few-shot prompting).
+/// (2) contrato estável de importação sem UUIDs hard-coded.
 ///
 /// **Invariante:** ao adicionar uma raiz nova aqui, **DEVE** existir uma
 /// entrada correspondente em `CategoryIcon+Slug.swift` mapeando o slug pro

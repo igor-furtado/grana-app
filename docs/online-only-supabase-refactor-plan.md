@@ -52,7 +52,7 @@ cuidadosa e plano de rollback manual no PR/issue.
 - Garantir que transferências não entram em receitas/despesas.
 - Migrar dashboard para buscar agregações prontas, sem somar histórico inteiro no Swift.
 
-## Fase 5: importação e IA
+## Fase 5: importação e classificação manual
 
 - Manter parsing e preview OFX/CSV no app.
 - Enviar payload estruturado revisado para commit atômico no backend.
@@ -61,7 +61,7 @@ cuidadosa e plano de rollback manual no PR/issue.
 - Pular duplicatas e retornar relatório.
 - Persistir `ImportBatch` no backend para desfazer importação sem transações órfãs.
 - Usar `idempotency_key` por usuário e operação para retries de importação.
-- Manter pseudonimização semântica sob autoridade do backend antes de chamar providers externos.
+- Enquanto o projeto local de IA não existir, enviar transações como **Não Classificado** para revisão manual.
 
 ## Fase 6: remoção PowerSync e limpeza local
 

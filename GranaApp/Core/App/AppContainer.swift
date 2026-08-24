@@ -1,7 +1,7 @@
 import Foundation
 
 /// Composition Root da camada de dados online-only. Concentra repositories e
-/// serviços remotos expostos pras Stores.
+/// serviços expostos pras Stores.
 final class AppContainer {
     private let authClient: (any AuthClientProtocol)?
     let categoryCatalog: any CategoryCatalogRepositoryProtocol
@@ -11,18 +11,10 @@ final class AppContainer {
     let remoteStatements: any StatementRemoteRepositoryProtocol
     let remoteTransactions: any TransactionRemoteRepositoryProtocol
     let remoteImports: any ImportRemoteRepositoryProtocol
-    let remoteCategorization: any CategorizationRemoteRepositoryProtocol
 
-    /// Cliente HTTP da categorização assistida online.
-    lazy var categorizationAPIClient: CategorizationAPIClient = .init(authClient: authClient)
-
-    /// Pipeline de categorização automática em contratos remotos explícitos.
+    /// Pipeline local mínimo de classificação para revisão de importação.
     lazy var categorization: CategorizationService = .init(
-        remote: remoteCategorization,
-        categories: categoryCatalog,
-        institutions: institutionCatalog,
-        accounts: remoteAccounts,
-        transactions: remoteTransactions
+        categories: categoryCatalog
     )
 
     private init(
@@ -33,8 +25,7 @@ final class AppContainer {
         remoteDashboard: (any DashboardRemoteRepositoryProtocol)? = nil,
         remoteStatements: (any StatementRemoteRepositoryProtocol)? = nil,
         remoteTransactions: (any TransactionRemoteRepositoryProtocol)? = nil,
-        remoteImports: (any ImportRemoteRepositoryProtocol)? = nil,
-        remoteCategorization: (any CategorizationRemoteRepositoryProtocol)? = nil
+        remoteImports: (any ImportRemoteRepositoryProtocol)? = nil
     ) {
         self.authClient = authClient
         if let categoryCatalog {
@@ -106,20 +97,10 @@ final class AppContainer {
         } else {
             self.remoteImports = AuthRequiredImportRemoteRepository()
         }
-
-        if let remoteCategorization {
-            self.remoteCategorization = remoteCategorization
-        } else {
-            self.remoteCategorization = CategorizationRemoteRepository(
-                remoteStore: SupabaseCategorizationRemoteStore(
-                    client: CategorizationAPIClient(authClient: authClient)
-                )
-            )
-        }
     }
 
     static func setup(authClient: (any AuthClientProtocol)? = nil) -> AppContainer {
-        return AppContainer(authClient: authClient)
+        AppContainer(authClient: authClient)
     }
 
     static func placeholder() -> AppContainer {
@@ -134,8 +115,7 @@ final class AppContainer {
             remoteDashboard: StaticDashboardRemoteRepository(snapshot: .empty),
             remoteStatements: StaticStatementRemoteRepository(snapshot: .empty),
             remoteTransactions: StaticTransactionRemoteRepository(page: .empty),
-            remoteImports: StaticImportRemoteRepository(batches: []),
-            remoteCategorization: StaticCategorizationRemoteRepository()
+            remoteImports: StaticImportRemoteRepository(batches: [])
         )
     }
 
@@ -146,8 +126,7 @@ final class AppContainer {
         remoteDashboard: (any DashboardRemoteRepositoryProtocol)? = nil,
         remoteStatements: (any StatementRemoteRepositoryProtocol)? = nil,
         remoteTransactions: (any TransactionRemoteRepositoryProtocol)? = nil,
-        remoteImports: (any ImportRemoteRepositoryProtocol)? = nil,
-        remoteCategorization: (any CategorizationRemoteRepositoryProtocol)? = nil
+        remoteImports: (any ImportRemoteRepositoryProtocol)? = nil
     ) -> AppContainer {
         AppContainer(
             categoryCatalog: categoryCatalog,
@@ -156,8 +135,7 @@ final class AppContainer {
             remoteDashboard: remoteDashboard ?? StaticDashboardRemoteRepository(snapshot: .empty),
             remoteStatements: remoteStatements ?? StaticStatementRemoteRepository(snapshot: .empty),
             remoteTransactions: remoteTransactions ?? StaticTransactionRemoteRepository(page: .empty),
-            remoteImports: remoteImports ?? StaticImportRemoteRepository(batches: []),
-            remoteCategorization: remoteCategorization ?? StaticCategorizationRemoteRepository()
+            remoteImports: remoteImports ?? StaticImportRemoteRepository(batches: [])
         )
     }
 }

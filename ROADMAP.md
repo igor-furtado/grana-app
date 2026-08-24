@@ -19,7 +19,11 @@ contexto histórico do MVP, não como estado futuro desejado.
 
 ## Fase 3 — Importação de planilhas (XLSX e CSV) e extratos OFX ✅
 
-## Fase 4 — Integração Claude API: categorização automática ✅
+## Fase 4 — Categorização automática via API externa (histórico removido)
+
+O código dessa fase foi removido do GranaApp. A direção de produto passou a
+ser IA local em processo/projeto separado, sem chamadas do app principal a
+provedores externos.
 
 ## Fase 4.5 — Cartões de Crédito ✅
 
@@ -69,13 +73,13 @@ como fonte única de verdade para dados financeiros.
 
 ---
 
-## Fase 7 — Claude Chat sobre suas finanças
+## Fase 7 — Chat local sobre suas finanças
 
 **Objetivo:** conversar com IA sobre seus dados financeiros.
 
 **Entregáveis:**
 - Tela de chat (Mac)
-- Tool use: IA tem ferramentas pra consultar o banco (`getTransactions`, `getCategoryTotal`, `getHoldings`)
+- Tool use: IA local tem ferramentas autorizadas pra consultar o banco (`getTransactions`, `getCategoryTotal`, `getHoldings`)
 - Sistema de prompt com contexto do usuário (período corrente, taxonomia, padrões)
 - Histórico de conversas salvo no backend online-only
 - Streaming de resposta

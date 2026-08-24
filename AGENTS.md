@@ -21,7 +21,8 @@ mostram o estado atual. Em divergências, não normalize silenciosamente: corrij
 - Durante a refatoração, PowerSync pode coexistir apenas para fatias ainda não migradas. Não introduza novo código
   offline-first.
 - Testes com Swift Testing (`import Testing`, `@Suite`, `@Test`, `#expect`).
-- IA via backend online de categorização assistida, com provider ativo configurável e integração inicial prevista para OpenAI `gpt-5.4-mini`.
+- O GranaApp não chama provedores externos de IA nem Edge Functions de categorização. A categorização inteligente será
+  responsabilidade de um projeto/processo local separado.
 - App Sandbox permanece desativado para permitir `Process`.
 - Não adicione dependências nem troque a stack sem pedido explícito.
 
@@ -91,7 +92,7 @@ SwiftUI View -> @Observable Store -> Repository -> Supabase backend
 - Use as categorias de `Core/Logging/Logger.swift`; não use `print`.
 - Nunca registre valores de transações, credenciais ou dados financeiros sensíveis.
 
-## Importação e IA
+## Importação e classificação
 
 - `ImportStore.supportedExtensions` é a fonte dos formatos aceitos.
 - Importadores aplicam `abs()` antes de persistir valores.
@@ -99,9 +100,11 @@ SwiftUI View -> @Observable Store -> Repository -> Supabase backend
 - Cada `STMTRS` OFX gera um `ImportBatch`; múltiplos extratos são enviados em payload estruturado para commit atômico no
   backend.
 - `ImportBatch` permanece reversível, sem transações órfãs.
-- A categorização assistida ocorre antes do commit final.
+- A revisão de classificação ocorre antes do commit final. Enquanto o projeto local de IA não existir, o app gera
+  fallback em **Não Classificado** para revisão manual.
 - Deduplicação de importação é garantia backend com função e constraint; duplicatas são puladas com relatório.
-- Não troque o backend online de categorização assistida, o provider inicial suportado nem a política de pseudonimização sem decisão explícita.
+- Não introduza chamadas diretas do GranaApp a APIs públicas de IA. Qualquer integração inteligente futura deve passar
+  por contrato local/processo dedicado aprovado.
 
 ## Onde alterar
 

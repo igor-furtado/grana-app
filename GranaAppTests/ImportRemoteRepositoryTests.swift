@@ -32,9 +32,7 @@ struct ImportRemoteRepositoryTests {
             input: ImportCommitInput(
                 idempotencyKey: UUID(),
                 batches: [],
-                rows: [],
-                cacheEntries: [],
-                corrections: []
+                rows: []
             )
         )
 
@@ -63,9 +61,7 @@ struct ImportRemoteRepositoryTests {
                 input: ImportCommitInput(
                     idempotencyKey: UUID(),
                     batches: [],
-                    rows: [],
-                    cacheEntries: [],
-                    corrections: []
+                    rows: []
                 )
             )
         }
@@ -139,31 +135,7 @@ struct ImportStoreRemoteCommitTests {
             idempotencyKey: key,
             reviewedRows: rows,
             pendingBatches: pendingBatches,
-            categories: categories,
-            cacheEntries: [
-                CategorizationPendingCacheEntry(
-                    descriptionHash: "hash-1",
-                    normalizedDescription: "mercado",
-                    categorySlug: "alimentacao",
-                    subcategoryName: "Supermercado",
-                    confidence: 0.92,
-                    model: "openai/gpt-5.4-mini",
-                    createdAt: occurredAt,
-                    updatedAt: occurredAt
-                ),
-            ],
-            corrections: [
-                CategorizationPendingCorrection(
-                    descriptionHash: "hash-1",
-                    normalizedDescription: "mercado",
-                    originalCategorySlug: "nao-classificado",
-                    originalSubcategoryName: nil,
-                    correctedCategorySlug: "alimentacao",
-                    correctedSubcategoryName: "Supermercado",
-                    transactionId: transactionId,
-                    createdAt: occurredAt
-                ),
-            ]
+            categories: categories
         )
         let request = CommitImportRequest(input: input)
 
@@ -174,11 +146,6 @@ struct ImportStoreRemoteCommitTests {
         #expect(input.rows.first?.amount == Decimal(string: "42.50"))
         #expect(request.pIdempotencyKey == key)
         #expect(request.pTransactions.first?.amountCents == 4_250)
-        #expect(request.pCacheEntries.first?.categorySlug == "alimentacao")
-        #expect(request.pCacheEntries.first?.subcategoryName == "Supermercado")
-        #expect(request.pCorrections.first?.originalCategorySlug == "nao-classificado")
-        #expect(request.pCorrections.first?.correctedCategorySlug == "alimentacao")
-        #expect(request.pCorrections.first?.correctedSubcategoryName == "Supermercado")
     }
 
     @Test("Faz refresh dos read models após commit remoto bem-sucedido")
@@ -238,9 +205,7 @@ struct ImportStoreRemoteCommitTests {
             input: ImportCommitInput(
                 idempotencyKey: UUID(),
                 batches: [],
-                rows: [],
-                cacheEntries: [],
-                corrections: []
+                rows: []
             )
         )
 

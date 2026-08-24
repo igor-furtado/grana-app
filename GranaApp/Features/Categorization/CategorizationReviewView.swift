@@ -1,6 +1,6 @@
 import SwiftUI
 
-/// Tela de revisão das sugestões da IA.
+/// Tela de revisão das classificações sugeridas antes da importação.
 ///
 /// Visual segue o mesmo padrão do `OFXReviewStepView`: `Form { Section }`
 /// nativo com **uma única row** contendo `ScrollView { LazyVStack { ... } }`.
@@ -77,16 +77,11 @@ struct CategorizationReviewView: View {
                         LazyVStack(spacing: 0) {
                             summaryRow
                             Divider()
-                            ForEach(groupedSections, id: \.bucket) { section in
-                                if showsBucketSubheaders {
-                                    bucketSubheader(section.bucket, count: section.indices.count)
-                                }
-                                ForEach(section.indices, id: \.self) { idx in
-                                    CategorizationRowView(store: store, index: idx)
-                                        .padding(.horizontal, 14)
-                                        .padding(.vertical, 6)
-                                    Divider()
-                                }
+                            ForEach(store.suggestions.indices, id: \.self) { idx in
+                                CategorizationRowView(store: store, index: idx)
+                                    .padding(.horizontal, 14)
+                                    .padding(.vertical, 6)
+                                Divider()
                             }
                         }
                     }
@@ -122,38 +117,8 @@ struct CategorizationReviewView: View {
         return "\(reviewed) de \(total) revisadas"
     }
 
-    /// Quando há mais de um bucket presente, exibimos sub-header dentro do
-    /// scroll por bucket. Single bucket: header da Section já carrega o nome
-    /// (ex: "Confiança baixa") e sub-header vira redundante.
-    private var showsBucketSubheaders: Bool {
-        groupedSections.count > 1
-    }
-
-    /// Título do Form Section. Quando há um único bucket, vira o nome dele
-    /// ("Confiança baixa"); senão fica genérico ("Sugestões").
     private var headerTitle: String {
-        if !showsBucketSubheaders, let only = groupedSections.first {
-            return sectionTitle(only.bucket)
-        }
-        return "Sugestões"
-    }
-
-    private func bucketSubheader(
-        _ bucket: CategorizationSuggestion.ConfidenceBucket,
-        count: Int
-    ) -> some View {
-        HStack {
-            Text(sectionTitle(bucket))
-                .font(.caption.weight(.medium))
-                .foregroundStyle(.secondary)
-            Spacer()
-            Text("\(count)")
-                .font(.caption.monospacedDigit())
-                .foregroundStyle(.secondary)
-        }
-        .padding(.horizontal, 14)
-        .padding(.vertical, 8)
-        .background(Color.primary.opacity(0.04))
+        "Pendentes de revisão"
     }
 
     /// Status detalhado da categorização vira o `navigationSubtitle` do sheet
@@ -165,8 +130,8 @@ struct CategorizationReviewView: View {
             return ""
         case let .classifying(_, _, message):
             return message
-        case let .ready(total, fromCache, fromAI, fallback):
-            return "\(total) transações · \(fromCache) via cache · \(fromAI) via IA · \(fallback) não classificadas"
+        case let .ready(total, fallback):
+            return "\(total) transações · \(fallback) pendentes de revisão"
         case let .failed(message):
             return message
         }
@@ -213,42 +178,5 @@ struct CategorizationReviewView: View {
     private var isClassifying: Bool {
         if case .classifying = store.status { return true }
         return false
-    }
-
-    // MARK: - Agrupamento
-
-    private struct BucketSection {
-        let bucket: CategorizationSuggestion.ConfidenceBucket
-        let indices: [Int]
-    }
-
-    private var groupedSections: [BucketSection] {
-        let thresholds = store.thresholds
-        var low: [Int] = []
-        var medium: [Int] = []
-        var high: [Int] = []
-        for (idx, suggestion) in store.suggestions.enumerated() {
-            switch suggestion.bucket(
-                autoApproved: thresholds.autoApproved,
-                reviewRequired: thresholds.reviewRequired
-            ) {
-            case .low: low.append(idx)
-            case .medium: medium.append(idx)
-            case .high: high.append(idx)
-            }
-        }
-        var sections: [BucketSection] = []
-        if !low.isEmpty { sections.append(BucketSection(bucket: .low, indices: low)) }
-        if !medium.isEmpty { sections.append(BucketSection(bucket: .medium, indices: medium)) }
-        if !high.isEmpty { sections.append(BucketSection(bucket: .high, indices: high)) }
-        return sections
-    }
-
-    private func sectionTitle(_ bucket: CategorizationSuggestion.ConfidenceBucket) -> String {
-        switch bucket {
-        case .high: "Confiança alta"
-        case .medium: "Confiança média"
-        case .low: "Confiança baixa"
-        }
     }
 }

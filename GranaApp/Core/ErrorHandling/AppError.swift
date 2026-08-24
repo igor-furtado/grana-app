@@ -3,11 +3,11 @@ import PostgREST
 
 /// Protocolo opcional pra erros que querem controlar o **título** exibido no
 /// toast global. Sem implementar, o `NoticeCenter` cai num título genérico
-/// derivado do tipo do erro ("ImportError", "AIError", …).
+/// derivado do tipo do erro ("ImportError", "CategorizationError", …).
 ///
 /// A *mensagem* sempre vem de `LocalizedError.errorDescription`, então os
-/// enums de domínio já existentes (`ImportError`, `AIError`,
-/// `CategorizationError`) funcionam sem precisar conformar a este protocolo.
+/// enums de domínio já existentes (`ImportError`, `CategorizationError`)
+/// funcionam sem precisar conformar a este protocolo.
 protocol UserFacingError: LocalizedError {
     /// Cabeçalho curto do toast. Padrão: nome legível do caso.
     var errorTitle: String { get }
@@ -142,7 +142,6 @@ struct AppErrorPresentation: Equatable {
         switch error {
         case is ImportError: return "Erro na importação"
         case is AppConfigurationError: return "Erro de configuração"
-        case is AIError: return "Erro na IA"
         case is CategorizationError: return "Erro na categorização"
         default: return "Erro inesperado"
         }

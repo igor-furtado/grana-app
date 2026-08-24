@@ -15,9 +15,7 @@ select is(
            'credit_cards',
            'transactions',
            'statements',
-           'import_batches',
-           'categorization_cache',
-           'categorization_corrections'
+           'import_batches'
        )),
     0,
     'no product tables or views are created in public'
@@ -30,7 +28,7 @@ select ok(
 
 select ok(
     has_schema_privilege('service_role', 'api', 'usage'),
-    'service role can reach api schema for Edge Function RPCs'
+    'service role can reach api schema'
 );
 
 select ok(

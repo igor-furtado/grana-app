@@ -5,7 +5,7 @@ import SwiftUI
 /// Layout alinhado com `TransactionRow.importPreview` (mesma altura, mesmo
 /// padding, mesma posição de logo banco/descrição/data/valor). A diferença
 /// fica no miolo: aqui as duas chips de categoria são **editáveis** via
-/// `Menu`, e a badge de status à direita carrega o % de confiança da IA.
+/// `Menu`.
 ///
 /// **`Menu` em vez de `Picker`:** `Picker` materializa todas as opções
 /// imediatamente — com 15 categorias × 2 pickers × N rows, são 30N+ `Text`
@@ -21,7 +21,7 @@ struct CategorizationRowView: View {
     }
 
     var body: some View {
-        // **Layout proporcional:** colunas fixas (ícone, valor/data, badge)
+        // **Layout proporcional:** colunas fixas (ícone, valor/data)
         // ocupam seu tamanho natural; descrição, categoria e subcategoria
         // dividem o espaço restante **igualmente** via `maxWidth: .infinity`.
         // SwiftUI não tem equivalente direto ao `Expanded(flex: N)` do Flutter
@@ -53,14 +53,6 @@ struct CategorizationRowView: View {
                     .foregroundStyle(.secondary)
             }
             .frame(width: 92, alignment: .trailing)
-
-            CategorizationConfidenceBadge(
-                confidence: suggestion.confidence,
-                bucket: suggestion.bucket(
-                    autoApproved: store.thresholds.autoApproved,
-                    reviewRequired: store.thresholds.reviewRequired
-                )
-            )
         }
         .opacity(suggestion.isReviewed ? 0.6 : 1.0)
     }

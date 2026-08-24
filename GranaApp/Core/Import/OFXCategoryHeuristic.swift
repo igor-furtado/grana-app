@@ -1,8 +1,7 @@
 import Foundation
 
 /// Mapeia uma transação OFX para uma das categorias **raiz** do app. É um
-/// chute educado pra reduzir o trabalho manual na Fase 3 — a Fase 4 (IA)
-/// refina depois. Princípios:
+/// chute educado pra reduzir o trabalho manual. Princípios:
 ///
 /// 1. **Conservador**: na dúvida, manda pra "Não Classificado" em vez de
 ///    inventar uma categoria duvidosa.
@@ -50,8 +49,8 @@ private extension String {
     /// inspeção rápida de MEMO/NAME.
     func containsAny(_ needles: [String]) -> Bool {
         let haystack = lowercased()
-        for needle in needles {
-            if haystack.contains(needle) { return true }
+        for needle in needles where haystack.contains(needle) {
+            return true
         }
         return false
     }

@@ -132,7 +132,7 @@ _Evite_: Pagamento antecipado, receita, desconto
 Parcela de saldo credor ainda não aplicada porque não existe uma fatura posterior materializada. É consumida quando a próxima fatura do cartão surge.
 _Evite_: Fatura futura, pagamento antecipado, saldo da conta
 
-## Importação e classificação assistida
+## Importação e classificação
 
 **Extrato**:
 Registro emitido por uma instituição financeira com as transações de uma conta em determinado período.
@@ -149,7 +149,3 @@ _Evite_: Arquivo, upload
 **Categorização assistida**:
 Sugestão de categorias para transações importadas antes de sua incorporação definitiva, sujeita à revisão do usuário.
 _Evite_: Categorização automática, quando houver revisão humana
-
-**Pseudonimização semântica**:
-Substituição determinística de trechos identificáveis de uma descrição financeira por marcadores genéricos que preservam pistas úteis para classificação.
-_Evite_: Faker, anonimização total, texto aleatório

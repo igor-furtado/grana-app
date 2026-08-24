@@ -120,7 +120,7 @@ struct ImportView: View {
         VStack(spacing: 0) {
             if let stepperIndex = Self.stepperIndex(for: store.phase) {
                 WizardStepper(
-                    steps: ["Revisar", "Categorizar", "Concluir"],
+                    steps: ["Revisar", "Classificar", "Concluir"],
                     currentIndex: stepperIndex
                 )
             }

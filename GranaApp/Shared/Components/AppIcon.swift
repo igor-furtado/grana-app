@@ -67,7 +67,6 @@ enum AppIcon {
     case sidebarCreditCards
     case sidebarAccounts
     case sidebarImport
-    case sidebarCategorization
     case sidebarCategories
     case sidebarInstitutions
     case sidebarProfile
@@ -117,7 +116,6 @@ enum AppIcon {
         case .sidebarCreditCards: "creditcard"
         case .sidebarAccounts: "building.columns"
         case .sidebarImport: "tray.and.arrow.down"
-        case .sidebarCategorization: "sparkles"
         case .sidebarCategories: "tag"
         case .sidebarInstitutions: "building.columns"
         case .sidebarProfile: "person.crop.circle"

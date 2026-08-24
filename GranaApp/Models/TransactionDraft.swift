@@ -1,13 +1,12 @@
 import Foundation
 
 /// Versão pré-banco de uma `Transaction` — usada entre o preview e o commit
-/// final do import, enquanto a IA categoriza e o usuário revisa.
+/// final do import, enquanto o usuário revisa a classificação.
 ///
-/// **Por que existe:** Fase 4 categoriza ANTES da inserção no banco. Pra isso
-/// precisamos passar pra IA o `signedAmount` original (com sinal vindo do CSV/XLSX/OFX),
-/// que a `Transaction` perde no `abs()` exigido pela convenção do app
-/// (ver invariantes em `AGENTS.md`). O draft preserva o sinal só enquanto necessário —
-/// no commit final, `abs(signedAmount)` vira `Transaction.amount`.
+/// **Por que existe:** a importação revisa antes da inserção no banco. O draft
+/// preserva o `signedAmount` original (com sinal vindo do CSV/OFX), que a
+/// `Transaction` perde no `abs()` exigido pela convenção do app (ver
+/// invariantes em `AGENTS.md`).
 ///
 /// **`id` já fixado**: gerado quando o draft é criado, propagado pra
 /// `Transaction.id` no commit. Permite usar o mesmo UUID em
@@ -16,8 +15,8 @@ struct TransactionDraft: Identifiable, Hashable {
     let id: UUID
     let accountId: UUID
     let importBatchId: UUID
-    /// Valor com sinal original (negativo = saída, positivo = entrada). Vai
-    /// pra IA como contexto. No commit final é `abs()`-eado.
+    /// Valor com sinal original (negativo = saída, positivo = entrada). No
+    /// commit final é `abs()`-eado.
     let signedAmount: Decimal
     let isSignReliable: Bool
     let occurredAt: Date
@@ -28,8 +27,7 @@ struct TransactionDraft: Identifiable, Hashable {
     let destinationAccountId: UUID?
     /// Categoria fornecida pelo sistema de origem (ex: coluna "Categoria"
     /// do CSV do Inter: SUPERMERCADO, TRANSPORTE, BARES…). **Não é nossa
-    /// taxonomia** — vai pra IA só como hint adicional pra reduzir incerteza.
-    /// `nil` quando a fonte não fornece (OFX, planilhas genéricas).
+    /// taxonomia**. `nil` quando a fonte não fornece.
     let sourceCategoryHint: String?
     let refundOfTransactionId: UUID?
 

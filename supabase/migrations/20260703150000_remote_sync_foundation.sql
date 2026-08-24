@@ -202,38 +202,6 @@ create table if not exists app_private.statement_credit_applications (
         on delete cascade
 );
 
-create table if not exists app_private.categorization_cache (
-    id uuid primary key default gen_random_uuid(),
-    user_id uuid not null references app_private.user_profiles (user_id) on delete cascade,
-    description_hash text not null,
-    normalized_description text not null,
-    category_id uuid not null,
-    subcategory_id uuid,
-    confidence double precision not null check (confidence between 0 and 1),
-    model text not null,
-    created_at timestamptz not null default timezone('utc', now()),
-    updated_at timestamptz not null default timezone('utc', now()),
-    unique (user_id, id),
-    unique (user_id, description_hash, model)
-);
-
-create table if not exists app_private.categorization_corrections (
-    id uuid primary key default gen_random_uuid(),
-    user_id uuid not null references app_private.user_profiles (user_id) on delete cascade,
-    description_hash text not null,
-    normalized_description text not null,
-    original_category_id uuid,
-    original_subcategory_id uuid,
-    corrected_category_id uuid not null,
-    corrected_subcategory_id uuid,
-    transaction_id uuid not null,
-    created_at timestamptz not null default timezone('utc', now()),
-    unique (user_id, id),
-    foreign key (user_id, transaction_id)
-        references app_private.transactions (user_id, id)
-        on delete cascade
-);
-
 do $$
 declare
     table_name text;
@@ -248,9 +216,7 @@ begin
         'import_batches',
         'transactions',
         'statement_payments',
-        'statement_credit_applications',
-        'categorization_cache',
-        'categorization_corrections'
+        'statement_credit_applications'
     ]
     loop
         execute format('alter table app_private.%I enable row level security', table_name);
@@ -290,9 +256,7 @@ begin
         'import_batches',
         'transactions',
         'statement_payments',
-        'statement_credit_applications',
-        'categorization_cache',
-        'categorization_corrections'
+        'statement_credit_applications'
     ]
     loop
         execute format(

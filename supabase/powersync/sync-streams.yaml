@@ -15,5 +15,3 @@ streams:
       - SELECT * FROM transactions WHERE user_id = auth.user_id()
       - SELECT * FROM statement_payments WHERE user_id = auth.user_id()
       - SELECT * FROM statement_credit_applications WHERE user_id = auth.user_id()
-      - SELECT * FROM categorization_cache WHERE user_id = auth.user_id()
-      - SELECT * FROM categorization_corrections WHERE user_id = auth.user_id()

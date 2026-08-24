@@ -26,10 +26,10 @@ final class ImportStore {
         /// Diferente do OFX, não tem auto-detect — usuário escolhe a conta-cartão
         /// no próprio preview.
         case csvReview
-        /// Fase 4: rodando categorização da IA pré-commit. Drafts já montados,
-        /// transações ainda NÃO foram inseridas no banco.
+        /// Montando sugestões locais para revisão pré-commit. Drafts já
+        /// montados, transações ainda NÃO foram inseridas no banco.
         case categorizing
-        /// Fase 4: tela de revisão das sugestões antes do commit. Cancelar
+        /// Tela de revisão das classificações antes do commit. Cancelar
         /// aqui descarta tudo; "Importar" finaliza.
         case reviewingCategorization
         case confirming
@@ -47,13 +47,12 @@ final class ImportStore {
 
     private(set) var phase: Phase = .idle
 
-    /// Fase 4: store de categorização compartilhado entre os steps do wizard.
-    /// Disparado **antes** do commit ao banco — a tela de revisão é parte do
-    /// fluxo, não um post-step. Cancelar o import descarta tudo (nenhuma
-    /// transaction vai pro banco se o usuário não confirmar).
+    /// Store de classificação compartilhado entre os steps do wizard.
+    /// Disparado **antes** do commit ao banco; a tela de revisão é parte do
+    /// fluxo. Cancelar o import descarta tudo.
     let categorization: CategorizationStore
 
-    // Fase 4: estado "em voo" entre o preview e o commit final. Construído
+    // Estado "em voo" entre o preview e o commit final. Construído
     // pelo `confirmOFXImport`; consumido pelo `finalizeImport`.
     //
     // Não há mais criação de Institution/Account no commit — a partir da
@@ -104,32 +103,18 @@ final class ImportStore {
         self.makeIdempotencyKey = makeIdempotencyKey
     }
 
-    // MARK: - Categorização pré-commit (Fase 4)
+    // MARK: - Classificação pré-commit
 
-    /// Configura thresholds via `UserDefaults` e dispara a categorização pré-commit
-    /// pra os drafts em voo. Move o wizard pra `.categorizing` e observa a
-    /// conclusão pra avançar pra `.reviewingCategorization`.
-    ///
-    /// Falha de IA NÃO bloqueia o usuário: o service devolve `.fallback` pra
-    /// todos os misses; o usuário ainda pode revisar/importar manualmente.
+    /// Dispara a classificação local pré-commit para os drafts em voo.
+    /// Move o wizard pra `.categorizing` e observa a conclusão pra avançar
+    /// pra `.reviewingCategorization`.
     private func startCategorization() {
-        let defaults = UserDefaults.standard
-        let autoApproved = defaults.object(forKey: CategorizationDefaultsKey.autoApproved) as? Double ?? 0.85
-        let reviewRequired = defaults.object(forKey: CategorizationDefaultsKey.reviewRequired) as? Double ?? 0.70
-        categorization.thresholds = CategorizationService.ConfidenceThresholds(
-            autoApproved: autoApproved,
-            reviewRequired: reviewRequired
-        )
-
         phase = .categorizing
         categorizationWaitTask?.cancel()
         categorizationWaitTask = Task { [weak self] in
             guard let self else { return }
             await self.categorization.loadCategories()
             self.categorization.classifyDrafts(self.pendingDrafts)
-            // Observa o status do categorization store em loop curto pra
-            // avançar pra `.reviewingCategorization` quando ficar ready (ou
-            // pra `.failed` se rolar erro).
             await self.awaitCategorizationCompletion()
         }
     }
@@ -149,12 +134,7 @@ final class ImportStore {
         case .ready:
             phase = .reviewingCategorization
         case let .failed(message):
-            // Mesmo em falha, deixa o usuário revisar — sugestões fallback
-            // ainda permitem confirmar/corrigir manualmente. O erro
-            // original já foi reportado ao NoticeCenter pelo CategorizationStore;
-            // aqui é só um aviso de fluxo (info, não erro).
-            log.ai.notice("Categorização falhou: \(message, privacy: .public). Avançando pra revisão com fallbacks.")
-            phase = .reviewingCategorization
+            phase = .failed(message: message)
         case .idle, .classifying:
             // Cancelado (idle) ou estado inesperado — não mexe na fase.
             return
@@ -602,7 +582,7 @@ final class ImportStore {
     }
 
     /// Confirma o preview CSV. Mesmo padrão do OFX: monta drafts em voo +
-    /// dispara categorização pré-commit. **Exige conta-cartão selecionada** —
+    /// dispara classificação pré-commit. **Exige conta-cartão selecionada** —
     /// MVP não cria conta no import.
     func confirmCSVImport() async {
         guard phase == .csvReview else { return }
@@ -640,16 +620,14 @@ final class ImportStore {
                 accountId: accountId,
                 importBatchId: batchId,
                 // Compra na fatura é despesa (positivo no CSV após nosso filtro
-                // de negativos). Passamos `signedAmount` positivo — a IA decide
-                // pela descrição/contexto se é expense/income (deve ser expense
-                // em ~100% dos casos pois estornos foram filtrados).
+                // de negativos).
                 signedAmount: row.raw.amount,
                 occurredAt: row.derived.occurredAt,
                 description: row.derived.description,
                 notes: row.derived.notes,
                 externalId: row.externalId,
                 // Categoria do próprio Inter (SUPERMERCADO, TRANSPORTE, BARES…)
-                // como hint pra IA. Não é nossa taxonomia, só contexto.
+                // preservada como contexto para a futura classificação local.
                 sourceCategoryHint: row.raw.interCategory
             )
         }
@@ -698,12 +676,12 @@ final class ImportStore {
         csvResolution = nil
     }
 
-    // MARK: - Confirm OFX (multi-account) → drafts → categorização
+    // MARK: - Confirm OFX (multi-account) → drafts → classificação
 
     /// Confirma o preview OFX. **Não cria conta nova** — toda statement precisa
     /// estar apontada pra uma conta existente do usuário (auto-detectada ou
     /// escolhida manualmente). Monta drafts (com `signedAmount` original do
-    /// OFX) e dispara a categorização pré-commit. Commit acontece em
+    /// OFX) e dispara a classificação pré-commit. Commit acontece em
     /// `finalizeImport()`.
     func confirmOFXImport() async {
         guard phase == .ofxReview else { return }
@@ -743,7 +721,7 @@ final class ImportStore {
                     id: UUID(),
                     accountId: accountId,
                     importBatchId: batchId,
-                    signedAmount: row.derived.amount, // **mantém o sinal do OFX** pra IA
+                    signedAmount: row.derived.amount,
                     occurredAt: row.derived.occurredAt,
                     description: row.derived.description,
                     notes: row.derived.notes,
@@ -772,9 +750,8 @@ final class ImportStore {
     /// definitivas com `abs(amount)` e dispara o `commitImport` atômico no
     /// `TransactionRepository`.
     ///
-    /// Inclui institutions novas, accounts novas, batches, transactions, cache
-    /// entries (resultado da IA) e corrections (do que o usuário corrigiu).
-    /// Atomicidade total: se qualquer execute falha, banco fica intocado.
+    /// Inclui batches e transactions. Atomicidade total: se qualquer execute
+    /// falha, banco fica intocado.
     func finalizeImport() async {
         guard phase == .reviewingCategorization else { return }
 
@@ -795,15 +772,11 @@ final class ImportStore {
                 )
             }
 
-            let corrections = categorization.buildPendingCorrections()
-            let cacheEntries = categorization.pendingCacheEntries
             let input = try Self.buildCommitInput(
                 idempotencyKey: makeIdempotencyKey(),
                 reviewedRows: reviewedRows,
                 pendingBatches: pendingBatches,
-                categories: categories,
-                cacheEntries: cacheEntries,
-                corrections: corrections
+                categories: categories
             )
             let result = try await commitReviewedImport(input: input)
 
@@ -870,7 +843,7 @@ final class ImportStore {
     /// Volta da revisão pro preview de origem (OFX ou CSV) — usado pelo botão
     /// "Voltar" da tela de revisão pra ajustar o que vai ser importado antes
     /// de finalizar. Descarta sugestões em memória (próximo confirm refaz a
-    /// categorização). Detecta a origem pelo que está populado: csvResolution
+    /// classificação). Detecta a origem pelo que está populado: csvResolution
     /// presente → CSV; senão → OFX.
     func backToPreviewFromReview() {
         guard phase == .reviewingCategorization || phase == .categorizing else { return }
@@ -915,9 +888,7 @@ final class ImportStore {
         idempotencyKey: UUID,
         reviewedRows: [ReviewedImportRow],
         pendingBatches: [PendingImportBatch],
-        categories: [Category],
-        cacheEntries: [CategorizationPendingCacheEntry],
-        corrections: [CategorizationPendingCorrection]
+        categories: [Category]
     ) throws -> ImportCommitInput {
         guard let fallbackSlug = categories.rootCategory(slug: "nao-classificado")?.slug else {
             throw ImportError.unclassifiedCategoryMissing
@@ -960,9 +931,7 @@ final class ImportStore {
                     importFormat: $0.importFormat
                 )
             },
-            rows: rows,
-            cacheEntries: cacheEntries.map(ImportCacheEntryCommitInput.init(entry:)),
-            corrections: corrections.map(ImportCorrectionCommitInput.init(correction:))
+            rows: rows
         )
     }
 }

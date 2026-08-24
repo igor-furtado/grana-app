@@ -21,7 +21,7 @@ excluded:
 # ---- Limites de tamanho (frouxos por enquanto) ----
 line_length:
   warning: 150
-  error: 1000              # erro só pra absurdo; prompts da IA têm linhas longas legítimas
+  error: 1000              # erro só pra absurdo; payloads e fixtures têm linhas longas legítimas
   ignores_comments: true
   ignores_urls: true
   ignores_interpolated_strings: true
