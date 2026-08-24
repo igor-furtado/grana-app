@@ -138,8 +138,7 @@ struct ContentView: View {
             GranaBackground()
             HStack(spacing: 12) {
                 rail
-                    .padding(.leading, 18)
-                    .padding(.vertical, 18)
+                    .padding(GranaTheme.Layout.railInsets)
 
                 NavigationStack {
                     selectedSectionView

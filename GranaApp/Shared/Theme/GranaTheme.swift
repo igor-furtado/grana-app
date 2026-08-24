@@ -44,6 +44,11 @@ enum GranaTheme {
         static let accentColor = Palette.teal.opacity(0.22)
     }
 
+    enum Layout {
+        static let pageInsets = EdgeInsets(top: 0, leading: 20, bottom: 20, trailing: 20)
+        static let railInsets = EdgeInsets(top: 0, leading: 18, bottom: 18, trailing: 0)
+    }
+
     enum Typography {
         static func number(size: CGFloat, weight: Font.Weight = .semibold) -> Font {
             .system(size: size, weight: weight, design: .monospaced)
@@ -212,5 +217,9 @@ extension View {
         cornerRadius: CGFloat = GranaTheme.Radius.panel
     ) -> some View {
         modifier(GranaSurfaceModifier(prominence: prominence, cornerRadius: cornerRadius))
+    }
+
+    func granaPagePadding() -> some View {
+        padding(GranaTheme.Layout.pageInsets)
     }
 }

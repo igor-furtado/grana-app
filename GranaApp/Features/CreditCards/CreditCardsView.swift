@@ -53,7 +53,7 @@ struct CreditCardsView: View {
         Group {
             if visibleCards.isEmpty {
                 emptyState
-                    .padding(20)
+                    .granaPagePadding()
                     .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .center)
             } else {
                 splitContent(store: store, cards: visibleCards)

@@ -73,55 +73,8 @@ struct DesignSystemView: View {
 
     var body: some View {
         ScrollView {
-            VStack(alignment: .leading, spacing: Spacing.lg) {
-                header
-                DesignSystemCard(title: "Amostra tipográfica", content: {
-                    TypographyComparisonSample()
-                })
-
-                LazyVGrid(columns: columns, alignment: .leading, spacing: Spacing.lg) {
-                    DesignSystemCard(title: "Tabela de tokens", content: {
-                        TokenTable(tokens: paletteTokens)
-                    })
-
-                    DesignSystemCard(title: "Tabela de tipografia", content: {
-                        TypographyTable(tokens: typographyTokens)
-                    })
-
-                    DesignSystemCard(title: "Tabela de raios", content: {
-                        RadiusTable(tokens: radiusTokens)
-                    })
-
-                    DesignSystemCard(title: "Estados semânticos", content: {
-                        SemanticStateTable(tokens: semanticTokens)
-                    })
-
-                    DesignSystemCard(title: "Camadas de profundidade das superfícies", content: {
-                        SurfaceDepthLayers()
-                    })
-
-                    DesignSystemCard(title: "Botões", content: {
-                        ButtonsShowcase()
-                    })
-
-                    DesignSystemCard(title: "Empty states", content: {
-                        EmptyStatesShowcase()
-                    })
-                }
-
-                DesignSystemCard(title: "Exemplo de dashboard", content: {
-                    DashboardExample()
-                })
-
-                DesignSystemCard(title: "Exemplo de tabela de transações", content: {
-                    TransactionsTableExample()
-                })
-
-                DesignSystemCard(title: "Notice overlay", content: {
-                    NoticeOverlayShowcase(notices: sampleNotices)
-                })
-            }
-            .padding(20)
+            standardSections
+                .granaPagePadding()
         }
         .background(.clear)
         .navigationTitle("Design System")
@@ -134,29 +87,54 @@ struct DesignSystemView: View {
         ]
     }
 
-    private var header: some View {
-        HStack(spacing: Spacing.md) {
-            Image(systemName: AppIcon.sidebarDesignSystem.systemImage)
-                .font(.system(size: 24, weight: .bold))
-                .foregroundStyle(GranaTheme.Palette.creamText)
-                .frame(width: 54, height: 54)
-                .background(
-                    GranaTheme.brandGradient(),
-                    in: RoundedRectangle(cornerRadius: GranaTheme.Radius.control, style: .continuous)
-                )
+    private var standardSections: some View {
+        VStack(alignment: .leading, spacing: Spacing.lg) {
+            DesignSystemCard(title: "Amostra tipográfica", content: {
+                TypographyComparisonSample()
+            })
 
-            VStack(alignment: .leading, spacing: Spacing.xs) {
-                Text("GranaTheme")
-                    .font(DesignSystemTypography.hero)
-                    .foregroundStyle(GranaTheme.Palette.ink)
-                Text("Vitrine interna das decisões visuais aplicadas no app.")
-                    .font(DesignSystemTypography.body)
-                    .foregroundStyle(GranaTheme.Palette.muted)
+            LazyVGrid(columns: columns, alignment: .leading, spacing: Spacing.lg) {
+                DesignSystemCard(title: "Tabela de tokens", content: {
+                    TokenTable(tokens: paletteTokens)
+                })
+
+                DesignSystemCard(title: "Tabela de tipografia", content: {
+                    TypographyTable(tokens: typographyTokens)
+                })
+
+                DesignSystemCard(title: "Tabela de raios", content: {
+                    RadiusTable(tokens: radiusTokens)
+                })
+
+                DesignSystemCard(title: "Estados semânticos", content: {
+                    SemanticStateTable(tokens: semanticTokens)
+                })
+
+                DesignSystemCard(title: "Camadas de profundidade das superfícies", content: {
+                    SurfaceDepthLayers()
+                })
+
+                DesignSystemCard(title: "Botões", content: {
+                    ButtonsShowcase()
+                })
+
+                DesignSystemCard(title: "Empty states", content: {
+                    EmptyStatesShowcase()
+                })
             }
+
+            DesignSystemCard(title: "Exemplo de dashboard", content: {
+                DashboardExample()
+            })
+
+            DesignSystemCard(title: "Exemplo de tabela de transações", content: {
+                TransactionsTableExample()
+            })
+
+            DesignSystemCard(title: "Notice overlay", content: {
+                NoticeOverlayShowcase(notices: sampleNotices)
+            })
         }
-        .padding(20)
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .granaSurface(.subtle, cornerRadius: GranaTheme.Radius.hero)
     }
 
     private var sampleNotices: [NoticeCenter.Notice] {

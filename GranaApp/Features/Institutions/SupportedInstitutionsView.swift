@@ -49,7 +49,7 @@ struct SupportedInstitutionsView: View {
                 }
             }
         }
-        .padding(20)
+        .granaPagePadding()
         .navigationTitle("Bancos suportados")
         .navigationSubtitle("\(institutions.count) bancos disponíveis")
         .toolbar {

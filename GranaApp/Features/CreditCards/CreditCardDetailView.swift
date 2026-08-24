@@ -108,7 +108,7 @@ struct CreditCardDetailView: View {
                 }
                 transactionsBlock
             }
-            .padding(20)
+            .granaPagePadding()
         }
         .background(Color(nsColor: .controlBackgroundColor))
         .onAppear {

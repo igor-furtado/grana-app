@@ -101,7 +101,7 @@ struct ImportHistoryView: View {
                 onBrowse: { presentImportSheet(file: nil) }
             )
             .frame(maxWidth: .infinity, maxHeight: .infinity)
-            .padding(40)
+            .granaPagePadding()
         } else {
             list(store: store)
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
@@ -152,8 +152,7 @@ struct ImportHistoryView: View {
                     }
                 }
             }
-            .padding(.horizontal, 20)
-            .padding(.vertical, 16)
+            .granaPagePadding()
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
     }

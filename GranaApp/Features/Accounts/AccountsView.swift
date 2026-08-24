@@ -139,7 +139,7 @@ struct AccountsView: View {
                     )
                 }
             }
-            .padding(20)
+            .granaPagePadding()
         }
     }
 

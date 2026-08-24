@@ -61,7 +61,7 @@ struct DashboardView: View {
 
                 chartsRow(store: store)
             }
-            .padding()
+            .granaPagePadding()
         }
         .background(.clear)
         .task {

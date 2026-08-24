@@ -125,7 +125,7 @@ struct CategoriesView: View {
                     }
                 }
             }
-            .padding(Spacing.xl)
+            .granaPagePadding()
             .frame(maxWidth: .infinity, alignment: .leading)
         }
     }
