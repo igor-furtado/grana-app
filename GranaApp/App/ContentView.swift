@@ -1,9 +1,9 @@
 import SwiftUI
 
-/// Seções principais do app, exibidas na sidebar do `NavigationSplitView`.
+/// Seções principais do app, exibidas no rail lateral autenticado.
 ///
-/// A ordem visual da sidebar é determinada por `AppSection.sidebarItems`,
-/// não pela ordem do `enum`.
+/// A ordem visual do rail é determinada por `ContentView.primaryRailItems` e
+/// `ContentView.bottomRailItems`, não pela ordem do `enum`.
 enum AppSection: String, Hashable, CaseIterable, Identifiable {
     case dashboard
     case transactions
@@ -12,23 +12,12 @@ enum AppSection: String, Hashable, CaseIterable, Identifiable {
     case `import`
     case categories
     case institutions
+    case designSystem
     case profile
 
     var id: String {
         rawValue
     }
-
-    /// Ordem é **parte do contrato de UI** da sidebar.
-    static let sidebarItems: [AppSection] = [
-        .dashboard,
-        .transactions,
-        .creditCards,
-        .accounts,
-        .import,
-        .categories,
-        .institutions,
-        .profile,
-    ]
 
     var title: String {
         switch self {
@@ -39,6 +28,7 @@ enum AppSection: String, Hashable, CaseIterable, Identifiable {
         case .import: "Importar dados"
         case .categories: "Categorias"
         case .institutions: "Instituições"
+        case .designSystem: "Design System"
         case .profile: "Perfil"
         }
     }
@@ -54,6 +44,7 @@ enum AppSection: String, Hashable, CaseIterable, Identifiable {
         case .import: .sidebarImport
         case .categories: .sidebarCategories
         case .institutions: .sidebarInstitutions
+        case .designSystem: .sidebarDesignSystem
         case .profile: .sidebarProfile
         }
     }
@@ -62,17 +53,6 @@ enum AppSection: String, Hashable, CaseIterable, Identifiable {
 struct ContentView: View {
     @Environment(AppEnvironment.self) private var environment
 
-    /// Override de tema válido só pra sessão atual (não persistido). Toda
-    /// abertura do app começa em `nil` (segue o sistema); o botão de tema
-    /// na toolbar da sidebar flipa pra `.light`/`.dark` e o estado se perde
-    /// ao fechar.
-    @State private var themeOverride: ColorScheme?
-
-    /// Lido pra decidir a direção do toggle quando ainda não há override.
-    /// Reflete o tema efetivo da janela — sistema quando `themeOverride`
-    /// é `nil`, ou o próprio override depois do primeiro clique.
-    @Environment(\.colorScheme) private var currentScheme
-
     /// Restaurado entre sessões via `@SceneStorage` — abrir o app cai na
     /// última seção visitada (UX padrão macOS). `rawValue: String` é o que o
     /// SceneStorage persiste; reconstruímos o `AppSection` no getter abaixo.
@@ -80,20 +60,23 @@ struct ContentView: View {
     /// inválido (ex: enum mudou entre versões).
     @SceneStorage("ContentView.selection") private var selectionRaw: String = AppSection.dashboard.rawValue
 
+    private static let primaryRailItems: [AppSection] = [
+        .dashboard,
+        .transactions,
+        .creditCards,
+        .accounts,
+        .import,
+    ]
+
+    private static let bottomRailItems: [AppSection] = [
+        .designSystem,
+        .categories,
+        .institutions,
+        .profile,
+    ]
+
     private var selection: AppSection {
         AppSection(rawValue: selectionRaw) ?? .dashboard
-    }
-
-    /// Binding pro `List(selection:)`. Optional porque o List aceita "nada
-    /// selecionado" — tratamos `nil` como no-op pra preservar a última
-    /// seleção válida (evita janela em branco se o sistema desselecionar).
-    private var selectionBinding: Binding<AppSection?> {
-        Binding(
-            get: { AppSection(rawValue: selectionRaw) },
-            set: { newValue in
-                if let newValue { selectionRaw = newValue.rawValue }
-            }
-        )
     }
 
     var body: some View {
@@ -103,8 +86,7 @@ struct ContentView: View {
             } else {
                 switch environment.authService.state {
                 case .restoring:
-                    ProgressView("Restaurando sessão…")
-                        .frame(maxWidth: .infinity, maxHeight: .infinity)
+                    restoringContent
                 case .unavailable:
                     unavailableContent
                 case .unauthenticated:
@@ -114,48 +96,58 @@ struct ContentView: View {
                 }
             }
         }
+        .preferredColorScheme(.light)
         .noticeOverlay()
     }
 
+    private var restoringContent: some View {
+        ZStack {
+            GranaBackground()
+            ProgressView("Restaurando sessão…")
+                .foregroundStyle(GranaTheme.Palette.ink)
+        }
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+    }
+
     private var unavailableContent: some View {
-        EmptyStateView(
-            "GranaApp indisponível",
-            icon: .sidebarDashboard,
-            description: "Não foi possível falar com o backend agora. Tente novamente para validar a sessão e carregar os dados financeiros."
-        ) {
-            Button("Tentar novamente") {
-                Task {
-                    do {
-                        try await environment.retryStartup()
-                    } catch {
-                        NoticeCenter.shared.report(error, title: "Falha ao tentar novamente")
+        ZStack {
+            GranaBackground()
+            EmptyStateView(
+                "GranaApp indisponível",
+                icon: .sidebarDashboard,
+                description: "Não foi possível falar com o backend agora. Tente novamente para validar a sessão e carregar os dados financeiros."
+            ) {
+                Button("Tentar novamente") {
+                    Task {
+                        do {
+                            try await environment.retryStartup()
+                        } catch {
+                            NoticeCenter.shared.report(error, title: "Falha ao tentar novamente")
+                        }
                     }
                 }
+                .buttonStyle(GranaPrimaryButtonStyle())
             }
-            .buttonStyle(.borderedProminent)
+            .padding(24)
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
     }
 
     private var authenticatedContent: some View {
-        NavigationSplitView {
-            sidebar
-        } detail: {
-            Group {
-                switch selection {
-                case .dashboard: DashboardView()
-                case .transactions: TransactionsView()
-                case .creditCards: CreditCardsView()
-                case .accounts: AccountsView()
-                case .import: ImportHistoryView()
-                case .categories: CategoriesView()
-                case .institutions: SupportedInstitutionsView()
-                case .profile: ProfileView()
+        ZStack {
+            GranaBackground()
+            HStack(spacing: 12) {
+                rail
+                    .padding(.leading, 18)
+                    .padding(.vertical, 18)
+
+                NavigationStack {
+                    selectedSectionView
                 }
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
             }
+            .padding(.trailing, 18)
         }
-        .navigationTitle("GranaApp")
-        .preferredColorScheme(themeOverride)
         .onReceive(NotificationCenter.default.publisher(for: .appSectionNavigationRequested)) { notification in
             guard let rawValue = notification.object as? String,
                   let section = AppSection(rawValue: rawValue)
@@ -163,40 +155,65 @@ struct ContentView: View {
             selectionRaw = section.rawValue
         }
         // Mínimo global da janela. A tela mais "gulosa" hoje é Cartões
-        // (sidebar interna 240 + detalhe 520 = 760), somado à sidebar do
-        // app (200), exige ~960. Arredondado pra 1000 dá folga; 640 de
-        // altura mostra ~12 linhas de transação confortavelmente.
+        // (sidebar interna 240 + detalhe 520 = 760), somado ao rail e respiros
+        // do shell, exige ~900. Arredondado pra 1000 dá folga; 640 de altura
+        // mostra ~12 linhas de transação confortavelmente.
         .frame(minWidth: 1000, minHeight: 640)
     }
 
-    private func toggleTheme() {
-        themeOverride = (currentScheme == .dark) ? .light : .dark
+    @ViewBuilder
+    private var selectedSectionView: some View {
+        switch selection {
+        case .dashboard: DashboardView()
+        case .transactions: TransactionsView()
+        case .creditCards: CreditCardsView()
+        case .accounts: AccountsView()
+        case .import: ImportHistoryView()
+        case .categories: CategoriesView()
+        case .institutions: SupportedInstitutionsView()
+        case .designSystem: DesignSystemView()
+        case .profile: ProfileView()
+        }
     }
 
-    /// Sidebar padrão do macOS: `List(selection:)` com `Label` nativo.
-    /// Seleção, hover, navegação por teclado (setas ↑↓), background
-    /// translúcido, suporte a Increase Contrast — tudo grátis do sistema.
-    /// Highlight de seleção usa `AccentColor`.
-    private var sidebar: some View {
-        List(selection: selectionBinding) {
-            ForEach(AppSection.sidebarItems) { section in
-                Label(section.title, systemImage: section.icon.systemImage)
-                    .tag(section)
+    private var rail: some View {
+        VStack(spacing: 8) {
+            ForEach(Self.primaryRailItems) { section in
+                railButton(for: section)
+            }
+
+            Spacer(minLength: 14)
+
+            ForEach(Self.bottomRailItems) { section in
+                railButton(for: section)
             }
         }
-        .navigationSplitViewColumnWidth(min: 200, ideal: 220, max: 280)
-        .toolbar {
-            ToolbarItem(placement: .primaryAction) {
-                Button(action: toggleTheme) {
-                    Label(
-                        currentScheme == .dark ? "Tema claro" : "Tema escuro",
-                        systemImage: currentScheme == .dark
-                            ? AppIcon.themeLight.systemImage
-                            : AppIcon.themeDark.systemImage
-                    )
+        .padding(10)
+        .frame(width: 70)
+        .frame(maxHeight: .infinity)
+        .granaSurface(.glass, cornerRadius: GranaTheme.Radius.rail)
+    }
+
+    private func railButton(for section: AppSection) -> some View {
+        let isSelected = selection == section
+        return Button {
+            selectionRaw = section.rawValue
+        } label: {
+            Image(systemName: section.icon.systemImage)
+                .font(.system(size: 20, weight: .semibold))
+                .foregroundStyle(isSelected ? GranaTheme.Palette.creamText : GranaTheme.Palette.muted)
+                .frame(width: 48, height: 48)
+                .background {
+                    if isSelected {
+                        GranaTheme.brandGradient()
+                            .clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
+                            .shadow(color: GranaTheme.Shadow.accentColor, radius: 17, y: 8)
+                    }
                 }
-                .help(currentScheme == .dark ? "Mudar para tema claro" : "Mudar para tema escuro")
-            }
+                .contentShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
         }
+        .buttonStyle(.plain)
+        .help(section.title)
+        .accessibilityLabel(section.title)
     }
 }

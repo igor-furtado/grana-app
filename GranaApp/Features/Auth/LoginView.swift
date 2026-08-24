@@ -8,125 +8,143 @@ struct LoginView: View {
 
     var body: some View {
         ZStack {
-            backgroundView
-                .ignoresSafeArea()
+            GranaBackground()
 
-            loginCard
-                .padding(24)
+            HStack(spacing: 18) {
+                storyPanel
+                loginPanel
+            }
+            .frame(maxWidth: 1060)
+            .padding(24)
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
     }
 
-    private var loginCard: some View {
+    private var storyPanel: some View {
         VStack(alignment: .leading, spacing: 24) {
-            header
+            logoMark
 
-            HStack(alignment: .top, spacing: 20) {
-                leftPanel
-                rightPanel
+            VStack(alignment: .leading, spacing: 16) {
+                Text("GranaApp")
+                    .font(.system(size: 54, weight: .black))
+                    .foregroundStyle(GranaTheme.Palette.creamText)
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.75)
+
+                Text("Acesse seu painel financeiro com uma sessão remota validada.")
+                    .font(.system(size: 17, weight: .semibold))
+                    .foregroundStyle(GranaTheme.Palette.creamText.opacity(0.72))
+                    .lineSpacing(2)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+
+            Spacer(minLength: 28)
+
+            HStack(spacing: 9) {
+                pill("Sem senha fixa")
+                pill("Online-only")
+                pill("Fonte remota")
             }
         }
-        .padding(36)
-        .frame(maxWidth: 1040)
+        .padding(34)
+        .frame(maxWidth: .infinity, minHeight: 520, alignment: .leading)
         .background(
-            Color(nsColor: .controlBackgroundColor).opacity(0.78),
-            in: RoundedRectangle(cornerRadius: 32, style: .continuous)
+            GranaTheme.brandGradient(),
+            in: RoundedRectangle(cornerRadius: GranaTheme.Radius.hero, style: .continuous)
         )
         .overlay {
-            RoundedRectangle(cornerRadius: 32, style: .continuous)
-                .strokeBorder(Color.white.opacity(0.08))
+            RoundedRectangle(cornerRadius: GranaTheme.Radius.hero, style: .continuous)
+                .strokeBorder(GranaTheme.Palette.creamText.opacity(0.15), lineWidth: 1)
         }
-        .shadow(color: .black.opacity(0.10), radius: 18, y: 8)
+        .shadow(color: GranaTheme.Shadow.accentColor, radius: 37, y: 16)
     }
 
-    private var header: some View {
-        HStack(alignment: .top) {
+    private var loginPanel: some View {
+        VStack(alignment: .leading, spacing: 22) {
             VStack(alignment: .leading, spacing: 10) {
-                Text("Acesso ao cofre")
-                    .font(.system(size: 13, weight: .semibold, design: .rounded))
-                    .foregroundStyle(.secondary)
-                    .textCase(.uppercase)
+                Text("Iniciar sessão")
+                    .font(.system(size: 28, weight: .black))
+                    .foregroundStyle(GranaTheme.Palette.ink)
 
-                Text("Conecte seu workspace financeiro")
-                    .font(.system(size: 30, weight: .bold, design: .serif))
-
-                Text("Uma única ação valida sua sessão remota e libera o acesso ao backend financeiro.")
-                    .foregroundStyle(.secondary)
-                    .frame(maxWidth: 520, alignment: .leading)
+                Text("Informe o e-mail para receber o magic link e voltar ao app com a sessão ativa.")
+                    .font(.system(size: 14, weight: .semibold))
+                    .foregroundStyle(GranaTheme.Palette.muted)
+                    .lineSpacing(2)
+                    .fixedSize(horizontal: false, vertical: true)
             }
 
-            Spacer()
+            VStack(alignment: .leading, spacing: 8) {
+                Text("E-mail")
+                    .font(.system(size: 12, weight: .bold))
+                    .foregroundStyle(GranaTheme.Palette.muted)
 
-            Label("Sem senha fixa", systemImage: "key.slash.fill")
-                .font(.headline)
-                .padding(.horizontal, 14)
-                .padding(.vertical, 10)
-                .background(Color.accentColor.opacity(0.12), in: Capsule())
-        }
-    }
-
-    private var leftPanel: some View {
-        VStack(alignment: .leading, spacing: 16) {
-            stepCard(
-                title: "1. Informe o e-mail",
-                message: "O link volta para este Mac e conclui a sessão no próprio app.",
-                icon: "envelope.fill"
-            )
-            stepCard(
-                title: "2. Abra o magic link",
-                message: "A autenticação é retomada pelo URL scheme configurado para o GranaApp.",
-                icon: "link.circle.fill"
-            )
-            stepCard(
-                title: "3. Entre na área financeira",
-                message: "Depois da sessão válida, o app inicializa seu perfil remoto e libera a navegação.",
-                icon: "checkmark.seal.fill"
-            )
-        }
-        .frame(maxWidth: .infinity, alignment: .leading)
-    }
-
-    private var rightPanel: some View {
-        VStack(alignment: .leading, spacing: 18) {
-            Text("Iniciar sessão")
-                .font(.title3.weight(.semibold))
-
-            TextField("voce@exemplo.com", text: $email)
-                .textFieldStyle(.roundedBorder)
+                TextField("voce@exemplo.com", text: $email)
+                    .textFieldStyle(.plain)
+                    .font(.system(size: 16, weight: .semibold))
+                    .padding(.horizontal, 15)
+                    .frame(height: 52)
+                    .background(
+                        GranaTheme.Palette.paper.opacity(0.86),
+                        in: RoundedRectangle(cornerRadius: 16, style: .continuous)
+                    )
+                    .overlay {
+                        RoundedRectangle(cornerRadius: 16, style: .continuous)
+                            .strokeBorder(GranaTheme.Palette.line, lineWidth: 1)
+                    }
+            }
 
             Button(isSendingMagicLink ? "Enviando…" : "Enviar magic link") {
                 Task {
                     await sendMagicLink()
                 }
             }
-            .buttonStyle(.borderedProminent)
-            .controlSize(.large)
+            .buttonStyle(GranaPrimaryButtonStyle())
             .disabled(isSubmitDisabled)
+            .opacity(isSubmitDisabled ? 0.55 : 1)
 
             Divider()
+                .overlay(GranaTheme.Palette.line)
 
-            Text("Estado atual")
-                .font(.headline)
-            Text("Email: \(normalizedEmail.isEmpty ? "vazio" : normalizedEmail)")
-                .foregroundStyle(.secondary)
-            Text("Envio em andamento: \(isSendingMagicLink ? "sim" : "não")")
-                .foregroundStyle(.secondary)
+            VStack(alignment: .leading, spacing: 8) {
+                statusRow("E-mail", normalizedEmail.isEmpty ? "vazio" : normalizedEmail)
+                statusRow("Envio", isSendingMagicLink ? "em andamento" : "aguardando")
+            }
         }
-        .frame(width: 360, alignment: .leading)
-        .padding(28)
-        .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 24, style: .continuous))
+        .padding(34)
+        .frame(width: 420, alignment: .leading)
+        .frame(minHeight: 520, alignment: .leading)
+        .granaSurface(.glass, cornerRadius: GranaTheme.Radius.hero)
     }
 
-    private var backgroundView: some View {
-        LinearGradient(
-            colors: [
-                Color(nsColor: .windowBackgroundColor),
-                Color.accentColor.opacity(0.09),
-                Color(nsColor: .underPageBackgroundColor),
-            ],
-            startPoint: .topLeading,
-            endPoint: .bottomTrailing
-        )
+    private var logoMark: some View {
+        Text("G")
+            .font(.system(size: 23, weight: .black))
+            .foregroundStyle(GranaTheme.Palette.creamText)
+            .frame(width: 58, height: 58)
+            .background(
+                GranaTheme.Palette.creamText.opacity(0.12),
+                in: RoundedRectangle(cornerRadius: 21, style: .continuous)
+            )
+    }
+
+    private func pill(_ text: String) -> some View {
+        Text(text)
+            .font(.system(size: 12, weight: .bold))
+            .foregroundStyle(GranaTheme.Palette.creamText.opacity(0.86))
+            .padding(.horizontal, 10)
+            .padding(.vertical, 8)
+            .background(GranaTheme.Palette.creamText.opacity(0.10), in: Capsule())
+    }
+
+    private func statusRow(_ label: String, _ value: String) -> some View {
+        HStack {
+            Text(label)
+                .foregroundStyle(GranaTheme.Palette.muted)
+            Spacer()
+            Text(value)
+                .foregroundStyle(GranaTheme.Palette.ink)
+        }
+        .font(.system(size: 13, weight: .semibold))
     }
 
     private var normalizedEmail: String {
@@ -150,27 +168,5 @@ struct LoginView: View {
         } catch {
             NoticeCenter.shared.report(error, title: "Falha ao enviar magic link")
         }
-    }
-
-    private func stepCard(
-        title: String,
-        message: String,
-        icon: String
-    ) -> some View {
-        VStack(alignment: .leading, spacing: 10) {
-            Image(systemName: icon)
-                .font(.title3)
-                .foregroundStyle(.accent)
-
-            Text(title)
-                .font(.headline)
-
-            Text(message)
-                .foregroundStyle(.secondary)
-                .fixedSize(horizontal: false, vertical: true)
-        }
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .padding(18)
-        .background(Color(nsColor: .controlBackgroundColor), in: RoundedRectangle(cornerRadius: 20, style: .continuous))
     }
 }

@@ -63,6 +63,7 @@ struct DashboardView: View {
             }
             .padding()
         }
+        .background(.clear)
         .task {
             await store.load()
         }
@@ -170,6 +171,7 @@ struct DashboardView: View {
             HStack {
                 Text(title)
                     .font(.headline)
+                    .foregroundStyle(GranaTheme.Palette.ink)
                 Spacer()
                 trailing()
             }
@@ -177,16 +179,14 @@ struct DashboardView: View {
         }
         .padding(16)
         .frame(maxWidth: .infinity)
-        .background(Color.primary.opacity(0.05))
-        .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
+        .granaSurface(.subtle, cornerRadius: GranaTheme.Radius.panel)
     }
 
     private func errorBanner(_ error: Error) -> some View {
         Label(error.localizedDescription, systemImage: AppIcon.warning.systemImage)
             .padding(12)
             .frame(maxWidth: .infinity, alignment: .leading)
-            .background(Color.danger.opacity(0.15))
-            .clipShape(RoundedRectangle(cornerRadius: 8))
+            .background(Color.danger.opacity(0.14), in: RoundedRectangle(cornerRadius: 12, style: .continuous))
             .foregroundStyle(.danger)
     }
 }

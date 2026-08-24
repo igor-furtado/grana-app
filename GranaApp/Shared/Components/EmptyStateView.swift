@@ -1,10 +1,7 @@
 import AppKit
 import SwiftUI
 
-/// Estado vazio padronizado do app. Wrapper em torno de
-/// `ContentUnavailableView` que força o uso do catálogo `AppIcon` e aplica um
-/// tratamento visual consistente ao símbolo (hierárquico + gradiente da brand
-/// + variant `.circle.fill` quando existe).
+/// Estado vazio padronizado do app com a linguagem warm/teal do design system.
 ///
 /// **Use isto em vez de `ContentUnavailableView` direto.** O wrapper centraliza
 /// a linguagem visual e permite trocar o look ou adicionar variantes em um
@@ -28,42 +25,51 @@ struct EmptyStateView<Actions: View>: View {
     }
 
     var body: some View {
-        // `Label { } icon: { }` (em vez de `Label(_:systemImage:)`) é necessário
-        // pra que o `symbolRenderingMode` e o `foregroundStyle` do gradiente se
-        // apliquem só à `Image` e não vazem pro título. O `.labelStyle` custom
-        // força o tamanho do ícone — sem ele, o `ContentUnavailableView` aplica
-        // sua tipografia interna, ignorando `.font` aplicado direto na `Image`.
-        ContentUnavailableView {
-            Label {
-                Text(title)
-            } icon: {
-                iconView
-            }
-            .labelStyle(EmptyStateLabelStyle(iconSize: 48))
-        } description: {
+        VStack(spacing: 0) {
+            iconView
+                .font(.system(size: 62, weight: .bold))
+                .padding(.bottom, 22)
+
+            Text(title)
+                .font(.system(size: 48, weight: .black))
+                .foregroundStyle(GranaTheme.Palette.ink)
+                .multilineTextAlignment(.center)
+                .lineLimit(3)
+                .minimumScaleFactor(0.72)
+                .frame(maxWidth: 560)
+
             if let descriptionText {
                 Text(descriptionText)
+                    .font(.system(size: 20, weight: .semibold))
+                    .foregroundStyle(GranaTheme.Palette.muted)
+                    .multilineTextAlignment(.center)
+                    .lineSpacing(3)
+                    .fixedSize(horizontal: false, vertical: true)
+                    .frame(maxWidth: 560)
+                    .padding(.top, 18)
             }
-        } actions: {
+
             actions
+                .padding(.top, 28)
         }
+        .frame(maxWidth: 620)
+        .padding(34)
+        .granaSurface(.glass, cornerRadius: GranaTheme.Radius.hero)
     }
 
-    /// Ícone unificado dos empty states. Três tratamentos sempre aplicados:
+    /// Ícone unificado dos empty states. Dois tratamentos sempre aplicados:
     /// — resolve pro variant `.circle.fill` do símbolo quando existe no SF
     ///   Symbols (presença confirmada via `NSImage(systemSymbolName:)`); senão
     ///   mantém o nome original.
     /// — `symbolRenderingMode(.hierarchical)` produz tiers de opacidade na
     ///   camada do símbolo, dando profundidade sem precisar de cores múltiplas.
-    /// — `foregroundStyle(.gradient)` em cima do `Color.primary` combina com
-    ///   o gradiente das tiers do modo hierárquico.
-    /// O tamanho do símbolo é definido no `EmptyStateLabelStyle` (não aqui),
-    /// porque `.font` aplicado direto na `Image` é sobreposto pelo
-    /// `ContentUnavailableView`.
+    /// — `foregroundStyle` usa `ink`, mantendo o empty state no mesmo eixo do
+    ///   protótipo warm/teal.
     private var iconView: some View {
         Image(systemName: Self.resolveSymbol(icon.systemImage))
             .symbolRenderingMode(.hierarchical)
-            .foregroundStyle(Color.primary.gradient)
+            .foregroundStyle(GranaTheme.Palette.ink)
+            .shadow(color: GranaTheme.Shadow.accentColor.opacity(0.64), radius: 15, y: 10)
     }
 
     /// Procura o variant `.circle.fill` do símbolo. Estratégia em ordem:
@@ -113,25 +119,6 @@ private enum SymbolResolver {
 
     private static func exists(_ name: String) -> Bool {
         NSImage(systemSymbolName: name, accessibilityDescription: nil) != nil
-    }
-}
-
-// MARK: - LabelStyle
-
-/// `LabelStyle` que reempilha ícone + título verticalmente e força o tamanho
-/// do símbolo via `.font`. Necessário porque o `ContentUnavailableView` usa um
-/// `LabelStyle` interno que sobrepõe `.font` aplicado diretamente na `Image`
-/// dentro do slot `icon:` — sem custom style, o ícone fica proporcional ao
-/// título e qualquer `.font` na `Image` é ignorada.
-private struct EmptyStateLabelStyle: LabelStyle {
-    let iconSize: CGFloat
-
-    func makeBody(configuration: Configuration) -> some View {
-        VStack(spacing: 12) {
-            configuration.icon
-                .font(.system(size: iconSize, weight: .bold))
-            configuration.title
-        }
     }
 }
 

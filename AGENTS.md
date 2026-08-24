@@ -8,6 +8,7 @@ Guia operacional e técnico para agentes neste repositório.
 2. Inspecione `git status --short` e preserve mudanças do usuário. Não reverta, reformate nem inclua arquivos alheios.
 3. Use `ROADMAP.md` apenas como contexto de planejamento; ele não define regras nem limita pedidos explícitos.
 4. Confirme a implementação atual no código, testes, `project.pbxproj`, `.swiftformat` e `.swiftlint.yml`.
+5. Antes de alterar UI, leia `docs/design-system.md` e `docs/agents/design-system.md`.
 
 `CONTEXT.md` define o vocabulário de domínio. Este arquivo define convenções de implementação. Código e configurações
 mostram o estado atual. Em divergências, não normalize silenciosamente: corrija a fonte obsoleta ou sinalize o conflito.
@@ -74,7 +75,8 @@ SwiftUI View -> @Observable Store -> Repository -> Supabase backend
 - Mantenha Views pequenas e extraia subviews quando acumularem responsabilidades.
 - Não adicione `#Preview`; valide UI executando o app.
 - Ícones de UI vêm de `AppIcon`; ícones de categoria passam por `CategoryIcon` e seus mappings.
-- Cores novas entram em `Assets.xcassets` com variante dark.
+- Tokens visuais do tema ficam em `GranaTheme`. Assets de cor só são necessários quando a cor precisar ser referenciada
+  pelo asset catalog/Xcode; enquanto o app for light-only, novas cores visuais não exigem variante dark.
 - Erros de domínio são enums `LocalizedError`, com mensagens em PT-BR.
 - Comentários explicam decisões e motivos, não narram o código.
 - Arquivos com interpolação de `Logger` importam `OSLog`.

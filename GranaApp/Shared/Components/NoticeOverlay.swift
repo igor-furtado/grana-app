@@ -39,7 +39,7 @@ struct NoticeOverlay: ViewModifier {
 
 // MARK: - Card
 
-private struct NoticeCard: View {
+struct NoticeCard: View {
     let notice: NoticeCenter.Notice
     let onDismiss: () -> Void
 
@@ -53,11 +53,11 @@ private struct NoticeCard: View {
             VStack(alignment: .leading, spacing: 4) {
                 Text(notice.title)
                     .font(.headline)
-                    .foregroundStyle(.primary)
+                    .foregroundStyle(GranaTheme.Palette.ink)
                 if let message = notice.message {
                     Text(message)
                         .font(.subheadline)
-                        .foregroundStyle(.secondary)
+                        .foregroundStyle(GranaTheme.Palette.muted)
                         .fixedSize(horizontal: false, vertical: true)
                 }
                 if !notice.actions.isEmpty {
@@ -70,7 +70,7 @@ private struct NoticeCard: View {
             Button(action: onDismiss) {
                 Image(systemName: "xmark")
                     .font(.caption.bold())
-                    .foregroundStyle(.secondary)
+                    .foregroundStyle(GranaTheme.Palette.muted)
                     .padding(6)
                     .contentShape(Rectangle())
             }
@@ -80,13 +80,9 @@ private struct NoticeCard: View {
         }
         .padding(14)
         .frame(maxWidth: .infinity, alignment: .leading)
-        .background(
-            RoundedRectangle(cornerRadius: 12, style: .continuous)
-                .fill(.background)
-                .shadow(color: .black.opacity(0.18), radius: 12, x: 0, y: 6)
-        )
+        .granaSurface(.glass, cornerRadius: 14)
         .overlay(
-            RoundedRectangle(cornerRadius: 12, style: .continuous)
+            RoundedRectangle(cornerRadius: 14, style: .continuous)
                 .stroke(notice.kind.tint.opacity(0.5), lineWidth: 1)
         )
     }
@@ -125,7 +121,7 @@ extension NoticeCenter.Kind {
         switch self {
         case .error: .danger
         case .success: .success
-        case .info: .primary
+        case .info: GranaTheme.Palette.ink
         }
     }
 }

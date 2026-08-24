@@ -69,12 +69,8 @@ enum AppIcon {
     case sidebarImport
     case sidebarCategories
     case sidebarInstitutions
+    case sidebarDesignSystem
     case sidebarProfile
-
-    // MARK: - Tema
-
-    case themeLight
-    case themeDark
 
     /// Nome do SF Symbol, pra `Image(systemName:)` ou `Label(_:systemImage:)`.
     var systemImage: String {
@@ -118,10 +114,8 @@ enum AppIcon {
         case .sidebarImport: "tray.and.arrow.down"
         case .sidebarCategories: "tag"
         case .sidebarInstitutions: "building.columns"
+        case .sidebarDesignSystem: "paintpalette"
         case .sidebarProfile: "person.crop.circle"
-        // Tema
-        case .themeLight: "sun.max"
-        case .themeDark: "moon"
         }
     }
 }
