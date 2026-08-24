@@ -27,10 +27,7 @@ struct MetricCard: View {
             }
 
             Text(placeholder ? "—" : value.formatted(.currency(code: "BRL")))
-                // `monospacedDigit()` alinha os números entre cards com
-                // largura visualmente igual — sem ele, o "1" ocuparia menos
-                // espaço que o "8" e os valores ficariam visualmente desalinhados.
-                .font(.system(size: 30, weight: .bold).monospacedDigit())
+                .font(GranaTheme.Typography.number(size: 30, weight: .bold))
                 .foregroundStyle(placeholder ? GranaTheme.Palette.muted : GranaTheme.Palette.ink)
                 .lineLimit(1)
                 .minimumScaleFactor(0.7)

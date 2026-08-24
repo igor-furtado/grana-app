@@ -145,7 +145,7 @@ struct CreditCardDetailView: View {
                 Text(bankName)
                     .font(.title2.weight(.semibold))
                 Text(maskedNumber)
-                    .font(.body.monospacedDigit())
+                    .font(GranaTheme.Typography.number(size: 13, weight: .regular))
                     .foregroundStyle(.secondary)
                 if account.archived {
                     Text("Arquivado")
@@ -193,7 +193,7 @@ struct CreditCardDetailView: View {
                 Spacer()
                 if let total = selectedStatementTotal {
                     Text(total.formatted(.currency(code: account.currency)))
-                        .font(.callout.monospacedDigit())
+                        .font(GranaTheme.Typography.number(size: 13, weight: .regular))
                         .foregroundStyle(.secondary)
                 }
             }
@@ -235,7 +235,7 @@ struct CreditCardDetailView: View {
             Text(label)
                 .foregroundStyle(.secondary)
             Text(value.formatted(.currency(code: account.currency)))
-                .monospacedDigit()
+                .font(GranaTheme.Typography.number(size: 13, weight: .regular))
                 .gridColumnAlignment(.trailing)
         }
     }
@@ -302,7 +302,7 @@ private struct LimitGaugeBlock: View {
                         .tracking(0.8)
                         .foregroundStyle(.secondary)
                     Text(used.formatted(.currency(code: currency)))
-                        .font(.title.weight(.bold).monospacedDigit())
+                        .font(GranaTheme.Typography.number(size: 28, weight: .bold))
                         .foregroundStyle(.primary)
                 }
                 Spacer()
@@ -312,7 +312,7 @@ private struct LimitGaugeBlock: View {
                         .tracking(0.8)
                         .foregroundStyle(.secondary)
                     Text(limit.formatted(.currency(code: currency)))
-                        .font(.title3.weight(.semibold).monospacedDigit())
+                        .font(GranaTheme.Typography.number(size: 17, weight: .semibold))
                         .foregroundStyle(.secondary)
                 }
             }
@@ -331,19 +331,25 @@ private struct LimitGaugeBlock: View {
             HStack(spacing: 14) {
                 HStack(spacing: 6) {
                     Circle().fill(color).frame(width: 8, height: 8)
-                    Text("Usado: \(used.formatted(.currency(code: currency)))")
-                        .font(.caption.monospacedDigit())
+                    Text("Usado: ")
+                        .font(.caption)
+                        .foregroundStyle(.primary)
+                        + Text(used.formatted(.currency(code: currency)))
+                        .font(GranaTheme.Typography.number(size: 12, weight: .regular))
                         .foregroundStyle(.primary)
                 }
                 HStack(spacing: 6) {
                     Circle().fill(Color.secondary.opacity(0.4)).frame(width: 8, height: 8)
-                    Text("Disponível: \(available.formatted(.currency(code: currency)))")
-                        .font(.caption.monospacedDigit())
+                    Text("Disponível: ")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                        + Text(available.formatted(.currency(code: currency)))
+                        .font(GranaTheme.Typography.number(size: 12, weight: .regular))
                         .foregroundStyle(.secondary)
                 }
                 Spacer()
                 Text("\(Int(percent * 100))%")
-                    .font(.caption.weight(.semibold).monospacedDigit())
+                    .font(GranaTheme.Typography.number(size: 12, weight: .semibold))
                     .foregroundStyle(color)
             }
         }
@@ -482,7 +488,7 @@ private struct StatementTimelineChart: View {
         var body: some View {
             VStack(spacing: 4) {
                 Text(bar.total > 0 ? bar.total.formatted(.currency(code: currency)) : " ")
-                    .font(.caption2.monospacedDigit())
+                    .font(GranaTheme.Typography.number(size: 10, weight: .regular))
                     .foregroundStyle(isSelected ? .primary : .secondary)
                     .lineLimit(1)
                     .minimumScaleFactor(0.7)
@@ -691,7 +697,7 @@ private struct StatementCycleCard: View {
             }
 
             Text(amount.formatted(.currency(code: currency)))
-                .font(.title2.weight(.bold).monospacedDigit())
+                .font(GranaTheme.Typography.number(size: 22, weight: .bold))
 
             Divider()
 
@@ -702,7 +708,7 @@ private struct StatementCycleCard: View {
                         .foregroundStyle(.secondary)
                     Spacer()
                     Text(Self.dayMonthFormatter.string(from: dueDate))
-                        .font(.caption.weight(.semibold).monospacedDigit())
+                        .font(GranaTheme.Typography.number(size: 12, weight: .semibold))
                 }
                 if let bestPurchaseDay {
                     HStack {
@@ -711,7 +717,7 @@ private struct StatementCycleCard: View {
                             .foregroundStyle(.secondary)
                         Spacer()
                         Text("\(bestPurchaseDay)")
-                            .font(.caption.weight(.semibold).monospacedDigit())
+                            .font(GranaTheme.Typography.number(size: 12, weight: .semibold))
                     }
                 }
             }

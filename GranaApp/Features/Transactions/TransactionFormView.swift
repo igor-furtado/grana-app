@@ -217,7 +217,7 @@ struct TransactionFormView: View {
                 ForEach(automaticPaymentPreview, id: \.statement.id) { item in
                     LabeledContent(statementPickerLabel(item.statement)) {
                         Text(item.amount.formatted(.currency(code: "BRL")))
-                            .monospacedDigit()
+                            .font(GranaTheme.Typography.number(size: 13, weight: .regular))
                     }
                 }
             }

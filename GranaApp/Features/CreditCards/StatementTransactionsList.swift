@@ -65,7 +65,7 @@ struct StatementTransactionsList: View {
         let category = categoryById[transaction.categoryId]
         return HStack(spacing: 12) {
             Text(Self.dayMonthFormatter.string(from: transaction.occurredAt))
-                .font(.caption.monospacedDigit())
+                .font(GranaTheme.Typography.number(size: 12, weight: .regular))
                 .foregroundStyle(.secondary)
                 .frame(width: 56, alignment: .leading)
 
@@ -89,7 +89,7 @@ struct StatementTransactionsList: View {
             Spacer()
 
             Text("-\(transaction.amount.magnitude.formatted(.currency(code: "BRL")))")
-                .font(.callout.monospacedDigit())
+                .font(GranaTheme.Typography.number(size: 13, weight: .regular))
                 .foregroundStyle(.primary)
         }
         .padding(.horizontal, 14)

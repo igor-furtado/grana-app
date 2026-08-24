@@ -51,7 +51,7 @@ struct WizardStepper: View {
                         .foregroundStyle(.white)
                 } else {
                     Text("\(index + 1)")
-                        .font(.caption.weight(.semibold).monospacedDigit())
+                        .font(GranaTheme.Typography.number(size: 12, weight: .semibold))
                         .foregroundStyle(state == .current ? .white : .secondary)
                 }
             }

@@ -107,9 +107,8 @@ private struct InstitutionCatalogCard: View {
                 Text(institution.name)
                     .font(.body.weight(.semibold))
                 Text("FEBRABAN \(institution.code)")
-                    .font(.caption)
+                    .font(GranaTheme.Typography.number(size: 12, weight: .regular))
                     .foregroundStyle(.secondary)
-                    .monospacedDigit()
 
                 capabilityRow(
                     title: "Contas",

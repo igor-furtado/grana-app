@@ -57,6 +57,7 @@ struct WeekdayExpensesChart: View {
                     AxisValueLabel {
                         if let cents = value.as(Double.self) {
                             Text(cents.formatted(.currency(code: "BRL").precision(.fractionLength(0))))
+                                .font(GranaTheme.Typography.number(size: 11, weight: .regular))
                         }
                     }
                 }

@@ -92,7 +92,7 @@ struct CSVReviewStepView: View {
                                     .truncationMode(.tail)
                                 Spacer()
                                 Text(row.raw.amount, format: .currency(code: "BRL"))
-                                    .font(.callout.monospacedDigit())
+                                    .font(GranaTheme.Typography.number(size: 13, weight: .regular))
                                     .foregroundStyle(.secondary)
                             }
                             if row.raw.kind == .refund {

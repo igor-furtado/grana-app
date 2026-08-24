@@ -59,7 +59,7 @@ struct CreditCardsSidebar: View {
                         .font(.caption2)
                         .foregroundStyle(.secondary)
                     Text(totalDebt.formatted(.currency(code: currency)))
-                        .font(.callout.weight(.semibold).monospacedDigit())
+                        .font(GranaTheme.Typography.number(size: 13, weight: .semibold))
                         .foregroundStyle(totalDebt > 0 ? .danger : .primary)
                 }
                 Spacer()
@@ -69,7 +69,7 @@ struct CreditCardsSidebar: View {
                             .font(.caption2)
                             .foregroundStyle(.secondary)
                         Text(totalLimit.formatted(.currency(code: currency)))
-                            .font(.callout.weight(.semibold).monospacedDigit())
+                            .font(GranaTheme.Typography.number(size: 13, weight: .semibold))
                             .foregroundStyle(.primary)
                     }
                 }
@@ -78,8 +78,10 @@ struct CreditCardsSidebar: View {
             if let pct = usagePercent {
                 VStack(alignment: .leading, spacing: 3) {
                     SidebarUsageBar(percent: pct, color: usageColor(for: pct))
-                    Text("\(Int(pct * 100))% usado")
-                        .font(.caption2.monospacedDigit())
+                    (Text("\(Int(pct * 100))%")
+                        .font(GranaTheme.Typography.number(size: 10, weight: .regular))
+                        + Text(" usado")
+                        .font(.caption2))
                         .foregroundStyle(.secondary)
                 }
             }
@@ -153,11 +155,11 @@ private struct SidebarCardRow: View {
 
                 HStack(spacing: 6) {
                     Text(maskedNumber)
-                        .font(.caption.monospacedDigit())
+                        .font(GranaTheme.Typography.number(size: 12, weight: .regular))
                         .foregroundStyle(isSelected ? Color.white.opacity(0.85) : .secondary)
                     Spacer()
                     Text(debtMagnitude.formatted(.currency(code: account.currency)))
-                        .font(.caption.weight(.semibold).monospacedDigit())
+                        .font(GranaTheme.Typography.number(size: 12, weight: .semibold))
                         .foregroundStyle(
                             isSelected
                                 ? Color.white

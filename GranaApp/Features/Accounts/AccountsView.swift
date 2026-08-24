@@ -311,7 +311,7 @@ private struct AccountCard: View {
                 }
 
                 Text(currentBalance.formatted(.currency(code: account.currency)))
-                    .font(.title2.weight(.bold).monospacedDigit())
+                    .font(GranaTheme.Typography.number(size: 22, weight: .bold))
                     .foregroundStyle(balanceColor)
             }
             .padding(14)

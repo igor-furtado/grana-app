@@ -44,6 +44,16 @@ enum GranaTheme {
         static let accentColor = Palette.teal.opacity(0.22)
     }
 
+    enum Typography {
+        static func number(size: CGFloat, weight: Font.Weight = .semibold) -> Font {
+            .system(size: size, weight: weight, design: .monospaced)
+        }
+
+        static func token(size: CGFloat, weight: Font.Weight = .semibold) -> Font {
+            .system(size: size, weight: weight, design: .monospaced)
+        }
+    }
+
     static func brandGradient(pressed: Bool = false) -> LinearGradient {
         LinearGradient(
             colors: [

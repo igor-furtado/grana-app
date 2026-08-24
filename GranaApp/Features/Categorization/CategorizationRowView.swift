@@ -46,10 +46,10 @@ struct CategorizationRowView: View {
 
             VStack(alignment: .trailing, spacing: 2) {
                 Text(suggestion.transactionAmount.formatted(.currency(code: "BRL")))
-                    .font(.callout.monospacedDigit())
+                    .font(GranaTheme.Typography.number(size: 13, weight: .regular))
                     .foregroundStyle(amountColor)
                 Text(Self.dateFormatter.string(from: suggestion.transactionOccurredAt))
-                    .font(.caption.monospacedDigit())
+                    .font(GranaTheme.Typography.number(size: 12, weight: .regular))
                     .foregroundStyle(.secondary)
             }
             .frame(width: 92, alignment: .trailing)

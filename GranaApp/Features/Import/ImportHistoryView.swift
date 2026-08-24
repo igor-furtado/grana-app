@@ -104,27 +104,27 @@ struct ImportHistoryView: View {
             .padding(40)
         } else {
             list(store: store)
-            .frame(maxWidth: .infinity, maxHeight: .infinity)
-            .confirmationDialog(
-                "Desfazer importação?",
-                isPresented: Binding(
-                    get: { pendingDeleteBatch != nil },
-                    set: { if !$0 { pendingDeleteBatch = nil } }
-                ),
-                presenting: pendingDeleteBatch
-            ) { batch in
-                Button("Apagar lote (\(batch.rowCount) transações)", role: .destructive) {
-                    Task {
-                        await store.undo(batchId: batch.id)
-                        pendingDeleteBatch = nil
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
+                .confirmationDialog(
+                    "Desfazer importação?",
+                    isPresented: Binding(
+                        get: { pendingDeleteBatch != nil },
+                        set: { if !$0 { pendingDeleteBatch = nil } }
+                    ),
+                    presenting: pendingDeleteBatch
+                ) { batch in
+                    Button("Apagar lote (\(batch.rowCount) transações)", role: .destructive) {
+                        Task {
+                            await store.undo(batchId: batch.id)
+                            pendingDeleteBatch = nil
+                        }
                     }
+                    Button("Cancelar", role: .cancel) { pendingDeleteBatch = nil }
+                } message: { batch in
+                    Text(
+                        "As \(batch.rowCount) transações de **\(batch.sourceFilename)** serão removidas permanentemente."
+                    )
                 }
-                Button("Cancelar", role: .cancel) { pendingDeleteBatch = nil }
-            } message: { batch in
-                Text(
-                    "As \(batch.rowCount) transações de **\(batch.sourceFilename)** serão removidas permanentemente."
-                )
-            }
         }
     }
 
@@ -405,10 +405,11 @@ private struct ImportBatchRow: View {
                     .font(.headline)
                     .lineLimit(1)
                     .truncationMode(.middle)
-                Text("\(batch.rowCount) \(batch.rowCount == 1 ? "transação" : "transações")")
-                    .font(.subheadline)
+                (Text("\(batch.rowCount)")
+                    .font(GranaTheme.Typography.number(size: 13, weight: .regular))
+                    + Text(" \(batch.rowCount == 1 ? "transação" : "transações")")
+                    .font(.subheadline))
                     .foregroundStyle(.secondary)
-                    .monospacedDigit()
             }
             .frame(maxWidth: .infinity, alignment: .leading)
 

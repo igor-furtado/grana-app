@@ -58,63 +58,63 @@ struct TransactionsView: View {
                 .padding(.vertical, 10)
             }
         }
-            .searchable(text: $searchText, prompt: "Buscar")
-            .navigationTitle("Transações")
-            .toolbar {
-                ToolbarItem(placement: .primaryAction) {
-                    Button {
-                        showingImport = true
-                    } label: {
-                        Label("Importar OFX", systemImage: AppIcon.importFile.systemImage)
-                    }
-                    .help("Importar extrato OFX")
+        .searchable(text: $searchText, prompt: "Buscar")
+        .navigationTitle("Transações")
+        .toolbar {
+            ToolbarItem(placement: .primaryAction) {
+                Button {
+                    showingImport = true
+                } label: {
+                    Label("Importar OFX", systemImage: AppIcon.importFile.systemImage)
                 }
-                ToolbarItem(placement: .primaryAction) {
-                    Button {
-                        showingForm = true
-                    } label: {
-                        Label("Adicionar", systemImage: AppIcon.add.systemImage)
+                .help("Importar extrato OFX")
+            }
+            ToolbarItem(placement: .primaryAction) {
+                Button {
+                    showingForm = true
+                } label: {
+                    Label("Adicionar", systemImage: AppIcon.add.systemImage)
+                }
+                .help("Nova transação")
+            }
+        }
+        .sheet(isPresented: $showingForm) {
+            TransactionFormView()
+                .environment(store)
+        }
+        .sheet(item: $editing) { transaction in
+            TransactionFormView(existing: transaction)
+                .environment(store)
+        }
+        .sheet(isPresented: $showingImport) {
+            ImportView()
+                .environment(environment)
+        }
+        .confirmationDialog(
+            "Apagar transação?",
+            isPresented: Binding(
+                get: { pendingDelete != nil },
+                set: { if !$0 { pendingDelete = nil } }
+            ),
+            presenting: pendingDelete
+        ) { transaction in
+            Button("Apagar", role: .destructive) {
+                Task {
+                    do {
+                        try await store.delete(id: transaction.id)
+                    } catch {
+                        NoticeCenter.shared.report(error)
                     }
-                    .help("Nova transação")
+                    pendingDelete = nil
                 }
             }
-            .sheet(isPresented: $showingForm) {
-                TransactionFormView()
-                    .environment(store)
-            }
-            .sheet(item: $editing) { transaction in
-                TransactionFormView(existing: transaction)
-                    .environment(store)
-            }
-            .sheet(isPresented: $showingImport) {
-                ImportView()
-                    .environment(environment)
-            }
-            .confirmationDialog(
-                "Apagar transação?",
-                isPresented: Binding(
-                    get: { pendingDelete != nil },
-                    set: { if !$0 { pendingDelete = nil } }
-                ),
-                presenting: pendingDelete
-            ) { transaction in
-                Button("Apagar", role: .destructive) {
-                    Task {
-                        do {
-                            try await store.delete(id: transaction.id)
-                        } catch {
-                            NoticeCenter.shared.report(error)
-                        }
-                        pendingDelete = nil
-                    }
-                }
-                Button("Cancelar", role: .cancel) { pendingDelete = nil }
-            } message: { transaction in
-                Text(deletePreview(for: transaction, store: store))
-            }
-            .task {
-                await store.load()
-            }
+            Button("Cancelar", role: .cancel) { pendingDelete = nil }
+        } message: { transaction in
+            Text(deletePreview(for: transaction, store: store))
+        }
+        .task {
+            await store.load()
+        }
     }
 
     private func deletePreview(
@@ -191,7 +191,7 @@ struct TransactionsView: View {
 
             TableColumn("Data") { transaction in
                 Text(transaction.occurredAt.formatted(date: .numeric, time: .omitted))
-                    .monospacedDigit()
+                    .font(GranaTheme.Typography.number(size: 12, weight: .regular))
                     .foregroundStyle(.secondary)
             }
             .width(100)
@@ -278,7 +278,7 @@ struct TransactionsView: View {
             Spacer(minLength: 4)
             Text(number)
         }
-        .monospacedDigit()
+        .font(GranaTheme.Typography.number(size: 13, weight: .regular))
     }
 
     private func amountColor(for transaction: Transaction, store: TransactionStore) -> Color {

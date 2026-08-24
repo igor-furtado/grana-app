@@ -80,10 +80,10 @@ struct TransactionRow: View {
 
             VStack(alignment: .trailing, spacing: 2) {
                 Text(Self.currencyFormatter.string(from: amount as NSDecimalNumber) ?? "")
-                    .font(.callout.monospacedDigit())
+                    .font(GranaTheme.Typography.number(size: 13, weight: .regular))
                     .foregroundStyle(amountColor)
                 Text(Self.dateFormatter.string(from: date))
-                    .font(.caption.monospacedDigit())
+                    .font(GranaTheme.Typography.number(size: 12, weight: .regular))
                     .foregroundStyle(.secondary)
             }
             .frame(minWidth: 88, alignment: .trailing)

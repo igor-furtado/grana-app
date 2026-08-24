@@ -60,6 +60,7 @@ struct CategoryBarChart: View {
                 AxisValueLabel {
                     if let cents = value.as(Double.self) {
                         Text(cents.formatted(.currency(code: "BRL").precision(.fractionLength(0))))
+                            .font(GranaTheme.Typography.number(size: 11, weight: .regular))
                     }
                 }
             }
@@ -84,7 +85,7 @@ struct CategoryBarChart: View {
                     Spacer(minLength: 8)
 
                     Text(item.total.formatted(.currency(code: "BRL")))
-                        .font(.callout.monospacedDigit())
+                        .font(GranaTheme.Typography.number(size: 13, weight: .regular))
                         .foregroundStyle(.secondary)
                         .lineLimit(1)
                 }
