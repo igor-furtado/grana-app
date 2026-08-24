@@ -1,4 +1,4 @@
-# SwiftFormat - Grana AI
+# SwiftFormat - GranaApp
 # Instalar (uma vez): brew install swiftformat
 # Formatar tudo: swiftformat .
 # Checar diferenças (sem escrever): swiftformat --lint .

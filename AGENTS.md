@@ -110,36 +110,36 @@ SwiftUI View -> @Observable Store -> Repository -> Supabase backend
 | Nova tabela, RLS, função ou seed global | migrations Supabase versionadas no repo |
 | Novo read model ou mutação financeira | schema `api`/RPC versionada e repository remoto |
 | Nova categoria padrão | seed/migration Supabase de catálogo global |
-| Novo formato de importação | `GranaAi/Core/Import/`, `ImportStore` e step de revisão |
+| Novo formato de importação | `GranaApp/Core/Import/`, `ImportStore` e step de revisão |
 | Novo repository ou serviço | Registro no `AppContainer` |
-| Novo ícone de UI | `GranaAi/Shared/Components/AppIcon.swift` |
-| Novo ícone de categoria | `GranaAi/Models/Category.swift` e extensions de `CategoryIcon` |
+| Novo ícone de UI | `GranaApp/Shared/Components/AppIcon.swift` |
+| Novo ícone de categoria | `GranaApp/Models/Category.swift` e extensions de `CategoryIcon` |
 | Feedback ao usuário | `NoticeCenter` |
-| Nova categoria de log | `GranaAi/Core/Logging/Logger.swift` |
+| Nova categoria de log | `GranaApp/Core/Logging/Logger.swift` |
 
 ## Configuração e validação
 
 Quando necessário, crie a configuração local a partir do template:
 
 ```bash
-cp GranaAi/Config.example.swift GranaAi/Config.swift
+cp GranaApp/Config.example.swift GranaApp/Config.swift
 ```
 
 `Config.swift` permanece ignorado pelo Git.
 
 ```bash
 xcodebuild \
-  -project GranaAi.xcodeproj \
-  -scheme GranaAi \
+  -project GranaApp.xcodeproj \
+  -scheme GranaApp \
   -destination 'platform=macOS' \
-  -derivedDataPath /tmp/GranaAiDerivedData \
+  -derivedDataPath /tmp/GranaAppDerivedData \
   build
 
 xcodebuild \
-  -project GranaAi.xcodeproj \
-  -scheme GranaAi \
+  -project GranaApp.xcodeproj \
+  -scheme GranaApp \
   -destination 'platform=macOS' \
-  -derivedDataPath /tmp/GranaAiDerivedData \
+  -derivedDataPath /tmp/GranaAppDerivedData \
   test
 
 swiftformat --lint .

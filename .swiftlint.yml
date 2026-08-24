@@ -1,4 +1,4 @@
-# SwiftLint - Grana AI
+# SwiftLint - GranaApp
 # Instalar: brew install swiftlint
 # Rodar:    swiftlint
 # Auto-fix: swiftlint --fix
@@ -9,14 +9,14 @@
 # severas. Apertar os limites de tamanho fica pra um pass dedicado depois.
 
 included:
-  - GranaAi
-  - GranaAiTests
+  - GranaApp
+  - GranaAppTests
 
 excluded:
   - .build
   - DerivedData
   - Pods
-  - GranaAi/Resources
+  - GranaApp/Resources
 
 # ---- Limites de tamanho (frouxos por enquanto) ----
 line_length:
@@ -86,9 +86,9 @@ disabled_rules:
 # Excluir tests de regras que não fazem sentido lá
 force_unwrapping:
   excluded:
-    - GranaAiTests
+    - GranaAppTests
 
-# ---- Regras customizadas (invariantes do Grana AI — NÃO afrouxar) ----
+# ---- Regras customizadas (invariantes do GranaApp — NÃO afrouxar) ----
 custom_rules:
   no_double_for_money:
     name: "Dinheiro com Double"

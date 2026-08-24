@@ -17,7 +17,7 @@ Este é um repositório single-context:
 /
 ├── CONTEXT.md
 ├── docs/adr/
-└── GranaAi/
+└── GranaApp/
 ```
 
 ## Use o vocabulário do glossário

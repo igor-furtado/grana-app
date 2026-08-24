@@ -68,7 +68,7 @@ cuidadosa e plano de rollback manual no PR/issue.
 - Remover PowerSync do projeto Xcode, imports, testes e resolução de pacotes.
 - Remover uso funcional de SQLite, `watch()`, `AppSchema`, schema local e seeds locais.
 - Remover ação de apagar banco local da UI.
-- Limpar arquivos antigos `grana_ai.sqlite`, `-wal` e `-shm` no primeiro boot pós-refatoração.
+- Limpar arquivos antigos `grana_app.sqlite`, `-wal` e `-shm` no primeiro boot pós-refatoração.
 - Manter `Converters` apenas para `Decimal` no Swift e centavos inteiros nos DTOs remotos.
 - Garantir que dados financeiros não sejam persistidos em `UserDefaults`, arquivos, banco local ou caches em disco.
 

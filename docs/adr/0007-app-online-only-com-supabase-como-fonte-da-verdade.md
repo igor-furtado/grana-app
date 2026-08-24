@@ -38,7 +38,7 @@ DTOs Swift de requests e responses serão manuais no MVP. Contratos de RPCs e Ed
 
 Quando o app não conseguir validar sessão ou buscar dados por falha de rede, deve mostrar uma tela global de indisponibilidade com ação de tentar novamente e sem navegação para áreas financeiras. Token inválido ou sessão expirada sem refresh possível volta para login; falha de rede ou timeout não faz logout automático.
 
-A ação avançada de apagar banco local deixa de existir. A nova versão deve limpar arquivos antigos `grana_ai.sqlite`, `-wal` e `-shm` no primeiro boot pós-refatoração para remover resíduos financeiros em disco. `Config.swift` deve manter apenas configuração Supabase necessária ao app online, removendo URLs e credenciais de PowerSync.
+A ação avançada de apagar banco local deixa de existir. A nova versão deve limpar arquivos antigos `grana_app.sqlite`, `-wal` e `-shm` no primeiro boot pós-refatoração para remover resíduos financeiros em disco. `Config.swift` deve manter apenas configuração Supabase necessária ao app online, removendo URLs e credenciais de PowerSync.
 
 A refatoração só é concluída quando `PowerSync` sair do projeto Xcode, imports, testes e resolução de pacotes, e quando não houver referências funcionais a SQLite, `watch()` ou schema local. Arquivos com papel de repository podem continuar existindo com implementação remota, mas sem SQL local ou PowerSync. Seeds locais e `AppSchema` deixam de ser fonte de verdade; catálogos globais passam a ser migrations Supabase. Conversores de dinheiro podem permanecer para `Decimal` no Swift e centavos inteiros nos DTOs remotos, sem acoplamento a banco local.
 
