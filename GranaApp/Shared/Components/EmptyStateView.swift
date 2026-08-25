@@ -1,6 +1,12 @@
 import AppKit
 import SwiftUI
 
+private enum EmptyStateMetrics {
+    static let maxContentWidth: CGFloat = 620
+    static let maxTextWidth: CGFloat = 560
+    static let iconSize: CGFloat = 62
+}
+
 /// Estado vazio padronizado do app com a linguagem warm/teal do design system.
 ///
 /// **Use isto em vez de `ContentUnavailableView` direto.** O wrapper centraliza
@@ -27,8 +33,7 @@ struct EmptyStateView<Actions: View>: View {
     var body: some View {
         VStack(spacing: GranaTheme.Spacing.none) {
             iconView
-                .font(.system(size: GranaTheme.IconSize.hero, weight: .bold))
-                .padding(.bottom, GranaTheme.Spacing.xl)
+                .padding(.bottom, GranaTheme.Spacing.lg)
 
             Text(title)
                 .font(GranaTheme.Typography.title1)
@@ -36,24 +41,27 @@ struct EmptyStateView<Actions: View>: View {
                 .multilineTextAlignment(.center)
                 .lineLimit(3)
                 .minimumScaleFactor(0.72)
-                .frame(maxWidth: 560)
+                .frame(maxWidth: EmptyStateMetrics.maxTextWidth)
 
             if let descriptionText {
                 Text(descriptionText)
-                    .font(GranaTheme.Typography.title3)
+                    .font(GranaTheme.Typography.headline)
                     .foregroundStyle(GranaTheme.Palette.muted)
                     .multilineTextAlignment(.center)
-                    .lineSpacing(3)
                     .fixedSize(horizontal: false, vertical: true)
-                    .frame(maxWidth: 560)
-                    .padding(.top, GranaTheme.Spacing.lg)
+                    .frame(maxWidth: EmptyStateMetrics.maxTextWidth)
+                    .padding(.top, GranaTheme.Spacing.md)
             }
 
             actions
+                .controlSize(.large)
+                .frame(maxWidth: .infinity, alignment: .center)
                 .padding(.top, GranaTheme.Spacing.xxl)
         }
-        .frame(maxWidth: 620)
-        .padding(GranaTheme.Spacing.xxl)
+        .frame(maxWidth: EmptyStateMetrics.maxContentWidth)
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .padding(.horizontal, GranaTheme.Spacing.xl)
+        .padding(.vertical, GranaTheme.Spacing.xxxl)
     }
 
     /// Ícone unificado dos empty states. Dois tratamentos sempre aplicados:
@@ -67,8 +75,9 @@ struct EmptyStateView<Actions: View>: View {
     private var iconView: some View {
         Image(systemName: Self.resolveSymbol(icon.systemImage))
             .symbolRenderingMode(.hierarchical)
+            .font(.system(size: EmptyStateMetrics.iconSize, weight: .bold))
             .foregroundStyle(GranaTheme.Palette.ink)
-            .shadow(color: GranaTheme.Shadow.accentColor.opacity(0.64), radius: 15, y: 10)
+            .shadow(color: GranaTheme.Shadow.accentColor.opacity(0.64), radius: 18, y: 12)
     }
 
     /// Procura o variant `.circle.fill` do símbolo. Estratégia em ordem:

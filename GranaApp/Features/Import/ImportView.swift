@@ -234,8 +234,9 @@ private struct FailedStepView: View {
         EmptyStateView("A importação falhou", icon: .warning, description: message) {
             HStack(spacing: GranaTheme.Spacing.sm) {
                 Button("Fechar") { onClose() }
+                    .buttonStyle(GranaSecondaryButtonStyle())
                 Button("Recomeçar") { onRetry() }
-                    .buttonStyle(.borderedProminent)
+                    .buttonStyle(GranaPrimaryButtonStyle())
             }
         }
     }
