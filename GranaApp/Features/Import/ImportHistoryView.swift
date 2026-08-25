@@ -162,7 +162,8 @@ struct ImportHistoryView: View {
         in rows: [ImportHistoryBatchPresentation]
     ) -> ImportHistoryBatchPresentation? {
         if let selectedBatchId,
-           let selected = rows.first(where: { $0.id == selectedBatchId }) {
+           let selected = rows.first(where: { $0.id == selectedBatchId })
+        {
             return selected
         }
         return rows.first
@@ -315,7 +316,7 @@ private struct ImportHistoryReviewDeskView: View {
             Text("Data")
                 .frame(width: 116, alignment: .trailing)
         }
-        .font(.system(size: 12, weight: .bold))
+        .font(GranaTheme.Typography.footnoteEmphasis)
         .foregroundStyle(GranaTheme.Palette.muted)
         .padding(.horizontal, 16)
         .frame(height: 44)
@@ -344,7 +345,7 @@ private struct ImportHistoryReviewDeskRow: View {
                 .frame(width: 132, alignment: .leading)
 
                 Text(row.batch.sourceFilename)
-                    .font(.system(size: 13, weight: .bold))
+                    .font(GranaTheme.Typography.subheadlineEmphasis)
                     .lineLimit(1)
                     .truncationMode(.middle)
                     .frame(maxWidth: .infinity, alignment: .leading)
@@ -355,15 +356,15 @@ private struct ImportHistoryReviewDeskRow: View {
                     .frame(width: 180, alignment: .leading)
 
                 Text("\(row.batch.rowCount)")
-                    .font(GranaTheme.Typography.number(size: 13, weight: .semibold))
+                    .font(GranaTheme.Typography.subheadlineEmphasis)
                     .frame(width: 72, alignment: .trailing)
 
                 Text(row.importedAtText)
-                    .font(GranaTheme.Typography.number(size: 12, weight: .semibold))
+                    .font(GranaTheme.Typography.footnoteEmphasis)
                     .foregroundStyle(GranaTheme.Palette.muted)
                     .frame(width: 116, alignment: .trailing)
             }
-            .font(.system(size: 13, weight: .semibold))
+            .font(GranaTheme.Typography.subheadlineEmphasis)
             .padding(.horizontal, 16)
             .frame(minHeight: 52)
             .background(isSelected ? GranaTheme.Palette.teal.opacity(0.09) : .clear)
@@ -387,10 +388,10 @@ private struct ImportHistorySelectedPanel: View {
                 InstitutionIcon(kind: row.institutionKind, size: 46)
                 VStack(alignment: .leading, spacing: 3) {
                     Text("Lote selecionado")
-                        .font(.system(size: 12, weight: .bold))
+                        .font(GranaTheme.Typography.footnoteEmphasis)
                         .foregroundStyle(GranaTheme.Palette.muted)
                     Text(row.institutionName)
-                        .font(.system(size: 16, weight: .bold))
+                        .font(GranaTheme.Typography.headline)
                 }
             }
 
@@ -417,12 +418,12 @@ private struct ImportHistoryDropPanel: View {
     var body: some View {
         VStack(spacing: 12) {
             Image(systemName: AppIcon.importFile.systemImage)
-                .font(.system(size: 28, weight: .bold))
+                .font(.system(size: GranaTheme.IconSize.large, weight: .bold))
                 .foregroundStyle(GranaTheme.Palette.teal)
             Text("Solte o próximo extrato")
-                .font(.system(size: 15, weight: .bold))
+                .font(GranaTheme.Typography.bodyEmphasis)
             Text("A mesa deixa a próxima ação visível sem tirar densidade da lista.")
-                .font(.system(size: 12, weight: .semibold))
+                .font(GranaTheme.Typography.footnoteEmphasis)
                 .foregroundStyle(GranaTheme.Palette.muted)
                 .multilineTextAlignment(.center)
         }
@@ -454,10 +455,10 @@ private struct ImportHistoryDetailLine: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 2) {
             Text(label)
-                .font(.system(size: 10, weight: .bold))
+                .font(GranaTheme.Typography.caption2Emphasis)
                 .foregroundStyle(GranaTheme.Palette.muted)
             Text(value)
-                .font(.system(size: 12, weight: .semibold))
+                .font(GranaTheme.Typography.footnoteEmphasis)
                 .lineLimit(2)
         }
     }
@@ -486,17 +487,17 @@ private struct EmptyStateDropZone: View {
                     .fill(Color.primary.opacity(isHighlighted ? 0.18 : 0.10))
                     .frame(width: 84, height: 84)
                 Image(systemName: AppIcon.importFile.systemImage)
-                    .font(.system(size: 34, weight: .regular))
+                    .font(.system(size: GranaTheme.IconSize.large, weight: .regular))
                     .foregroundStyle(Color.primary)
                     .symbolEffect(.bounce, value: isHighlighted)
             }
 
             VStack(spacing: 6) {
                 Text(isHighlighted ? "Solte para importar" : "Arraste e solte para importar")
-                    .font(.title3.weight(.semibold))
+                    .font(GranaTheme.Typography.title3)
                     .contentTransition(.opacity)
                 Text("Aceita OFX (extrato bancário) ou CSV (fatura Inter). Um arquivo por vez.")
-                    .font(.callout)
+                    .font(GranaTheme.Typography.callout)
                     .foregroundStyle(.secondary)
                     .multilineTextAlignment(.center)
                     .frame(maxWidth: 360)
@@ -504,7 +505,7 @@ private struct EmptyStateDropZone: View {
 
             HStack(spacing: 10) {
                 Text("ou")
-                    .font(.caption)
+                    .font(GranaTheme.Typography.caption1)
                     .foregroundStyle(.tertiary)
                 Button {
                     onBrowse()
@@ -554,13 +555,13 @@ private struct DropOverlay: View {
                         .fill(Color.primary.opacity(0.18))
                         .frame(width: 96, height: 96)
                     Image(systemName: AppIcon.importFile.systemImage)
-                        .font(.system(size: 40, weight: .regular))
+                        .font(.system(size: GranaTheme.IconSize.hero, weight: .regular))
                         .foregroundStyle(Color.primary)
                 }
                 Text("Solte para importar")
-                    .font(.title2.weight(.semibold))
+                    .font(GranaTheme.Typography.title3)
                 Text("OFX ou CSV")
-                    .font(.callout)
+                    .font(GranaTheme.Typography.callout)
                     .foregroundStyle(.secondary)
             }
             .padding(40)

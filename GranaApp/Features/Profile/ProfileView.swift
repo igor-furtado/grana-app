@@ -40,7 +40,7 @@ struct ProfileView: View {
             LabeledContent("ID do usuário") {
                 HStack(spacing: 8) {
                     Text(session.userID.uuidString.lowercased())
-                        .font(.system(.body, design: .monospaced))
+                        .font(GranaTheme.Typography.code)
                         .textSelection(.enabled)
                     Button {
                         copyUserID(session.userID)

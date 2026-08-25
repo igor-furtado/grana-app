@@ -61,12 +61,12 @@ struct TransactionRow: View {
 
             VStack(alignment: .leading, spacing: 2) {
                 Text(description)
-                    .font(.callout)
+                    .font(GranaTheme.Typography.callout)
                     .lineLimit(1)
                     .truncationMode(.tail)
                 if let memo, !memo.isEmpty {
                     Text(memo)
-                        .font(.caption)
+                        .font(GranaTheme.Typography.caption1)
                         .foregroundStyle(.secondary)
                         .lineLimit(1)
                         .truncationMode(.tail)
@@ -80,10 +80,10 @@ struct TransactionRow: View {
 
             VStack(alignment: .trailing, spacing: 2) {
                 Text(Self.currencyFormatter.string(from: amount as NSDecimalNumber) ?? "")
-                    .font(GranaTheme.Typography.number(size: 13, weight: .regular))
+                    .font(GranaTheme.Typography.moneySubheadline)
                     .foregroundStyle(amountColor)
                 Text(Self.dateFormatter.string(from: date))
-                    .font(GranaTheme.Typography.number(size: 12, weight: .regular))
+                    .font(GranaTheme.Typography.footnote)
                     .foregroundStyle(.secondary)
             }
             .frame(minWidth: 88, alignment: .trailing)
@@ -109,7 +109,7 @@ struct TransactionRow: View {
 
     private func statusBadge(_ status: Status) -> some View {
         Text(status.label)
-            .font(.caption.weight(.medium))
+            .font(GranaTheme.Typography.caption1)
             .padding(.horizontal, 8)
             .padding(.vertical, 3)
             .background(background(for: status.tint))

@@ -83,16 +83,16 @@ struct CSVReviewStepView: View {
                         ForEach(rows) { row in
                             HStack(alignment: .center) {
                                 Text(row.raw.date, format: .dateTime.day().month().year())
-                                    .font(.caption)
+                                    .font(GranaTheme.Typography.caption1)
                                     .foregroundStyle(.secondary)
                                     .frame(width: 90, alignment: .leading)
                                 Text(row.raw.description)
-                                    .font(.callout)
+                                    .font(GranaTheme.Typography.callout)
                                     .lineLimit(1)
                                     .truncationMode(.tail)
                                 Spacer()
                                 Text(row.raw.amount, format: .currency(code: "BRL"))
-                                    .font(GranaTheme.Typography.number(size: 13, weight: .regular))
+                                    .font(GranaTheme.Typography.moneySubheadline)
                                     .foregroundStyle(.secondary)
                             }
                             if row.raw.kind == .refund {
@@ -110,7 +110,7 @@ struct CSVReviewStepView: View {
                                 }
                             } else {
                                 Text("Pagamento ignorado; importe a transferência pelo extrato da conta.")
-                                    .font(.caption)
+                                    .font(GranaTheme.Typography.caption1)
                                     .foregroundStyle(.secondary)
                             }
                         }
@@ -121,7 +121,7 @@ struct CSVReviewStepView: View {
                         Text(
                             "\(count) \(count == 1 ? "valor negativo" : "valores negativos") para revisão. Pagamentos são ignorados; estornos selecionados serão vinculados à compra original."
                         )
-                        .font(.callout)
+                        .font(GranaTheme.Typography.callout)
                         .foregroundStyle(.secondary)
                     } icon: {
                         Image(systemName: "info.circle")
@@ -184,7 +184,7 @@ private struct CSVAccountInfoCard: View {
                     Spacer()
                     if resolution?.accountId == nil {
                         Text("Escolha")
-                            .font(.caption.weight(.medium))
+                            .font(GranaTheme.Typography.caption1)
                             .padding(.horizontal, 8)
                             .padding(.vertical, 3)
                             .background(Color.warning.opacity(0.18))

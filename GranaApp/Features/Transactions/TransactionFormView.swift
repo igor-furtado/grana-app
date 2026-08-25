@@ -164,7 +164,7 @@ struct TransactionFormView: View {
                 if let saveError {
                     Text(saveError)
                         .foregroundStyle(.danger)
-                        .font(.callout)
+                        .font(GranaTheme.Typography.callout)
                 }
             }
             .formStyle(.grouped)
@@ -217,7 +217,7 @@ struct TransactionFormView: View {
                 ForEach(automaticPaymentPreview, id: \.statement.id) { item in
                     LabeledContent(statementPickerLabel(item.statement)) {
                         Text(item.amount.formatted(.currency(code: "BRL")))
-                            .font(GranaTheme.Typography.number(size: 13, weight: .regular))
+                            .font(GranaTheme.Typography.moneySubheadline)
                     }
                 }
             }

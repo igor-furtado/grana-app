@@ -27,11 +27,11 @@ struct EmptyStateView<Actions: View>: View {
     var body: some View {
         VStack(spacing: 0) {
             iconView
-                .font(.system(size: 62, weight: .bold))
+                .font(.system(size: GranaTheme.IconSize.hero, weight: .bold))
                 .padding(.bottom, 22)
 
             Text(title)
-                .font(.system(size: 48, weight: .black))
+                .font(GranaTheme.Typography.title1)
                 .foregroundStyle(GranaTheme.Palette.ink)
                 .multilineTextAlignment(.center)
                 .lineLimit(3)
@@ -40,7 +40,7 @@ struct EmptyStateView<Actions: View>: View {
 
             if let descriptionText {
                 Text(descriptionText)
-                    .font(.system(size: 20, weight: .semibold))
+                    .font(GranaTheme.Typography.title3)
                     .foregroundStyle(GranaTheme.Palette.muted)
                     .multilineTextAlignment(.center)
                     .lineSpacing(3)

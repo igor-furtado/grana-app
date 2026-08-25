@@ -129,7 +129,7 @@ struct TransactionsView: View {
         VStack(spacing: 12) {
             HStack(spacing: 12) {
                 Text(transactionsCountText(store: store))
-                    .font(.system(size: 13, weight: .bold))
+                    .font(GranaTheme.Typography.subheadlineEmphasis)
                     .foregroundStyle(GranaTheme.Palette.ink)
                     .lineLimit(1)
                 Spacer(minLength: 16)
@@ -286,7 +286,7 @@ struct TransactionsView: View {
             Text("Ações")
                 .frame(width: 76, alignment: .center)
         }
-        .font(.system(size: 12, weight: .bold))
+        .font(GranaTheme.Typography.footnoteEmphasis)
         .foregroundStyle(.secondary)
         .padding(.horizontal, 16)
         .frame(minHeight: 44)
@@ -303,7 +303,7 @@ struct TransactionsView: View {
             bankCell(transaction, store: store)
 
             Text(transaction.occurredAt.formatted(date: .numeric, time: .omitted))
-                .font(GranaTheme.Typography.number(size: 11, weight: .regular))
+                .font(GranaTheme.Typography.caption1)
                 .foregroundStyle(.secondary)
                 .frame(width: 92, alignment: .leading)
 
@@ -373,10 +373,10 @@ struct TransactionsView: View {
                 Text(title)
                     .lineLimit(1)
                 Image(systemName: "chevron.down")
-                    .font(.system(size: 11, weight: .bold))
+                    .font(.system(size: GranaTheme.IconSize.micro, weight: .bold))
                     .foregroundStyle(.secondary)
             }
-            .font(.system(size: 13, weight: .semibold))
+            .font(GranaTheme.Typography.subheadlineEmphasis)
             .foregroundStyle(GranaTheme.Palette.ink)
             .padding(.horizontal, 10)
             .frame(height: 30)
@@ -394,7 +394,7 @@ struct TransactionsView: View {
 
     private func descriptionCell(_ transaction: Transaction) -> some View {
         Text(transaction.description)
-            .font(.system(size: 13, weight: .semibold))
+            .font(GranaTheme.Typography.subheadlineEmphasis)
             .lineLimit(1)
     }
 
@@ -406,7 +406,7 @@ struct TransactionsView: View {
                 iconOnly: true
             )
             Text(subcategoryName(for: transaction, store: store) ?? categoryName(for: transaction, store: store))
-                .font(.system(size: 12, weight: .semibold))
+                .font(GranaTheme.Typography.footnoteEmphasis)
                 .foregroundStyle(.secondary)
                 .lineLimit(1)
         }
@@ -483,7 +483,7 @@ struct TransactionsView: View {
             Spacer(minLength: 4)
             Text(number)
         }
-        .font(GranaTheme.Typography.number(size: 13, weight: .regular))
+        .font(GranaTheme.Typography.moneySubheadline)
     }
 
     private func amountColor(for transaction: Transaction, store: TransactionStore) -> Color {

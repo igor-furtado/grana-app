@@ -46,17 +46,17 @@ struct NoticeCard: View {
     var body: some View {
         HStack(alignment: .top, spacing: 12) {
             Image(systemName: notice.kind.iconName)
-                .font(.title3)
+                .font(.system(size: GranaTheme.IconSize.medium))
                 .foregroundStyle(notice.kind.tint)
                 .accessibilityHidden(true)
 
             VStack(alignment: .leading, spacing: 4) {
                 Text(notice.title)
-                    .font(.headline)
+                    .font(GranaTheme.Typography.headline)
                     .foregroundStyle(GranaTheme.Palette.ink)
                 if let message = notice.message {
                     Text(message)
-                        .font(.subheadline)
+                        .font(GranaTheme.Typography.subheadline)
                         .foregroundStyle(GranaTheme.Palette.muted)
                         .fixedSize(horizontal: false, vertical: true)
                 }
@@ -69,7 +69,7 @@ struct NoticeCard: View {
 
             Button(action: onDismiss) {
                 Image(systemName: "xmark")
-                    .font(.caption.bold())
+                    .font(.system(size: GranaTheme.IconSize.micro, weight: .bold))
                     .foregroundStyle(GranaTheme.Palette.muted)
                     .padding(6)
                     .contentShape(Rectangle())

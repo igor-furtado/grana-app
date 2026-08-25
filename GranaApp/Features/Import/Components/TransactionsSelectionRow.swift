@@ -22,7 +22,7 @@ struct TransactionsSelectionRow: View {
             .labelsHidden()
             .help(allSelected ? "Desmarcar todas" : "Marcar todas")
             Text(summary)
-                .font(.caption)
+                .font(GranaTheme.Typography.caption1)
                 .foregroundStyle(.secondary)
             Spacer()
         }

@@ -43,7 +43,7 @@ struct AppNavigationRail: View {
             onSelect(section)
         } label: {
             Image(systemName: section.icon.systemImage)
-                .font(.system(size: 20, weight: .semibold))
+                .font(.system(size: GranaTheme.IconSize.medium, weight: .semibold))
                 .foregroundStyle(isSelected ? GranaTheme.Palette.creamText : GranaTheme.Palette.muted)
                 .frame(width: 48, height: 48)
                 .background {

@@ -42,10 +42,10 @@ struct StatementTransactionsList: View {
     private var emptyView: some View {
         VStack(spacing: 8) {
             Image(systemName: "tray")
-                .font(.title3)
+                .font(.system(size: GranaTheme.IconSize.medium))
                 .foregroundStyle(.secondary)
             Text("Sem lançamentos nesta fatura")
-                .font(.callout)
+                .font(GranaTheme.Typography.callout)
                 .foregroundStyle(.secondary)
         }
         .padding(.vertical, 30)
@@ -65,7 +65,7 @@ struct StatementTransactionsList: View {
         let category = categoryById[transaction.categoryId]
         return HStack(spacing: 12) {
             Text(Self.dayMonthFormatter.string(from: transaction.occurredAt))
-                .font(GranaTheme.Typography.number(size: 12, weight: .regular))
+                .font(GranaTheme.Typography.footnote)
                 .foregroundStyle(.secondary)
                 .frame(width: 56, alignment: .leading)
 
@@ -77,11 +77,11 @@ struct StatementTransactionsList: View {
 
             VStack(alignment: .leading, spacing: 1) {
                 Text(transaction.description)
-                    .font(.callout)
+                    .font(GranaTheme.Typography.callout)
                     .lineLimit(1)
                 if let category {
                     Text(category.name)
-                        .font(.caption2)
+                        .font(GranaTheme.Typography.caption2)
                         .foregroundStyle(.secondary)
                 }
             }
@@ -89,7 +89,7 @@ struct StatementTransactionsList: View {
             Spacer()
 
             Text("-\(transaction.amount.magnitude.formatted(.currency(code: "BRL")))")
-                .font(GranaTheme.Typography.number(size: 13, weight: .regular))
+                .font(GranaTheme.Typography.moneySubheadline)
                 .foregroundStyle(.primary)
         }
         .padding(.horizontal, 14)
@@ -102,7 +102,7 @@ struct StatementTransactionsList: View {
             .frame(width: 28, height: 28)
             .overlay {
                 Image(systemName: "questionmark")
-                    .font(.caption)
+                    .font(.system(size: GranaTheme.IconSize.small))
                     .foregroundStyle(.secondary)
             }
     }
@@ -154,7 +154,7 @@ struct CategoryIconBubble: View {
             .frame(width: size, height: size)
             .overlay {
                 Image(systemName: icon.systemImage)
-                    .font(.system(size: size * 0.45))
+                    .font(.system(size: GranaTheme.IconSize.categoryGlyph(in: size)))
                     .symbolRenderingMode(.hierarchical)
                     .foregroundStyle(icon.color.gradient)
             }

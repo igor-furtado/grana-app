@@ -66,6 +66,42 @@ monoespacados. Evite serif, fontes decorativas e letter spacing negativo.
 Titulos em cards e paineis devem ser compactos; hero-scale type fica restrito a
 login e estados vazios.
 
+Texto no app usa exclusivamente tokens em `GranaTheme.Typography`. Views e
+componentes nao escolhem tamanho ou peso diretamente com `.font(.system(...))`,
+`.font(.title2)`, `.font(.caption)` ou variantes equivalentes. Quando uma
+ênfase for necessária, use um token de ênfase (`bodyEmphasis`,
+`calloutEmphasis`, `subheadlineEmphasis`, `footnoteEmphasis`,
+`caption1Emphasis`, `caption2Emphasis`) em vez de aplicar `.weight(...)` na
+view.
+
+Escala textual:
+
+| Token | Uso |
+|---|---|
+| `largeTitle` | Marca, login e estados vazios de maior impacto |
+| `title1` | Titulo hero de estado vazio |
+| `title2` | Titulo de painel amplo |
+| `title3` | Titulo compacto de painel, secao ou placeholder |
+| `headline` | Texto em destaque para acompanhar corpo ou nomear secoes |
+| `body` | Leitura continua |
+| `callout` | Informacao ligeiramente menor que o corpo |
+| `subheadline` | Linhas densas e metadados proximo ao corpo |
+| `footnote` | Dados auxiliares |
+| `caption1` | Legendas, status e apoio compacto |
+| `caption2` | Microtexto |
+
+Valores financeiros usam a escala `money*` de `GranaTheme.Typography`, sempre
+com digitos monoespacados. Use `moneyLargeTitle`, `moneyTitle1`,
+`moneyTitle2`, `moneyTitle3`, `moneyHeadline`, `moneyBody`, `moneyCallout`,
+`moneySubheadline`, `moneyFootnote`, `moneyCaption1` e `moneyCaption2` conforme
+a hierarquia visual. Nao use `money*` para datas, contagens, percentuais ou
+codigos tecnicos.
+
+Codigos, slugs, IDs e nomes tecnicos usam `GranaTheme.Typography.code`.
+SF Symbols e outros icones nao fazem parte da escala textual; seus tamanhos vêm
+de `GranaTheme.IconSize` ou de componentes dedicados como `AppIcon`,
+`InstitutionIcon` e `CategoryBadge`.
+
 ## Aplicacao Inicial
 
 A primeira fase cobre `GranaTheme`, light-only global, rail customizado,

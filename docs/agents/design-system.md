@@ -4,6 +4,14 @@ Leia `docs/design-system.md` antes de alterar UI SwiftUI no GranaApp.
 
 - Use `GranaTheme` para tokens visuais. Nao espalhe hex codes nem recrie glass
   localmente.
+- Use `GranaTheme.Typography` para toda tipografia textual em SwiftUI. Views e
+  componentes nao definem tamanho/peso localmente com `.font(.system(...))`,
+  `.font(.title2)`, `.font(.caption)` nem `.weight(...)`; escolha um token
+  textual, de enfase, `money*` ou `code`.
+- Reserve `money*` para valores financeiros. Datas, contagens, percentuais e
+  codigos tecnicos usam tokens textuais ou `code`.
+- SF Symbols e icones ficam fora de `Typography`: use `GranaTheme.IconSize` ou
+  componentes dedicados.
 - Mantenha a fase atual restrita a linguagem visual. Nao importe metricas,
   abas, textos ou modelos dos prototipos sem pedido explicito.
 - Preserve toolbars nativas das telas. Nao crie header visual proprio em telas

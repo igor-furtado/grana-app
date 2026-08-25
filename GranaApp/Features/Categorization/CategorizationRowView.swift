@@ -35,7 +35,7 @@ struct CategorizationRowView: View {
             }
 
             Text(suggestion.transactionDescription)
-                .font(.callout)
+                .font(GranaTheme.Typography.callout)
                 .lineLimit(1)
                 .truncationMode(.tail)
                 .frame(minWidth: 160, maxWidth: .infinity, alignment: .leading)
@@ -46,10 +46,10 @@ struct CategorizationRowView: View {
 
             VStack(alignment: .trailing, spacing: 2) {
                 Text(suggestion.transactionAmount.formatted(.currency(code: "BRL")))
-                    .font(GranaTheme.Typography.number(size: 13, weight: .regular))
+                    .font(GranaTheme.Typography.moneySubheadline)
                     .foregroundStyle(amountColor)
                 Text(Self.dateFormatter.string(from: suggestion.transactionOccurredAt))
-                    .font(GranaTheme.Typography.number(size: 12, weight: .regular))
+                    .font(GranaTheme.Typography.footnote)
                     .foregroundStyle(.secondary)
             }
             .frame(width: 92, alignment: .trailing)
@@ -149,7 +149,7 @@ struct CategorizationRowView: View {
                 .lineLimit(1)
                 .frame(maxWidth: .infinity, alignment: .leading)
             Image(systemName: AppIcon.sort.systemImage)
-                .font(.caption2)
+                .font(.system(size: GranaTheme.IconSize.micro))
                 .foregroundStyle(.secondary)
         }
         .padding(.horizontal, 8)

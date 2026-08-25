@@ -18,7 +18,7 @@ struct CategoryBadge: View {
             }
         } else {
             Text("—")
-                .font(.caption)
+                .font(GranaTheme.Typography.caption1)
                 .foregroundStyle(.secondary)
         }
     }
@@ -51,12 +51,12 @@ struct CategoryBadge: View {
         return HStack(spacing: 6) {
             if let icon {
                 Image(systemName: icon.systemImage)
-                    .font(.caption)
+                    .font(.system(size: GranaTheme.IconSize.small))
                     .symbolRenderingMode(.hierarchical)
                     .foregroundStyle(color.gradient)
             }
             Text(category.name)
-                .font(.caption)
+                .font(GranaTheme.Typography.caption1)
                 .lineLimit(1)
                 .foregroundStyle(color)
         }

@@ -102,7 +102,7 @@ struct CategorizationReviewView: View {
     private var summaryRow: some View {
         HStack(spacing: 12) {
             Text(summaryText)
-                .font(.caption)
+                .font(GranaTheme.Typography.caption1)
                 .foregroundStyle(.secondary)
             Spacer()
         }

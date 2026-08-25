@@ -283,10 +283,10 @@ private struct AccountCard: View {
                 VStack(alignment: .leading, spacing: 2) {
                     HStack(spacing: 6) {
                         Text(displayName)
-                            .font(.headline)
+                            .font(GranaTheme.Typography.headline)
                         if account.archived {
                             Text("arquivada")
-                                .font(.caption)
+                                .font(GranaTheme.Typography.caption1)
                                 .foregroundStyle(.secondary)
                                 .padding(.horizontal, 6)
                                 .padding(.vertical, 1)
@@ -296,13 +296,13 @@ private struct AccountCard: View {
                         }
                     }
                     Text("SALDO ATUAL")
-                        .font(.caption2)
+                        .font(GranaTheme.Typography.caption2)
                         .tracking(0.8)
                         .foregroundStyle(.secondary)
                 }
 
                 Text(currentBalance.formatted(.currency(code: account.currency)))
-                    .font(GranaTheme.Typography.number(size: 22, weight: .bold))
+                    .font(GranaTheme.Typography.moneyTitle3)
                     .foregroundStyle(balanceColor)
             }
             .padding(14)
@@ -359,7 +359,7 @@ private struct AccountCard: View {
                 Circle()
                     .fill(accentColor.opacity(0.15))
                 Image(systemName: fallbackIconName)
-                    .font(.title2)
+                    .font(.system(size: GranaTheme.IconSize.medium))
                     .foregroundStyle(accentColor)
             }
             .frame(width: 44, height: 44)

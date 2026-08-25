@@ -36,7 +36,7 @@ struct SupportedInstitutionsView: View {
                         Text(
                             "Catálogo global das instituições suportadas pelo produto. Tipos de conta e formatos de importação vêm do backend e definem o que a UI pode oferecer."
                         )
-                        .font(.callout)
+                        .font(GranaTheme.Typography.callout)
                         .foregroundStyle(.secondary)
                         .fixedSize(horizontal: false, vertical: true)
 
@@ -104,9 +104,9 @@ private struct InstitutionCatalogCard: View {
 
             VStack(alignment: .leading, spacing: 6) {
                 Text(institution.name)
-                    .font(.body.weight(.semibold))
+                    .font(GranaTheme.Typography.bodyEmphasis)
                 Text("FEBRABAN \(institution.code)")
-                    .font(GranaTheme.Typography.number(size: 12, weight: .regular))
+                    .font(GranaTheme.Typography.code)
                     .foregroundStyle(.secondary)
 
                 capabilityRow(
@@ -138,10 +138,10 @@ private struct InstitutionCatalogCard: View {
     private func capabilityRow(title: String, values: [String]) -> some View {
         VStack(alignment: .leading, spacing: 2) {
             Text(title)
-                .font(.caption2.weight(.semibold))
+                .font(GranaTheme.Typography.caption2Emphasis)
                 .foregroundStyle(.secondary)
             Text(values.joined(separator: " · "))
-                .font(.caption)
+                .font(GranaTheme.Typography.caption1)
                 .foregroundStyle(.primary)
                 .fixedSize(horizontal: false, vertical: true)
         }

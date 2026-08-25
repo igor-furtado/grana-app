@@ -170,7 +170,7 @@ struct ImportView: View {
                 ProgressView()
                     .controlSize(.large)
                 Text(progress)
-                    .font(.callout)
+                    .font(GranaTheme.Typography.callout)
                     .foregroundStyle(.secondary)
             }
             .frame(maxWidth: .infinity, maxHeight: .infinity)
@@ -197,7 +197,7 @@ struct ImportView: View {
                 ProgressView()
                     .controlSize(.large)
                 Text("Importando…")
-                    .font(.callout)
+                    .font(GranaTheme.Typography.callout)
                     .foregroundStyle(.secondary)
             }
             .frame(maxWidth: .infinity, maxHeight: .infinity)

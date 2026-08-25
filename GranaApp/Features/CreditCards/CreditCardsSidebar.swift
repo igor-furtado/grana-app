@@ -49,27 +49,27 @@ struct CreditCardsSidebar: View {
     private var totalsHeader: some View {
         VStack(alignment: .leading, spacing: 8) {
             Text("TOTAIS")
-                .font(.caption2.weight(.semibold))
+                .font(GranaTheme.Typography.caption2Emphasis)
                 .tracking(0.8)
                 .foregroundStyle(.secondary)
 
             HStack(alignment: .firstTextBaseline) {
                 VStack(alignment: .leading, spacing: 1) {
                     Text("Dívida")
-                        .font(.caption2)
+                        .font(GranaTheme.Typography.caption2)
                         .foregroundStyle(.secondary)
                     Text(totalDebt.formatted(.currency(code: currency)))
-                        .font(GranaTheme.Typography.number(size: 13, weight: .semibold))
+                        .font(GranaTheme.Typography.moneySubheadline)
                         .foregroundStyle(totalDebt > 0 ? .danger : .primary)
                 }
                 Spacer()
                 if totalLimit > 0 {
                     VStack(alignment: .trailing, spacing: 1) {
                         Text("Limite")
-                            .font(.caption2)
+                            .font(GranaTheme.Typography.caption2)
                             .foregroundStyle(.secondary)
                         Text(totalLimit.formatted(.currency(code: currency)))
-                            .font(GranaTheme.Typography.number(size: 13, weight: .semibold))
+                            .font(GranaTheme.Typography.moneySubheadline)
                             .foregroundStyle(.primary)
                     }
                 }
@@ -79,9 +79,9 @@ struct CreditCardsSidebar: View {
                 VStack(alignment: .leading, spacing: 3) {
                     SidebarUsageBar(percent: pct, color: usageColor(for: pct))
                     (Text("\(Int(pct * 100))%")
-                        .font(GranaTheme.Typography.number(size: 10, weight: .regular))
+                        .font(GranaTheme.Typography.caption2Emphasis)
                         + Text(" usado")
-                        .font(.caption2))
+                        .font(GranaTheme.Typography.caption2))
                         .foregroundStyle(.secondary)
                 }
             }
@@ -143,11 +143,11 @@ private struct SidebarCardRow: View {
             VStack(alignment: .leading, spacing: 2) {
                 HStack(spacing: 6) {
                     Text(bankName)
-                        .font(.callout.weight(.medium))
+                        .font(GranaTheme.Typography.calloutEmphasis)
                         .lineLimit(1)
                     if account.archived {
                         Text("arquivado")
-                            .font(.caption2)
+                            .font(GranaTheme.Typography.caption2)
                             .foregroundStyle(.secondary)
                     }
                 }
@@ -155,11 +155,11 @@ private struct SidebarCardRow: View {
 
                 HStack(spacing: 6) {
                     Text(maskedNumber)
-                        .font(GranaTheme.Typography.number(size: 12, weight: .regular))
+                        .font(GranaTheme.Typography.code)
                         .foregroundStyle(isSelected ? Color.white.opacity(0.85) : .secondary)
                     Spacer()
                     Text(debtMagnitude.formatted(.currency(code: account.currency)))
-                        .font(GranaTheme.Typography.number(size: 12, weight: .semibold))
+                        .font(GranaTheme.Typography.moneyFootnote)
                         .foregroundStyle(
                             isSelected
                                 ? Color.white
@@ -205,7 +205,7 @@ private struct SidebarCardRow: View {
             .frame(width: 28, height: 28)
             .overlay {
                 Image(systemName: "creditcard.fill")
-                    .font(.caption)
+                    .font(.system(size: GranaTheme.IconSize.small))
                     .foregroundStyle(.secondary)
             }
     }

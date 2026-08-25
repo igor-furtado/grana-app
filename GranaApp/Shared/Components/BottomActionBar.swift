@@ -39,7 +39,7 @@ struct BottomActionBar<Trailing: View>: View {
             HStack(spacing: 12) {
                 if let caption {
                     Text(caption)
-                        .font(.caption)
+                        .font(GranaTheme.Typography.caption1)
                         .foregroundStyle(.secondary)
                 }
                 Spacer()

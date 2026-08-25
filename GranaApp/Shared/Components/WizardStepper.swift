@@ -47,16 +47,16 @@ struct WizardStepper: View {
                     .frame(width: 22, height: 22)
                 if state == .completed {
                     Image(systemName: "checkmark")
-                        .font(.system(size: 11, weight: .bold))
+                        .font(.system(size: GranaTheme.IconSize.micro, weight: .bold))
                         .foregroundStyle(.white)
                 } else {
                     Text("\(index + 1)")
-                        .font(GranaTheme.Typography.number(size: 12, weight: .semibold))
+                        .font(GranaTheme.Typography.footnoteEmphasis)
                         .foregroundStyle(state == .current ? .white : .secondary)
                 }
             }
             Text(label)
-                .font(.callout.weight(state == .current ? .semibold : .regular))
+                .font(state == .current ? GranaTheme.Typography.calloutEmphasis : GranaTheme.Typography.callout)
                 .foregroundStyle(state == .pending ? .secondary : .primary)
         }
     }

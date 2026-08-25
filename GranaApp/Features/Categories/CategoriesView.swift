@@ -75,6 +75,7 @@ struct CategoriesView: View {
             reconcileSelection(rootIds: ids)
         }
     }
+
     private var categories: [Category] {
         store?.categories ?? []
     }
@@ -131,9 +132,9 @@ struct CategoriesView: View {
                     .fill(accent)
                     .frame(width: 10, height: 10)
                 Text(title)
-                    .font(.title2.weight(.semibold))
+                    .font(GranaTheme.Typography.title3)
                 Text("(\(groups.count))")
-                    .font(.callout)
+                    .font(GranaTheme.Typography.callout)
                     .foregroundStyle(.secondary)
             }
 
@@ -165,10 +166,10 @@ struct CategoriesView: View {
     private var inspectorPlaceholder: some View {
         VStack(spacing: Spacing.md) {
             Image(systemName: AppIcon.sidebarCategories.systemImage)
-                .font(.system(size: 32))
+                .font(.system(size: GranaTheme.IconSize.large))
                 .foregroundStyle(.tertiary)
             Text("Selecione uma categoria")
-                .font(.callout)
+                .font(GranaTheme.Typography.callout)
                 .foregroundStyle(.secondary)
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
@@ -265,7 +266,7 @@ private struct CategoryCard: View {
                         .frame(maxWidth: .infinity)
 
                     Text(group.root.name)
-                        .font(.callout.weight(.medium))
+                        .font(GranaTheme.Typography.calloutEmphasis)
                         .foregroundStyle(.primary)
                         .lineLimit(2)
                         .multilineTextAlignment(.center)
@@ -294,12 +295,12 @@ private struct CategoryCard: View {
     private var iconView: some View {
         if let icon = group.root.icon {
             Image(systemName: icon.systemImage)
-                .font(.system(size: 30, weight: .regular))
+                .font(.system(size: GranaTheme.IconSize.large, weight: .regular))
                 .symbolRenderingMode(.hierarchical)
                 .foregroundStyle(icon.color.gradient)
         } else {
             Image(systemName: AppIcon.warning.systemImage)
-                .font(.system(size: 30, weight: .regular))
+                .font(.system(size: GranaTheme.IconSize.large, weight: .regular))
                 .foregroundStyle(.tertiary)
         }
     }
@@ -318,7 +319,7 @@ private struct CategoryInspector: View {
 
                 VStack(alignment: .center, spacing: Spacing.xs) {
                     Text(group.root.name)
-                        .font(.title3.weight(.semibold))
+                        .font(GranaTheme.Typography.title3)
                         .multilineTextAlignment(.center)
                         .frame(maxWidth: .infinity)
 
@@ -346,12 +347,12 @@ private struct CategoryInspector: View {
 
             if let icon = group.root.icon {
                 Image(systemName: icon.systemImage)
-                    .font(.system(size: 56, weight: .regular))
+                    .font(.system(size: GranaTheme.IconSize.hero, weight: .regular))
                     .symbolRenderingMode(.hierarchical)
                     .foregroundStyle(icon.color.gradient)
             } else {
                 Image(systemName: AppIcon.warning.systemImage)
-                    .font(.system(size: 56, weight: .regular))
+                    .font(.system(size: GranaTheme.IconSize.hero, weight: .regular))
                     .foregroundStyle(.tertiary)
             }
         }
@@ -367,7 +368,7 @@ private struct CategoryInspector: View {
                 .fill(color)
                 .frame(width: 7, height: 7)
             Text(label)
-                .font(.caption.weight(.medium))
+                .font(GranaTheme.Typography.caption1)
                 .foregroundStyle(.secondary)
         }
     }
@@ -390,7 +391,7 @@ private struct CategoryInspector: View {
         GroupBox {
             if group.subs.isEmpty {
                 Text("Sem subcategorias cadastradas")
-                    .font(.subheadline)
+                    .font(GranaTheme.Typography.subheadline)
                     .foregroundStyle(.tertiary)
                     .italic()
                     .frame(maxWidth: .infinity, alignment: .leading)
@@ -398,7 +399,7 @@ private struct CategoryInspector: View {
                 VStack(alignment: .leading, spacing: Spacing.sm) {
                     ForEach(group.subs) { sub in
                         Text(sub.name)
-                            .font(.subheadline)
+                            .font(GranaTheme.Typography.subheadline)
                             .foregroundStyle(.primary.opacity(0.85))
                             .frame(maxWidth: .infinity, alignment: .leading)
                     }

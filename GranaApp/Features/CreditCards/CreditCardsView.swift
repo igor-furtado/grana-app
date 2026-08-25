@@ -196,10 +196,10 @@ struct CreditCardsView: View {
     private var placeholderDetail: some View {
         VStack(spacing: 12) {
             Image(systemName: "creditcard")
-                .font(.system(size: 32))
+                .font(.system(size: GranaTheme.IconSize.large))
                 .foregroundStyle(.secondary)
             Text("Selecione um cartão")
-                .font(.title3)
+                .font(GranaTheme.Typography.title3)
                 .foregroundStyle(.secondary)
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)

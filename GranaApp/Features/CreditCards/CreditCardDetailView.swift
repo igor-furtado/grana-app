@@ -136,20 +136,20 @@ struct CreditCardDetailView: View {
                     .frame(width: 56, height: 56)
                     .overlay {
                         Image(systemName: "creditcard.fill")
-                            .font(.title2)
+                            .font(.system(size: GranaTheme.IconSize.large))
                             .foregroundStyle(.secondary)
                     }
             }
 
             VStack(alignment: .leading, spacing: 4) {
                 Text(bankName)
-                    .font(.title2.weight(.semibold))
+                    .font(GranaTheme.Typography.title3)
                 Text(maskedNumber)
-                    .font(GranaTheme.Typography.number(size: 13, weight: .regular))
+                    .font(GranaTheme.Typography.code)
                     .foregroundStyle(.secondary)
                 if account.archived {
                     Text("Arquivado")
-                        .font(.caption.weight(.medium))
+                        .font(GranaTheme.Typography.caption1)
                         .foregroundStyle(.secondary)
                         .padding(.horizontal, 8)
                         .padding(.vertical, 2)
@@ -189,11 +189,11 @@ struct CreditCardDetailView: View {
         VStack(alignment: .leading, spacing: 8) {
             HStack {
                 Text("Lançamentos")
-                    .font(.headline)
+                    .font(GranaTheme.Typography.headline)
                 Spacer()
                 if let total = selectedStatementTotal {
                     Text(total.formatted(.currency(code: account.currency)))
-                        .font(GranaTheme.Typography.number(size: 13, weight: .regular))
+                        .font(GranaTheme.Typography.moneySubheadline)
                         .foregroundStyle(.secondary)
                 }
             }
@@ -235,7 +235,7 @@ struct CreditCardDetailView: View {
             Text(label)
                 .foregroundStyle(.secondary)
             Text(value.formatted(.currency(code: account.currency)))
-                .font(GranaTheme.Typography.number(size: 13, weight: .regular))
+                .font(GranaTheme.Typography.moneySubheadline)
                 .gridColumnAlignment(.trailing)
         }
     }
@@ -250,10 +250,10 @@ struct CreditCardDetailView: View {
             Spacer()
             VStack(spacing: 8) {
                 Image(systemName: "tray")
-                    .font(.title3)
+                    .font(.system(size: GranaTheme.IconSize.medium))
                     .foregroundStyle(.secondary)
                 Text("Sem lançamentos nesta fatura")
-                    .font(.callout)
+                    .font(GranaTheme.Typography.callout)
                     .foregroundStyle(.secondary)
             }
             .padding(.vertical, 30)
@@ -298,21 +298,21 @@ private struct LimitGaugeBlock: View {
             HStack(alignment: .firstTextBaseline) {
                 VStack(alignment: .leading, spacing: 2) {
                     Text("LIMITE UTILIZADO")
-                        .font(.caption2.weight(.semibold))
+                        .font(GranaTheme.Typography.caption2Emphasis)
                         .tracking(0.8)
                         .foregroundStyle(.secondary)
                     Text(used.formatted(.currency(code: currency)))
-                        .font(GranaTheme.Typography.number(size: 28, weight: .bold))
+                        .font(GranaTheme.Typography.moneyTitle2)
                         .foregroundStyle(.primary)
                 }
                 Spacer()
                 VStack(alignment: .trailing, spacing: 2) {
                     Text("LIMITE TOTAL")
-                        .font(.caption2.weight(.semibold))
+                        .font(GranaTheme.Typography.caption2Emphasis)
                         .tracking(0.8)
                         .foregroundStyle(.secondary)
                     Text(limit.formatted(.currency(code: currency)))
-                        .font(GranaTheme.Typography.number(size: 17, weight: .semibold))
+                        .font(GranaTheme.Typography.moneyHeadline)
                         .foregroundStyle(.secondary)
                 }
             }
@@ -332,24 +332,24 @@ private struct LimitGaugeBlock: View {
                 HStack(spacing: 6) {
                     Circle().fill(color).frame(width: 8, height: 8)
                     Text("Usado: ")
-                        .font(.caption)
+                        .font(GranaTheme.Typography.caption1)
                         .foregroundStyle(.primary)
                         + Text(used.formatted(.currency(code: currency)))
-                        .font(GranaTheme.Typography.number(size: 12, weight: .regular))
+                        .font(GranaTheme.Typography.moneyFootnote)
                         .foregroundStyle(.primary)
                 }
                 HStack(spacing: 6) {
                     Circle().fill(Color.secondary.opacity(0.4)).frame(width: 8, height: 8)
                     Text("Disponível: ")
-                        .font(.caption)
+                        .font(GranaTheme.Typography.caption1)
                         .foregroundStyle(.secondary)
                         + Text(available.formatted(.currency(code: currency)))
-                        .font(GranaTheme.Typography.number(size: 12, weight: .regular))
+                        .font(GranaTheme.Typography.moneyFootnote)
                         .foregroundStyle(.secondary)
                 }
                 Spacer()
                 Text("\(Int(percent * 100))%")
-                    .font(GranaTheme.Typography.number(size: 12, weight: .semibold))
+                    .font(GranaTheme.Typography.footnoteEmphasis)
                     .foregroundStyle(color)
             }
         }
@@ -437,7 +437,7 @@ private struct StatementTimelineChart: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
             Text("Histórico de faturas")
-                .font(.headline)
+                .font(GranaTheme.Typography.headline)
 
             // Versão custom (HStack de retângulos) em vez de Swift Charts
             // BarMark porque precisamos de cor diferente por barra E hit
@@ -488,7 +488,7 @@ private struct StatementTimelineChart: View {
         var body: some View {
             VStack(spacing: 4) {
                 Text(bar.total > 0 ? bar.total.formatted(.currency(code: currency)) : " ")
-                    .font(GranaTheme.Typography.number(size: 10, weight: .regular))
+                    .font(GranaTheme.Typography.moneyCaption2)
                     .foregroundStyle(isSelected ? .primary : .secondary)
                     .lineLimit(1)
                     .minimumScaleFactor(0.7)
@@ -505,9 +505,8 @@ private struct StatementTimelineChart: View {
                 }
 
                 Text(bar.label.capitalized)
-                    .font(.caption2)
+                    .font(isSelected ? GranaTheme.Typography.caption2Emphasis : GranaTheme.Typography.caption2)
                     .foregroundStyle(isSelected ? .primary : .secondary)
-                    .fontWeight(isSelected ? .semibold : .regular)
             }
             .frame(maxWidth: .infinity)
             .contentShape(Rectangle())
@@ -691,33 +690,33 @@ private struct StatementCycleCard: View {
         VStack(alignment: .leading, spacing: 10) {
             HStack(spacing: 6) {
                 Text(title)
-                    .font(.callout.weight(.semibold))
+                    .font(GranaTheme.Typography.calloutEmphasis)
                 StatusBadge(label: statusLabel, tint: statusTint)
                 Spacer()
             }
 
             Text(amount.formatted(.currency(code: currency)))
-                .font(GranaTheme.Typography.number(size: 22, weight: .bold))
+                .font(GranaTheme.Typography.moneyTitle3)
 
             Divider()
 
             VStack(alignment: .leading, spacing: 4) {
                 HStack {
                     Text("Data de vencimento")
-                        .font(.caption)
+                        .font(GranaTheme.Typography.caption1)
                         .foregroundStyle(.secondary)
                     Spacer()
                     Text(Self.dayMonthFormatter.string(from: dueDate))
-                        .font(GranaTheme.Typography.number(size: 12, weight: .semibold))
+                        .font(GranaTheme.Typography.footnoteEmphasis)
                 }
                 if let bestPurchaseDay {
                     HStack {
                         Text("Melhor dia de compra")
-                            .font(.caption)
+                            .font(GranaTheme.Typography.caption1)
                             .foregroundStyle(.secondary)
                         Spacer()
                         Text("\(bestPurchaseDay)")
-                            .font(GranaTheme.Typography.number(size: 12, weight: .semibold))
+                            .font(GranaTheme.Typography.footnoteEmphasis)
                     }
                 }
             }
@@ -753,7 +752,7 @@ private struct StatementCycleCard: View {
 
         var body: some View {
             Text(label)
-                .font(.caption2.weight(.semibold))
+                .font(GranaTheme.Typography.caption2Emphasis)
                 .padding(.horizontal, 6)
                 .padding(.vertical, 2)
                 .background(

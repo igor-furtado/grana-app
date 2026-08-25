@@ -19,41 +19,6 @@ struct DesignSystemView: View {
         TokenRowModel(name: "creamText", value: "#fff9ed", swatch: GranaTheme.Palette.creamText),
     ]
 
-    private let typographyTokens: [TypographyToken] = [
-        TypographyToken(
-            name: "hero",
-            current: "System 34 black",
-            prototype: "SF Pro Text 34 black",
-            usage: "Título de página"
-        ),
-        TypographyToken(
-            name: "title",
-            current: "System 18 black",
-            prototype: "SF Pro Text 18 black",
-            usage: "Título de card"
-        ),
-        TypographyToken(
-            name: "body",
-            current: "System 15 semibold",
-            prototype: "SF Pro Text 15 semibold",
-            usage: "Texto principal"
-        ),
-        TypographyToken(name: "label", current: "System 13 bold", prototype: "SF Pro Text 13 bold", usage: "Rótulos"),
-        TypographyToken(
-            name: "number",
-            current: "System digits",
-            prototype: "Menlo/SF Mono digits",
-            usage: "Valores monetários"
-        ),
-        TypographyToken(name: "token", current: "System mono", prototype: "Menlo/SF Mono", usage: "Tokens técnicos"),
-        TypographyToken(
-            name: "caption",
-            current: "System 11 semibold",
-            prototype: "SF Pro Text 11 semibold",
-            usage: "Apoio e status"
-        ),
-    ]
-
     private let radiusTokens: [RadiusToken] = [
         RadiusToken(name: "control", radius: GranaTheme.Radius.control, usage: "Botões, inputs e badges"),
         RadiusToken(name: "card", radius: GranaTheme.Radius.card, usage: "Cards de conteúdo"),
@@ -98,7 +63,7 @@ struct DesignSystemView: View {
                 })
 
                 DesignSystemCard(title: "Tabela de tipografia", content: {
-                    TypographyTable(tokens: typographyTokens)
+                    TypographyTable(tokens: GranaTheme.Typography.tokens)
                 })
 
                 DesignSystemCard(title: "Tabela de raios", content: {
@@ -158,27 +123,17 @@ struct DesignSystemView: View {
     }
 }
 
-private enum DesignSystemTypography {
-    static let hero = Font.system(size: 34, weight: .black)
-    static let cardTitle = Font.system(size: 18, weight: .black)
-    static let body = Font.system(size: 15, weight: .semibold)
-    static let label = Font.system(size: 13, weight: .bold)
-    static let metric = GranaTheme.Typography.number(size: 30, weight: .bold)
-    static let mono = GranaTheme.Typography.token(size: 12, weight: .semibold)
-    static let caption = Font.system(size: 11, weight: .semibold)
-}
-
 private struct TypographyComparisonSample: View {
     var body: some View {
         HStack(alignment: .top, spacing: Spacing.lg) {
             VStack(alignment: .leading, spacing: Spacing.sm) {
                 Text("Receitas no período")
-                    .font(DesignSystemTypography.label)
+                    .font(GranaTheme.Typography.subheadlineEmphasis)
                     .foregroundStyle(GranaTheme.Palette.muted)
                 Text(
                     "A família de texto precisa ser confortável para leitura repetida em cards, tabelas e estados vazios."
                 )
-                .font(DesignSystemTypography.body)
+                .font(GranaTheme.Typography.body)
                 .foregroundStyle(GranaTheme.Palette.ink)
                 .fixedSize(horizontal: false, vertical: true)
             }
@@ -186,12 +141,12 @@ private struct TypographyComparisonSample: View {
 
             VStack(alignment: .trailing, spacing: Spacing.sm) {
                 Text("R$ 12.400,90")
-                    .font(DesignSystemTypography.metric)
+                    .font(GranaTheme.Typography.moneyTitle2)
                     .foregroundStyle(GranaTheme.Palette.ink)
                     .lineLimit(1)
                     .minimumScaleFactor(0.72)
                 Text("balance.available")
-                    .font(DesignSystemTypography.mono)
+                    .font(GranaTheme.Typography.code)
                     .foregroundStyle(GranaTheme.Palette.tealDeep)
                     .padding(.horizontal, 9)
                     .padding(.vertical, 5)
@@ -211,7 +166,7 @@ private struct DesignSystemCard<Content: View>: View {
     var body: some View {
         VStack(alignment: .leading, spacing: Spacing.md) {
             Text(title)
-                .font(DesignSystemTypography.cardTitle)
+                .font(GranaTheme.Typography.headline)
                 .foregroundStyle(GranaTheme.Palette.ink)
             content()
         }
@@ -225,17 +180,6 @@ private struct TokenRowModel: Identifiable {
     let name: String
     let value: String
     let swatch: Color
-
-    var id: String {
-        name
-    }
-}
-
-private struct TypographyToken: Identifiable {
-    let name: String
-    let current: String
-    let prototype: String
-    let usage: String
 
     var id: String {
         name
@@ -304,14 +248,14 @@ private struct TokenTableRow: View {
 }
 
 private struct TypographyTable: View {
-    let tokens: [TypographyToken]
+    let tokens: [GranaTheme.Typography.Token]
 
     var body: some View {
         VStack(spacing: 0) {
             ForEach(Array(tokens.enumerated()), id: \.element.id) { index, token in
                 HStack(spacing: Spacing.md) {
                     Text("Aa")
-                        .font(sampleFont(for: token.name))
+                        .font(token.font)
                         .foregroundStyle(GranaTheme.Palette.ink)
                         .frame(width: 56, alignment: .leading)
 
@@ -330,29 +274,8 @@ private struct TypographyTable: View {
         .tableSurface()
     }
 
-    private func resolvedValue(for token: TypographyToken) -> String {
-        token.name == "number" || token.name == "token" ? token.prototype : token.current
-    }
-
-    private func sampleFont(for name: String) -> Font {
-        switch name {
-        case "hero":
-            return DesignSystemTypography.hero
-        case "title":
-            return DesignSystemTypography.cardTitle
-        case "body":
-            return DesignSystemTypography.body
-        case "label":
-            return DesignSystemTypography.label
-        case "number":
-            return DesignSystemTypography.metric
-        case "token":
-            return DesignSystemTypography.mono
-        case "caption":
-            return DesignSystemTypography.caption
-        default:
-            return DesignSystemTypography.body
-        }
+    private func resolvedValue(for token: GranaTheme.Typography.Token) -> String {
+        "\(token.value) · \(token.category)"
     }
 }
 
@@ -368,7 +291,7 @@ private struct RadiusTable: View {
 
                     if let note = token.note {
                         Text(note)
-                            .font(GranaTheme.Typography.token(size: 10, weight: .black))
+                            .font(GranaTheme.Typography.caption2Emphasis)
                             .foregroundStyle(GranaTheme.Palette.tealDeep)
                             .padding(.horizontal, 7)
                             .padding(.vertical, 4)
@@ -473,10 +396,10 @@ private struct DepthSample: View {
     var body: some View {
         VStack(alignment: .leading, spacing: Spacing.sm) {
             Text(title)
-                .font(DesignSystemTypography.mono)
+                .font(GranaTheme.Typography.code)
                 .foregroundStyle(GranaTheme.Palette.ink)
             Text(subtitle)
-                .font(DesignSystemTypography.caption)
+                .font(GranaTheme.Typography.caption1)
                 .foregroundStyle(GranaTheme.Palette.muted)
             Capsule()
                 .fill(GranaTheme.Palette.teal)
@@ -597,17 +520,17 @@ private struct TypographyMetricCard: View {
             HStack(spacing: Spacing.xs) {
                 if let icon {
                     Image(systemName: icon.systemImage)
-                        .font(.callout.weight(.bold))
+                        .font(.system(size: GranaTheme.IconSize.small, weight: .bold))
                         .foregroundStyle(accent)
                 }
 
                 Text(title)
-                    .font(DesignSystemTypography.label)
+                    .font(GranaTheme.Typography.subheadlineEmphasis)
                     .foregroundStyle(GranaTheme.Palette.muted)
             }
 
             Text(placeholder ? "—" : value.formatted(.currency(code: "BRL")))
-                .font(DesignSystemTypography.metric)
+                .font(GranaTheme.Typography.moneyTitle2)
                 .foregroundStyle(placeholder ? GranaTheme.Palette.muted : GranaTheme.Palette.ink)
                 .lineLimit(1)
                 .minimumScaleFactor(0.7)
@@ -622,7 +545,7 @@ private struct MiniChartPanel: View {
     var body: some View {
         VStack(alignment: .leading, spacing: Spacing.md) {
             Text("Fluxo do mês")
-                .font(DesignSystemTypography.label)
+                .font(GranaTheme.Typography.subheadlineEmphasis)
                 .foregroundStyle(GranaTheme.Palette.muted)
 
             HStack(alignment: .bottom, spacing: Spacing.sm) {
@@ -650,17 +573,17 @@ private struct CategoryRankingPanel: View {
     var body: some View {
         VStack(alignment: .leading, spacing: Spacing.md) {
             Text("Categorias")
-                .font(DesignSystemTypography.label)
+                .font(GranaTheme.Typography.subheadlineEmphasis)
                 .foregroundStyle(GranaTheme.Palette.muted)
 
             ForEach(rows, id: \.0) { row in
                 VStack(alignment: .leading, spacing: Spacing.xs) {
                     HStack {
                         Text(row.0)
-                            .font(DesignSystemTypography.label)
+                            .font(GranaTheme.Typography.subheadlineEmphasis)
                         Spacer()
                         Text(row.1)
-                            .font(DesignSystemTypography.mono)
+                            .font(GranaTheme.Typography.moneyFootnote)
                             .foregroundStyle(GranaTheme.Palette.muted)
                     }
                     GeometryReader { proxy in
@@ -785,7 +708,7 @@ private struct TransactionHeaderRow: View {
             Text("Valor")
                 .frame(width: 118, alignment: .trailing)
         }
-        .font(DesignSystemTypography.mono)
+        .font(GranaTheme.Typography.footnoteEmphasis)
         .foregroundStyle(GranaTheme.Palette.muted)
     }
 }
@@ -825,10 +748,10 @@ private struct TableText: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 3) {
             Text(primary)
-                .font(DesignSystemTypography.mono)
+                .font(GranaTheme.Typography.code)
                 .foregroundStyle(GranaTheme.Palette.ink)
             Text(secondary)
-                .font(DesignSystemTypography.caption)
+                .font(GranaTheme.Typography.caption1)
                 .foregroundStyle(GranaTheme.Palette.muted)
                 .lineLimit(1)
                 .minimumScaleFactor(0.82)

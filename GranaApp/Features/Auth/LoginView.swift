@@ -26,13 +26,13 @@ struct LoginView: View {
 
             VStack(alignment: .leading, spacing: 16) {
                 Text("GranaApp")
-                    .font(.system(size: 54, weight: .black))
+                    .font(GranaTheme.Typography.largeTitle)
                     .foregroundStyle(GranaTheme.Palette.creamText)
                     .lineLimit(1)
                     .minimumScaleFactor(0.75)
 
                 Text("Acesse seu painel financeiro com uma sessão remota validada.")
-                    .font(.system(size: 17, weight: .semibold))
+                    .font(GranaTheme.Typography.headline)
                     .foregroundStyle(GranaTheme.Palette.creamText.opacity(0.72))
                     .lineSpacing(2)
                     .fixedSize(horizontal: false, vertical: true)
@@ -63,11 +63,11 @@ struct LoginView: View {
         VStack(alignment: .leading, spacing: 22) {
             VStack(alignment: .leading, spacing: 10) {
                 Text("Iniciar sessão")
-                    .font(.system(size: 28, weight: .black))
+                    .font(GranaTheme.Typography.title2)
                     .foregroundStyle(GranaTheme.Palette.ink)
 
                 Text("Informe o e-mail para receber o magic link e voltar ao app com a sessão ativa.")
-                    .font(.system(size: 14, weight: .semibold))
+                    .font(GranaTheme.Typography.calloutEmphasis)
                     .foregroundStyle(GranaTheme.Palette.muted)
                     .lineSpacing(2)
                     .fixedSize(horizontal: false, vertical: true)
@@ -75,12 +75,12 @@ struct LoginView: View {
 
             VStack(alignment: .leading, spacing: 8) {
                 Text("E-mail")
-                    .font(.system(size: 12, weight: .bold))
+                    .font(GranaTheme.Typography.footnoteEmphasis)
                     .foregroundStyle(GranaTheme.Palette.muted)
 
                 TextField("voce@exemplo.com", text: $email)
                     .textFieldStyle(.plain)
-                    .font(.system(size: 16, weight: .semibold))
+                    .font(GranaTheme.Typography.bodyEmphasis)
                     .padding(.horizontal, 15)
                     .frame(height: 52)
                     .background(
@@ -118,7 +118,7 @@ struct LoginView: View {
 
     private var logoMark: some View {
         Text("G")
-            .font(.system(size: 23, weight: .black))
+            .font(GranaTheme.Typography.title3)
             .foregroundStyle(GranaTheme.Palette.creamText)
             .frame(width: 58, height: 58)
             .background(
@@ -129,7 +129,7 @@ struct LoginView: View {
 
     private func pill(_ text: String) -> some View {
         Text(text)
-            .font(.system(size: 12, weight: .bold))
+            .font(GranaTheme.Typography.footnoteEmphasis)
             .foregroundStyle(GranaTheme.Palette.creamText.opacity(0.86))
             .padding(.horizontal, 10)
             .padding(.vertical, 8)
@@ -144,7 +144,7 @@ struct LoginView: View {
             Text(value)
                 .foregroundStyle(GranaTheme.Palette.ink)
         }
-        .font(.system(size: 13, weight: .semibold))
+        .font(GranaTheme.Typography.subheadlineEmphasis)
     }
 
     private var normalizedEmail: String {

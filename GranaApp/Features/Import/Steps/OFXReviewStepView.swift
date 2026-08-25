@@ -158,7 +158,7 @@ private struct OFXAccountInfoCard: View {
     private func statusBadge(for resolution: OFXStatementResolution) -> some View {
         if resolution.accountId == nil {
             Text("Escolha")
-                .font(.caption.weight(.medium))
+                .font(GranaTheme.Typography.caption1)
                 .padding(.horizontal, 8)
                 .padding(.vertical, 3)
                 .background(Color.warning.opacity(0.18))
@@ -167,7 +167,7 @@ private struct OFXAccountInfoCard: View {
                 .textCase(nil)
         } else if resolution.wasAutoDetected {
             Text("Detectada")
-                .font(.caption.weight(.medium))
+                .font(GranaTheme.Typography.caption1)
                 .padding(.horizontal, 8)
                 .padding(.vertical, 3)
                 .background(Color.success.opacity(0.15))
@@ -255,7 +255,7 @@ private struct OFXTransactionsListCard: View {
     private func bankSubheader(for resolution: OFXStatementResolution) -> some View {
         HStack {
             Text(bankName(for: resolution))
-                .font(.caption.weight(.medium))
+                .font(GranaTheme.Typography.caption1)
                 .foregroundStyle(.secondary)
             Spacer()
         }

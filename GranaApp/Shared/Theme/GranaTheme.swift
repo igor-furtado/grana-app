@@ -50,12 +50,381 @@ enum GranaTheme {
     }
 
     enum Typography {
-        static func number(size: CGFloat, weight: Font.Weight = .semibold) -> Font {
-            .system(size: size, weight: weight, design: .monospaced)
+        struct Token: Identifiable {
+            let name: String
+            let family: Family
+            let size: CGFloat
+            let weight: Weight
+            let usage: String
+
+            var id: String {
+                name
+            }
+
+            var category: String {
+                family.category
+            }
+
+            var font: Font {
+                Font.system(size: size, weight: weight.fontWeight, design: family.design)
+            }
+
+            var value: String {
+                "\(family.displayName) \(Int(size)) \(weight.displayName)"
+            }
         }
 
-        static func token(size: CGFloat, weight: Font.Weight = .semibold) -> Font {
-            .system(size: size, weight: weight, design: .monospaced)
+        enum Family {
+            case text
+            case money
+            case code
+
+            var category: String {
+                switch self {
+                case .text:
+                    "Texto"
+                case .money:
+                    "Dinheiro"
+                case .code:
+                    "Código"
+                }
+            }
+
+            var design: Font.Design {
+                switch self {
+                case .text:
+                    .default
+                case .money, .code:
+                    .monospaced
+                }
+            }
+
+            var displayName: String {
+                switch self {
+                case .text:
+                    "SF Pro"
+                case .money, .code:
+                    "SF Mono"
+                }
+            }
+        }
+
+        enum Weight {
+            case regular
+            case medium
+            case semibold
+            case bold
+            case black
+
+            var fontWeight: Font.Weight {
+                switch self {
+                case .regular:
+                    .regular
+                case .medium:
+                    .medium
+                case .semibold:
+                    .semibold
+                case .bold:
+                    .bold
+                case .black:
+                    .black
+                }
+            }
+
+            var displayName: String {
+                switch self {
+                case .regular:
+                    "regular"
+                case .medium:
+                    "medium"
+                case .semibold:
+                    "semibold"
+                case .bold:
+                    "bold"
+                case .black:
+                    "black"
+                }
+            }
+        }
+
+        private static let largeTitleToken = Token(
+            name: "largeTitle",
+            family: .text,
+            size: 54,
+            weight: .black,
+            usage: "Marca, login e estados vazios"
+        )
+        private static let title1Token = Token(
+            name: "title1",
+            family: .text,
+            size: 48,
+            weight: .black,
+            usage: "Título hero"
+        )
+        private static let title2Token = Token(
+            name: "title2",
+            family: .text,
+            size: 28,
+            weight: .bold,
+            usage: "Título amplo"
+        )
+        private static let title3Token = Token(
+            name: "title3",
+            family: .text,
+            size: 22,
+            weight: .semibold,
+            usage: "Título compacto"
+        )
+        private static let headlineToken = Token(
+            name: "headline",
+            family: .text,
+            size: 17,
+            weight: .bold,
+            usage: "Destaque de seção"
+        )
+        private static let bodyToken = Token(
+            name: "body",
+            family: .text,
+            size: 15,
+            weight: .regular,
+            usage: "Leitura contínua"
+        )
+        private static let bodyEmphasisToken = Token(
+            name: "bodyEmphasis",
+            family: .text,
+            size: 15,
+            weight: .semibold,
+            usage: "Corpo enfatizado"
+        )
+        private static let calloutToken = Token(
+            name: "callout",
+            family: .text,
+            size: 14,
+            weight: .regular,
+            usage: "Apoio ao corpo"
+        )
+        private static let calloutEmphasisToken = Token(
+            name: "calloutEmphasis",
+            family: .text,
+            size: 14,
+            weight: .semibold,
+            usage: "Callout enfatizado"
+        )
+        private static let subheadlineToken = Token(
+            name: "subheadline",
+            family: .text,
+            size: 13,
+            weight: .regular,
+            usage: "Linhas densas"
+        )
+        private static let subheadlineEmphasisToken = Token(
+            name: "subheadlineEmphasis",
+            family: .text,
+            size: 13,
+            weight: .semibold,
+            usage: "Linha densa enfatizada"
+        )
+        private static let footnoteToken = Token(
+            name: "footnote",
+            family: .text,
+            size: 12,
+            weight: .regular,
+            usage: "Dados auxiliares"
+        )
+        private static let footnoteEmphasisToken = Token(
+            name: "footnoteEmphasis",
+            family: .text,
+            size: 12,
+            weight: .semibold,
+            usage: "Dado auxiliar enfatizado"
+        )
+        private static let caption1Token = Token(
+            name: "caption1",
+            family: .text,
+            size: 11,
+            weight: .medium,
+            usage: "Legendas e status"
+        )
+        private static let caption1EmphasisToken = Token(
+            name: "caption1Emphasis",
+            family: .text,
+            size: 11,
+            weight: .bold,
+            usage: "Legenda enfatizada"
+        )
+        private static let caption2Token = Token(
+            name: "caption2",
+            family: .text,
+            size: 10,
+            weight: .medium,
+            usage: "Microtexto"
+        )
+        private static let caption2EmphasisToken = Token(
+            name: "caption2Emphasis",
+            family: .text,
+            size: 10,
+            weight: .bold,
+            usage: "Microtexto enfatizado"
+        )
+        private static let moneyLargeTitleToken = Token(
+            name: "moneyLargeTitle",
+            family: .money,
+            size: 54,
+            weight: .black,
+            usage: "Valor financeiro hero"
+        )
+        private static let moneyTitle1Token = Token(
+            name: "moneyTitle1",
+            family: .money,
+            size: 48,
+            weight: .bold,
+            usage: "Valor financeiro principal"
+        )
+        private static let moneyTitle2Token = Token(
+            name: "moneyTitle2",
+            family: .money,
+            size: 28,
+            weight: .bold,
+            usage: "Valor financeiro destacado"
+        )
+        private static let moneyTitle3Token = Token(
+            name: "moneyTitle3",
+            family: .money,
+            size: 22,
+            weight: .bold,
+            usage: "Valor financeiro compacto"
+        )
+        private static let moneyHeadlineToken = Token(
+            name: "moneyHeadline",
+            family: .money,
+            size: 17,
+            weight: .semibold,
+            usage: "Valor financeiro em seção"
+        )
+        private static let moneyBodyToken = Token(
+            name: "moneyBody",
+            family: .money,
+            size: 15,
+            weight: .semibold,
+            usage: "Valor financeiro no corpo"
+        )
+        private static let moneyCalloutToken = Token(
+            name: "moneyCallout",
+            family: .money,
+            size: 14,
+            weight: .semibold,
+            usage: "Valor financeiro de apoio"
+        )
+        private static let moneySubheadlineToken = Token(
+            name: "moneySubheadline",
+            family: .money,
+            size: 13,
+            weight: .semibold,
+            usage: "Valor financeiro em linha"
+        )
+        private static let moneyFootnoteToken = Token(
+            name: "moneyFootnote",
+            family: .money,
+            size: 12,
+            weight: .semibold,
+            usage: "Valor financeiro auxiliar"
+        )
+        private static let moneyCaption1Token = Token(
+            name: "moneyCaption1",
+            family: .money,
+            size: 11,
+            weight: .regular,
+            usage: "Valor financeiro mínimo"
+        )
+        private static let moneyCaption2Token = Token(
+            name: "moneyCaption2",
+            family: .money,
+            size: 10,
+            weight: .regular,
+            usage: "Valor financeiro micro"
+        )
+        private static let codeToken = Token(
+            name: "code",
+            family: .code,
+            size: 12,
+            weight: .semibold,
+            usage: "IDs, slugs e tokens"
+        )
+
+        static let largeTitle = largeTitleToken.font
+        static let title1 = title1Token.font
+        static let title2 = title2Token.font
+        static let title3 = title3Token.font
+        static let headline = headlineToken.font
+        static let body = bodyToken.font
+        static let bodyEmphasis = bodyEmphasisToken.font
+        static let callout = calloutToken.font
+        static let calloutEmphasis = calloutEmphasisToken.font
+        static let subheadline = subheadlineToken.font
+        static let subheadlineEmphasis = subheadlineEmphasisToken.font
+        static let footnote = footnoteToken.font
+        static let footnoteEmphasis = footnoteEmphasisToken.font
+        static let caption1 = caption1Token.font
+        static let caption1Emphasis = caption1EmphasisToken.font
+        static let caption2 = caption2Token.font
+        static let caption2Emphasis = caption2EmphasisToken.font
+
+        static let moneyLargeTitle = moneyLargeTitleToken.font
+        static let moneyTitle1 = moneyTitle1Token.font
+        static let moneyTitle2 = moneyTitle2Token.font
+        static let moneyTitle3 = moneyTitle3Token.font
+        static let moneyHeadline = moneyHeadlineToken.font
+        static let moneyBody = moneyBodyToken.font
+        static let moneyCallout = moneyCalloutToken.font
+        static let moneySubheadline = moneySubheadlineToken.font
+        static let moneyFootnote = moneyFootnoteToken.font
+        static let moneyCaption1 = moneyCaption1Token.font
+        static let moneyCaption2 = moneyCaption2Token.font
+
+        static let code = codeToken.font
+
+        static let tokens: [Token] = [
+            largeTitleToken,
+            title1Token,
+            title2Token,
+            title3Token,
+            headlineToken,
+            bodyToken,
+            bodyEmphasisToken,
+            calloutToken,
+            calloutEmphasisToken,
+            subheadlineToken,
+            subheadlineEmphasisToken,
+            footnoteToken,
+            footnoteEmphasisToken,
+            caption1Token,
+            caption1EmphasisToken,
+            caption2Token,
+            caption2EmphasisToken,
+            moneyLargeTitleToken,
+            moneyTitle1Token,
+            moneyTitle2Token,
+            moneyTitle3Token,
+            moneyHeadlineToken,
+            moneyBodyToken,
+            moneyCalloutToken,
+            moneySubheadlineToken,
+            moneyFootnoteToken,
+            moneyCaption1Token,
+            moneyCaption2Token,
+            codeToken,
+        ]
+    }
+
+    enum IconSize {
+        static let micro: CGFloat = 10
+        static let small: CGFloat = 12
+        static let medium: CGFloat = 20
+        static let large: CGFloat = 32
+        static let hero: CGFloat = 56
+
+        static func categoryGlyph(in bubbleSize: CGFloat) -> CGFloat {
+            bubbleSize * 0.45
         }
     }
 
@@ -182,7 +551,7 @@ private struct GranaSurfaceModifier: ViewModifier {
 struct GranaPrimaryButtonStyle: ButtonStyle {
     func makeBody(configuration: Configuration) -> some View {
         configuration.label
-            .font(.system(size: 14, weight: .bold))
+            .font(GranaTheme.Typography.calloutEmphasis)
             .foregroundStyle(GranaTheme.Palette.creamText)
             .padding(.horizontal, 18)
             .frame(minHeight: 48)
@@ -198,7 +567,7 @@ struct GranaPrimaryButtonStyle: ButtonStyle {
 struct GranaSecondaryButtonStyle: ButtonStyle {
     func makeBody(configuration: Configuration) -> some View {
         configuration.label
-            .font(.system(size: 14, weight: .bold))
+            .font(GranaTheme.Typography.calloutEmphasis)
             .foregroundStyle(GranaTheme.Palette.ink)
             .padding(.horizontal, 18)
             .frame(minHeight: 48)
