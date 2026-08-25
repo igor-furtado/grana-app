@@ -15,6 +15,7 @@ struct TransactionsView: View {
     @State private var categoryFilter: TransactionCategoryFilter = .all
     @State private var periodFilter: TransactionPeriodFilter = .month
     @State private var bankFilter: TransactionBankFilter = .all
+    @State private var presentedHeaderFilter: TransactionsHeaderPresentedFilter?
 
     var body: some View {
         Group {
@@ -117,46 +118,16 @@ struct TransactionsView: View {
     }
 
     private func transactionsHeader(store: TransactionStore) -> some View {
-        HStack(alignment: .top, spacing: GranaTheme.Spacing.sm) {
-            tableControlsCard(store: store)
-                .frame(maxWidth: .infinity, alignment: .leading)
-            actionCard
-                .frame(width: 290)
-        }
-    }
-
-    private func tableControlsCard(store: TransactionStore) -> some View {
-        VStack(spacing: GranaTheme.Spacing.sm) {
-            HStack(spacing: GranaTheme.Spacing.sm) {
-                Text(transactionsCountText(store: store))
-                    .font(GranaTheme.Typography.subheadlineEmphasis)
-                    .foregroundStyle(GranaTheme.Palette.ink)
-                    .lineLimit(1)
-                Spacer(minLength: GranaTheme.Spacing.md)
-                searchField
-                    .frame(maxWidth: 390, alignment: .trailing)
-            }
-
-            HStack(spacing: GranaTheme.Spacing.sm) {
-                bankMenu(store: store)
-                periodMenu
-                categoryMenu(store: store)
-                kindMenu
-                Spacer(minLength: GranaTheme.Spacing.none)
-            }
-        }
-        .padding(GranaTheme.Spacing.md)
-        .granaSurface(.subtle, cornerRadius: GranaTheme.Radius.card)
-    }
-
-    private var actionCard: some View {
-        HStack(spacing: GranaTheme.Spacing.sm) {
-            importActionButton
-            addActionButton
-        }
-        .padding(GranaTheme.Spacing.md)
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .granaSurface(.subtle, cornerRadius: GranaTheme.Radius.card)
+        TransactionsHeaderView(
+            searchText: $searchText,
+            countText: transactionsCountText(store: store),
+            onImport: { showingImport = true },
+            onAdd: { showingForm = true },
+            bankControl: AnyView(headerBankMenu(store: store)),
+            periodControl: AnyView(headerPeriodMenu),
+            categoryControl: AnyView(headerCategoryMenu(store: store)),
+            kindControl: AnyView(headerKindMenu)
+        )
     }
 
     private func transactionsContentSection(store: TransactionStore) -> some View {
@@ -190,70 +161,75 @@ struct TransactionsView: View {
         return message
     }
 
-    private var periodMenu: some View {
-        filterMenu(title: periodFilter.name, icon: "calendar") {
+    private var headerPeriodMenu: some View {
+        headerFilterPopoverCard(
+            caption: "Período",
+            value: periodFilter.name,
+            icon: "calendar",
+            filter: .period
+        ) {
             ForEach(TransactionPeriodFilter.allCases) { filter in
-                Button(filter.name) {
+                headerFilterOption(filter.name) {
                     periodFilter = filter
+                    presentedHeaderFilter = nil
                 }
             }
         }
     }
 
-    private func bankMenu(store: TransactionStore) -> some View {
-        filterMenu(
-            title: bankFilter.name(store: store),
-            icon: AppIcon.sidebarAccounts.systemImage
+    private var headerKindMenu: some View {
+        headerFilterPopoverCard(
+            caption: "Tipo",
+            value: kindFilter.name,
+            icon: "arrow.left.arrow.right.circle",
+            filter: .kind
         ) {
-            Button("Todos bancos") {
+            ForEach(TransactionKindFilter.allCases) { filter in
+                headerFilterOption(filter.name) {
+                    kindFilter = filter
+                    presentedHeaderFilter = nil
+                }
+            }
+        }
+    }
+
+    private func headerBankMenu(store: TransactionStore) -> some View {
+        headerFilterPopoverCard(
+            caption: "Banco",
+            value: bankFilter.name(store: store),
+            icon: AppIcon.sidebarAccounts.systemImage,
+            filter: .bank
+        ) {
+            headerFilterOption("Todos bancos") {
                 bankFilter = .all
+                presentedHeaderFilter = nil
             }
             Divider()
             ForEach(availableBanks(store: store)) { institution in
-                Button(institution.name) {
+                headerFilterOption(institution.name) {
                     bankFilter = .bank(institution.id)
+                    presentedHeaderFilter = nil
                 }
             }
         }
     }
 
-    private var importActionButton: some View {
-        Button {
-            showingImport = true
-        } label: {
-            Label("Importar", systemImage: AppIcon.importFile.systemImage)
-        }
-        .buttonStyle(GranaSecondaryButtonStyle())
-    }
-
-    private var addActionButton: some View {
-        Button {
-            showingForm = true
-        } label: {
-            Label("Adicionar", systemImage: AppIcon.add.systemImage)
-        }
-        .buttonStyle(GranaPrimaryButtonStyle())
-    }
-
-    private var kindMenu: some View {
-        filterMenu(title: kindFilter.name, icon: "arrow.left.arrow.right.circle") {
-            ForEach(TransactionKindFilter.allCases) { filter in
-                Button(filter.name) {
-                    kindFilter = filter
-                }
-            }
-        }
-    }
-
-    private func categoryMenu(store: TransactionStore) -> some View {
-        filterMenu(title: categoryFilter.name(store: store), icon: "tag") {
-            Button("Todas categorias") {
+    private func headerCategoryMenu(store: TransactionStore) -> some View {
+        headerFilterPopoverCard(
+            caption: "Categoria",
+            value: categoryFilter.name(store: store),
+            icon: "tag",
+            filter: .category
+        ) {
+            headerFilterOption("Todas categorias") {
                 categoryFilter = .all
+                presentedHeaderFilter = nil
             }
             Divider()
             ForEach(rootCategories(store: store)) { category in
-                Button(category.name) {
+                headerFilterOption(category.name) {
                     categoryFilter = .category(category.id)
+                    presentedHeaderFilter = nil
                 }
             }
         }
@@ -329,67 +305,93 @@ struct TransactionsView: View {
         }
     }
 
-    private var searchField: some View {
-        HStack(spacing: GranaTheme.Spacing.sm) {
-            Image(systemName: "magnifyingglass")
-                .foregroundStyle(.secondary)
-
-            TextField("Buscar descrição ou categoria", text: $searchText)
-                .textFieldStyle(.plain)
-
-            if !searchText.isEmpty {
-                Button {
-                    searchText = ""
-                } label: {
-                    Image(systemName: "xmark.circle.fill")
-                        .foregroundStyle(.secondary)
-                }
-                .buttonStyle(.plain)
-            }
+    private func headerFilterPopoverCard<Content: View>(
+        caption: String,
+        value: String,
+        icon: String,
+        filter: TransactionsHeaderPresentedFilter,
+        @ViewBuilder content: @escaping () -> Content
+    ) -> some View {
+        Button {
+            presentedHeaderFilter = filter
+        } label: {
+            headerFilterCard(caption: caption, value: value, icon: icon)
         }
-        .padding(.horizontal, GranaTheme.Spacing.md)
-        .frame(width: 360)
-        .frame(height: 30)
-        .background(
-            RoundedRectangle(cornerRadius: 12, style: .continuous)
-                .fill(GranaTheme.Palette.paper.opacity(0.9))
-        )
-        .overlay {
-            RoundedRectangle(cornerRadius: 12, style: .continuous)
-                .stroke(GranaTheme.Palette.line, lineWidth: 1)
+        .buttonStyle(.plain)
+        .popover(
+            isPresented: Binding(
+                get: { presentedHeaderFilter == filter },
+                set: { isPresented in
+                    if !isPresented, presentedHeaderFilter == filter {
+                        presentedHeaderFilter = nil
+                    }
+                }
+            ),
+            attachmentAnchor: .rect(.bounds),
+            arrowEdge: .top
+        ) {
+            ScrollView {
+                VStack(alignment: .leading, spacing: GranaTheme.Spacing.none) {
+                    content()
+                }
+                .padding(GranaTheme.Spacing.xs)
+            }
+            .frame(minWidth: 220, maxHeight: 320)
+            .background(GranaTheme.Palette.paperSolid)
         }
     }
 
-    private func filterMenu<Content: View>(
-        title: String,
-        icon: String,
-        @ViewBuilder content: () -> Content
+    private func headerFilterOption(
+        _ title: String,
+        action: @escaping () -> Void
     ) -> some View {
-        Menu {
-            content()
-        } label: {
-            HStack(spacing: GranaTheme.Spacing.xs) {
-                Image(systemName: icon)
-                Text(title)
-                    .lineLimit(1)
-                Image(systemName: "chevron.down")
-                    .font(.system(size: GranaTheme.IconSize.micro, weight: .bold))
-                    .foregroundStyle(.secondary)
-            }
-            .font(GranaTheme.Typography.subheadlineEmphasis)
-            .foregroundStyle(GranaTheme.Palette.ink)
-            .padding(.horizontal, GranaTheme.Spacing.sm)
-            .frame(height: 30)
-            .background(
-                RoundedRectangle(cornerRadius: 10, style: .continuous)
-                    .fill(GranaTheme.Palette.paper.opacity(0.82))
-            )
-            .overlay {
-                RoundedRectangle(cornerRadius: 10, style: .continuous)
-                    .stroke(GranaTheme.Palette.line, lineWidth: 1)
-            }
+        Button(action: action) {
+            Text(title)
+                .font(GranaTheme.Typography.footnoteEmphasis)
+                .foregroundStyle(GranaTheme.Palette.ink)
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .padding(.horizontal, GranaTheme.Spacing.sm)
+                .padding(.vertical, GranaTheme.Spacing.xs)
+                .contentShape(Rectangle())
         }
-        .menuStyle(.borderlessButton)
+        .buttonStyle(.plain)
+    }
+
+    private func headerFilterCard(
+        caption: String,
+        value: String,
+        icon: String
+    ) -> some View {
+        HStack(spacing: GranaTheme.Spacing.sm) {
+            Image(systemName: icon)
+                .font(.system(size: GranaTheme.IconSize.small, weight: .semibold))
+                .foregroundStyle(GranaTheme.Palette.tealDeep)
+
+            VStack(alignment: .leading, spacing: GranaTheme.Spacing.xxs) {
+                Text(caption)
+                    .font(GranaTheme.Typography.caption2Emphasis)
+                    .foregroundStyle(.secondary)
+                Text(value)
+                    .font(GranaTheme.Typography.footnoteEmphasis)
+                    .lineLimit(1)
+            }
+
+            Spacer(minLength: GranaTheme.Spacing.xs)
+
+            Image(systemName: "chevron.down")
+                .font(.system(size: GranaTheme.IconSize.micro, weight: .semibold))
+                .foregroundStyle(.secondary)
+        }
+        .padding(.horizontal, GranaTheme.Spacing.md)
+        .frame(minWidth: 168, minHeight: 64, alignment: .leading)
+        .background(
+            RoundedRectangle(cornerRadius: 14, style: .continuous)
+                .fill(GranaTheme.Palette.paper.opacity(0.84))
+        )
+        .overlay {
+            RoundedRectangle(cornerRadius: 14, style: .continuous)
+                .stroke(GranaTheme.Palette.line, lineWidth: 1)
+        }
     }
 
     private func descriptionCell(_ transaction: Transaction) -> some View {
@@ -532,147 +534,214 @@ struct TransactionsView: View {
     }
 
     private func transactionsCountText(store: TransactionStore) -> String {
-        let visible = filtered(store: store).count
-        let total = store.transactions.count
-        if visible == total {
-            return "\(visible) transações"
-        }
-        return "\(visible) de \(total) transações"
+        let visible = filtered(store: store).count, total = store.transactions.count
+        return visible == total ? "\(visible) transações" : "\(visible) de \(total) transações"
     }
 
     private func rootCategories(store: TransactionStore) -> [Category] {
-        store.categories
-            .filter { $0.parentId == nil }
-            .sorted {
-                $0.name.localizedStandardCompare($1.name) == .orderedAscending
-            }
+        store.categories.filter { $0.parentId == nil }
+            .sorted { $0.name.localizedStandardCompare($1.name) == .orderedAscending }
     }
 
     private func availableBanks(store: TransactionStore) -> [Institution] {
-        let institutionIds = Set(store.accounts.compactMap(\.institutionId))
-        return store.institutions
-            .filter { institutionIds.contains($0.id) }
-            .sorted {
-                $0.name.localizedStandardCompare($1.name) == .orderedAscending
+        let ids = Set(store.accounts.compactMap(\.institutionId))
+        return store.institutions.filter { ids.contains($0.id) }
+            .sorted { $0.name.localizedStandardCompare($1.name) == .orderedAscending }
+    }
+}
+
+private enum TransactionsHeaderPresentedFilter {
+    case bank
+    case category
+    case period
+    case kind
+}
+
+private struct TransactionsHeaderView: View {
+    @Binding var searchText: String
+    let countText: String
+    let onImport, onAdd: () -> Void
+    let bankControl, periodControl, categoryControl, kindControl: AnyView
+
+    var body: some View {
+        HStack(alignment: .top, spacing: GranaTheme.Spacing.sm) {
+            VStack(alignment: .leading, spacing: GranaTheme.Spacing.md) {
+                HStack(alignment: .top, spacing: GranaTheme.Spacing.md) {
+                    VStack(alignment: .leading, spacing: GranaTheme.Spacing.xs) {
+                        HStack(spacing: GranaTheme.Spacing.sm) {
+                            Text("Transações")
+                                .font(GranaTheme.Typography.title3)
+                        }
+                        Text(countText)
+                            .font(GranaTheme.Typography.subheadline)
+                            .foregroundStyle(.secondary)
+                    }
+                    Spacer(minLength: GranaTheme.Spacing.none)
+                    searchBox
+                        .frame(width: 520)
+                }
+                HStack(spacing: GranaTheme.Spacing.sm) {
+                    bankControl
+                    categoryControl
+                    periodControl
+                    kindControl
+                    Spacer(minLength: GranaTheme.Spacing.none)
+                }
             }
+            .padding(GranaTheme.Spacing.md)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .granaSurface(.subtle, cornerRadius: GranaTheme.Radius.panel)
+
+            VStack(alignment: .leading, spacing: GranaTheme.Spacing.sm) {
+                actionsCard
+            }
+            .frame(width: 288)
+        }
+    }
+
+    private var searchBox: some View {
+        HStack(spacing: GranaTheme.Spacing.sm) {
+            ZStack {
+                Circle()
+                    .fill(GranaTheme.Palette.teal.opacity(0.12))
+                    .frame(width: 28, height: 28)
+                Image(systemName: "magnifyingglass")
+                    .font(.system(size: GranaTheme.IconSize.small, weight: .semibold))
+                    .foregroundStyle(GranaTheme.Palette.tealDeep)
+            }
+            TextField("Descrição, categoria ou conta", text: $searchText)
+                .textFieldStyle(.plain)
+                .font(GranaTheme.Typography.subheadlineEmphasis)
+
+            if !searchText.isEmpty {
+                Button {
+                    searchText = ""
+                } label: {
+                    Image(systemName: "xmark.circle.fill")
+                        .foregroundStyle(.secondary)
+                }
+                    .buttonStyle(.plain)
+            }
+        }
+        .padding(.horizontal, GranaTheme.Spacing.md)
+        .padding(.vertical, GranaTheme.Spacing.sm)
+        .frame(height: 52)
+        .background(
+            RoundedRectangle(cornerRadius: 14, style: .continuous)
+                .fill(GranaTheme.Palette.paper.opacity(0.92))
+        )
+        .overlay {
+            RoundedRectangle(cornerRadius: 14, style: .continuous)
+                .stroke(GranaTheme.Palette.line, lineWidth: 1)
+        }
+    }
+
+    private var actionsCard: some View {
+        VStack(spacing: GranaTheme.Spacing.xs) {
+            action("Adicionar", AppIcon.add.systemImage, onAdd, true)
+            action("Importar", AppIcon.importFile.systemImage, onImport, false)
+        }
+        .padding(GranaTheme.Spacing.md)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .granaSurface(.subtle, cornerRadius: GranaTheme.Radius.panel)
+    }
+
+    @ViewBuilder private func action(
+        _ title: String,
+        _ icon: String,
+        _ run: @escaping () -> Void,
+        _ primary: Bool
+    ) -> some View {
+        if primary {
+            Button(action: run) {
+                Label(title, systemImage: icon)
+            }
+            .buttonStyle(GranaPrimaryButtonStyle())
+        } else {
+            Button(action: run) {
+                Label(title, systemImage: icon)
+            }
+            .buttonStyle(GranaSecondaryButtonStyle())
+        }
     }
 }
 
 private enum TransactionKindFilter: CaseIterable, Identifiable {
-    case all
-    case expense
-    case income
-    case transfer
-
+    case all, expense, income, transfer
     var id: Self {
         self
     }
 
     var name: String {
-        switch self {
-        case .all: "Todas"
-        case .expense: "Despesas"
-        case .income: "Receitas"
-        case .transfer: "Transferências"
-        }
+        self == .all ? "Todas" : self == .expense ? "Despesas" : self == .income ? "Receitas" : "Transferências"
     }
 
     func matches(_ transaction: Transaction, store: TransactionStore) -> Bool {
         let kind = store.category(for: transaction.categoryId)?.kind
-        switch self {
-        case .all:
-            return true
-        case .expense:
-            return kind == .expense
-        case .income:
-            return kind == .income
-        case .transfer:
-            return kind == .transfer
-        }
+        return self == .all || self == .expense && kind == .expense || self == .income && kind == .income || self ==
+            .transfer && kind == .transfer
     }
 }
 
 private enum TransactionCategoryFilter: Equatable {
-    case all
-    case category(UUID)
+    case all, category(UUID)
 
     func name(store: TransactionStore) -> String {
-        switch self {
-        case .all:
-            return "Todas categorias"
-        case let .category(id):
+        if case let .category(id) = self {
             return store.category(for: id)?.name ?? "Categoria"
         }
+        return "Todas categorias"
     }
 
-    func matches(_ transaction: Transaction, store _: TransactionStore) -> Bool {
-        switch self {
-        case .all:
-            return true
-        case let .category(id):
+    func matches(
+        _ transaction: Transaction,
+        store _: TransactionStore
+    ) -> Bool {
+        if case let .category(id) = self {
             return transaction.categoryId == id || transaction.subcategoryId == id
         }
+        return true
     }
 }
 
 private enum TransactionPeriodFilter: CaseIterable, Identifiable {
-    case month
-    case quarter
-    case year
-    case all
-
+    case month, quarter, year, all
     var id: Self {
         self
     }
 
     var name: String {
-        switch self {
-        case .month: "Este mês"
-        case .quarter: "90 dias"
-        case .year: "Este ano"
-        case .all: "Tudo"
-        }
+        self == .month ? "Este mês" : self == .quarter ? "90 dias" : self == .year ? "Este ano" : "Tudo"
     }
 
     func matches(_ transaction: Transaction, calendar: Calendar = .current, today: Date = Date()) -> Bool {
-        switch self {
-        case .all:
-            return true
-        case .month:
-            let interval = calendar.dateInterval(of: .month, for: today)
-            return interval?.contains(transaction.occurredAt) ?? true
-        case .year:
-            let interval = calendar.dateInterval(of: .year, for: today)
-            return interval?.contains(transaction.occurredAt) ?? true
-        case .quarter:
-            guard let start = calendar.date(byAdding: .day, value: -90, to: today) else {
-                return true
-            }
-            return transaction.occurredAt >= start && transaction.occurredAt <= today
-        }
+        if self == .all { return true }
+        if self ==
+            .month { return calendar.dateInterval(of: .month, for: today)?.contains(transaction.occurredAt) ?? true }
+        if self ==
+            .year { return calendar.dateInterval(of: .year, for: today)?.contains(transaction.occurredAt) ?? true }
+        guard let start = calendar.date(byAdding: .day, value: -90, to: today) else { return true }
+        return transaction.occurredAt >= start && transaction.occurredAt <= today
     }
 }
 
 private enum TransactionBankFilter: Equatable {
-    case all
-
-    case bank(UUID)
+    case all, bank(UUID)
 
     func name(store: TransactionStore) -> String {
-        switch self {
-        case .all:
-            return "Todos bancos"
-        case let .bank(id):
+        if case let .bank(id) = self {
             return store.institution(for: id)?.name ?? "Banco"
         }
+        return "Todos bancos"
     }
 
-    func matches(_ transaction: Transaction, store: TransactionStore) -> Bool {
-        switch self {
-        case .all:
-            return true
-        case let .bank(id):
+    func matches(
+        _ transaction: Transaction,
+        store: TransactionStore
+    ) -> Bool {
+        if case let .bank(id) = self {
             return store.account(for: transaction.accountId)?.institutionId == id
         }
+        return true
     }
 }
