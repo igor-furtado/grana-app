@@ -110,7 +110,7 @@ struct CategoriesView: View {
         ]
 
         ScrollView {
-            LazyVStack(alignment: .leading, spacing: Spacing.xxxl) {
+            LazyVStack(alignment: .leading, spacing: GranaTheme.Spacing.xxl) {
                 ForEach(sections, id: \.0) { kind, title, accent in
                     let groups = makeGroups(from: byKind[kind] ?? [])
                     if !groups.isEmpty {
@@ -126,8 +126,8 @@ struct CategoriesView: View {
     /// Seção de um kind: cabeçalho com bolinha de cor + título + contagem,
     /// e um `LazyVGrid` adaptativo de cards uniformes.
     private func kindSection(title: String, accent: Color, groups: [CategoryGroup]) -> some View {
-        VStack(alignment: .leading, spacing: Spacing.lg) {
-            HStack(spacing: Spacing.sm) {
+        VStack(alignment: .leading, spacing: GranaTheme.Spacing.md) {
+            HStack(spacing: GranaTheme.Spacing.xs) {
                 Circle()
                     .fill(accent)
                     .frame(width: 10, height: 10)
@@ -138,7 +138,7 @@ struct CategoriesView: View {
                     .foregroundStyle(.secondary)
             }
 
-            LazyVGrid(columns: Self.gridColumns, alignment: .leading, spacing: Spacing.md) {
+            LazyVGrid(columns: Self.gridColumns, alignment: .leading, spacing: GranaTheme.Spacing.sm) {
                 ForEach(groups) { group in
                     CategoryCard(
                         group: group,
@@ -151,7 +151,7 @@ struct CategoriesView: View {
     }
 
     private static let gridColumns: [GridItem] = [
-        GridItem(.adaptive(minimum: 150), spacing: Spacing.md, alignment: .top),
+        GridItem(.adaptive(minimum: 150), spacing: GranaTheme.Spacing.sm, alignment: .top),
     ]
 
     @ViewBuilder
@@ -164,7 +164,7 @@ struct CategoriesView: View {
     }
 
     private var inspectorPlaceholder: some View {
-        VStack(spacing: Spacing.md) {
+        VStack(spacing: GranaTheme.Spacing.sm) {
             Image(systemName: AppIcon.sidebarCategories.systemImage)
                 .font(.system(size: GranaTheme.IconSize.large))
                 .foregroundStyle(.tertiary)
@@ -261,7 +261,7 @@ private struct CategoryCard: View {
         // SF Symbols pra tile selecionada).
         Button(action: onTap) {
             GroupBox {
-                VStack(spacing: Spacing.md) {
+                VStack(spacing: GranaTheme.Spacing.sm) {
                     iconView
                         .frame(maxWidth: .infinity)
 
@@ -314,10 +314,10 @@ private struct CategoryInspector: View {
 
     var body: some View {
         ScrollView {
-            VStack(alignment: .leading, spacing: Spacing.xl) {
+            VStack(alignment: .leading, spacing: GranaTheme.Spacing.lg) {
                 iconHero
 
-                VStack(alignment: .center, spacing: Spacing.xs) {
+                VStack(alignment: .center, spacing: GranaTheme.Spacing.xxs) {
                     Text(group.root.name)
                         .font(GranaTheme.Typography.title3)
                         .multilineTextAlignment(.center)
@@ -331,7 +331,7 @@ private struct CategoryInspector: View {
 
                 subsSection
             }
-            .padding(Spacing.xl)
+            .padding(GranaTheme.Spacing.lg)
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
     }
@@ -363,7 +363,7 @@ private struct CategoryInspector: View {
     @ViewBuilder
     private var kindBadge: some View {
         let (label, color) = kindMeta
-        HStack(spacing: Spacing.xs) {
+        HStack(spacing: GranaTheme.Spacing.xxs) {
             Circle()
                 .fill(color)
                 .frame(width: 7, height: 7)
@@ -396,7 +396,7 @@ private struct CategoryInspector: View {
                     .italic()
                     .frame(maxWidth: .infinity, alignment: .leading)
             } else {
-                VStack(alignment: .leading, spacing: Spacing.sm) {
+                VStack(alignment: .leading, spacing: GranaTheme.Spacing.xs) {
                     ForEach(group.subs) { sub in
                         Text(sub.name)
                             .font(GranaTheme.Typography.subheadline)
@@ -406,7 +406,7 @@ private struct CategoryInspector: View {
                 }
             }
         } label: {
-            HStack(spacing: Spacing.xs) {
+            HStack(spacing: GranaTheme.Spacing.xxs) {
                 Text("Subcategorias")
                 Text("(\(group.subs.count))")
                     .foregroundStyle(.tertiary)

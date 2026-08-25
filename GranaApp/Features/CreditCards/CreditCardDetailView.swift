@@ -82,7 +82,7 @@ struct CreditCardDetailView: View {
 
     var body: some View {
         ScrollView {
-            VStack(alignment: .leading, spacing: 20) {
+            VStack(alignment: .leading, spacing: GranaTheme.Spacing.lg) {
                 header
                 if let details, let limit = details.creditLimit, limit > 0 {
                     LimitGaugeBlock(
@@ -127,7 +127,7 @@ struct CreditCardDetailView: View {
     // MARK: - Header
 
     private var header: some View {
-        HStack(alignment: .top, spacing: 14) {
+        HStack(alignment: .top, spacing: GranaTheme.Spacing.md) {
             if let institution {
                 InstitutionIcon(kind: institution.kind, size: 56)
             } else {
@@ -141,7 +141,7 @@ struct CreditCardDetailView: View {
                     }
             }
 
-            VStack(alignment: .leading, spacing: 4) {
+            VStack(alignment: .leading, spacing: GranaTheme.Spacing.xxs) {
                 Text(bankName)
                     .font(GranaTheme.Typography.title3)
                 Text(maskedNumber)
@@ -151,8 +151,8 @@ struct CreditCardDetailView: View {
                     Text("Arquivado")
                         .font(GranaTheme.Typography.caption1)
                         .foregroundStyle(.secondary)
-                        .padding(.horizontal, 8)
-                        .padding(.vertical, 2)
+                        .padding(.horizontal, GranaTheme.Spacing.xs)
+                        .padding(.vertical, GranaTheme.Spacing.xxs)
                         .background(
                             Capsule().fill(Color.secondary.opacity(0.15))
                         )
@@ -186,7 +186,7 @@ struct CreditCardDetailView: View {
     // MARK: - Transactions block
 
     private var transactionsBlock: some View {
-        VStack(alignment: .leading, spacing: 8) {
+        VStack(alignment: .leading, spacing: GranaTheme.Spacing.xs) {
             HStack {
                 Text("Lançamentos")
                     .font(GranaTheme.Typography.headline)
@@ -223,7 +223,7 @@ struct CreditCardDetailView: View {
             summaryRow("Saldo restante", value: statement.remainingAmount)
             summaryRow("Saldo credor", value: statement.creditBalance)
         }
-        .padding(12)
+        .padding(GranaTheme.Spacing.sm)
         .background(
             RoundedRectangle(cornerRadius: 10, style: .continuous)
                 .fill(Color.secondary.opacity(0.06))
@@ -248,7 +248,7 @@ struct CreditCardDetailView: View {
     private var emptyTransactions: some View {
         HStack {
             Spacer()
-            VStack(spacing: 8) {
+            VStack(spacing: GranaTheme.Spacing.xs) {
                 Image(systemName: "tray")
                     .font(.system(size: GranaTheme.IconSize.medium))
                     .foregroundStyle(.secondary)
@@ -256,7 +256,7 @@ struct CreditCardDetailView: View {
                     .font(GranaTheme.Typography.callout)
                     .foregroundStyle(.secondary)
             }
-            .padding(.vertical, 30)
+            .padding(.vertical, GranaTheme.Spacing.xxl)
             Spacer()
         }
         .background(
@@ -294,9 +294,9 @@ private struct LimitGaugeBlock: View {
     }
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 10) {
+        VStack(alignment: .leading, spacing: GranaTheme.Spacing.sm) {
             HStack(alignment: .firstTextBaseline) {
-                VStack(alignment: .leading, spacing: 2) {
+                VStack(alignment: .leading, spacing: GranaTheme.Spacing.xxs) {
                     Text("LIMITE UTILIZADO")
                         .font(GranaTheme.Typography.caption2Emphasis)
                         .tracking(0.8)
@@ -306,7 +306,7 @@ private struct LimitGaugeBlock: View {
                         .foregroundStyle(.primary)
                 }
                 Spacer()
-                VStack(alignment: .trailing, spacing: 2) {
+                VStack(alignment: .trailing, spacing: GranaTheme.Spacing.xxs) {
                     Text("LIMITE TOTAL")
                         .font(GranaTheme.Typography.caption2Emphasis)
                         .tracking(0.8)
@@ -328,8 +328,8 @@ private struct LimitGaugeBlock: View {
             }
             .frame(height: 8)
 
-            HStack(spacing: 14) {
-                HStack(spacing: 6) {
+            HStack(spacing: GranaTheme.Spacing.md) {
+                HStack(spacing: GranaTheme.Spacing.xs) {
                     Circle().fill(color).frame(width: 8, height: 8)
                     Text("Usado: ")
                         .font(GranaTheme.Typography.caption1)
@@ -338,7 +338,7 @@ private struct LimitGaugeBlock: View {
                         .font(GranaTheme.Typography.moneyFootnote)
                         .foregroundStyle(.primary)
                 }
-                HStack(spacing: 6) {
+                HStack(spacing: GranaTheme.Spacing.xs) {
                     Circle().fill(Color.secondary.opacity(0.4)).frame(width: 8, height: 8)
                     Text("Disponível: ")
                         .font(GranaTheme.Typography.caption1)
@@ -353,7 +353,7 @@ private struct LimitGaugeBlock: View {
                     .foregroundStyle(color)
             }
         }
-        .padding(16)
+        .padding(GranaTheme.Spacing.md)
         .background(
             RoundedRectangle(cornerRadius: 12, style: .continuous)
                 .fill(Color(nsColor: .windowBackgroundColor))
@@ -435,7 +435,7 @@ private struct StatementTimelineChart: View {
     }()
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 8) {
+        VStack(alignment: .leading, spacing: GranaTheme.Spacing.xs) {
             Text("Histórico de faturas")
                 .font(GranaTheme.Typography.headline)
 
@@ -443,7 +443,7 @@ private struct StatementTimelineChart: View {
             // BarMark porque precisamos de cor diferente por barra E hit
             // testing individual pra seleção — combinação onde o `Chart`
             // fica mais verbosa que vale a pena nesse caso.
-            HStack(alignment: .bottom, spacing: 14) {
+            HStack(alignment: .bottom, spacing: GranaTheme.Spacing.md) {
                 ForEach(bars) { bar in
                     BarColumn(
                         bar: bar,
@@ -459,8 +459,8 @@ private struct StatementTimelineChart: View {
                 }
             }
             .frame(height: 140)
-            .padding(.horizontal, 8)
-            .padding(.vertical, 12)
+            .padding(.horizontal, GranaTheme.Spacing.xs)
+            .padding(.vertical, GranaTheme.Spacing.sm)
             .frame(maxWidth: .infinity)
             .background(
                 RoundedRectangle(cornerRadius: 12, style: .continuous)
@@ -486,7 +486,7 @@ private struct StatementTimelineChart: View {
         let onTap: () -> Void
 
         var body: some View {
-            VStack(spacing: 4) {
+            VStack(spacing: GranaTheme.Spacing.xxs) {
                 Text(bar.total > 0 ? bar.total.formatted(.currency(code: currency)) : " ")
                     .font(GranaTheme.Typography.moneyCaption2)
                     .foregroundStyle(isSelected ? .primary : .secondary)
@@ -553,7 +553,7 @@ private struct StatementCyclePanel: View {
     let bestPurchaseDay: Int?
 
     var body: some View {
-        HStack(alignment: .top, spacing: 12) {
+        HStack(alignment: .top, spacing: GranaTheme.Spacing.sm) {
             cell(for: previousItem, role: .previous)
             cell(for: selectedItem, role: .selected)
             cell(for: nextItem, role: .next)
@@ -687,8 +687,8 @@ private struct StatementCycleCard: View {
     }
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 10) {
-            HStack(spacing: 6) {
+        VStack(alignment: .leading, spacing: GranaTheme.Spacing.sm) {
+            HStack(spacing: GranaTheme.Spacing.xs) {
                 Text(title)
                     .font(GranaTheme.Typography.calloutEmphasis)
                 StatusBadge(label: statusLabel, tint: statusTint)
@@ -700,7 +700,7 @@ private struct StatementCycleCard: View {
 
             Divider()
 
-            VStack(alignment: .leading, spacing: 4) {
+            VStack(alignment: .leading, spacing: GranaTheme.Spacing.xxs) {
                 HStack {
                     Text("Data de vencimento")
                         .font(GranaTheme.Typography.caption1)
@@ -721,7 +721,7 @@ private struct StatementCycleCard: View {
                 }
             }
         }
-        .padding(14)
+        .padding(GranaTheme.Spacing.md)
         .frame(maxWidth: .infinity, alignment: .leading)
         .background(
             RoundedRectangle(cornerRadius: 12, style: .continuous)
@@ -753,8 +753,8 @@ private struct StatementCycleCard: View {
         var body: some View {
             Text(label)
                 .font(GranaTheme.Typography.caption2Emphasis)
-                .padding(.horizontal, 6)
-                .padding(.vertical, 2)
+                .padding(.horizontal, GranaTheme.Spacing.xs)
+                .padding(.vertical, GranaTheme.Spacing.xxs)
                 .background(
                     Capsule().fill(background)
                 )

@@ -102,6 +102,35 @@ SF Symbols e outros icones nao fazem parte da escala textual; seus tamanhos vêm
 de `GranaTheme.IconSize` ou de componentes dedicados como `AppIcon`,
 `InstitutionIcon` e `CategoryBadge`.
 
+## Spacing
+
+Distancias entre elementos usam exclusivamente tokens em `GranaTheme.Spacing`.
+Isso inclui `spacing`, `padding`, `EdgeInsets` e gaps de grids. Views e
+componentes nao usam numeros diretos para respiro, salvo
+`GranaTheme.Spacing.none` para ausencia intencional de espaco.
+
+Escala de spacing:
+
+| Token | Valor | Uso |
+|---|---:|---|
+| `none` | 0 pt | Ausencia intencional de espaco |
+| `xxs` | 4 pt | Menor respiro positivo, ajustes densos |
+| `xs` | 8 pt | Icone + texto, labels proximas e microgrupos |
+| `sm` | 12 pt | Espaco compacto entre elementos de uma row |
+| `md` | 16 pt | Padding e gaps padrao de cards e grids |
+| `lg` | 20 pt | Separacao entre grupos de uma tela |
+| `xl` | 24 pt | Padding top-level e secoes amplas |
+| `xxl` | 32 pt | Separacao forte entre blocos majoritarios |
+| `xxxl` | 40 pt | Respiro maximo de pagina ou estado vazio |
+
+Quando um spacing existente nao cair exatamente na escala, escolha o token mais
+proximo; em empate, arredonde para cima. Qualquer distancia positiva menor que
+`xxs` vira `xxs`.
+
+Dimensoes visuais nao sao spacing. Larguras, alturas, tamanhos de icone,
+bolinhas, barras, colunas e alturas minimas permanecem como constantes
+especificas ou tokens de `Size` quando essa escala existir.
+
 ## Aplicacao Inicial
 
 A primeira fase cobre `GranaTheme`, light-only global, rail customizado,

@@ -33,9 +33,9 @@ struct CSVReviewStepView: View {
     }
 
     var body: some View {
-        VStack(spacing: 0) {
+        VStack(spacing: GranaTheme.Spacing.none) {
             // Card "Conta de destino" + skipped negatives info.
-            VStack(alignment: .leading, spacing: 0) {
+            VStack(alignment: .leading, spacing: GranaTheme.Spacing.none) {
                 CSVAccountInfoCard(
                     store: store,
                     accounts: creditCardAccounts
@@ -79,7 +79,7 @@ struct CSVReviewStepView: View {
         return Form {
             Section {
                 DisclosureGroup {
-                    VStack(alignment: .leading, spacing: 6) {
+                    VStack(alignment: .leading, spacing: GranaTheme.Spacing.xs) {
                         ForEach(rows) { row in
                             HStack(alignment: .center) {
                                 Text(row.raw.date, format: .dateTime.day().month().year())
@@ -115,7 +115,7 @@ struct CSVReviewStepView: View {
                             }
                         }
                     }
-                    .padding(.top, 6)
+                    .padding(.top, GranaTheme.Spacing.xs)
                 } label: {
                     Label {
                         Text(
@@ -185,8 +185,8 @@ private struct CSVAccountInfoCard: View {
                     if resolution?.accountId == nil {
                         Text("Escolha")
                             .font(GranaTheme.Typography.caption1)
-                            .padding(.horizontal, 8)
-                            .padding(.vertical, 3)
+                            .padding(.horizontal, GranaTheme.Spacing.xs)
+                            .padding(.vertical, GranaTheme.Spacing.xxs)
                             .background(Color.warning.opacity(0.18))
                             .foregroundStyle(.secondary)
                             .clipShape(Capsule())
@@ -218,7 +218,7 @@ private struct CSVTransactionsListCard: View {
         Form {
             Section {
                 ScrollView {
-                    LazyVStack(spacing: 0) {
+                    LazyVStack(spacing: GranaTheme.Spacing.none) {
                         TransactionsSelectionRow(
                             summary: selectionSummary,
                             allSelected: allSelected,
@@ -231,8 +231,8 @@ private struct CSVTransactionsListCard: View {
                         Divider()
                         ForEach($resolution.rows) { $row in
                             CSVRowView(row: $row, institutionKind: institutionKind)
-                                .padding(.horizontal, 14)
-                                .padding(.vertical, 6)
+                                .padding(.horizontal, GranaTheme.Spacing.md)
+                                .padding(.vertical, GranaTheme.Spacing.xs)
                             Divider()
                         }
                     }
@@ -243,7 +243,7 @@ private struct CSVTransactionsListCard: View {
             }
         }
         .formStyle(.grouped)
-        .contentMargins(.horizontal, 0, for: .scrollContent)
+        .contentMargins(.horizontal, GranaTheme.Spacing.none, for: .scrollContent)
         .frame(maxHeight: .infinity)
     }
 

@@ -48,7 +48,7 @@ struct TransactionRow: View {
     let status: Status?
 
     var body: some View {
-        HStack(alignment: .center, spacing: 12) {
+        HStack(alignment: .center, spacing: GranaTheme.Spacing.sm) {
             if let selection {
                 Toggle("", isOn: selection)
                     .toggleStyle(.checkbox)
@@ -59,7 +59,7 @@ struct TransactionRow: View {
                 InstitutionIcon(kind: institutionKind, size: 24)
             }
 
-            VStack(alignment: .leading, spacing: 2) {
+            VStack(alignment: .leading, spacing: GranaTheme.Spacing.xxs) {
                 Text(description)
                     .font(GranaTheme.Typography.callout)
                     .lineLimit(1)
@@ -78,7 +78,7 @@ struct TransactionRow: View {
                 statusBadge(status)
             }
 
-            VStack(alignment: .trailing, spacing: 2) {
+            VStack(alignment: .trailing, spacing: GranaTheme.Spacing.xxs) {
                 Text(Self.currencyFormatter.string(from: amount as NSDecimalNumber) ?? "")
                     .font(GranaTheme.Typography.moneySubheadline)
                     .foregroundStyle(amountColor)
@@ -110,8 +110,8 @@ struct TransactionRow: View {
     private func statusBadge(_ status: Status) -> some View {
         Text(status.label)
             .font(GranaTheme.Typography.caption1)
-            .padding(.horizontal, 8)
-            .padding(.vertical, 3)
+            .padding(.horizontal, GranaTheme.Spacing.xs)
+            .padding(.vertical, GranaTheme.Spacing.xxs)
             .background(background(for: status.tint))
             .foregroundStyle(foreground(for: status.tint))
             .clipShape(Capsule())

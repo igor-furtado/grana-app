@@ -29,7 +29,7 @@ struct CategorizationRowView: View {
         // baseline diferenciado dá prioridade visual à descrição em larguras
         // apertadas, mas em larguras confortáveis as três crescem na mesma
         // proporção.
-        HStack(alignment: .center, spacing: 12) {
+        HStack(alignment: .center, spacing: GranaTheme.Spacing.sm) {
             if let kind = store.institutionKind(forAccountId: suggestion.transactionAccountId) {
                 InstitutionIcon(kind: kind, size: 24)
             }
@@ -44,7 +44,7 @@ struct CategorizationRowView: View {
             categoryMenu
             subcategoryMenu
 
-            VStack(alignment: .trailing, spacing: 2) {
+            VStack(alignment: .trailing, spacing: GranaTheme.Spacing.xxs) {
                 Text(suggestion.transactionAmount.formatted(.currency(code: "BRL")))
                     .font(GranaTheme.Typography.moneySubheadline)
                     .foregroundStyle(amountColor)
@@ -144,7 +144,7 @@ struct CategorizationRowView: View {
     /// Label estilizado igual ao `Picker .menu` mas leve — o conteúdo
     /// (lista de opções) só é construído quando o menu abre.
     private func menuLabel(text: String) -> some View {
-        HStack(spacing: 4) {
+        HStack(spacing: GranaTheme.Spacing.xxs) {
             Text(text)
                 .lineLimit(1)
                 .frame(maxWidth: .infinity, alignment: .leading)
@@ -152,8 +152,8 @@ struct CategorizationRowView: View {
                 .font(.system(size: GranaTheme.IconSize.micro))
                 .foregroundStyle(.secondary)
         }
-        .padding(.horizontal, 8)
-        .padding(.vertical, 5)
+        .padding(.horizontal, GranaTheme.Spacing.xs)
+        .padding(.vertical, GranaTheme.Spacing.xxs)
         .background(Color(nsColor: .controlBackgroundColor))
         .clipShape(RoundedRectangle(cornerRadius: 6, style: .continuous))
     }

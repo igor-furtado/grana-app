@@ -45,8 +45,18 @@ enum GranaTheme {
     }
 
     enum Layout {
-        static let pageInsets = EdgeInsets(top: 0, leading: 0, bottom: 18, trailing: 18)
-        static let railInsets = EdgeInsets(top: 0, leading: 18, bottom: 18, trailing: 18)
+        static let pageInsets = EdgeInsets(
+            top: GranaTheme.Spacing.none,
+            leading: GranaTheme.Spacing.none,
+            bottom: GranaTheme.Spacing.lg,
+            trailing: GranaTheme.Spacing.lg
+        )
+        static let railInsets = EdgeInsets(
+            top: GranaTheme.Spacing.none,
+            leading: GranaTheme.Spacing.lg,
+            bottom: GranaTheme.Spacing.lg,
+            trailing: GranaTheme.Spacing.lg
+        )
     }
 
     enum Typography {
@@ -553,7 +563,7 @@ struct GranaPrimaryButtonStyle: ButtonStyle {
         configuration.label
             .font(GranaTheme.Typography.calloutEmphasis)
             .foregroundStyle(GranaTheme.Palette.creamText)
-            .padding(.horizontal, 18)
+            .padding(.horizontal, GranaTheme.Spacing.lg)
             .frame(minHeight: 48)
             .background(
                 GranaTheme.brandGradient(pressed: configuration.isPressed),
@@ -569,7 +579,7 @@ struct GranaSecondaryButtonStyle: ButtonStyle {
         configuration.label
             .font(GranaTheme.Typography.calloutEmphasis)
             .foregroundStyle(GranaTheme.Palette.ink)
-            .padding(.horizontal, 18)
+            .padding(.horizontal, GranaTheme.Spacing.lg)
             .frame(minHeight: 48)
             .background(
                 configuration.isPressed

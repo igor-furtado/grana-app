@@ -10,21 +10,21 @@ struct LoginView: View {
         ZStack {
             GranaBackground()
 
-            HStack(spacing: 18) {
+            HStack(spacing: GranaTheme.Spacing.lg) {
                 storyPanel
                 loginPanel
             }
             .frame(maxWidth: 1060)
-            .padding(24)
+            .padding(GranaTheme.Spacing.xl)
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
     }
 
     private var storyPanel: some View {
-        VStack(alignment: .leading, spacing: 24) {
+        VStack(alignment: .leading, spacing: GranaTheme.Spacing.xl) {
             logoMark
 
-            VStack(alignment: .leading, spacing: 16) {
+            VStack(alignment: .leading, spacing: GranaTheme.Spacing.md) {
                 Text("GranaApp")
                     .font(GranaTheme.Typography.largeTitle)
                     .foregroundStyle(GranaTheme.Palette.creamText)
@@ -38,15 +38,15 @@ struct LoginView: View {
                     .fixedSize(horizontal: false, vertical: true)
             }
 
-            Spacer(minLength: 28)
+            Spacer(minLength: GranaTheme.Spacing.xxl)
 
-            HStack(spacing: 9) {
+            HStack(spacing: GranaTheme.Spacing.xs) {
                 pill("Sem senha fixa")
                 pill("Online-only")
                 pill("Fonte remota")
             }
         }
-        .padding(34)
+        .padding(GranaTheme.Spacing.xxl)
         .frame(maxWidth: .infinity, minHeight: 520, alignment: .leading)
         .background(
             GranaTheme.brandGradient(),
@@ -60,8 +60,8 @@ struct LoginView: View {
     }
 
     private var loginPanel: some View {
-        VStack(alignment: .leading, spacing: 22) {
-            VStack(alignment: .leading, spacing: 10) {
+        VStack(alignment: .leading, spacing: GranaTheme.Spacing.xl) {
+            VStack(alignment: .leading, spacing: GranaTheme.Spacing.sm) {
                 Text("Iniciar sessão")
                     .font(GranaTheme.Typography.title2)
                     .foregroundStyle(GranaTheme.Palette.ink)
@@ -73,7 +73,7 @@ struct LoginView: View {
                     .fixedSize(horizontal: false, vertical: true)
             }
 
-            VStack(alignment: .leading, spacing: 8) {
+            VStack(alignment: .leading, spacing: GranaTheme.Spacing.xs) {
                 Text("E-mail")
                     .font(GranaTheme.Typography.footnoteEmphasis)
                     .foregroundStyle(GranaTheme.Palette.muted)
@@ -81,7 +81,7 @@ struct LoginView: View {
                 TextField("voce@exemplo.com", text: $email)
                     .textFieldStyle(.plain)
                     .font(GranaTheme.Typography.bodyEmphasis)
-                    .padding(.horizontal, 15)
+                    .padding(.horizontal, GranaTheme.Spacing.md)
                     .frame(height: 52)
                     .background(
                         GranaTheme.Palette.paper.opacity(0.86),
@@ -105,12 +105,12 @@ struct LoginView: View {
             Divider()
                 .overlay(GranaTheme.Palette.line)
 
-            VStack(alignment: .leading, spacing: 8) {
+            VStack(alignment: .leading, spacing: GranaTheme.Spacing.xs) {
                 statusRow("E-mail", normalizedEmail.isEmpty ? "vazio" : normalizedEmail)
                 statusRow("Envio", isSendingMagicLink ? "em andamento" : "aguardando")
             }
         }
-        .padding(34)
+        .padding(GranaTheme.Spacing.xxl)
         .frame(width: 420, alignment: .leading)
         .frame(minHeight: 520, alignment: .leading)
         .granaSurface(.subtle, cornerRadius: GranaTheme.Radius.hero)
@@ -131,8 +131,8 @@ struct LoginView: View {
         Text(text)
             .font(GranaTheme.Typography.footnoteEmphasis)
             .foregroundStyle(GranaTheme.Palette.creamText.opacity(0.86))
-            .padding(.horizontal, 10)
-            .padding(.vertical, 8)
+            .padding(.horizontal, GranaTheme.Spacing.sm)
+            .padding(.vertical, GranaTheme.Spacing.xs)
             .background(GranaTheme.Palette.creamText.opacity(0.10), in: Capsule())
     }
 

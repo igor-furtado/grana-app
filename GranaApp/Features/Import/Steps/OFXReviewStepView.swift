@@ -16,13 +16,13 @@ struct OFXReviewStepView: View {
     }
 
     var body: some View {
-        VStack(spacing: 0) {
+        VStack(spacing: GranaTheme.Spacing.none) {
             // Conta de destino: renderizada FORA do List como `Form { Section }`
             // nativo, pra ter o visual exato das telas Nova conta / Nova
             // transação. Pode ser uma ou múltiplas (multi-statement OFX);
             // empilhadas verticalmente. Sem padding horizontal externo — o
             // Form `.grouped` já entrega seu próprio recuo lateral.
-            VStack(alignment: .leading, spacing: 0) {
+            VStack(alignment: .leading, spacing: GranaTheme.Spacing.none) {
                 ForEach(store.ofxResolutions.indices, id: \.self) { idx in
                     OFXAccountInfoCard(store: store, statementIndex: idx)
                 }
@@ -159,8 +159,8 @@ private struct OFXAccountInfoCard: View {
         if resolution.accountId == nil {
             Text("Escolha")
                 .font(GranaTheme.Typography.caption1)
-                .padding(.horizontal, 8)
-                .padding(.vertical, 3)
+                .padding(.horizontal, GranaTheme.Spacing.xs)
+                .padding(.vertical, GranaTheme.Spacing.xxs)
                 .background(Color.warning.opacity(0.18))
                 .foregroundStyle(.secondary)
                 .clipShape(Capsule())
@@ -168,8 +168,8 @@ private struct OFXAccountInfoCard: View {
         } else if resolution.wasAutoDetected {
             Text("Detectada")
                 .font(GranaTheme.Typography.caption1)
-                .padding(.horizontal, 8)
-                .padding(.vertical, 3)
+                .padding(.horizontal, GranaTheme.Spacing.xs)
+                .padding(.vertical, GranaTheme.Spacing.xxs)
                 .background(Color.success.opacity(0.15))
                 .foregroundStyle(.success)
                 .clipShape(Capsule())
@@ -219,7 +219,7 @@ private struct OFXTransactionsListCard: View {
         Form {
             Section {
                 ScrollView {
-                    LazyVStack(spacing: 0) {
+                    LazyVStack(spacing: GranaTheme.Spacing.none) {
                         TransactionsSelectionRow(
                             summary: selectionSummary,
                             allSelected: allSelected,
@@ -233,8 +233,8 @@ private struct OFXTransactionsListCard: View {
                             let kind = bankKind(resolution.accountId)
                             ForEach($resolution.rows) { $row in
                                 OFXRowView(row: $row, institutionKind: kind)
-                                    .padding(.horizontal, 14)
-                                    .padding(.vertical, 6)
+                                    .padding(.horizontal, GranaTheme.Spacing.md)
+                                    .padding(.vertical, GranaTheme.Spacing.xs)
                                 Divider()
                             }
                         }
@@ -248,7 +248,7 @@ private struct OFXTransactionsListCard: View {
             }
         }
         .formStyle(.grouped)
-        .contentMargins(.horizontal, 0, for: .scrollContent)
+        .contentMargins(.horizontal, GranaTheme.Spacing.none, for: .scrollContent)
         .frame(maxHeight: .infinity)
     }
 
@@ -259,8 +259,8 @@ private struct OFXTransactionsListCard: View {
                 .foregroundStyle(.secondary)
             Spacer()
         }
-        .padding(.horizontal, 14)
-        .padding(.vertical, 8)
+        .padding(.horizontal, GranaTheme.Spacing.md)
+        .padding(.vertical, GranaTheme.Spacing.xs)
         .background(Color.primary.opacity(0.04))
     }
 

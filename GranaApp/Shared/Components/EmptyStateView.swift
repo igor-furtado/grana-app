@@ -25,10 +25,10 @@ struct EmptyStateView<Actions: View>: View {
     }
 
     var body: some View {
-        VStack(spacing: 0) {
+        VStack(spacing: GranaTheme.Spacing.none) {
             iconView
                 .font(.system(size: GranaTheme.IconSize.hero, weight: .bold))
-                .padding(.bottom, 22)
+                .padding(.bottom, GranaTheme.Spacing.xl)
 
             Text(title)
                 .font(GranaTheme.Typography.title1)
@@ -46,14 +46,14 @@ struct EmptyStateView<Actions: View>: View {
                     .lineSpacing(3)
                     .fixedSize(horizontal: false, vertical: true)
                     .frame(maxWidth: 560)
-                    .padding(.top, 18)
+                    .padding(.top, GranaTheme.Spacing.lg)
             }
 
             actions
-                .padding(.top, 28)
+                .padding(.top, GranaTheme.Spacing.xxl)
         }
         .frame(maxWidth: 620)
-        .padding(34)
+        .padding(GranaTheme.Spacing.xxl)
     }
 
     /// Ícone unificado dos empty states. Dois tratamentos sempre aplicados:

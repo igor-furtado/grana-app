@@ -14,17 +14,17 @@ struct CreditCardsSidebar: View {
     @Binding var selectedId: UUID?
 
     var body: some View {
-        VStack(spacing: 0) {
+        VStack(spacing: GranaTheme.Spacing.none) {
             if cards.count >= 2 {
                 totalsHeader
-                    .padding(.horizontal, 14)
-                    .padding(.top, 12)
-                    .padding(.bottom, 10)
+                    .padding(.horizontal, GranaTheme.Spacing.md)
+                    .padding(.top, GranaTheme.Spacing.sm)
+                    .padding(.bottom, GranaTheme.Spacing.sm)
                 Divider()
             }
 
             ScrollView {
-                LazyVStack(spacing: 0) {
+                LazyVStack(spacing: GranaTheme.Spacing.none) {
                     ForEach(cards) { account in
                         SidebarCardRow(
                             account: account,
@@ -37,7 +37,7 @@ struct CreditCardsSidebar: View {
                         .onTapGesture { selectedId = account.id }
                     }
                 }
-                .padding(.vertical, 6)
+                .padding(.vertical, GranaTheme.Spacing.xs)
             }
         }
         .frame(maxHeight: .infinity)
@@ -47,14 +47,14 @@ struct CreditCardsSidebar: View {
     // MARK: - Totals header
 
     private var totalsHeader: some View {
-        VStack(alignment: .leading, spacing: 8) {
+        VStack(alignment: .leading, spacing: GranaTheme.Spacing.xs) {
             Text("TOTAIS")
                 .font(GranaTheme.Typography.caption2Emphasis)
                 .tracking(0.8)
                 .foregroundStyle(.secondary)
 
             HStack(alignment: .firstTextBaseline) {
-                VStack(alignment: .leading, spacing: 1) {
+                VStack(alignment: .leading, spacing: GranaTheme.Spacing.xxs) {
                     Text("Dívida")
                         .font(GranaTheme.Typography.caption2)
                         .foregroundStyle(.secondary)
@@ -64,7 +64,7 @@ struct CreditCardsSidebar: View {
                 }
                 Spacer()
                 if totalLimit > 0 {
-                    VStack(alignment: .trailing, spacing: 1) {
+                    VStack(alignment: .trailing, spacing: GranaTheme.Spacing.xxs) {
                         Text("Limite")
                             .font(GranaTheme.Typography.caption2)
                             .foregroundStyle(.secondary)
@@ -76,7 +76,7 @@ struct CreditCardsSidebar: View {
             }
 
             if let pct = usagePercent {
-                VStack(alignment: .leading, spacing: 3) {
+                VStack(alignment: .leading, spacing: GranaTheme.Spacing.xxs) {
                     SidebarUsageBar(percent: pct, color: usageColor(for: pct))
                     (Text("\(Int(pct * 100))%")
                         .font(GranaTheme.Typography.caption2Emphasis)
@@ -133,15 +133,15 @@ private struct SidebarCardRow: View {
     @State private var isHovered = false
 
     var body: some View {
-        HStack(spacing: 10) {
+        HStack(spacing: GranaTheme.Spacing.sm) {
             if let institution {
                 InstitutionIcon(kind: institution.kind, size: 28)
             } else {
                 placeholderIcon
             }
 
-            VStack(alignment: .leading, spacing: 2) {
-                HStack(spacing: 6) {
+            VStack(alignment: .leading, spacing: GranaTheme.Spacing.xxs) {
+                HStack(spacing: GranaTheme.Spacing.xs) {
                     Text(bankName)
                         .font(GranaTheme.Typography.calloutEmphasis)
                         .lineLimit(1)
@@ -153,7 +153,7 @@ private struct SidebarCardRow: View {
                 }
                 .foregroundStyle(isSelected ? Color.white : Color.primary)
 
-                HStack(spacing: 6) {
+                HStack(spacing: GranaTheme.Spacing.xs) {
                     Text(maskedNumber)
                         .font(GranaTheme.Typography.code)
                         .foregroundStyle(isSelected ? Color.white.opacity(0.85) : .secondary)
@@ -173,12 +173,12 @@ private struct SidebarCardRow: View {
                         color: isSelected ? Color.white.opacity(0.9) : barColor(for: pct),
                         trackColor: isSelected ? Color.white.opacity(0.25) : Color.secondary.opacity(0.20)
                     )
-                    .padding(.top, 2)
+                    .padding(.top, GranaTheme.Spacing.xxs)
                 }
             }
         }
-        .padding(.horizontal, 12)
-        .padding(.vertical, 8)
+        .padding(.horizontal, GranaTheme.Spacing.sm)
+        .padding(.vertical, GranaTheme.Spacing.xs)
         .background(rowBackground)
         .opacity(account.archived ? 0.65 : 1)
         .onHover { hovering in

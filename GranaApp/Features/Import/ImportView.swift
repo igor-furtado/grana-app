@@ -117,7 +117,7 @@ struct ImportView: View {
     }
 
     private func wizard(store: ImportStore) -> some View {
-        VStack(spacing: 0) {
+        VStack(spacing: GranaTheme.Spacing.none) {
             if let stepperIndex = Self.stepperIndex(for: store.phase) {
                 WizardStepper(
                     steps: ["Revisar", "Classificar", "Concluir"],
@@ -166,7 +166,7 @@ struct ImportView: View {
             ProgressView()
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
         case let .loading(progress):
-            VStack(spacing: 12) {
+            VStack(spacing: GranaTheme.Spacing.sm) {
                 ProgressView()
                     .controlSize(.large)
                 Text(progress)
@@ -193,7 +193,7 @@ struct ImportView: View {
                 )
             )
         case .confirming:
-            VStack(spacing: 12) {
+            VStack(spacing: GranaTheme.Spacing.sm) {
                 ProgressView()
                     .controlSize(.large)
                 Text("Importando…")
@@ -232,7 +232,7 @@ private struct FailedStepView: View {
 
     var body: some View {
         EmptyStateView("A importação falhou", icon: .warning, description: message) {
-            HStack(spacing: 12) {
+            HStack(spacing: GranaTheme.Spacing.sm) {
                 Button("Fechar") { onClose() }
                 Button("Recomeçar") { onRetry() }
                     .buttonStyle(.borderedProminent)

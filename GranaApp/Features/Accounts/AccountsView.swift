@@ -107,8 +107,8 @@ struct AccountsView: View {
     private func grid(store: AccountStore, accounts: [Account]) -> some View {
         ScrollView {
             LazyVGrid(
-                columns: [GridItem(.adaptive(minimum: 240, maximum: 340), spacing: 16)],
-                spacing: 16
+                columns: [GridItem(.adaptive(minimum: 240, maximum: 340), spacing: GranaTheme.Spacing.md)],
+                spacing: GranaTheme.Spacing.md
             ) {
                 ForEach(accounts) { account in
                     AccountCard(
@@ -269,27 +269,27 @@ private struct AccountCard: View {
     let onRequestDelete: () -> Void
 
     var body: some View {
-        VStack(spacing: 0) {
+        VStack(spacing: GranaTheme.Spacing.none) {
             Rectangle()
                 .fill(accentColor)
                 .frame(height: 4)
 
-            VStack(alignment: .leading, spacing: 12) {
+            VStack(alignment: .leading, spacing: GranaTheme.Spacing.sm) {
                 HStack(alignment: .top) {
                     accountIcon
                     Spacer()
                 }
 
-                VStack(alignment: .leading, spacing: 2) {
-                    HStack(spacing: 6) {
+                VStack(alignment: .leading, spacing: GranaTheme.Spacing.xxs) {
+                    HStack(spacing: GranaTheme.Spacing.xs) {
                         Text(displayName)
                             .font(GranaTheme.Typography.headline)
                         if account.archived {
                             Text("arquivada")
                                 .font(GranaTheme.Typography.caption1)
                                 .foregroundStyle(.secondary)
-                                .padding(.horizontal, 6)
-                                .padding(.vertical, 1)
+                                .padding(.horizontal, GranaTheme.Spacing.xs)
+                                .padding(.vertical, GranaTheme.Spacing.xxs)
                                 .background(
                                     Capsule().fill(Color.secondary.opacity(0.15))
                                 )
@@ -305,7 +305,7 @@ private struct AccountCard: View {
                     .font(GranaTheme.Typography.moneyTitle3)
                     .foregroundStyle(balanceColor)
             }
-            .padding(14)
+            .padding(GranaTheme.Spacing.md)
         }
         .background(
             RoundedRectangle(cornerRadius: 12, style: .continuous)

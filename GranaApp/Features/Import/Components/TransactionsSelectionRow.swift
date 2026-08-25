@@ -13,7 +13,7 @@ struct TransactionsSelectionRow: View {
     let onToggleAll: (Bool) -> Void
 
     var body: some View {
-        HStack(alignment: .center, spacing: 12) {
+        HStack(alignment: .center, spacing: GranaTheme.Spacing.sm) {
             Toggle("", isOn: Binding(
                 get: { allSelected },
                 set: { onToggleAll($0) }
@@ -26,8 +26,8 @@ struct TransactionsSelectionRow: View {
                 .foregroundStyle(.secondary)
             Spacer()
         }
-        .padding(.horizontal, 14)
-        .padding(.vertical, 8)
+        .padding(.horizontal, GranaTheme.Spacing.md)
+        .padding(.vertical, GranaTheme.Spacing.xs)
         .background(Color.primary.opacity(0.03))
     }
 }

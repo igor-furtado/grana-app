@@ -10,7 +10,7 @@ struct SupportedInstitutionsView: View {
     @Environment(AppEnvironment.self) private var environment
 
     private let columns = [
-        GridItem(.adaptive(minimum: 240, maximum: 360), spacing: 16),
+        GridItem(.adaptive(minimum: 240, maximum: 360), spacing: GranaTheme.Spacing.md),
     ]
     @State private var store: InstitutionCatalogStore?
 
@@ -32,7 +32,7 @@ struct SupportedInstitutionsView: View {
                 )
             } else {
                 ScrollView {
-                    VStack(alignment: .leading, spacing: 16) {
+                    VStack(alignment: .leading, spacing: GranaTheme.Spacing.md) {
                         Text(
                             "Catálogo global das instituições suportadas pelo produto. Tipos de conta e formatos de importação vêm do backend e definem o que a UI pode oferecer."
                         )
@@ -40,7 +40,7 @@ struct SupportedInstitutionsView: View {
                         .foregroundStyle(.secondary)
                         .fixedSize(horizontal: false, vertical: true)
 
-                        LazyVGrid(columns: columns, spacing: 16) {
+                        LazyVGrid(columns: columns, spacing: GranaTheme.Spacing.md) {
                             ForEach(institutions) { institution in
                                 InstitutionCatalogCard(institution: institution)
                             }
@@ -99,10 +99,10 @@ private struct InstitutionCatalogCard: View {
     let institution: Institution
 
     var body: some View {
-        HStack(spacing: 14) {
+        HStack(spacing: GranaTheme.Spacing.md) {
             InstitutionIcon(kind: institution.kind, size: 48)
 
-            VStack(alignment: .leading, spacing: 6) {
+            VStack(alignment: .leading, spacing: GranaTheme.Spacing.xs) {
                 Text(institution.name)
                     .font(GranaTheme.Typography.bodyEmphasis)
                 Text("FEBRABAN \(institution.code)")
@@ -122,9 +122,9 @@ private struct InstitutionCatalogCard: View {
                         .map(\.displayName)
                 )
             }
-            Spacer(minLength: 0)
+            Spacer(minLength: GranaTheme.Spacing.none)
         }
-        .padding(14)
+        .padding(GranaTheme.Spacing.md)
         .background(
             RoundedRectangle(cornerRadius: 12, style: .continuous)
                 .fill(Color(nsColor: .controlBackgroundColor))
@@ -136,7 +136,7 @@ private struct InstitutionCatalogCard: View {
     }
 
     private func capabilityRow(title: String, values: [String]) -> some View {
-        VStack(alignment: .leading, spacing: 2) {
+        VStack(alignment: .leading, spacing: GranaTheme.Spacing.xxs) {
             Text(title)
                 .font(GranaTheme.Typography.caption2Emphasis)
                 .foregroundStyle(.secondary)

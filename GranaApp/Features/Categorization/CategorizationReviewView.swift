@@ -52,7 +52,7 @@ struct CategorizationReviewView: View {
             }
             .frame(minWidth: 700, minHeight: 600)
         case let .wizard(onImport, onBack, onClose):
-            VStack(spacing: 0) {
+            VStack(spacing: GranaTheme.Spacing.none) {
                 content
                     .navigationSubtitle(statusSubtitle)
                 wizardBottomBar(onImport: onImport, onBack: onBack, onClose: onClose)
@@ -74,13 +74,13 @@ struct CategorizationReviewView: View {
             Form {
                 Section {
                     ScrollView {
-                        LazyVStack(spacing: 0) {
+                        LazyVStack(spacing: GranaTheme.Spacing.none) {
                             summaryRow
                             Divider()
                             ForEach(store.suggestions.indices, id: \.self) { idx in
                                 CategorizationRowView(store: store, index: idx)
-                                    .padding(.horizontal, 14)
-                                    .padding(.vertical, 6)
+                                    .padding(.horizontal, GranaTheme.Spacing.md)
+                                    .padding(.vertical, GranaTheme.Spacing.xs)
                                 Divider()
                             }
                         }
@@ -91,7 +91,7 @@ struct CategorizationReviewView: View {
                 }
             }
             .formStyle(.grouped)
-            .contentMargins(.horizontal, 0, for: .scrollContent)
+            .contentMargins(.horizontal, GranaTheme.Spacing.none, for: .scrollContent)
             .frame(maxHeight: .infinity)
         }
     }
@@ -100,14 +100,14 @@ struct CategorizationReviewView: View {
     /// `TransactionsSelectionRow` do import. Aqui não há checkbox (revisão
     /// é caso a caso, não em lote) — só o texto de progresso.
     private var summaryRow: some View {
-        HStack(spacing: 12) {
+        HStack(spacing: GranaTheme.Spacing.sm) {
             Text(summaryText)
                 .font(GranaTheme.Typography.caption1)
                 .foregroundStyle(.secondary)
             Spacer()
         }
-        .padding(.horizontal, 14)
-        .padding(.vertical, 8)
+        .padding(.horizontal, GranaTheme.Spacing.md)
+        .padding(.vertical, GranaTheme.Spacing.xs)
         .background(Color.primary.opacity(0.03))
     }
 
@@ -140,7 +140,7 @@ struct CategorizationReviewView: View {
     @ViewBuilder
     private var emptyState: some View {
         if case .classifying = store.status {
-            VStack(spacing: 12) {
+            VStack(spacing: GranaTheme.Spacing.sm) {
                 ProgressView()
                 Text("Categorizando…").foregroundStyle(.secondary)
             }

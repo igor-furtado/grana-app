@@ -34,7 +34,7 @@ struct TransactionsView: View {
     }
 
     private func content(store: TransactionStore) -> some View {
-        VStack(spacing: 0) {
+        VStack(spacing: GranaTheme.Spacing.none) {
             mainContent(store: store)
                 .overlay {
                     if store.transactions.isEmpty && !store.isLoading {
@@ -60,7 +60,7 @@ struct TransactionsView: View {
                     }
                     Spacer()
                 }
-                .padding(.vertical, 10)
+                .padding(.vertical, GranaTheme.Spacing.sm)
             }
         }
         .navigationTitle("")
@@ -109,7 +109,7 @@ struct TransactionsView: View {
     }
 
     private func contentBody(store: TransactionStore) -> some View {
-        VStack(spacing: 12) {
+        VStack(spacing: GranaTheme.Spacing.sm) {
             transactionsHeader(store: store)
             transactionsContentSection(store: store)
         }
@@ -117,7 +117,7 @@ struct TransactionsView: View {
     }
 
     private func transactionsHeader(store: TransactionStore) -> some View {
-        HStack(alignment: .top, spacing: 12) {
+        HStack(alignment: .top, spacing: GranaTheme.Spacing.sm) {
             tableControlsCard(store: store)
                 .frame(maxWidth: .infinity, alignment: .leading)
             actionCard
@@ -126,41 +126,41 @@ struct TransactionsView: View {
     }
 
     private func tableControlsCard(store: TransactionStore) -> some View {
-        VStack(spacing: 12) {
-            HStack(spacing: 12) {
+        VStack(spacing: GranaTheme.Spacing.sm) {
+            HStack(spacing: GranaTheme.Spacing.sm) {
                 Text(transactionsCountText(store: store))
                     .font(GranaTheme.Typography.subheadlineEmphasis)
                     .foregroundStyle(GranaTheme.Palette.ink)
                     .lineLimit(1)
-                Spacer(minLength: 16)
+                Spacer(minLength: GranaTheme.Spacing.md)
                 searchField
                     .frame(maxWidth: 390, alignment: .trailing)
             }
 
-            HStack(spacing: 10) {
+            HStack(spacing: GranaTheme.Spacing.sm) {
                 bankMenu(store: store)
                 periodMenu
                 categoryMenu(store: store)
                 kindMenu
-                Spacer(minLength: 0)
+                Spacer(minLength: GranaTheme.Spacing.none)
             }
         }
-        .padding(16)
+        .padding(GranaTheme.Spacing.md)
         .granaSurface(.subtle, cornerRadius: GranaTheme.Radius.card)
     }
 
     private var actionCard: some View {
-        HStack(spacing: 10) {
+        HStack(spacing: GranaTheme.Spacing.sm) {
             importActionButton
             addActionButton
         }
-        .padding(16)
+        .padding(GranaTheme.Spacing.md)
         .frame(maxWidth: .infinity, alignment: .leading)
         .granaSurface(.subtle, cornerRadius: GranaTheme.Radius.card)
     }
 
     private func transactionsContentSection(store: TransactionStore) -> some View {
-        VStack(spacing: 12) {
+        VStack(spacing: GranaTheme.Spacing.sm) {
             transactionsTableCard {
                 transactionsTableHeader()
 
@@ -263,7 +263,7 @@ struct TransactionsView: View {
         @ViewBuilder content: () -> Content
     ) -> some View {
         ScrollView {
-            VStack(spacing: 0) {
+            VStack(spacing: GranaTheme.Spacing.none) {
                 content()
             }
         }
@@ -272,7 +272,7 @@ struct TransactionsView: View {
     }
 
     private func transactionsTableHeader() -> some View {
-        HStack(spacing: 12) {
+        HStack(spacing: GranaTheme.Spacing.sm) {
             Text("Banco")
                 .frame(width: 60, alignment: .center)
             Text("Data")
@@ -288,7 +288,7 @@ struct TransactionsView: View {
         }
         .font(GranaTheme.Typography.footnoteEmphasis)
         .foregroundStyle(.secondary)
-        .padding(.horizontal, 16)
+        .padding(.horizontal, GranaTheme.Spacing.md)
         .frame(minHeight: 44)
         .background(GranaTheme.Palette.paper.opacity(0.55))
         .overlay(alignment: .bottom) {
@@ -299,7 +299,7 @@ struct TransactionsView: View {
     }
 
     private func transactionRow(_ transaction: Transaction, store: TransactionStore) -> some View {
-        HStack(spacing: 12) {
+        HStack(spacing: GranaTheme.Spacing.sm) {
             bankCell(transaction, store: store)
 
             Text(transaction.occurredAt.formatted(date: .numeric, time: .omitted))
@@ -320,7 +320,7 @@ struct TransactionsView: View {
             rowActions(transaction, store: store)
                 .frame(width: 76)
         }
-        .padding(.horizontal, 16)
+        .padding(.horizontal, GranaTheme.Spacing.md)
         .frame(minHeight: 54)
         .overlay(alignment: .top) {
             Rectangle()
@@ -330,7 +330,7 @@ struct TransactionsView: View {
     }
 
     private var searchField: some View {
-        HStack(spacing: 10) {
+        HStack(spacing: GranaTheme.Spacing.sm) {
             Image(systemName: "magnifyingglass")
                 .foregroundStyle(.secondary)
 
@@ -347,7 +347,7 @@ struct TransactionsView: View {
                 .buttonStyle(.plain)
             }
         }
-        .padding(.horizontal, 14)
+        .padding(.horizontal, GranaTheme.Spacing.md)
         .frame(width: 360)
         .frame(height: 30)
         .background(
@@ -368,7 +368,7 @@ struct TransactionsView: View {
         Menu {
             content()
         } label: {
-            HStack(spacing: 8) {
+            HStack(spacing: GranaTheme.Spacing.xs) {
                 Image(systemName: icon)
                 Text(title)
                     .lineLimit(1)
@@ -378,7 +378,7 @@ struct TransactionsView: View {
             }
             .font(GranaTheme.Typography.subheadlineEmphasis)
             .foregroundStyle(GranaTheme.Palette.ink)
-            .padding(.horizontal, 10)
+            .padding(.horizontal, GranaTheme.Spacing.sm)
             .frame(height: 30)
             .background(
                 RoundedRectangle(cornerRadius: 10, style: .continuous)
@@ -399,7 +399,7 @@ struct TransactionsView: View {
     }
 
     private func categoryCell(_ transaction: Transaction, store: TransactionStore) -> some View {
-        HStack(spacing: 8) {
+        HStack(spacing: GranaTheme.Spacing.xs) {
             CategoryBadge(
                 category: store.category(for: transaction.categoryId),
                 icon: store.icon(for: transaction.categoryId),
@@ -422,7 +422,7 @@ struct TransactionsView: View {
         let canMutate = store.supportsBasicMutation(for: transaction)
         let unsupportedMessage = "A edição desta transação não está disponível nesta configuração."
 
-        return HStack(spacing: 12) {
+        return HStack(spacing: GranaTheme.Spacing.sm) {
             Button {
                 editing = transaction
             } label: {
@@ -477,10 +477,10 @@ struct TransactionsView: View {
                 .precision(.fractionLength(2))
                 .locale(Self.ptBR)
         )
-        return HStack(spacing: 4) {
+        return HStack(spacing: GranaTheme.Spacing.xxs) {
             Text("R$")
                 .foregroundStyle(.secondary)
-            Spacer(minLength: 4)
+            Spacer(minLength: GranaTheme.Spacing.xxs)
             Text(number)
         }
         .font(GranaTheme.Typography.moneySubheadline)

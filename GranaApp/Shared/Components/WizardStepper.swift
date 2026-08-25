@@ -14,7 +14,7 @@ struct WizardStepper: View {
     let currentIndex: Int
 
     var body: some View {
-        HStack(spacing: 8) {
+        HStack(spacing: GranaTheme.Spacing.xs) {
             ForEach(Array(steps.enumerated()), id: \.offset) { index, label in
                 step(index: index, label: label)
                 if index < steps.count - 1 {
@@ -22,8 +22,8 @@ struct WizardStepper: View {
                 }
             }
         }
-        .padding(.horizontal, 20)
-        .padding(.vertical, 12)
+        .padding(.horizontal, GranaTheme.Spacing.lg)
+        .padding(.vertical, GranaTheme.Spacing.sm)
         .frame(maxWidth: .infinity)
         .background(.background.secondary)
         .overlay(alignment: .bottom) {
@@ -34,7 +34,7 @@ struct WizardStepper: View {
     @ViewBuilder
     private func step(index: Int, label: String) -> some View {
         let state = state(for: index)
-        HStack(spacing: 8) {
+        HStack(spacing: GranaTheme.Spacing.xs) {
             ZStack {
                 Circle()
                     .fill(state == .pending ? Color.clear : Color.accentColor)

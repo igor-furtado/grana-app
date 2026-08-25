@@ -48,7 +48,7 @@ struct CategoryBadge: View {
 
     private func pillBody(for category: Category) -> some View {
         let color = tint(for: category, icon: icon)
-        return HStack(spacing: 6) {
+        return HStack(spacing: GranaTheme.Spacing.xs) {
             if let icon {
                 Image(systemName: icon.systemImage)
                     .font(.system(size: GranaTheme.IconSize.small))
@@ -60,8 +60,8 @@ struct CategoryBadge: View {
                 .lineLimit(1)
                 .foregroundStyle(color)
         }
-        .padding(.horizontal, 8)
-        .padding(.vertical, 3)
+        .padding(.horizontal, GranaTheme.Spacing.xs)
+        .padding(.vertical, GranaTheme.Spacing.xxs)
         .background(color.opacity(0.15))
         .clipShape(Capsule())
     }

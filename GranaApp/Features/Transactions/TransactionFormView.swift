@@ -151,8 +151,8 @@ struct TransactionFormView: View {
                         if notes.isEmpty {
                             Text("Opcional")
                                 .foregroundStyle(.tertiary)
-                                .padding(.top, 8)
-                                .padding(.leading, 4)
+                                .padding(.top, GranaTheme.Spacing.xs)
+                                .padding(.leading, GranaTheme.Spacing.xxs)
                                 .allowsHitTesting(false)
                         }
                         TextEditor(text: $notes)

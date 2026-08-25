@@ -63,7 +63,7 @@ struct ContentView: View {
                 }
                 .buttonStyle(GranaPrimaryButtonStyle())
             }
-            .padding(24)
+            .padding(GranaTheme.Spacing.xl)
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
     }

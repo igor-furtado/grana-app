@@ -14,7 +14,7 @@ struct NoticeOverlay: ViewModifier {
 
     func body(content: Content) -> some View {
         content.overlay(alignment: .topTrailing) {
-            VStack(spacing: 10) {
+            VStack(spacing: GranaTheme.Spacing.sm) {
                 ForEach(center.notices) { notice in
                     NoticeCard(notice: notice) {
                         center.dismiss(notice.id)
@@ -29,7 +29,7 @@ struct NoticeOverlay: ViewModifier {
                     ))
                 }
             }
-            .padding(16)
+            .padding(GranaTheme.Spacing.md)
             .frame(maxWidth: 420, alignment: .trailing)
             .animation(.spring(duration: 0.35, bounce: 0.15), value: center.notices)
             .allowsHitTesting(false)
@@ -44,13 +44,13 @@ struct NoticeCard: View {
     let onDismiss: () -> Void
 
     var body: some View {
-        HStack(alignment: .top, spacing: 12) {
+        HStack(alignment: .top, spacing: GranaTheme.Spacing.sm) {
             Image(systemName: notice.kind.iconName)
                 .font(.system(size: GranaTheme.IconSize.medium))
                 .foregroundStyle(notice.kind.tint)
                 .accessibilityHidden(true)
 
-            VStack(alignment: .leading, spacing: 4) {
+            VStack(alignment: .leading, spacing: GranaTheme.Spacing.xxs) {
                 Text(notice.title)
                     .font(GranaTheme.Typography.headline)
                     .foregroundStyle(GranaTheme.Palette.ink)
@@ -65,20 +65,20 @@ struct NoticeCard: View {
                 }
             }
 
-            Spacer(minLength: 0)
+            Spacer(minLength: GranaTheme.Spacing.none)
 
             Button(action: onDismiss) {
                 Image(systemName: "xmark")
                     .font(.system(size: GranaTheme.IconSize.micro, weight: .bold))
                     .foregroundStyle(GranaTheme.Palette.muted)
-                    .padding(6)
+                    .padding(GranaTheme.Spacing.xs)
                     .contentShape(Rectangle())
             }
             .buttonStyle(.borderless)
             .help("Fechar")
             .accessibilityLabel("Fechar notificação")
         }
-        .padding(14)
+        .padding(GranaTheme.Spacing.md)
         .frame(maxWidth: .infinity, alignment: .leading)
         .granaSurface(.subtle, cornerRadius: 14)
         .overlay(alignment: .leading) {
@@ -91,7 +91,7 @@ struct NoticeCard: View {
     }
 
     private var actionsRow: some View {
-        HStack(spacing: 8) {
+        HStack(spacing: GranaTheme.Spacing.xs) {
             ForEach(notice.actions) { action in
                 Button(action.title) {
                     action.handler()
@@ -105,7 +105,7 @@ struct NoticeCard: View {
                 .tint(action.role == .destructive ? .danger : .accentColor)
             }
         }
-        .padding(.top, 4)
+        .padding(.top, GranaTheme.Spacing.xxs)
     }
 }
 

@@ -11,23 +11,23 @@ struct CategorizingStepView: View {
     }
 
     var body: some View {
-        VStack(spacing: 20) {
+        VStack(spacing: GranaTheme.Spacing.lg) {
             loadingCard
             Button("Cancelar") { store.backToPreviewFromReview() }
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
-        .padding(.horizontal, 40)
+        .padding(.horizontal, GranaTheme.Spacing.xxxl)
     }
 
     private var loadingCard: some View {
-        VStack(spacing: 14) {
+        VStack(spacing: GranaTheme.Spacing.md) {
             progressIndicator
             statusText
         }
         // Padding interno generoso pra que o halo interno do glow tenha
         // espaço pra "invadir" sem cobrir o conteúdo.
-        .padding(.horizontal, 28)
-        .padding(.vertical, 26)
+        .padding(.horizontal, GranaTheme.Spacing.xxl)
+        .padding(.vertical, GranaTheme.Spacing.xl)
         .frame(maxWidth: 360)
         .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 8))
     }

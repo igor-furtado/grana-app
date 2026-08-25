@@ -12,13 +12,21 @@ Leia `docs/design-system.md` antes de alterar UI SwiftUI no GranaApp.
   codigos tecnicos usam tokens textuais ou `code`.
 - SF Symbols e icones ficam fora de `Typography`: use `GranaTheme.IconSize` ou
   componentes dedicados.
+- Use `GranaTheme.Spacing` para distancias entre elementos: `spacing`,
+  `padding`, `EdgeInsets` e gaps de grids. Use `GranaTheme.Spacing.none` para
+  ausencia intencional de espaco, e nao converta dimensoes visuais como
+  larguras, alturas, bolinhas, barras ou colunas; esses valores pertencem a
+  tokens de size ou constantes especificas.
+- Se um spacing existente nao existir na escala, use o token mais proximo; em
+  empate, arredonde para cima. Qualquer distancia positiva menor que `xxs` vira
+  `xxs`.
 - Mantenha a fase atual restrita a linguagem visual. Nao importe metricas,
   abas, textos ou modelos dos prototipos sem pedido explicito.
 - Preserve toolbars nativas das telas. Nao crie header visual proprio em telas
   padrao quando a toolbar nativa ja carrega titulo/acoes.
 - Em telas padrao, use o padding de pagina do tema: topo 0, laterais e base com
-  respiro. O rail autenticado acompanha o topo da area util, sem margem superior
-  externa.
+  respiro. O rail autenticado acompanha o topo da area util, sem margem
+  superior externa.
 - Use o rail icon-only como shell autenticado. Todos os itens precisam de
   tooltip e label de acessibilidade.
 - Reserve glass para o shell estrutural. Cards de conteudo usam `subtle` sem

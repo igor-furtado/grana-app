@@ -20,18 +20,18 @@ struct AppNavigationRail: View {
     ]
 
     var body: some View {
-        VStack(spacing: 8) {
+        VStack(spacing: GranaTheme.Spacing.xs) {
             ForEach(Self.primaryItems) { section in
                 railButton(for: section)
             }
 
-            Spacer(minLength: 14)
+            Spacer(minLength: GranaTheme.Spacing.md)
 
             ForEach(Self.bottomItems) { section in
                 railButton(for: section)
             }
         }
-        .padding(10)
+        .padding(GranaTheme.Spacing.sm)
         .frame(width: 70)
         .frame(maxHeight: .infinity)
         .granaSurface(.glass, cornerRadius: GranaTheme.Radius.rail)

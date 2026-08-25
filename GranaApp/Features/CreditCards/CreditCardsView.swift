@@ -194,7 +194,7 @@ struct CreditCardsView: View {
     }
 
     private var placeholderDetail: some View {
-        VStack(spacing: 12) {
+        VStack(spacing: GranaTheme.Spacing.sm) {
             Image(systemName: "creditcard")
                 .font(.system(size: GranaTheme.IconSize.large))
                 .foregroundStyle(.secondary)

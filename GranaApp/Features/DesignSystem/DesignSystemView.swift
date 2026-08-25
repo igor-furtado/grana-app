@@ -47,23 +47,27 @@ struct DesignSystemView: View {
 
     private var columns: [GridItem] {
         [
-            GridItem(.adaptive(minimum: 430), spacing: Spacing.lg, alignment: .top),
+            GridItem(.adaptive(minimum: 430), spacing: GranaTheme.Spacing.md, alignment: .top),
         ]
     }
 
     private var standardSections: some View {
-        VStack(alignment: .leading, spacing: Spacing.lg) {
+        VStack(alignment: .leading, spacing: GranaTheme.Spacing.md) {
             DesignSystemCard(title: "Amostra tipográfica", content: {
                 TypographyComparisonSample()
             })
 
-            LazyVGrid(columns: columns, alignment: .leading, spacing: Spacing.lg) {
+            LazyVGrid(columns: columns, alignment: .leading, spacing: GranaTheme.Spacing.md) {
                 DesignSystemCard(title: "Tabela de tokens", content: {
                     TokenTable(tokens: paletteTokens)
                 })
 
                 DesignSystemCard(title: "Tabela de tipografia", content: {
                     TypographyTable(tokens: GranaTheme.Typography.tokens)
+                })
+
+                DesignSystemCard(title: "Tabela de spacing", content: {
+                    SpacingTable(tokens: GranaTheme.Spacing.tokens)
                 })
 
                 DesignSystemCard(title: "Tabela de raios", content: {
@@ -125,8 +129,8 @@ struct DesignSystemView: View {
 
 private struct TypographyComparisonSample: View {
     var body: some View {
-        HStack(alignment: .top, spacing: Spacing.lg) {
-            VStack(alignment: .leading, spacing: Spacing.sm) {
+        HStack(alignment: .top, spacing: GranaTheme.Spacing.md) {
+            VStack(alignment: .leading, spacing: GranaTheme.Spacing.xs) {
                 Text("Receitas no período")
                     .font(GranaTheme.Typography.subheadlineEmphasis)
                     .foregroundStyle(GranaTheme.Palette.muted)
@@ -139,7 +143,7 @@ private struct TypographyComparisonSample: View {
             }
             .frame(maxWidth: .infinity, alignment: .leading)
 
-            VStack(alignment: .trailing, spacing: Spacing.sm) {
+            VStack(alignment: .trailing, spacing: GranaTheme.Spacing.xs) {
                 Text("R$ 12.400,90")
                     .font(GranaTheme.Typography.moneyTitle2)
                     .foregroundStyle(GranaTheme.Palette.ink)
@@ -148,13 +152,13 @@ private struct TypographyComparisonSample: View {
                 Text("balance.available")
                     .font(GranaTheme.Typography.code)
                     .foregroundStyle(GranaTheme.Palette.tealDeep)
-                    .padding(.horizontal, 9)
-                    .padding(.vertical, 5)
+                    .padding(.horizontal, GranaTheme.Spacing.xs)
+                    .padding(.vertical, GranaTheme.Spacing.xxs)
                     .background(GranaTheme.Palette.teal.opacity(0.10), in: Capsule())
             }
             .frame(width: 240, alignment: .trailing)
         }
-        .padding(14)
+        .padding(GranaTheme.Spacing.md)
         .tableSurface()
     }
 }
@@ -164,13 +168,13 @@ private struct DesignSystemCard<Content: View>: View {
     let content: () -> Content
 
     var body: some View {
-        VStack(alignment: .leading, spacing: Spacing.md) {
+        VStack(alignment: .leading, spacing: GranaTheme.Spacing.sm) {
             Text(title)
                 .font(GranaTheme.Typography.headline)
                 .foregroundStyle(GranaTheme.Palette.ink)
             content()
         }
-        .padding(16)
+        .padding(GranaTheme.Spacing.md)
         .frame(maxWidth: .infinity, alignment: .topLeading)
         .granaSurface(.subtle, cornerRadius: GranaTheme.Radius.card)
     }
@@ -216,7 +220,7 @@ private struct TokenTable: View {
     let tokens: [TokenRowModel]
 
     var body: some View {
-        VStack(spacing: 0) {
+        VStack(spacing: GranaTheme.Spacing.none) {
             ForEach(Array(tokens.enumerated()), id: \.element.id) { index, token in
                 TokenTableRow(token: token)
                 if index < tokens.count - 1 {
@@ -232,7 +236,7 @@ private struct TokenTableRow: View {
     let token: TokenRowModel
 
     var body: some View {
-        HStack(spacing: Spacing.md) {
+        HStack(spacing: GranaTheme.Spacing.sm) {
             RoundedRectangle(cornerRadius: 10, style: .continuous)
                 .fill(token.swatch)
                 .frame(width: 34, height: 34)
@@ -251,9 +255,9 @@ private struct TypographyTable: View {
     let tokens: [GranaTheme.Typography.Token]
 
     var body: some View {
-        VStack(spacing: 0) {
+        VStack(spacing: GranaTheme.Spacing.none) {
             ForEach(Array(tokens.enumerated()), id: \.element.id) { index, token in
-                HStack(spacing: Spacing.md) {
+                HStack(spacing: GranaTheme.Spacing.sm) {
                     Text("Aa")
                         .font(token.font)
                         .foregroundStyle(GranaTheme.Palette.ink)
@@ -283,9 +287,9 @@ private struct RadiusTable: View {
     let tokens: [RadiusToken]
 
     var body: some View {
-        VStack(spacing: 0) {
+        VStack(spacing: GranaTheme.Spacing.none) {
             ForEach(Array(tokens.enumerated()), id: \.element.id) { index, token in
-                HStack(spacing: Spacing.md) {
+                HStack(spacing: GranaTheme.Spacing.sm) {
                     RadiusPreview(radius: token.radius)
                     TableText(primary: token.name, secondary: "\(token.value) · \(token.usage)")
 
@@ -293,8 +297,8 @@ private struct RadiusTable: View {
                         Text(note)
                             .font(GranaTheme.Typography.caption2Emphasis)
                             .foregroundStyle(GranaTheme.Palette.tealDeep)
-                            .padding(.horizontal, 7)
-                            .padding(.vertical, 4)
+                            .padding(.horizontal, GranaTheme.Spacing.xs)
+                            .padding(.vertical, GranaTheme.Spacing.xxs)
                             .background(GranaTheme.Palette.teal.opacity(0.10), in: Capsule())
                     }
                 }
@@ -306,6 +310,47 @@ private struct RadiusTable: View {
             }
         }
         .tableSurface()
+    }
+}
+
+private struct SpacingTable: View {
+    let tokens: [GranaTheme.Spacing.Token]
+
+    var body: some View {
+        VStack(spacing: GranaTheme.Spacing.none) {
+            ForEach(Array(tokens.enumerated()), id: \.element.id) { index, token in
+                HStack(spacing: GranaTheme.Spacing.sm) {
+                    SpacingPreview(value: token.value)
+
+                    TableText(
+                        primary: token.name,
+                        secondary: "\(token.displayValue) · \(token.usage)"
+                    )
+                }
+                .tableRowContent()
+
+                if index < tokens.count - 1 {
+                    TableDivider()
+                }
+            }
+        }
+        .tableSurface()
+    }
+}
+
+private struct SpacingPreview: View {
+    let value: CGFloat
+
+    var body: some View {
+        HStack(spacing: value) {
+            RoundedRectangle(cornerRadius: 4, style: .continuous)
+                .fill(GranaTheme.Palette.teal.opacity(0.82))
+                .frame(width: 18, height: 28)
+            RoundedRectangle(cornerRadius: 4, style: .continuous)
+                .fill(GranaTheme.Palette.gold.opacity(0.82))
+                .frame(width: 18, height: 28)
+        }
+        .frame(width: 92, alignment: .leading)
     }
 }
 
@@ -336,9 +381,9 @@ private struct SemanticStateTable: View {
     let tokens: [SemanticToken]
 
     var body: some View {
-        VStack(spacing: 0) {
+        VStack(spacing: GranaTheme.Spacing.none) {
             ForEach(Array(tokens.enumerated()), id: \.element.id) { index, token in
-                HStack(spacing: Spacing.md) {
+                HStack(spacing: GranaTheme.Spacing.md) {
                     Circle()
                         .fill(token.color)
                         .frame(width: 22, height: 22)
@@ -394,7 +439,7 @@ private struct DepthSample: View {
     let offset: CGSize
 
     var body: some View {
-        VStack(alignment: .leading, spacing: Spacing.sm) {
+        VStack(alignment: .leading, spacing: GranaTheme.Spacing.xs) {
             Text(title)
                 .font(GranaTheme.Typography.code)
                 .foregroundStyle(GranaTheme.Palette.ink)
@@ -408,7 +453,7 @@ private struct DepthSample: View {
                 .fill(GranaTheme.Palette.line)
                 .frame(width: 220, height: 8)
         }
-        .padding(18)
+        .padding(GranaTheme.Spacing.lg)
         .frame(width: width, height: 132, alignment: .topLeading)
         .granaSurface(prominence, cornerRadius: GranaTheme.Radius.card)
         .offset(offset)
@@ -417,15 +462,15 @@ private struct DepthSample: View {
 
 private struct ButtonsShowcase: View {
     var body: some View {
-        VStack(alignment: .leading, spacing: Spacing.md) {
-            HStack(spacing: Spacing.sm) {
+        VStack(alignment: .leading, spacing: GranaTheme.Spacing.sm) {
+            HStack(spacing: GranaTheme.Spacing.xs) {
                 Button("Primário") {}
                     .buttonStyle(GranaPrimaryButtonStyle())
                 Button("Secundário") {}
                     .buttonStyle(GranaSecondaryButtonStyle())
             }
 
-            HStack(spacing: Spacing.sm) {
+            HStack(spacing: GranaTheme.Spacing.xs) {
                 Button {} label: {
                     Label("Salvar", systemImage: "tray.and.arrow.down.fill")
                 }
@@ -437,7 +482,7 @@ private struct ButtonsShowcase: View {
                 .buttonStyle(GranaSecondaryButtonStyle())
             }
 
-            HStack(spacing: Spacing.sm) {
+            HStack(spacing: GranaTheme.Spacing.xs) {
                 Button("Sistema") {}
                     .buttonStyle(.bordered)
                 Button("Destrutivo") {}
@@ -451,7 +496,10 @@ private struct ButtonsShowcase: View {
 
 private struct EmptyStatesShowcase: View {
     var body: some View {
-        LazyVGrid(columns: [GridItem(.adaptive(minimum: 220), spacing: Spacing.md)], spacing: Spacing.md) {
+        LazyVGrid(
+            columns: [GridItem(.adaptive(minimum: 220), spacing: GranaTheme.Spacing.sm)],
+            spacing: GranaTheme.Spacing.sm
+        ) {
             EmptyStateView(
                 "Sem transações",
                 icon: .sidebarTransactions,
@@ -471,8 +519,11 @@ private struct EmptyStatesShowcase: View {
 
 private struct DashboardExample: View {
     var body: some View {
-        VStack(alignment: .leading, spacing: Spacing.md) {
-            LazyVGrid(columns: [GridItem(.adaptive(minimum: 210), spacing: Spacing.md)], spacing: Spacing.md) {
+        VStack(alignment: .leading, spacing: GranaTheme.Spacing.sm) {
+            LazyVGrid(
+                columns: [GridItem(.adaptive(minimum: 210), spacing: GranaTheme.Spacing.sm)],
+                spacing: GranaTheme.Spacing.sm
+            ) {
                 TypographyMetricCard(
                     title: "Receitas",
                     value: Decimal(12400),
@@ -500,7 +551,7 @@ private struct DashboardExample: View {
                 )
             }
 
-            HStack(alignment: .top, spacing: Spacing.md) {
+            HStack(alignment: .top, spacing: GranaTheme.Spacing.sm) {
                 MiniChartPanel()
                 CategoryRankingPanel()
             }
@@ -516,8 +567,8 @@ private struct TypographyMetricCard: View {
     var placeholder = false
 
     var body: some View {
-        VStack(alignment: .leading, spacing: Spacing.md) {
-            HStack(spacing: Spacing.xs) {
+        VStack(alignment: .leading, spacing: GranaTheme.Spacing.sm) {
+            HStack(spacing: GranaTheme.Spacing.xxs) {
                 if let icon {
                     Image(systemName: icon.systemImage)
                         .font(.system(size: GranaTheme.IconSize.small, weight: .bold))
@@ -535,7 +586,7 @@ private struct TypographyMetricCard: View {
                 .lineLimit(1)
                 .minimumScaleFactor(0.7)
         }
-        .padding(18)
+        .padding(GranaTheme.Spacing.lg)
         .frame(maxWidth: .infinity, minHeight: 132, alignment: .leading)
         .granaSurface(.subtle, cornerRadius: GranaTheme.Radius.card)
     }
@@ -543,12 +594,12 @@ private struct TypographyMetricCard: View {
 
 private struct MiniChartPanel: View {
     var body: some View {
-        VStack(alignment: .leading, spacing: Spacing.md) {
+        VStack(alignment: .leading, spacing: GranaTheme.Spacing.sm) {
             Text("Fluxo do mês")
                 .font(GranaTheme.Typography.subheadlineEmphasis)
                 .foregroundStyle(GranaTheme.Palette.muted)
 
-            HStack(alignment: .bottom, spacing: Spacing.sm) {
+            HStack(alignment: .bottom, spacing: GranaTheme.Spacing.xs) {
                 ForEach([0.42, 0.74, 0.56, 0.88, 0.63, 0.92], id: \.self) { value in
                     RoundedRectangle(cornerRadius: 8, style: .continuous)
                         .fill(GranaTheme.Palette.teal.opacity(0.24 + value * 0.42))
@@ -557,7 +608,7 @@ private struct MiniChartPanel: View {
             }
             .frame(maxWidth: .infinity, minHeight: 130, alignment: .bottomLeading)
         }
-        .padding(16)
+        .padding(GranaTheme.Spacing.md)
         .frame(maxWidth: .infinity, alignment: .leading)
         .granaSurface(.subtle, cornerRadius: GranaTheme.Radius.card)
     }
@@ -571,13 +622,13 @@ private struct CategoryRankingPanel: View {
     ]
 
     var body: some View {
-        VStack(alignment: .leading, spacing: Spacing.md) {
+        VStack(alignment: .leading, spacing: GranaTheme.Spacing.sm) {
             Text("Categorias")
                 .font(GranaTheme.Typography.subheadlineEmphasis)
                 .foregroundStyle(GranaTheme.Palette.muted)
 
             ForEach(rows, id: \.0) { row in
-                VStack(alignment: .leading, spacing: Spacing.xs) {
+                VStack(alignment: .leading, spacing: GranaTheme.Spacing.xxs) {
                     HStack {
                         Text(row.0)
                             .font(GranaTheme.Typography.subheadlineEmphasis)
@@ -599,7 +650,7 @@ private struct CategoryRankingPanel: View {
                 }
             }
         }
-        .padding(16)
+        .padding(GranaTheme.Spacing.md)
         .frame(maxWidth: .infinity, minHeight: 210, alignment: .topLeading)
         .granaSurface(.subtle, cornerRadius: GranaTheme.Radius.card)
     }
@@ -644,7 +695,7 @@ private struct TransactionsTableExample: View {
     ]
 
     var body: some View {
-        VStack(spacing: 0) {
+        VStack(spacing: GranaTheme.Spacing.none) {
             TransactionHeaderRow()
                 .tableRowContent()
             TableDivider()
@@ -718,7 +769,7 @@ private struct TableDivider: View {
         Rectangle()
             .fill(GranaTheme.Palette.line)
             .frame(height: 1)
-            .padding(.leading, 12)
+            .padding(.leading, GranaTheme.Spacing.sm)
     }
 }
 
@@ -726,14 +777,14 @@ private struct NoticeOverlayShowcase: View {
     let notices: [NoticeCenter.Notice]
 
     var body: some View {
-        VStack(alignment: .trailing, spacing: Spacing.sm) {
+        VStack(alignment: .trailing, spacing: GranaTheme.Spacing.xs) {
             ForEach(notices) { notice in
                 NoticeCard(notice: notice) {}
                     .frame(maxWidth: 420)
             }
         }
         .frame(maxWidth: .infinity, alignment: .trailing)
-        .padding(16)
+        .padding(GranaTheme.Spacing.md)
         .background(
             GranaTheme.Palette.soft,
             in: RoundedRectangle(cornerRadius: GranaTheme.Radius.card, style: .continuous)
@@ -746,7 +797,7 @@ private struct TableText: View {
     let secondary: String
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 3) {
+        VStack(alignment: .leading, spacing: GranaTheme.Spacing.xxs) {
             Text(primary)
                 .font(GranaTheme.Typography.code)
                 .foregroundStyle(GranaTheme.Palette.ink)
@@ -762,7 +813,7 @@ private struct TableText: View {
 
 private extension View {
     func tableRowContent() -> some View {
-        padding(12)
+        padding(GranaTheme.Spacing.sm)
             .frame(maxWidth: .infinity, alignment: .leading)
     }
 

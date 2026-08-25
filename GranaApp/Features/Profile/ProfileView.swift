@@ -38,7 +38,7 @@ struct ProfileView: View {
             LabeledContent("Nome", value: displayName(for: session))
             LabeledContent("Email", value: displayValue(session.email))
             LabeledContent("ID do usuário") {
-                HStack(spacing: 8) {
+                HStack(spacing: GranaTheme.Spacing.xs) {
                     Text(session.userID.uuidString.lowercased())
                         .font(GranaTheme.Typography.code)
                         .textSelection(.enabled)

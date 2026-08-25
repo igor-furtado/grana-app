@@ -269,12 +269,12 @@ private struct ImportHistoryReviewDeskView: View {
     let onUndo: (ImportBatch) -> Void
 
     var body: some View {
-        HStack(spacing: 0) {
-            VStack(spacing: 0) {
+        HStack(spacing: GranaTheme.Spacing.none) {
+            VStack(spacing: GranaTheme.Spacing.none) {
                 reviewDeskHeader
 
                 ScrollView {
-                    LazyVStack(spacing: 0) {
+                    LazyVStack(spacing: GranaTheme.Spacing.none) {
                         ForEach(rows) { row in
                             ImportHistoryReviewDeskRow(
                                 row: row,
@@ -288,7 +288,7 @@ private struct ImportHistoryReviewDeskView: View {
             .granaSurface(.solid, cornerRadius: GranaTheme.Radius.panel)
             .clipShape(RoundedRectangle(cornerRadius: GranaTheme.Radius.panel, style: .continuous))
 
-            VStack(alignment: .leading, spacing: 14) {
+            VStack(alignment: .leading, spacing: GranaTheme.Spacing.md) {
                 ImportHistoryDropPanel()
                 if let selectedRow {
                     ImportHistorySelectedPanel(
@@ -298,13 +298,13 @@ private struct ImportHistoryReviewDeskView: View {
                 }
             }
             .frame(width: 310)
-            .padding(.leading, 16)
+            .padding(.leading, GranaTheme.Spacing.md)
         }
         .granaPagePadding()
     }
 
     private var reviewDeskHeader: some View {
-        HStack(spacing: 12) {
+        HStack(spacing: GranaTheme.Spacing.sm) {
             Text("Instituição")
                 .frame(width: 132, alignment: .leading)
             Text("Arquivo")
@@ -318,7 +318,7 @@ private struct ImportHistoryReviewDeskView: View {
         }
         .font(GranaTheme.Typography.footnoteEmphasis)
         .foregroundStyle(GranaTheme.Palette.muted)
-        .padding(.horizontal, 16)
+        .padding(.horizontal, GranaTheme.Spacing.md)
         .frame(height: 44)
         .background(GranaTheme.Palette.paper.opacity(0.55))
         .overlay(alignment: .bottom) {
@@ -336,8 +336,8 @@ private struct ImportHistoryReviewDeskRow: View {
 
     var body: some View {
         Button(action: onSelect) {
-            HStack(spacing: 12) {
-                HStack(spacing: 10) {
+            HStack(spacing: GranaTheme.Spacing.sm) {
+                HStack(spacing: GranaTheme.Spacing.sm) {
                     InstitutionIcon(kind: row.institutionKind, size: 28)
                     Text(row.institutionName)
                         .lineLimit(1)
@@ -365,7 +365,7 @@ private struct ImportHistoryReviewDeskRow: View {
                     .frame(width: 116, alignment: .trailing)
             }
             .font(GranaTheme.Typography.subheadlineEmphasis)
-            .padding(.horizontal, 16)
+            .padding(.horizontal, GranaTheme.Spacing.md)
             .frame(minHeight: 52)
             .background(isSelected ? GranaTheme.Palette.teal.opacity(0.09) : .clear)
             .overlay(alignment: .top) {
@@ -383,10 +383,10 @@ private struct ImportHistorySelectedPanel: View {
     let onUndo: () -> Void
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 16) {
+        VStack(alignment: .leading, spacing: GranaTheme.Spacing.md) {
             HStack {
                 InstitutionIcon(kind: row.institutionKind, size: 46)
-                VStack(alignment: .leading, spacing: 3) {
+                VStack(alignment: .leading, spacing: GranaTheme.Spacing.xxs) {
                     Text("Lote selecionado")
                         .font(GranaTheme.Typography.footnoteEmphasis)
                         .foregroundStyle(GranaTheme.Palette.muted)
@@ -395,7 +395,7 @@ private struct ImportHistorySelectedPanel: View {
                 }
             }
 
-            VStack(alignment: .leading, spacing: 8) {
+            VStack(alignment: .leading, spacing: GranaTheme.Spacing.xs) {
                 ImportHistoryDetailLine("Arquivo", row.batch.sourceFilename)
                 ImportHistoryDetailLine("Conta", row.accountName)
                 ImportHistoryDetailLine("Importado", row.importedAtText)
@@ -409,14 +409,14 @@ private struct ImportHistorySelectedPanel: View {
             .buttonStyle(GranaSecondaryButtonStyle())
             .foregroundStyle(GranaTheme.Palette.red)
         }
-        .padding(16)
+        .padding(GranaTheme.Spacing.md)
         .granaSurface(.solid, cornerRadius: GranaTheme.Radius.panel)
     }
 }
 
 private struct ImportHistoryDropPanel: View {
     var body: some View {
-        VStack(spacing: 12) {
+        VStack(spacing: GranaTheme.Spacing.sm) {
             Image(systemName: AppIcon.importFile.systemImage)
                 .font(.system(size: GranaTheme.IconSize.large, weight: .bold))
                 .foregroundStyle(GranaTheme.Palette.teal)
@@ -428,7 +428,7 @@ private struct ImportHistoryDropPanel: View {
                 .multilineTextAlignment(.center)
         }
         .frame(maxWidth: .infinity)
-        .padding(18)
+        .padding(GranaTheme.Spacing.lg)
         .background {
             RoundedRectangle(cornerRadius: 18, style: .continuous)
                 .fill(GranaTheme.Palette.teal.opacity(0.07))
@@ -453,7 +453,7 @@ private struct ImportHistoryDetailLine: View {
     }
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 2) {
+        VStack(alignment: .leading, spacing: GranaTheme.Spacing.xxs) {
             Text(label)
                 .font(GranaTheme.Typography.caption2Emphasis)
                 .foregroundStyle(GranaTheme.Palette.muted)
@@ -481,7 +481,7 @@ private struct EmptyStateDropZone: View {
     let onBrowse: () -> Void
 
     var body: some View {
-        VStack(spacing: 20) {
+        VStack(spacing: GranaTheme.Spacing.lg) {
             ZStack {
                 Circle()
                     .fill(Color.primary.opacity(isHighlighted ? 0.18 : 0.10))
@@ -492,7 +492,7 @@ private struct EmptyStateDropZone: View {
                     .symbolEffect(.bounce, value: isHighlighted)
             }
 
-            VStack(spacing: 6) {
+            VStack(spacing: GranaTheme.Spacing.xs) {
                 Text(isHighlighted ? "Solte para importar" : "Arraste e solte para importar")
                     .font(GranaTheme.Typography.title3)
                     .contentTransition(.opacity)
@@ -503,7 +503,7 @@ private struct EmptyStateDropZone: View {
                     .frame(maxWidth: 360)
             }
 
-            HStack(spacing: 10) {
+            HStack(spacing: GranaTheme.Spacing.sm) {
                 Text("ou")
                     .font(GranaTheme.Typography.caption1)
                     .foregroundStyle(.tertiary)
@@ -515,10 +515,10 @@ private struct EmptyStateDropZone: View {
                 .buttonStyle(.borderedProminent)
                 .controlSize(.large)
             }
-            .padding(.top, 4)
+            .padding(.top, GranaTheme.Spacing.xxs)
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
-        .padding(40)
+        .padding(GranaTheme.Spacing.xxxl)
         .background(
             RoundedRectangle(cornerRadius: 18, style: .continuous)
                 .fill(Color.primary.opacity(isHighlighted ? 0.06 : 0.0))
@@ -549,7 +549,7 @@ private struct DropOverlay: View {
                 .fill(.regularMaterial)
                 .opacity(0.9)
 
-            VStack(spacing: 16) {
+            VStack(spacing: GranaTheme.Spacing.md) {
                 ZStack {
                     Circle()
                         .fill(Color.primary.opacity(0.18))
@@ -564,7 +564,7 @@ private struct DropOverlay: View {
                     .font(GranaTheme.Typography.callout)
                     .foregroundStyle(.secondary)
             }
-            .padding(40)
+            .padding(GranaTheme.Spacing.xxxl)
             .background(
                 RoundedRectangle(cornerRadius: 22, style: .continuous)
                     .fill(Color(nsColor: .controlBackgroundColor))
@@ -577,7 +577,7 @@ private struct DropOverlay: View {
                         style: StrokeStyle(lineWidth: 2, dash: [8, 6])
                     )
             )
-            .padding(40)
+            .padding(GranaTheme.Spacing.xxxl)
         }
     }
 }

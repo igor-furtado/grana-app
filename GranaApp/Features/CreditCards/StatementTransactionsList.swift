@@ -15,10 +15,10 @@ struct StatementTransactionsList: View {
     @State private var isLoading = true
 
     var body: some View {
-        VStack(spacing: 0) {
+        VStack(spacing: GranaTheme.Spacing.none) {
             if isLoading, transactions.isEmpty {
                 ProgressView()
-                    .padding(.vertical, 20)
+                    .padding(.vertical, GranaTheme.Spacing.lg)
             } else if transactions.isEmpty {
                 emptyView
             } else {
@@ -40,7 +40,7 @@ struct StatementTransactionsList: View {
     }
 
     private var emptyView: some View {
-        VStack(spacing: 8) {
+        VStack(spacing: GranaTheme.Spacing.xs) {
             Image(systemName: "tray")
                 .font(.system(size: GranaTheme.IconSize.medium))
                 .foregroundStyle(.secondary)
@@ -48,12 +48,12 @@ struct StatementTransactionsList: View {
                 .font(GranaTheme.Typography.callout)
                 .foregroundStyle(.secondary)
         }
-        .padding(.vertical, 30)
+        .padding(.vertical, GranaTheme.Spacing.xxl)
         .frame(maxWidth: .infinity)
     }
 
     private var rows: some View {
-        VStack(spacing: 0) {
+        VStack(spacing: GranaTheme.Spacing.none) {
             ForEach(Array(transactions.enumerated()), id: \.element.id) { idx, transaction in
                 if idx > 0 { Divider() }
                 row(for: transaction)
@@ -63,7 +63,7 @@ struct StatementTransactionsList: View {
 
     private func row(for transaction: Transaction) -> some View {
         let category = categoryById[transaction.categoryId]
-        return HStack(spacing: 12) {
+        return HStack(spacing: GranaTheme.Spacing.sm) {
             Text(Self.dayMonthFormatter.string(from: transaction.occurredAt))
                 .font(GranaTheme.Typography.footnote)
                 .foregroundStyle(.secondary)
@@ -75,7 +75,7 @@ struct StatementTransactionsList: View {
                 placeholderIcon
             }
 
-            VStack(alignment: .leading, spacing: 1) {
+            VStack(alignment: .leading, spacing: GranaTheme.Spacing.xxs) {
                 Text(transaction.description)
                     .font(GranaTheme.Typography.callout)
                     .lineLimit(1)
@@ -92,8 +92,8 @@ struct StatementTransactionsList: View {
                 .font(GranaTheme.Typography.moneySubheadline)
                 .foregroundStyle(.primary)
         }
-        .padding(.horizontal, 14)
-        .padding(.vertical, 10)
+        .padding(.horizontal, GranaTheme.Spacing.md)
+        .padding(.vertical, GranaTheme.Spacing.sm)
     }
 
     private var placeholderIcon: some View {
