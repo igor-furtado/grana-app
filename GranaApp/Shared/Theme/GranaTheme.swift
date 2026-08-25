@@ -45,8 +45,8 @@ enum GranaTheme {
     }
 
     enum Layout {
-        static let pageInsets = EdgeInsets(top: 0, leading: 20, bottom: 20, trailing: 20)
-        static let railInsets = EdgeInsets(top: 0, leading: 18, bottom: 18, trailing: 0)
+        static let pageInsets = EdgeInsets(top: 0, leading: 0, bottom: 18, trailing: 18)
+        static let railInsets = EdgeInsets(top: 0, leading: 18, bottom: 18, trailing: 18)
     }
 
     enum Typography {

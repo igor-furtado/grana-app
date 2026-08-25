@@ -71,7 +71,7 @@ struct ContentView: View {
     private var authenticatedContent: some View {
         ZStack {
             GranaBackground()
-            HStack(spacing: 12) {
+            HStack {
                 AppNavigationRail(selection: selection) { section in
                     selectionRaw = section.rawValue
                 }
@@ -82,7 +82,6 @@ struct ContentView: View {
                 }
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
             }
-            .padding(.trailing, 18)
         }
         .onReceive(NotificationCenter.default.publisher(for: .appSectionNavigationRequested)) { notification in
             guard let rawValue = notification.object as? String,

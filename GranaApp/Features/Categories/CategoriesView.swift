@@ -70,19 +70,11 @@ struct CategoriesView: View {
             }
         }
         .navigationTitle("Categorias")
-        .navigationSubtitle(categoriesSubtitle)
         .task { await load() }
         .onChange(of: rootIds) { _, ids in
             reconcileSelection(rootIds: ids)
         }
     }
-
-    private var categoriesSubtitle: String {
-        if categories.isEmpty { return "" }
-        let roots = categories.filter { $0.parentId == nil }.count
-        return "\(roots) categorias raiz · \(categories.count) totais"
-    }
-
     private var categories: [Category] {
         store?.categories ?? []
     }

@@ -50,7 +50,6 @@ struct AccountsView: View {
             }
         }
         .navigationTitle("Contas")
-        .navigationSubtitle(subtitle)
     }
 
     @ViewBuilder
@@ -209,14 +208,6 @@ struct AccountsView: View {
                 }
             }
         }
-    }
-
-    private var subtitle: String {
-        guard let store else { return "" }
-        let count = visible(store: store).count
-        if count == 0 { return "Nenhuma conta cadastrada" }
-        if count == 1 { return "1 conta cadastrada" }
-        return "\(count) contas cadastradas"
     }
 
     /// `true` quando pelo menos uma conta corrente está arquivada. Gateia a

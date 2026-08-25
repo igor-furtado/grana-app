@@ -78,7 +78,6 @@ struct DesignSystemView: View {
         }
         .background(.clear)
         .navigationTitle("Design System")
-        .navigationSubtitle("Tokens, superfícies e componentes base")
     }
 
     private var columns: [GridItem] {

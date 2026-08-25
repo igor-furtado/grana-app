@@ -51,7 +51,6 @@ struct SupportedInstitutionsView: View {
         }
         .granaPagePadding()
         .navigationTitle("Bancos suportados")
-        .navigationSubtitle("\(institutions.count) bancos disponíveis")
         .toolbar {
             ToolbarItem(placement: .primaryAction) {
                 Button {

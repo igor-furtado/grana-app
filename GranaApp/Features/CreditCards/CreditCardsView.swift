@@ -44,7 +44,6 @@ struct CreditCardsView: View {
             }
         }
         .navigationTitle("Cartões de crédito")
-        .navigationSubtitle(subtitle)
     }
 
     @ViewBuilder
@@ -205,14 +204,6 @@ struct CreditCardsView: View {
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
         .background(Color(nsColor: .controlBackgroundColor))
-    }
-
-    private var subtitle: String {
-        guard let store else { return "" }
-        let count = visible(store: store).count
-        if count == 0 { return "Nenhum cartão cadastrado" }
-        if count == 1 { return "1 cartão cadastrado" }
-        return "\(count) cartões cadastrados"
     }
 
     private var hasArchivedCard: Bool {

@@ -17,6 +17,7 @@ struct ImportHistoryView: View {
     @State private var pendingDeleteBatch: ImportBatch?
     @State private var importContext: ImportContext?
     @State private var isDropTargeted = false
+    @State private var selectedBatchId: UUID?
 
     /// Wrapper `Identifiable` que carrega o arquivo escolhido (nil = manual)
     /// pra dentro da `.sheet(item:)`. Usamos `.sheet(item:)` em vez de
@@ -129,32 +130,42 @@ struct ImportHistoryView: View {
     }
 
     private func list(store: ImportStore) -> some View {
-        ScrollView {
-            LazyVStack(alignment: .leading, spacing: 24) {
-                ForEach(groupedBatches(store.batches), id: \.bucket) { group in
-                    VStack(alignment: .leading, spacing: 10) {
-                        Text(group.bucket.title)
-                            .font(.caption.weight(.semibold))
-                            .tracking(0.6)
-                            .foregroundStyle(.secondary)
-                            .padding(.horizontal, 4)
+        let rows = presentationRows(for: store.batches, store: store)
+        let selectedRow = selectedRow(in: rows)
 
-                        VStack(spacing: 8) {
-                            ForEach(group.batches) { batch in
-                                ImportBatchRow(
-                                    batch: batch,
-                                    accountDisplayName: accountDisplayName(for: batch, store: store),
-                                    institution: institution(for: batch, store: store),
-                                    onUndo: { pendingDeleteBatch = batch }
-                                )
-                            }
-                        }
-                    }
-                }
-            }
-            .granaPagePadding()
-        }
+        return ImportHistoryReviewDeskView(
+            rows: rows,
+            selectedRow: selectedRow,
+            selectedBatchId: selectedRow?.id,
+            onSelect: { selectedBatchId = $0 },
+            onUndo: { pendingDeleteBatch = $0 }
+        )
         .frame(maxWidth: .infinity, maxHeight: .infinity)
+    }
+
+    private func presentationRows(
+        for batches: [ImportBatch],
+        store: ImportStore
+    ) -> [ImportHistoryBatchPresentation] {
+        batches
+            .sorted { $0.importedAt > $1.importedAt }
+            .map { batch in
+                ImportHistoryBatchPresentation(
+                    batch: batch,
+                    accountDisplayName: accountDisplayName(for: batch, store: store),
+                    institution: institution(for: batch, store: store)
+                )
+            }
+    }
+
+    private func selectedRow(
+        in rows: [ImportHistoryBatchPresentation]
+    ) -> ImportHistoryBatchPresentation? {
+        if let selectedBatchId,
+           let selected = rows.first(where: { $0.id == selectedBatchId }) {
+            return selected
+        }
+        return rows.first
     }
 
     private func institution(for batch: ImportBatch, store: ImportStore) -> Institution? {
@@ -171,27 +182,6 @@ struct ImportHistoryView: View {
             bankAccounts: store.bankDetails,
             creditCards: store.creditCards
         )
-    }
-
-    /// Bucketing por janela de tempo relativa, ordenado do mais recente pro
-    /// mais antigo dentro de cada bucket. Calendar.current = fuso local
-    /// (datas comparadas por dia local, igual ao resto do app).
-    private func groupedBatches(_ batches: [ImportBatch]) -> [(bucket: PeriodBucket, batches: [ImportBatch])] {
-        let calendar = Calendar.current
-        let now = Date()
-        let sorted = batches.sorted { $0.importedAt > $1.importedAt }
-
-        var groups: [PeriodBucket: [ImportBatch]] = [:]
-        for batch in sorted {
-            let bucket = PeriodBucket.bucket(for: batch.importedAt, now: now, calendar: calendar)
-            groups[bucket, default: []].append(batch)
-        }
-
-        return PeriodBucket.allCases
-            .compactMap { bucket in
-                guard let batches = groups[bucket], !batches.isEmpty else { return nil }
-                return (bucket, batches)
-            }
     }
 
     // MARK: - Drop handling
@@ -235,6 +225,241 @@ struct ImportHistoryView: View {
 
     private func setDropTargeted(_ targeted: Bool) {
         isDropTargeted = targeted
+    }
+}
+
+private struct ImportHistoryBatchPresentation: Identifiable {
+    let batch: ImportBatch
+    let accountDisplayName: String?
+    let institution: Institution?
+
+    var id: UUID {
+        batch.id
+    }
+
+    var institutionKind: InstitutionKind {
+        institution?.kind ?? .other
+    }
+
+    var institutionName: String {
+        institution?.name ?? "Conta desconhecida"
+    }
+
+    var accountName: String {
+        accountDisplayName ?? institutionName
+    }
+
+    var formatName: String {
+        let ext = URL(fileURLWithPath: batch.sourceFilename).pathExtension
+        guard !ext.isEmpty else { return "ARQ" }
+        return ext.uppercased()
+    }
+
+    var importedAtText: String {
+        batch.importedAt.formatted(date: .abbreviated, time: .shortened)
+    }
+}
+
+private struct ImportHistoryReviewDeskView: View {
+    let rows: [ImportHistoryBatchPresentation]
+    let selectedRow: ImportHistoryBatchPresentation?
+    let selectedBatchId: UUID?
+    let onSelect: (UUID) -> Void
+    let onUndo: (ImportBatch) -> Void
+
+    var body: some View {
+        HStack(spacing: 0) {
+            VStack(spacing: 0) {
+                reviewDeskHeader
+
+                ScrollView {
+                    LazyVStack(spacing: 0) {
+                        ForEach(rows) { row in
+                            ImportHistoryReviewDeskRow(
+                                row: row,
+                                isSelected: selectedBatchId == row.id,
+                                onSelect: { onSelect(row.id) }
+                            )
+                        }
+                    }
+                }
+            }
+            .granaSurface(.solid, cornerRadius: GranaTheme.Radius.panel)
+            .clipShape(RoundedRectangle(cornerRadius: GranaTheme.Radius.panel, style: .continuous))
+
+            VStack(alignment: .leading, spacing: 14) {
+                ImportHistoryDropPanel()
+                if let selectedRow {
+                    ImportHistorySelectedPanel(
+                        row: selectedRow,
+                        onUndo: { onUndo(selectedRow.batch) }
+                    )
+                }
+            }
+            .frame(width: 310)
+            .padding(.leading, 16)
+        }
+        .granaPagePadding()
+    }
+
+    private var reviewDeskHeader: some View {
+        HStack(spacing: 12) {
+            Text("Instituição")
+                .frame(width: 132, alignment: .leading)
+            Text("Arquivo")
+                .frame(maxWidth: .infinity, alignment: .leading)
+            Text("Conta")
+                .frame(width: 180, alignment: .leading)
+            Text("Linhas")
+                .frame(width: 72, alignment: .trailing)
+            Text("Data")
+                .frame(width: 116, alignment: .trailing)
+        }
+        .font(.system(size: 12, weight: .bold))
+        .foregroundStyle(GranaTheme.Palette.muted)
+        .padding(.horizontal, 16)
+        .frame(height: 44)
+        .background(GranaTheme.Palette.paper.opacity(0.55))
+        .overlay(alignment: .bottom) {
+            Rectangle()
+                .fill(GranaTheme.Palette.line)
+                .frame(height: 1)
+        }
+    }
+}
+
+private struct ImportHistoryReviewDeskRow: View {
+    let row: ImportHistoryBatchPresentation
+    let isSelected: Bool
+    let onSelect: () -> Void
+
+    var body: some View {
+        Button(action: onSelect) {
+            HStack(spacing: 12) {
+                HStack(spacing: 10) {
+                    InstitutionIcon(kind: row.institutionKind, size: 28)
+                    Text(row.institutionName)
+                        .lineLimit(1)
+                }
+                .frame(width: 132, alignment: .leading)
+
+                Text(row.batch.sourceFilename)
+                    .font(.system(size: 13, weight: .bold))
+                    .lineLimit(1)
+                    .truncationMode(.middle)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+
+                Text(row.accountName)
+                    .foregroundStyle(GranaTheme.Palette.muted)
+                    .lineLimit(1)
+                    .frame(width: 180, alignment: .leading)
+
+                Text("\(row.batch.rowCount)")
+                    .font(GranaTheme.Typography.number(size: 13, weight: .semibold))
+                    .frame(width: 72, alignment: .trailing)
+
+                Text(row.importedAtText)
+                    .font(GranaTheme.Typography.number(size: 12, weight: .semibold))
+                    .foregroundStyle(GranaTheme.Palette.muted)
+                    .frame(width: 116, alignment: .trailing)
+            }
+            .font(.system(size: 13, weight: .semibold))
+            .padding(.horizontal, 16)
+            .frame(minHeight: 52)
+            .background(isSelected ? GranaTheme.Palette.teal.opacity(0.09) : .clear)
+            .overlay(alignment: .top) {
+                Rectangle()
+                    .fill(GranaTheme.Palette.line)
+                    .frame(height: 1)
+            }
+        }
+        .buttonStyle(.plain)
+    }
+}
+
+private struct ImportHistorySelectedPanel: View {
+    let row: ImportHistoryBatchPresentation
+    let onUndo: () -> Void
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 16) {
+            HStack {
+                InstitutionIcon(kind: row.institutionKind, size: 46)
+                VStack(alignment: .leading, spacing: 3) {
+                    Text("Lote selecionado")
+                        .font(.system(size: 12, weight: .bold))
+                        .foregroundStyle(GranaTheme.Palette.muted)
+                    Text(row.institutionName)
+                        .font(.system(size: 16, weight: .bold))
+                }
+            }
+
+            VStack(alignment: .leading, spacing: 8) {
+                ImportHistoryDetailLine("Arquivo", row.batch.sourceFilename)
+                ImportHistoryDetailLine("Conta", row.accountName)
+                ImportHistoryDetailLine("Importado", row.importedAtText)
+                ImportHistoryDetailLine("Formato", row.formatName)
+            }
+
+            Button(role: .destructive, action: onUndo) {
+                Label("Desfazer lote", systemImage: AppIcon.undo.systemImage)
+                    .frame(maxWidth: .infinity)
+            }
+            .buttonStyle(GranaSecondaryButtonStyle())
+            .foregroundStyle(GranaTheme.Palette.red)
+        }
+        .padding(16)
+        .granaSurface(.solid, cornerRadius: GranaTheme.Radius.panel)
+    }
+}
+
+private struct ImportHistoryDropPanel: View {
+    var body: some View {
+        VStack(spacing: 12) {
+            Image(systemName: AppIcon.importFile.systemImage)
+                .font(.system(size: 28, weight: .bold))
+                .foregroundStyle(GranaTheme.Palette.teal)
+            Text("Solte o próximo extrato")
+                .font(.system(size: 15, weight: .bold))
+            Text("A mesa deixa a próxima ação visível sem tirar densidade da lista.")
+                .font(.system(size: 12, weight: .semibold))
+                .foregroundStyle(GranaTheme.Palette.muted)
+                .multilineTextAlignment(.center)
+        }
+        .frame(maxWidth: .infinity)
+        .padding(18)
+        .background {
+            RoundedRectangle(cornerRadius: 18, style: .continuous)
+                .fill(GranaTheme.Palette.teal.opacity(0.07))
+        }
+        .overlay {
+            RoundedRectangle(cornerRadius: 18, style: .continuous)
+                .stroke(
+                    GranaTheme.Palette.teal.opacity(0.35),
+                    style: StrokeStyle(lineWidth: 1.5, dash: [7, 6])
+                )
+        }
+    }
+}
+
+private struct ImportHistoryDetailLine: View {
+    let label: String
+    let value: String
+
+    init(_ label: String, _ value: String) {
+        self.label = label
+        self.value = value
+    }
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 2) {
+            Text(label)
+                .font(.system(size: 10, weight: .bold))
+                .foregroundStyle(GranaTheme.Palette.muted)
+            Text(value)
+                .font(.system(size: 12, weight: .semibold))
+                .lineLimit(2)
+        }
     }
 }
 
@@ -353,119 +578,5 @@ private struct DropOverlay: View {
             )
             .padding(40)
         }
-    }
-}
-
-// MARK: - Period bucket
-
-private enum PeriodBucket: CaseIterable {
-    case today
-    case yesterday
-    case thisWeek
-    case thisMonth
-    case older
-
-    var title: String {
-        switch self {
-        case .today: "HOJE"
-        case .yesterday: "ONTEM"
-        case .thisWeek: "ESTA SEMANA"
-        case .thisMonth: "ESTE MÊS"
-        case .older: "MAIS ANTIGOS"
-        }
-    }
-
-    static func bucket(for date: Date, now: Date, calendar: Calendar) -> PeriodBucket {
-        if calendar.isDateInToday(date) { return .today }
-        if calendar.isDateInYesterday(date) { return .yesterday }
-        if calendar.isDate(date, equalTo: now, toGranularity: .weekOfYear) { return .thisWeek }
-        if calendar.isDate(date, equalTo: now, toGranularity: .month) { return .thisMonth }
-        return .older
-    }
-}
-
-// MARK: - Row
-
-private struct ImportBatchRow: View {
-    let batch: ImportBatch
-    let accountDisplayName: String?
-    let institution: Institution?
-    let onUndo: () -> Void
-
-    @State private var isHovered = false
-
-    var body: some View {
-        HStack(alignment: .center, spacing: 14) {
-            iconView
-                .help(iconTooltip)
-
-            VStack(alignment: .leading, spacing: 3) {
-                Text(batch.sourceFilename)
-                    .font(.headline)
-                    .lineLimit(1)
-                    .truncationMode(.middle)
-                (Text("\(batch.rowCount)")
-                    .font(GranaTheme.Typography.number(size: 13, weight: .regular))
-                    + Text(" \(batch.rowCount == 1 ? "transação" : "transações")")
-                    .font(.subheadline))
-                    .foregroundStyle(.secondary)
-            }
-            .frame(maxWidth: .infinity, alignment: .leading)
-
-            Button(role: .destructive, action: onUndo) {
-                Label("Desfazer", systemImage: AppIcon.undo.systemImage)
-                    .labelStyle(.titleAndIcon)
-                    .font(.caption.weight(.medium))
-            }
-            .buttonStyle(.bordered)
-            .tint(.danger)
-            .opacity(isHovered ? 1 : 0.7)
-        }
-        .padding(14)
-        .background(
-            RoundedRectangle(cornerRadius: 12, style: .continuous)
-                .fill(Color(nsColor: .controlBackgroundColor))
-        )
-        .overlay(
-            RoundedRectangle(cornerRadius: 12, style: .continuous)
-                .strokeBorder(Color.secondary.opacity(0.15), lineWidth: 1)
-        )
-        .onHover { hovering in
-            withAnimation(.easeOut(duration: 0.12)) { isHovered = hovering }
-        }
-        .contextMenu {
-            Button("Desfazer importação", role: .destructive, action: onUndo)
-        }
-    }
-
-    @ViewBuilder
-    private var iconView: some View {
-        if let institution {
-            InstitutionIcon(kind: institution.kind, size: 40)
-        } else {
-            ZStack {
-                RoundedRectangle(cornerRadius: 10, style: .continuous)
-                    .fill(Color.secondary.opacity(0.12))
-                    .frame(width: 40, height: 40)
-                Image(systemName: "doc.text")
-                    .font(.title3)
-                    .foregroundStyle(.secondary)
-            }
-        }
-    }
-
-    /// Tooltip do ícone: nome do banco + conta/cartão. Fica no ícone (e não
-    /// duplicado no row) porque o ícone é o que **já comunica visualmente**
-    /// a marca da instituição — o tooltip só confirma e adiciona o
-    /// identificador da conta. Fallback pra nome da instituição ou texto
-    /// genérico quando a conta foi removida pós-import.
-    private var iconTooltip: String {
-        if let accountDisplayName {
-            return accountDisplayName
-        }
-        if let institution {
-            return institution.name
-        }
-        return "Conta desconhecida"
     }
 }

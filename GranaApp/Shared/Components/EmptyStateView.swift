@@ -54,7 +54,6 @@ struct EmptyStateView<Actions: View>: View {
         }
         .frame(maxWidth: 620)
         .padding(34)
-        .granaSurface(.subtle, cornerRadius: GranaTheme.Radius.hero)
     }
 
     /// Ícone unificado dos empty states. Dois tratamentos sempre aplicados:
