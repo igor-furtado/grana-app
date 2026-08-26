@@ -25,9 +25,11 @@ struct WizardStepper: View {
         .padding(.horizontal, GranaTheme.Spacing.lg)
         .padding(.vertical, GranaTheme.Spacing.sm)
         .frame(maxWidth: .infinity)
-        .background(.background.secondary)
+        .background(GranaTheme.Palette.paper.opacity(0.62))
         .overlay(alignment: .bottom) {
-            Divider()
+            Rectangle()
+                .fill(GranaTheme.Palette.line)
+                .frame(height: 1)
         }
     }
 
@@ -37,11 +39,11 @@ struct WizardStepper: View {
         HStack(spacing: GranaTheme.Spacing.xs) {
             ZStack {
                 Circle()
-                    .fill(state == .pending ? Color.clear : Color.accentColor)
+                    .fill(state == .pending ? Color.clear : GranaTheme.Palette.teal)
                     .frame(width: 22, height: 22)
                 Circle()
                     .strokeBorder(
-                        state == .pending ? Color.secondary.opacity(0.4) : Color.accentColor,
+                        state == .pending ? GranaTheme.Palette.line : GranaTheme.Palette.teal,
                         lineWidth: 1.5
                     )
                     .frame(width: 22, height: 22)
@@ -52,18 +54,18 @@ struct WizardStepper: View {
                 } else {
                     Text("\(index + 1)")
                         .font(GranaTheme.Typography.footnoteEmphasis)
-                        .foregroundStyle(state == .current ? .white : .secondary)
+                        .foregroundStyle(state == .current ? GranaTheme.Palette.creamText : GranaTheme.Palette.muted)
                 }
             }
             Text(label)
                 .font(state == .current ? GranaTheme.Typography.calloutEmphasis : GranaTheme.Typography.callout)
-                .foregroundStyle(state == .pending ? .secondary : .primary)
+                .foregroundStyle(state == .pending ? GranaTheme.Palette.muted : GranaTheme.Palette.ink)
         }
     }
 
     private func connector(isCompleted: Bool) -> some View {
         Rectangle()
-            .fill(isCompleted ? Color.accentColor : Color.secondary.opacity(0.25))
+            .fill(isCompleted ? GranaTheme.Palette.teal : GranaTheme.Palette.line)
             .frame(height: 1.5)
             .frame(maxWidth: .infinity)
     }

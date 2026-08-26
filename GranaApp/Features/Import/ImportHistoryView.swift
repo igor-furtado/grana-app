@@ -2,15 +2,8 @@ import Foundation
 import SwiftUI
 import UniformTypeIdentifiers
 
-/// Tela "Importações" do menu lateral: lista visual de `ImportBatch` agrupada
-/// por período (Hoje / Ontem / Esta semana / Este mês / Mais antigos), com
-/// logo da instituição em cada card e botão de desfazer. Window toolbar tem
-/// o "+" que abre a `ImportView` em sheet modal.
-///
-/// **Drag & drop:** a tela inteira é um drop target. Arrastar um arquivo OFX
-/// ou CSV pra dentro abre o wizard com o arquivo já carregado, pulando o file
-/// picker do sistema. Tipos inválidos viram toast via `NoticeCenter` —
-/// usuário não fica olhando uma tela "que não fez nada".
+/// Tela "Importações" do menu lateral: histórico de `ImportBatch`, ponto de
+/// entrada do wizard e drop target global para arquivos OFX/CSV.
 struct ImportHistoryView: View {
     @Environment(AppEnvironment.self) private var environment
     @State private var store: ImportStore?
@@ -19,14 +12,6 @@ struct ImportHistoryView: View {
     @State private var isDropTargeted = false
     @State private var selectedBatchId: UUID?
 
-    /// Wrapper `Identifiable` que carrega o arquivo escolhido (nil = manual)
-    /// pra dentro da `.sheet(item:)`. Usamos `.sheet(item:)` em vez de
-    /// `.sheet(isPresented:)` porque a versão isPresented tem um race entre
-    /// o flag e a URL: dois `@State` mutados em sequência podem ser lidos
-    /// pela closure de conteúdo em ordens diferentes, fazendo o wizard
-    /// abrir com `initialFile == nil` mesmo após drop bem-sucedido. Com
-    /// `.sheet(item:)`, o valor é atômico — quando o sheet abre, o item já
-    /// está completo, sem janela pra estado intermediário.
     private struct ImportContext: Identifiable {
         let id = UUID()
         let file: URL?
@@ -52,13 +37,9 @@ struct ImportHistoryView: View {
         }
         .navigationTitle("")
         .toolbar(.hidden, for: .windowToolbar)
-        // Drop destination cobre a área inteira da tela — incluindo o empty
-        // state e a lista populada. O `isTargeted` dirige o overlay visual.
         .dropDestination(for: URL.self, action: handleDrop, isTargeted: setDropTargeted)
         .overlay {
             if isDropTargeted, !(store?.batches.isEmpty ?? true) {
-                // Empty state já tem visual de drop zone permanente — overlay
-                // só faz sentido por cima da lista populada.
                 DropOverlay()
                     .transition(.opacity.combined(with: .scale(scale: 0.98)))
                     .allowsHitTesting(false)
@@ -78,16 +59,10 @@ struct ImportHistoryView: View {
         )
     }
 
-    private var importsSubtitle: String {
-        guard let store, !store.batches.isEmpty else { return "" }
-        let count = store.batches.count
-        return "\(count) \(count == 1 ? "importação" : "importações")"
-    }
-
     @ViewBuilder
     private func content(store: ImportStore) -> some View {
         VStack(spacing: GranaTheme.Spacing.sm) {
-            header
+            header(store: store)
 
             if store.batches.isEmpty {
                 EmptyStateDropZone(
@@ -96,7 +71,7 @@ struct ImportHistoryView: View {
                 )
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
             } else {
-                list(store: store)
+                dashboard(store: store)
                     .frame(maxWidth: .infinity, maxHeight: .infinity)
             }
         }
@@ -123,33 +98,69 @@ struct ImportHistoryView: View {
         }
     }
 
-    private var header: some View {
+    private func header(store: ImportStore) -> some View {
         FeatureScreenHeader(
-            title: "Importar dados",
-            subtitle: importsSubtitle.isEmpty ? "OFX e CSV com revisão antes do commit" : importsSubtitle
+            title: "Importar transações",
+            subtitle: store.summarySubtitle
         ) {
-            Button {
-                presentImportSheet(file: nil)
-            } label: {
-                Label("Nova importação", systemImage: AppIcon.add.systemImage)
+            HStack(spacing: GranaTheme.Spacing.sm) {
+                ImportSummaryBadge(
+                    title: "Lotes",
+                    value: "\(store.batches.count)",
+                    detail: "histórico ativo"
+                )
+                ImportSummaryBadge(
+                    title: "Linhas",
+                    value: "\(store.totalImportedRows)",
+                    detail: "já consolidadas"
+                )
+                ImportSummaryBadge(
+                    title: "Última",
+                    value: store.latestImportShortText,
+                    detail: "importação concluída"
+                )
             }
-            .buttonStyle(GranaPrimaryButtonStyle())
-            .help("Importar extrato bancário (OFX ou CSV)")
+        } actions: {
+            HStack(spacing: GranaTheme.Spacing.sm) {
+                Button {
+                    presentImportSheet(file: nil)
+                } label: {
+                    Label("Selecionar arquivo", systemImage: AppIcon.importFile.systemImage)
+                }
+                .buttonStyle(GranaSecondaryButtonStyle())
+
+                Button {
+                    presentImportSheet(file: nil)
+                } label: {
+                    Label("Nova importação", systemImage: AppIcon.add.systemImage)
+                }
+                .buttonStyle(GranaPrimaryButtonStyle())
+                .help("Importar extrato bancário (OFX ou CSV)")
+            }
         }
     }
 
-    private func list(store: ImportStore) -> some View {
+    private func dashboard(store: ImportStore) -> some View {
         let rows = presentationRows(for: store.batches, store: store)
         let selectedRow = selectedRow(in: rows)
 
-        return ImportHistoryReviewDeskView(
-            rows: rows,
-            selectedRow: selectedRow,
-            selectedBatchId: selectedRow?.id,
-            onSelect: { selectedBatchId = $0 },
-            onUndo: { pendingDeleteBatch = $0 }
-        )
-        .frame(maxWidth: .infinity, maxHeight: .infinity)
+        return HStack(alignment: .top, spacing: GranaTheme.Spacing.md) {
+            ImportHistoryMainPanel(
+                rows: rows,
+                selectedBatchId: selectedRow?.id,
+                onSelect: { selectedBatchId = $0 }
+            )
+            .frame(maxWidth: .infinity, maxHeight: .infinity)
+
+            ImportHistorySidebar(
+                store: store,
+                selectedRow: selectedRow,
+                isDropTargeted: isDropTargeted,
+                onBrowse: { presentImportSheet(file: nil) },
+                onUndo: { row in pendingDeleteBatch = row.batch }
+            )
+            .frame(width: 320)
+        }
     }
 
     private func presentationRows(
@@ -170,9 +181,7 @@ struct ImportHistoryView: View {
     private func selectedRow(
         in rows: [ImportHistoryBatchPresentation]
     ) -> ImportHistoryBatchPresentation? {
-        if let selectedBatchId,
-           let selected = rows.first(where: { $0.id == selectedBatchId })
-        {
+        if let selectedBatchId, let selected = rows.first(where: { $0.id == selectedBatchId }) {
             return selected
         }
         return rows.first
@@ -194,18 +203,10 @@ struct ImportHistoryView: View {
         )
     }
 
-    // MARK: - Drop handling
-
     private func presentImportSheet(file: URL?) {
-        // Atribuição única → `.sheet(item:)` abre com o `file` já capturado
-        // dentro do contexto. Sem race entre flag de presença e URL.
         importContext = ImportContext(file: file)
     }
 
-    /// Callback do `.dropDestination`. Roda no main actor. Valida extensão e
-    /// abre a sheet com o arquivo pré-carregado; arquivos inválidos viram
-    /// toast pelo `NoticeCenter` (sem abrir sheet — não faz sentido entrar no
-    /// wizard pra logo cair em failed).
     private func handleDrop(_ urls: [URL], at _: CGPoint) -> Bool {
         guard let url = urls.first else { return false }
         let ext = url.pathExtension.lowercased()
@@ -218,10 +219,6 @@ struct ImportHistoryView: View {
             return false
         }
 
-        // Múltiplos arquivos: avisa que vamos importar só o primeiro. O wizard
-        // é single-file por design (uma instituição/conta por vez no preview).
-        // Vira `.info` (não `.error`): nada falhou, só estamos explicando que
-        // o input foi reduzido.
         if urls.count > 1 {
             NoticeCenter.shared.info(
                 title: "Vários arquivos soltos",
@@ -243,21 +240,10 @@ private struct ImportHistoryBatchPresentation: Identifiable {
     let accountDisplayName: String?
     let institution: Institution?
 
-    var id: UUID {
-        batch.id
-    }
-
-    var institutionKind: InstitutionKind {
-        institution?.kind ?? .other
-    }
-
-    var institutionName: String {
-        institution?.name ?? "Conta desconhecida"
-    }
-
-    var accountName: String {
-        accountDisplayName ?? institutionName
-    }
+    var id: UUID { batch.id }
+    var institutionKind: InstitutionKind { institution?.kind ?? .other }
+    var institutionName: String { institution?.name ?? "Conta desconhecida" }
+    var accountName: String { accountDisplayName ?? institutionName }
 
     var formatName: String {
         let ext = URL(fileURLWithPath: batch.sourceFilename).pathExtension
@@ -268,68 +254,75 @@ private struct ImportHistoryBatchPresentation: Identifiable {
     var importedAtText: String {
         batch.importedAt.formatted(date: .abbreviated, time: .shortened)
     }
-}
 
-private struct ImportHistoryReviewDeskView: View {
-    let rows: [ImportHistoryBatchPresentation]
-    let selectedRow: ImportHistoryBatchPresentation?
-    let selectedBatchId: UUID?
-    let onSelect: (UUID) -> Void
-    let onUndo: (ImportBatch) -> Void
-
-    var body: some View {
-        HStack(spacing: GranaTheme.Spacing.none) {
-            VStack(spacing: GranaTheme.Spacing.none) {
-                reviewDeskHeader
-
-                ScrollView {
-                    LazyVStack(spacing: GranaTheme.Spacing.none) {
-                        ForEach(rows) { row in
-                            ImportHistoryReviewDeskRow(
-                                row: row,
-                                isSelected: selectedBatchId == row.id,
-                                onSelect: { onSelect(row.id) }
-                            )
-                        }
-                    }
-                }
-            }
-            .granaSurface(.solid, cornerRadius: GranaTheme.Radius.panel)
-            .clipShape(RoundedRectangle(cornerRadius: GranaTheme.Radius.panel, style: .continuous))
-
-            VStack(alignment: .leading, spacing: GranaTheme.Spacing.md) {
-                ImportHistoryDropPanel()
-                if let selectedRow {
-                    ImportHistorySelectedPanel(
-                        row: selectedRow,
-                        onUndo: { onUndo(selectedRow.batch) }
-                    )
-                }
-            }
-            .frame(width: 310)
-            .padding(.leading, GranaTheme.Spacing.md)
-        }
-        .granaPagePadding()
+    var importedAtShortText: String {
+        batch.importedAt.formatted(date: .numeric, time: .omitted)
     }
 
-    private var reviewDeskHeader: some View {
-        HStack(spacing: GranaTheme.Spacing.sm) {
-            Text("Instituição")
-                .frame(width: 132, alignment: .leading)
-            Text("Arquivo")
-                .frame(maxWidth: .infinity, alignment: .leading)
-            Text("Conta")
-                .frame(width: 180, alignment: .leading)
-            Text("Linhas")
-                .frame(width: 72, alignment: .trailing)
-            Text("Data")
-                .frame(width: 116, alignment: .trailing)
+    var monthLabel: String {
+        batch.importedAt.formatted(.dateTime.month(.wide).year())
+    }
+}
+
+private struct ImportHistoryMainPanel: View {
+    let rows: [ImportHistoryBatchPresentation]
+    let selectedBatchId: UUID?
+    let onSelect: (UUID) -> Void
+
+    private var groupedRows: [(key: String, rows: [ImportHistoryBatchPresentation])] {
+        Dictionary(grouping: rows, by: \.monthLabel)
+            .sorted { lhs, rhs in
+                guard let left = lhs.value.first?.batch.importedAt,
+                      let right = rhs.value.first?.batch.importedAt else { return lhs.key > rhs.key }
+                return left > right
+            }
+            .map { (key: $0.key, rows: $0.value) }
+    }
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: GranaTheme.Spacing.none) {
+            panelHeader
+
+            ScrollView {
+                LazyVStack(alignment: .leading, spacing: GranaTheme.Spacing.lg) {
+                    ForEach(groupedRows, id: \.key) { section in
+                        ImportHistoryMonthSection(
+                            title: section.key,
+                            rows: section.rows,
+                            selectedBatchId: selectedBatchId,
+                            onSelect: onSelect
+                        )
+                    }
+                }
+                .padding(GranaTheme.Spacing.md)
+            }
         }
-        .font(GranaTheme.Typography.footnoteEmphasis)
-        .foregroundStyle(GranaTheme.Palette.muted)
-        .padding(.horizontal, GranaTheme.Spacing.md)
-        .frame(height: 44)
-        .background(GranaTheme.Palette.paper.opacity(0.55))
+        .granaSurface(.solid, cornerRadius: GranaTheme.Radius.card)
+        .clipShape(RoundedRectangle(cornerRadius: GranaTheme.Radius.card, style: .continuous))
+    }
+
+    private var panelHeader: some View {
+        HStack(alignment: .center, spacing: GranaTheme.Spacing.sm) {
+            VStack(alignment: .leading, spacing: GranaTheme.Spacing.xxs) {
+                Text("Histórico consolidado")
+                    .font(GranaTheme.Typography.headline)
+                    .foregroundStyle(GranaTheme.Palette.ink)
+                Text("Cada lote permanece reversível e pode ser auditado antes de desfazer.")
+                    .font(GranaTheme.Typography.footnote)
+                    .foregroundStyle(GranaTheme.Palette.muted)
+            }
+
+            Spacer(minLength: GranaTheme.Spacing.none)
+
+            Text("\(rows.count) lote\(rows.count == 1 ? "" : "s")")
+                .font(GranaTheme.Typography.caption1Emphasis)
+                .foregroundStyle(GranaTheme.Palette.tealDeep)
+                .padding(.horizontal, GranaTheme.Spacing.sm)
+                .padding(.vertical, GranaTheme.Spacing.xs)
+                .background(GranaTheme.Palette.teal.opacity(0.10), in: Capsule())
+        }
+        .padding(GranaTheme.Spacing.md)
+        .background(GranaTheme.Palette.paper.opacity(0.58))
         .overlay(alignment: .bottom) {
             Rectangle()
                 .fill(GranaTheme.Palette.line)
@@ -338,52 +331,196 @@ private struct ImportHistoryReviewDeskView: View {
     }
 }
 
-private struct ImportHistoryReviewDeskRow: View {
+private struct ImportHistoryMonthSection: View {
+    let title: String
+    let rows: [ImportHistoryBatchPresentation]
+    let selectedBatchId: UUID?
+    let onSelect: (UUID) -> Void
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: GranaTheme.Spacing.sm) {
+            HStack {
+                Text(title.capitalized)
+                    .font(GranaTheme.Typography.subheadlineEmphasis)
+                    .foregroundStyle(GranaTheme.Palette.ink)
+                Spacer(minLength: GranaTheme.Spacing.none)
+                Text("\(rows.count) lote\(rows.count == 1 ? "" : "s")")
+                    .font(GranaTheme.Typography.caption2Emphasis)
+                    .foregroundStyle(GranaTheme.Palette.muted)
+            }
+
+            VStack(spacing: GranaTheme.Spacing.sm) {
+                ForEach(rows) { row in
+                    ImportHistoryBatchCard(
+                        row: row,
+                        isSelected: selectedBatchId == row.id,
+                        onSelect: { onSelect(row.id) }
+                    )
+                }
+            }
+        }
+    }
+}
+
+private struct ImportHistoryBatchCard: View {
     let row: ImportHistoryBatchPresentation
     let isSelected: Bool
     let onSelect: () -> Void
 
     var body: some View {
         Button(action: onSelect) {
-            HStack(spacing: GranaTheme.Spacing.sm) {
-                HStack(spacing: GranaTheme.Spacing.sm) {
-                    InstitutionIcon(kind: row.institutionKind, size: 28)
-                    Text(row.institutionName)
-                        .lineLimit(1)
+            VStack(alignment: .leading, spacing: GranaTheme.Spacing.md) {
+                HStack(alignment: .top, spacing: GranaTheme.Spacing.sm) {
+                    InstitutionIcon(kind: row.institutionKind, size: 42)
+
+                    VStack(alignment: .leading, spacing: GranaTheme.Spacing.xxs) {
+                        HStack(alignment: .firstTextBaseline, spacing: GranaTheme.Spacing.xs) {
+                            Text(row.institutionName)
+                                .font(GranaTheme.Typography.bodyEmphasis)
+                                .foregroundStyle(GranaTheme.Palette.ink)
+                                .lineLimit(1)
+
+                            Text(row.formatName)
+                                .font(GranaTheme.Typography.caption2Emphasis)
+                                .foregroundStyle(GranaTheme.Palette.tealDeep)
+                                .padding(.horizontal, GranaTheme.Spacing.xs)
+                                .padding(.vertical, GranaTheme.Spacing.xxs)
+                                .background(GranaTheme.Palette.teal.opacity(0.10), in: Capsule())
+                        }
+
+                        Text(row.batch.sourceFilename)
+                            .font(GranaTheme.Typography.subheadlineEmphasis)
+                            .foregroundStyle(GranaTheme.Palette.muted)
+                            .lineLimit(1)
+                            .truncationMode(.middle)
+                    }
+
+                    Spacer(minLength: GranaTheme.Spacing.none)
+
+                    if isSelected {
+                        Image(systemName: AppIcon.completedSeal.systemImage)
+                            .font(.system(size: GranaTheme.IconSize.medium, weight: .semibold))
+                            .foregroundStyle(GranaTheme.Palette.teal)
+                    }
                 }
-                .frame(width: 132, alignment: .leading)
 
-                Text(row.batch.sourceFilename)
-                    .font(GranaTheme.Typography.subheadlineEmphasis)
-                    .lineLimit(1)
-                    .truncationMode(.middle)
-                    .frame(maxWidth: .infinity, alignment: .leading)
-
-                Text(row.accountName)
-                    .foregroundStyle(GranaTheme.Palette.muted)
-                    .lineLimit(1)
-                    .frame(width: 180, alignment: .leading)
-
-                Text("\(row.batch.rowCount)")
-                    .font(GranaTheme.Typography.subheadlineEmphasis)
-                    .frame(width: 72, alignment: .trailing)
-
-                Text(row.importedAtText)
-                    .font(GranaTheme.Typography.footnoteEmphasis)
-                    .foregroundStyle(GranaTheme.Palette.muted)
-                    .frame(width: 116, alignment: .trailing)
+                HStack(spacing: GranaTheme.Spacing.sm) {
+                    ImportBatchMetaPill(title: "Conta", value: row.accountName, tint: GranaTheme.Palette.ink)
+                    ImportBatchMetaPill(title: "Linhas", value: "\(row.batch.rowCount)", tint: GranaTheme.Palette.amber)
+                    ImportBatchMetaPill(title: "Data", value: row.importedAtShortText, tint: GranaTheme.Palette.teal)
+                }
             }
-            .font(GranaTheme.Typography.subheadlineEmphasis)
-            .padding(.horizontal, GranaTheme.Spacing.md)
-            .frame(minHeight: 52)
-            .background(isSelected ? GranaTheme.Palette.teal.opacity(0.09) : .clear)
-            .overlay(alignment: .top) {
-                Rectangle()
-                    .fill(GranaTheme.Palette.line)
-                    .frame(height: 1)
+            .padding(GranaTheme.Spacing.md)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .background(backgroundShape)
+            .overlay {
+                RoundedRectangle(cornerRadius: GranaTheme.Radius.card, style: .continuous)
+                    .strokeBorder(borderColor, lineWidth: isSelected ? 1.4 : 1)
             }
         }
         .buttonStyle(.plain)
+    }
+
+    private var backgroundShape: some View {
+        RoundedRectangle(cornerRadius: GranaTheme.Radius.card, style: .continuous)
+            .fill(isSelected ? GranaTheme.Palette.paper : GranaTheme.Palette.paper.opacity(0.48))
+    }
+
+    private var borderColor: Color {
+        isSelected ? GranaTheme.Palette.teal.opacity(0.34) : GranaTheme.Palette.line
+    }
+}
+
+private struct ImportHistorySidebar: View {
+    let store: ImportStore
+    let selectedRow: ImportHistoryBatchPresentation?
+    let isDropTargeted: Bool
+    let onBrowse: () -> Void
+    let onUndo: (ImportHistoryBatchPresentation) -> Void
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: GranaTheme.Spacing.md) {
+            ImportDropActionPanel(isHighlighted: isDropTargeted, onBrowse: onBrowse)
+            ImportSidebarInsightsCard(store: store)
+
+            if let selectedRow {
+                ImportHistorySelectedPanel(
+                    row: selectedRow,
+                    onUndo: { onUndo(selectedRow) }
+                )
+            }
+        }
+    }
+}
+
+private struct ImportDropActionPanel: View {
+    let isHighlighted: Bool
+    let onBrowse: () -> Void
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: GranaTheme.Spacing.md) {
+            HStack(spacing: GranaTheme.Spacing.sm) {
+                ZStack {
+                    Circle()
+                        .fill(GranaTheme.Palette.teal.opacity(isHighlighted ? 0.22 : 0.14))
+                        .frame(width: 52, height: 52)
+
+                    Image(systemName: AppIcon.importFile.systemImage)
+                        .font(.system(size: GranaTheme.IconSize.medium, weight: .semibold))
+                        .foregroundStyle(GranaTheme.Palette.tealDeep)
+                }
+
+                VStack(alignment: .leading, spacing: GranaTheme.Spacing.xxs) {
+                    Text(isHighlighted ? "Solte para começar" : "Próxima importação")
+                        .font(GranaTheme.Typography.bodyEmphasis)
+                        .foregroundStyle(GranaTheme.Palette.ink)
+                    Text("OFX bancário ou CSV de fatura, um arquivo por vez.")
+                        .font(GranaTheme.Typography.footnote)
+                        .foregroundStyle(GranaTheme.Palette.muted)
+                }
+            }
+
+            Button {
+                onBrowse()
+            } label: {
+                Label("Selecionar arquivo", systemImage: AppIcon.importFile.systemImage)
+                    .frame(maxWidth: .infinity)
+            }
+            .buttonStyle(GranaPrimaryButtonStyle())
+        }
+        .padding(GranaTheme.Spacing.md)
+        .background {
+            RoundedRectangle(cornerRadius: GranaTheme.Radius.card, style: .continuous)
+                .fill(GranaTheme.Palette.teal.opacity(isHighlighted ? 0.10 : 0.06))
+        }
+        .overlay {
+            RoundedRectangle(cornerRadius: GranaTheme.Radius.card, style: .continuous)
+                .strokeBorder(
+                    GranaTheme.Palette.teal.opacity(isHighlighted ? 0.42 : 0.24),
+                    style: StrokeStyle(lineWidth: isHighlighted ? 1.8 : 1.2, dash: [8, 6])
+                )
+        }
+        .animation(.easeOut(duration: 0.18), value: isHighlighted)
+    }
+}
+
+private struct ImportSidebarInsightsCard: View {
+    let store: ImportStore
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: GranaTheme.Spacing.md) {
+            Text("Ritmo de importação")
+                .font(GranaTheme.Typography.headline)
+                .foregroundStyle(GranaTheme.Palette.ink)
+
+            VStack(alignment: .leading, spacing: GranaTheme.Spacing.sm) {
+                ImportHistoryDetailLine("Arquivos aceitos", ImportStore.supportedExtensionsDisplayText)
+                ImportHistoryDetailLine("Conta mais recente", store.latestImportedAccountName)
+                ImportHistoryDetailLine("Último lote", store.latestImportLongText)
+            }
+        }
+        .padding(GranaTheme.Spacing.md)
+        .granaSurface(.subtle, cornerRadius: GranaTheme.Radius.card)
     }
 }
 
@@ -393,22 +530,28 @@ private struct ImportHistorySelectedPanel: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: GranaTheme.Spacing.md) {
-            HStack {
+            HStack(alignment: .top, spacing: GranaTheme.Spacing.sm) {
                 InstitutionIcon(kind: row.institutionKind, size: 46)
+
                 VStack(alignment: .leading, spacing: GranaTheme.Spacing.xxs) {
                     Text("Lote selecionado")
-                        .font(GranaTheme.Typography.footnoteEmphasis)
+                        .font(GranaTheme.Typography.caption1Emphasis)
                         .foregroundStyle(GranaTheme.Palette.muted)
                     Text(row.institutionName)
                         .font(GranaTheme.Typography.headline)
+                        .foregroundStyle(GranaTheme.Palette.ink)
+                    Text(row.batch.sourceFilename)
+                        .font(GranaTheme.Typography.footnote)
+                        .foregroundStyle(GranaTheme.Palette.muted)
+                        .lineLimit(2)
                 }
             }
 
             VStack(alignment: .leading, spacing: GranaTheme.Spacing.xs) {
-                ImportHistoryDetailLine("Arquivo", row.batch.sourceFilename)
                 ImportHistoryDetailLine("Conta", row.accountName)
                 ImportHistoryDetailLine("Importado", row.importedAtText)
                 ImportHistoryDetailLine("Formato", row.formatName)
+                ImportHistoryDetailLine("Transações", "\(row.batch.rowCount)")
             }
 
             Button(role: .destructive, action: onUndo) {
@@ -419,36 +562,7 @@ private struct ImportHistorySelectedPanel: View {
             .foregroundStyle(GranaTheme.Palette.red)
         }
         .padding(GranaTheme.Spacing.md)
-        .granaSurface(.solid, cornerRadius: GranaTheme.Radius.panel)
-    }
-}
-
-private struct ImportHistoryDropPanel: View {
-    var body: some View {
-        VStack(spacing: GranaTheme.Spacing.sm) {
-            Image(systemName: AppIcon.importFile.systemImage)
-                .font(.system(size: GranaTheme.IconSize.large, weight: .bold))
-                .foregroundStyle(GranaTheme.Palette.teal)
-            Text("Solte o próximo extrato")
-                .font(GranaTheme.Typography.bodyEmphasis)
-            Text("A mesa deixa a próxima ação visível sem tirar densidade da lista.")
-                .font(GranaTheme.Typography.footnoteEmphasis)
-                .foregroundStyle(GranaTheme.Palette.muted)
-                .multilineTextAlignment(.center)
-        }
-        .frame(maxWidth: .infinity)
-        .padding(GranaTheme.Spacing.lg)
-        .background {
-            RoundedRectangle(cornerRadius: 18, style: .continuous)
-                .fill(GranaTheme.Palette.teal.opacity(0.07))
-        }
-        .overlay {
-            RoundedRectangle(cornerRadius: 18, style: .continuous)
-                .stroke(
-                    GranaTheme.Palette.teal.opacity(0.35),
-                    style: StrokeStyle(lineWidth: 1.5, dash: [7, 6])
-                )
-        }
+        .granaSurface(.solid, cornerRadius: GranaTheme.Radius.card)
     }
 }
 
@@ -468,125 +582,224 @@ private struct ImportHistoryDetailLine: View {
                 .foregroundStyle(GranaTheme.Palette.muted)
             Text(value)
                 .font(GranaTheme.Typography.footnoteEmphasis)
+                .foregroundStyle(GranaTheme.Palette.ink)
                 .lineLimit(2)
         }
     }
 }
 
-// MARK: - Empty state drop zone
+private struct ImportSummaryBadge: View {
+    let title: String
+    let value: String
+    let detail: String
 
-/// Empty state da tela de Importações. Diferente de um `ContentUnavailableView`
-/// genérico, ele é **o próprio drop target visual** — borda tracejada
-/// permanente que se destaca durante o drag-over pra reforçar que arrastar
-/// arquivos funciona aqui.
-///
-/// **Por que não deriva de `EmptyStateView`:** não é um anúncio passivo de
-/// vazio — é um drop target interativo com animação e highlight de drag-over,
-/// que precisa de vocabulário visual próprio (`symbolEffect`, stroke animado,
-/// fill que reage ao `isTargeted`). Caber isso no `EmptyStateView` diluiria
-/// as duas APIs.
+    var body: some View {
+        VStack(alignment: .leading, spacing: GranaTheme.Spacing.xxs) {
+            Text(title)
+                .font(GranaTheme.Typography.caption2Emphasis)
+                .foregroundStyle(GranaTheme.Palette.muted)
+            Text(value)
+                .font(GranaTheme.Typography.title3)
+                .foregroundStyle(GranaTheme.Palette.ink)
+            Text(detail)
+                .font(GranaTheme.Typography.caption1)
+                .foregroundStyle(GranaTheme.Palette.muted)
+        }
+        .padding(GranaTheme.Spacing.md)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .granaSurface(.solid, cornerRadius: GranaTheme.Radius.control)
+    }
+}
+
+private struct ImportBatchMetaPill: View {
+    let title: String
+    let value: String
+    let tint: Color
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: GranaTheme.Spacing.xxs) {
+            Text(title)
+                .font(GranaTheme.Typography.caption2Emphasis)
+                .foregroundStyle(GranaTheme.Palette.muted)
+            Text(value)
+                .font(GranaTheme.Typography.caption1Emphasis)
+                .foregroundStyle(GranaTheme.Palette.ink)
+                .lineLimit(1)
+        }
+        .padding(.horizontal, GranaTheme.Spacing.sm)
+        .padding(.vertical, GranaTheme.Spacing.xs)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(tint.opacity(0.08), in: RoundedRectangle(cornerRadius: 14, style: .continuous))
+    }
+}
+
 private struct EmptyStateDropZone: View {
     let isHighlighted: Bool
     let onBrowse: () -> Void
 
     var body: some View {
-        VStack(spacing: GranaTheme.Spacing.lg) {
+        VStack(spacing: GranaTheme.Spacing.xl) {
             ZStack {
                 Circle()
-                    .fill(Color.primary.opacity(isHighlighted ? 0.18 : 0.10))
-                    .frame(width: 84, height: 84)
+                    .fill(GranaTheme.Palette.teal.opacity(isHighlighted ? 0.18 : 0.12))
+                    .frame(width: 92, height: 92)
                 Image(systemName: AppIcon.importFile.systemImage)
-                    .font(.system(size: GranaTheme.IconSize.large, weight: .regular))
-                    .foregroundStyle(Color.primary)
+                    .font(.system(size: GranaTheme.IconSize.hero, weight: .regular))
+                    .foregroundStyle(GranaTheme.Palette.tealDeep)
                     .symbolEffect(.bounce, value: isHighlighted)
             }
 
-            VStack(spacing: GranaTheme.Spacing.xs) {
-                Text(isHighlighted ? "Solte para importar" : "Arraste e solte para importar")
-                    .font(GranaTheme.Typography.title3)
-                    .contentTransition(.opacity)
-                Text("Aceita OFX (extrato bancário) ou CSV (fatura Inter). Um arquivo por vez.")
-                    .font(GranaTheme.Typography.callout)
-                    .foregroundStyle(.secondary)
+            VStack(spacing: GranaTheme.Spacing.sm) {
+                Text(isHighlighted ? "Solte o extrato para revisar" : "Importe o primeiro extrato")
+                    .font(GranaTheme.Typography.title2)
+                    .foregroundStyle(GranaTheme.Palette.ink)
                     .multilineTextAlignment(.center)
-                    .frame(maxWidth: 360)
+                Text(
+                    "Arraste um arquivo para a tela ou selecione manualmente. O fluxo revisa OFX e CSV antes do commit definitivo."
+                )
+                .font(GranaTheme.Typography.callout)
+                .foregroundStyle(GranaTheme.Palette.muted)
+                .multilineTextAlignment(.center)
+                .frame(maxWidth: 520)
             }
 
             HStack(spacing: GranaTheme.Spacing.sm) {
-                Text("ou")
-                    .font(GranaTheme.Typography.caption1)
-                    .foregroundStyle(.tertiary)
-                Button {
-                    onBrowse()
-                } label: {
-                    Label("Selecionar arquivo", systemImage: AppIcon.importFile.systemImage)
-                }
-                .buttonStyle(.borderedProminent)
-                .controlSize(.large)
+                ImportEmptyStateInfoPill(icon: AppIcon.sidebarAccounts.systemImage, title: "OFX bancário")
+                ImportEmptyStateInfoPill(icon: AppIcon.sidebarCreditCards.systemImage, title: "CSV de fatura")
+                ImportEmptyStateInfoPill(icon: AppIcon.completedSeal.systemImage, title: "Revisão antes do commit")
             }
-            .padding(.top, GranaTheme.Spacing.xxs)
+
+            Button {
+                onBrowse()
+            } label: {
+                Label("Selecionar arquivo", systemImage: AppIcon.importFile.systemImage)
+            }
+            .buttonStyle(GranaPrimaryButtonStyle())
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
         .padding(GranaTheme.Spacing.xxxl)
-        .background(
-            RoundedRectangle(cornerRadius: 18, style: .continuous)
-                .fill(Color.primary.opacity(isHighlighted ? 0.06 : 0.0))
-        )
-        .overlay(
-            RoundedRectangle(cornerRadius: 18, style: .continuous)
+        .background {
+            RoundedRectangle(cornerRadius: GranaTheme.Radius.hero, style: .continuous)
+                .fill(GranaTheme.Palette.paper.opacity(0.62))
+        }
+        .overlay {
+            RoundedRectangle(cornerRadius: GranaTheme.Radius.hero, style: .continuous)
                 .strokeBorder(
-                    Color.primary.opacity(isHighlighted ? 0.85 : 0.35),
-                    style: StrokeStyle(lineWidth: isHighlighted ? 2 : 1.5, dash: [8, 6])
+                    GranaTheme.Palette.teal.opacity(isHighlighted ? 0.46 : 0.24),
+                    style: StrokeStyle(lineWidth: isHighlighted ? 2 : 1.4, dash: [10, 8])
                 )
-        )
+        }
+        .shadow(color: GranaTheme.Shadow.cardColor, radius: 18, y: 8)
         .scaleEffect(isHighlighted ? 1.01 : 1.0)
         .animation(.easeOut(duration: 0.18), value: isHighlighted)
     }
 }
 
-// MARK: - Drop overlay (lista populada)
+private struct ImportEmptyStateInfoPill: View {
+    let icon: String
+    let title: String
 
-/// Overlay translúcido que aparece por cima da lista durante o drag-over.
-/// Mesma linguagem visual do empty state pra continuidade — o usuário sabe
-/// que está soltando "no mesmo lugar" independente do estado da tela.
+    var body: some View {
+        HStack(spacing: GranaTheme.Spacing.xs) {
+            Image(systemName: icon)
+                .font(.system(size: GranaTheme.IconSize.small, weight: .semibold))
+                .foregroundStyle(GranaTheme.Palette.tealDeep)
+            Text(title)
+                .font(GranaTheme.Typography.caption1Emphasis)
+                .foregroundStyle(GranaTheme.Palette.ink)
+        }
+        .padding(.horizontal, GranaTheme.Spacing.sm)
+        .padding(.vertical, GranaTheme.Spacing.xs)
+        .background(GranaTheme.Palette.paperSolid.opacity(0.84), in: Capsule())
+    }
+}
+
 private struct DropOverlay: View {
     var body: some View {
         ZStack {
-            // Material translúcido suaviza o conteúdo embaixo sem escondê-lo
-            // por completo — HIG: feedback claro mas não destrutivo.
             Rectangle()
                 .fill(.regularMaterial)
-                .opacity(0.9)
+                .opacity(0.84)
 
             VStack(spacing: GranaTheme.Spacing.md) {
                 ZStack {
                     Circle()
-                        .fill(Color.primary.opacity(0.18))
+                        .fill(GranaTheme.Palette.teal.opacity(0.18))
                         .frame(width: 96, height: 96)
                     Image(systemName: AppIcon.importFile.systemImage)
                         .font(.system(size: GranaTheme.IconSize.hero, weight: .regular))
-                        .foregroundStyle(Color.primary)
+                        .foregroundStyle(GranaTheme.Palette.tealDeep)
                 }
                 Text("Solte para importar")
                     .font(GranaTheme.Typography.title3)
+                    .foregroundStyle(GranaTheme.Palette.ink)
                 Text("OFX ou CSV")
                     .font(GranaTheme.Typography.callout)
-                    .foregroundStyle(.secondary)
+                    .foregroundStyle(GranaTheme.Palette.muted)
             }
             .padding(GranaTheme.Spacing.xxxl)
-            .background(
-                RoundedRectangle(cornerRadius: 22, style: .continuous)
-                    .fill(Color(nsColor: .controlBackgroundColor))
-                    .shadow(color: .black.opacity(0.18), radius: 24, x: 0, y: 8)
-            )
-            .overlay(
-                RoundedRectangle(cornerRadius: 22, style: .continuous)
+            .background {
+                RoundedRectangle(cornerRadius: GranaTheme.Radius.hero, style: .continuous)
+                    .fill(GranaTheme.Palette.paper.opacity(0.92))
+            }
+            .overlay {
+                RoundedRectangle(cornerRadius: GranaTheme.Radius.hero, style: .continuous)
                     .strokeBorder(
-                        Color.primary.opacity(0.7),
-                        style: StrokeStyle(lineWidth: 2, dash: [8, 6])
+                        GranaTheme.Palette.teal.opacity(0.40),
+                        style: StrokeStyle(lineWidth: 2, dash: [10, 8])
                     )
-            )
+            }
+            .shadow(color: GranaTheme.Shadow.cardColor, radius: 24, y: 10)
             .padding(GranaTheme.Spacing.xxxl)
         }
+    }
+}
+
+private extension ImportStore {
+    var totalImportedRows: Int {
+        batches.reduce(0) { $0 + $1.rowCount }
+    }
+
+    var summarySubtitle: String {
+        if batches.isEmpty {
+            return "OFX e CSV com revisão antes do commit"
+        }
+        return "\(batches.count) \(batches.count == 1 ? "importação" : "importações") no histórico"
+    }
+
+    var latestImportShortText: String {
+        guard let latest = batches.max(by: { $0.importedAt < $1.importedAt }) else {
+            return "Sem histórico"
+        }
+        return latest.importedAt.formatted(date: .numeric, time: .omitted)
+    }
+
+    var latestImportLongText: String {
+        guard let latest = batches.max(by: { $0.importedAt < $1.importedAt }) else {
+            return "Nenhum lote importado ainda"
+        }
+        return latest.importedAt.formatted(date: .abbreviated, time: .shortened)
+    }
+
+    var latestImportedAccountName: String {
+        guard let latest = batches.max(by: { $0.importedAt < $1.importedAt }),
+              let account = account(for: latest.accountId)
+        else {
+            return "Sem conta associada"
+        }
+
+        return Account.displayName(
+            for: account,
+            institutions: institutions,
+            bankAccounts: bankDetails,
+            creditCards: creditCards
+        )
+    }
+
+    static var supportedExtensionsDisplayText: String {
+        supportedExtensions
+            .map { $0.uppercased() }
+            .sorted()
+            .joined(separator: " · ")
     }
 }

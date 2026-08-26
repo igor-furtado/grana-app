@@ -159,21 +159,19 @@ struct ImportView: View {
     private func phaseContent(store: ImportStore) -> some View {
         switch store.phase {
         case .idle:
-            // Estado transitório: `initialize()` está esperando
-            // `loadInitialData` antes de ou disparar `loadFile` (drag) ou
-            // o `.fileImporter` (manual). Sem decisão de fluxo aqui — esse
-            // ProgressView é só um placeholder enquanto o bootstrap rola.
-            ProgressView()
-                .frame(maxWidth: .infinity, maxHeight: .infinity)
+            ImportWizardStatusView(
+                icon: AppIcon.importFile,
+                title: "Preparando importação",
+                message: "Carregando contas e catálogos antes da revisão do arquivo.",
+                showsProgress: true
+            )
         case let .loading(progress):
-            VStack(spacing: GranaTheme.Spacing.sm) {
-                ProgressView()
-                    .controlSize(.large)
-                Text(progress)
-                    .font(GranaTheme.Typography.callout)
-                    .foregroundStyle(.secondary)
-            }
-            .frame(maxWidth: .infinity, maxHeight: .infinity)
+            ImportWizardStatusView(
+                icon: AppIcon.importFile,
+                title: "Lendo arquivo",
+                message: progress,
+                showsProgress: true
+            )
         case .ofxReview:
             OFXReviewStepView(store: store, dismiss: dismiss)
         case .csvReview:
@@ -193,14 +191,12 @@ struct ImportView: View {
                 )
             )
         case .confirming:
-            VStack(spacing: GranaTheme.Spacing.sm) {
-                ProgressView()
-                    .controlSize(.large)
-                Text("Importando…")
-                    .font(GranaTheme.Typography.callout)
-                    .foregroundStyle(.secondary)
-            }
-            .frame(maxWidth: .infinity, maxHeight: .infinity)
+            ImportWizardStatusView(
+                icon: AppIcon.completedSeal,
+                title: "Consolidando lotes",
+                message: "Aplicando a revisão e finalizando a importação.",
+                showsProgress: true
+            )
         case .done:
             // Placeholder pro frame entre a transição de fase e o `dismiss()`
             // disparado no `onChange`. Nunca fica visível na prática.
@@ -231,13 +227,115 @@ private struct FailedStepView: View {
     let onClose: () -> Void
 
     var body: some View {
-        EmptyStateView("A importação falhou", icon: .warning, description: message) {
+        ImportWizardStatusView(
+            icon: .warning,
+            title: "A importação falhou",
+            message: message,
+            showsProgress: false
+        ) {
             HStack(spacing: GranaTheme.Spacing.sm) {
-                Button("Fechar") { onClose() }
-                    .buttonStyle(GranaSecondaryButtonStyle())
-                Button("Recomeçar") { onRetry() }
-                    .buttonStyle(GranaPrimaryButtonStyle())
+                Button("Fechar") {
+                    onClose()
+                }
+                .buttonStyle(GranaSecondaryButtonStyle())
+
+                Button("Recomeçar") {
+                    onRetry()
+                }
+                .buttonStyle(GranaPrimaryButtonStyle())
             }
+        }
+    }
+}
+
+private struct ImportWizardStatusView<Actions: View>: View {
+    let icon: AppIcon
+    let title: String
+    let message: String
+    let showsProgress: Bool
+    let actions: Actions
+
+    init(
+        icon: AppIcon,
+        title: String,
+        message: String,
+        showsProgress: Bool,
+        @ViewBuilder actions: () -> Actions
+    ) {
+        self.icon = icon
+        self.title = title
+        self.message = message
+        self.showsProgress = showsProgress
+        self.actions = actions()
+    }
+
+    init(
+        icon: AppIcon,
+        title: String,
+        message: String,
+        showsProgress: Bool
+    ) where Actions == EmptyView {
+        self.init(
+            icon: icon,
+            title: title,
+            message: message,
+            showsProgress: showsProgress
+        ) {
+            EmptyView()
+        }
+    }
+
+    var body: some View {
+        VStack(spacing: GranaTheme.Spacing.none) {
+            VStack(spacing: GranaTheme.Spacing.lg) {
+                ZStack {
+                    Circle()
+                        .fill(tint.opacity(0.14))
+                        .frame(width: 88, height: 88)
+
+                    Image(systemName: icon.systemImage)
+                        .font(.system(size: GranaTheme.IconSize.hero, weight: .regular))
+                        .foregroundStyle(tint)
+                }
+
+                VStack(spacing: GranaTheme.Spacing.sm) {
+                    Text(title)
+                        .font(GranaTheme.Typography.title3)
+                        .foregroundStyle(GranaTheme.Palette.ink)
+                        .multilineTextAlignment(.center)
+
+                    Text(message)
+                        .font(GranaTheme.Typography.callout)
+                        .foregroundStyle(GranaTheme.Palette.muted)
+                        .multilineTextAlignment(.center)
+                        .frame(maxWidth: 420)
+                }
+
+                if showsProgress {
+                    ProgressView()
+                        .controlSize(.large)
+                        .tint(GranaTheme.Palette.teal)
+                }
+
+                actions
+                    .controlSize(.large)
+            }
+            .frame(maxWidth: 560)
+            .padding(GranaTheme.Spacing.xxxl)
+            .granaSurface(.subtle, cornerRadius: GranaTheme.Radius.hero)
+        }
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .padding(GranaTheme.Spacing.xl)
+    }
+
+    private var tint: Color {
+        switch icon {
+        case .warning, .error:
+            GranaTheme.Palette.red
+        case .completedSeal:
+            GranaTheme.Palette.green
+        default:
+            GranaTheme.Palette.teal
         }
     }
 }
