@@ -28,28 +28,27 @@ struct CategorizationReviewView: View {
     var body: some View {
         switch mode {
         case .modal:
-            NavigationStack {
+            VStack(spacing: GranaTheme.Spacing.none) {
+                SheetHeaderView(
+                    title: "Revisar categorizações",
+                    subtitle: statusSubtitle
+                )
                 content
-                    .navigationTitle("Revisar categorizações")
-                    .navigationSubtitle(statusSubtitle)
-                    .toolbar {
-                        ToolbarItem(placement: .cancellationAction) {
-                            Button("Fechar") { dismiss() }
+                BottomActionBar {
+                    Button("Fechar") { dismiss() }
+                    Button {
+                        Task {
+                            await store.confirmAll()
+                            dismiss()
                         }
-                        ToolbarItem(placement: .primaryAction) {
-                            Button {
-                                Task {
-                                    await store.confirmAll()
-                                    dismiss()
-                                }
-                            } label: {
-                                Text("Confirmar tudo")
-                            }
-                            .buttonStyle(.borderedProminent)
-                            .disabled(store.suggestions.allSatisfy { $0.isReviewed })
-                        }
+                    } label: {
+                        Text("Confirmar tudo")
                     }
+                    .buttonStyle(.borderedProminent)
+                    .disabled(store.suggestions.allSatisfy { $0.isReviewed })
+                }
             }
+            .toolbar(.hidden, for: .windowToolbar)
             .frame(minWidth: 700, minHeight: 600)
         case let .wizard(onImport, onBack, onClose):
             VStack(spacing: GranaTheme.Spacing.none) {

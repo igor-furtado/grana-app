@@ -53,11 +53,12 @@ ficam no topo; Design System, Categorias, Instituicoes e Perfil ficam no
 rodape. Cada item deve ter tooltip e label de acessibilidade.
 
 Nao desenhe controles falsos de janela macOS dentro do conteudo do app real.
-Mantenha toolbars nativas das telas. Telas padrao com toolbar nativa nao usam
-header visual proprio nem respiro superior extra no conteudo; o primeiro bloco
-comeca colado ao topo da area util e preserva apenas margens laterais e inferior.
-O rail lateral acompanha esse alinhamento: sem margem superior externa, mantendo
-respiro interno proprio.
+Feature screens podem ocultar a window toolbar nativa quando tiverem header
+visual proprio integrado ao tema. Nesses casos, o header inline substitui o
+titulo e as acoes primarias da tela, e o primeiro bloco util passa a ser esse
+header. Modais e sheets tambem podem ocultar a toolbar nativa quando usarem
+titulo inline e barra de acoes no rodape. O rail lateral continua alinhado ao
+topo da area util, sem margem superior externa, mantendo respiro interno proprio.
 
 ## Tipografia
 

@@ -1,20 +1,6 @@
 import Foundation
 import SwiftUI
 
-/// Lista de contas correntes em grid de cards. Reativa via `AccountStore.start()`
-/// — saldos, contas e instituições streamam em paralelo e a UI re-renderiza
-/// via `@Observable`. Create/edit acontecem em **sheet modal**
-/// (`.sheet(item:)`) — padrão idiomático macOS pra esse tipo de fluxo.
-///
-/// **Filtra cartões fora.** A partir da Fase 4.6, cartões vivem na tela
-/// dedicada `CreditCardsView` (entrada própria na sidebar). Esta tela cuida
-/// apenas de `type == .checking`. O form é o mesmo `AccountFormView`, invocado
-/// com `lockedType: .checking` pra esconder o picker de tipo.
-///
-/// **Seleção:** clicar num card seleciona ele (stroke de accent). Ações de
-/// editar/arquivar/apagar agem no card selecionado e vivem na window toolbar.
-/// Context menu (right-click) duplica as ações pra acesso rápido sem precisar
-/// selecionar primeiro.
 struct AccountsView: View {
     @Environment(AppEnvironment.self) private var environment
     @State private var store: AccountStore?
@@ -43,29 +29,33 @@ struct AccountsView: View {
             if let store {
                 content(store: store)
                     .task { await store.load() }
-                    .toolbar { toolbarContent(store: store) }
             } else {
                 ProgressView()
                     .task { store = AccountStore(container: environment.container) }
             }
         }
-        .navigationTitle("Contas")
+        .toolbar(.hidden, for: .windowToolbar)
     }
 
-    @ViewBuilder
     private func content(store: AccountStore) -> some View {
         let visibleAccounts = visible(store: store)
-        Group {
-            if visibleAccounts.isEmpty {
-                // Fora do `ScrollView` pra que `maxHeight: .infinity` centralize
-                // verticalmente no espaço disponível — dentro de um ScrollView
-                // a altura é intrínseca e o estado vazio gruda no topo.
-                emptyState
-                    .frame(maxWidth: .infinity, maxHeight: .infinity)
-            } else {
-                grid(store: store, accounts: visibleAccounts)
+        return VStack(spacing: GranaTheme.Spacing.sm) {
+            header(store: store, visibleCount: visibleAccounts.count)
+
+            Group {
+                if visibleAccounts.isEmpty {
+                    // Fora do `ScrollView` pra que `maxHeight: .infinity`
+                    // centralize verticalmente no espaço disponível — dentro
+                    // de um ScrollView a altura é intrínseca e o estado vazio
+                    // gruda no topo.
+                    emptyState
+                        .frame(maxWidth: .infinity, maxHeight: .infinity)
+                } else {
+                    grid(store: store, accounts: visibleAccounts)
+                }
             }
         }
+        .granaPagePadding()
         // Form sheet aparece centralizado e dimming no fundo — padrão macOS
         // pra create/edit. `.sheet(item:)` re-monta o conteúdo a cada novo
         // `formMode` (id muda), garantindo estado limpo entre aberturas.
@@ -104,6 +94,29 @@ struct AccountsView: View {
         }
     }
 
+    private func header(store: AccountStore, visibleCount: Int) -> some View {
+        FeatureScreenHeader(
+            title: "Contas",
+            subtitle: accountsSubtitle(store: store, visibleCount: visibleCount)
+        ) {
+            Button {
+                formMode = .create
+            } label: {
+                Label("Nova conta", systemImage: AppIcon.add.systemImage)
+            }
+            .buttonStyle(GranaPrimaryButtonStyle())
+
+            if hasArchivedAccount {
+                Menu {
+                    Toggle("Mostrar arquivadas", isOn: $showArchived)
+                } label: {
+                    Label("Mais", systemImage: AppIcon.more.systemImage)
+                }
+                .buttonStyle(GranaSecondaryButtonStyle())
+            }
+        }
+    }
+
     private func grid(store: AccountStore, accounts: [Account]) -> some View {
         ScrollView {
             LazyVGrid(
@@ -138,75 +151,6 @@ struct AccountsView: View {
                     )
                 }
             }
-            .granaPagePadding()
-        }
-    }
-
-    @ToolbarContentBuilder
-    private func toolbarContent(store: AccountStore) -> some ToolbarContent {
-        let accounts = visible(store: store)
-        let selected = accounts.first(where: { $0.id == selectedAccountId })
-
-        // `ToolbarSpacer(.fixed, ...)` quebra a pílula única que o SwiftUI
-        // faz pra items adjacentes no mesmo placement. Resulta em 3 grupos
-        // visuais distintos no trailing edge — padrão Liquid Glass do macOS 26+.
-        if let selected {
-            ToolbarItemGroup(placement: .primaryAction) {
-                Button {
-                    formMode = .edit(selected)
-                } label: {
-                    Label("Editar", systemImage: AppIcon.edit.systemImage)
-                }
-                .help("Editar conta")
-
-                Button {
-                    Task {
-                        do {
-                            try await store.setArchived(selected, archived: !selected.archived)
-                        } catch {
-                            NoticeCenter.shared.report(error)
-                        }
-                    }
-                } label: {
-                    Label(
-                        selected.archived ? "Desarquivar" : "Arquivar",
-                        systemImage: selected.archived
-                            ? AppIcon.unarchive.systemImage
-                            : AppIcon.archive.systemImage
-                    )
-                }
-                .help(selected.archived ? "Desarquivar conta" : "Arquivar conta")
-
-                Button(role: .destructive) {
-                    showDeleteConfirm = true
-                } label: {
-                    Label("Apagar", systemImage: AppIcon.delete.systemImage)
-                }
-                .help("Apagar conta")
-            }
-
-            ToolbarSpacer(.fixed, placement: .primaryAction)
-        }
-
-        ToolbarItem(placement: .primaryAction) {
-            Button {
-                formMode = .create
-            } label: {
-                Label("Nova conta", systemImage: AppIcon.add.systemImage)
-            }
-            .help("Nova conta")
-        }
-
-        if hasArchivedAccount {
-            ToolbarSpacer(.fixed, placement: .primaryAction)
-
-            ToolbarItem(placement: .primaryAction) {
-                Menu {
-                    Toggle("Mostrar arquivadas", isOn: $showArchived)
-                } label: {
-                    Label("Mais", systemImage: AppIcon.more.systemImage)
-                }
-            }
         }
     }
 
@@ -215,6 +159,16 @@ struct AccountsView: View {
     /// arquivado no escopo desta tela.
     private var hasArchivedAccount: Bool {
         store?.accounts.contains { $0.type == .checking && $0.archived } ?? false
+    }
+
+    private func accountsSubtitle(store: AccountStore, visibleCount: Int) -> String {
+        let totalCount = store.accounts.filter { $0.type == .checking }.count
+        if hasArchivedAccount {
+            return showArchived
+                ? "\(visibleCount) de \(totalCount) contas visíveis"
+                : "\(visibleCount) contas ativas"
+        }
+        return "\(visibleCount) \(visibleCount == 1 ? "conta" : "contas")"
     }
 
     /// Limpa seleção quando a conta selecionada some da lista visível
@@ -237,7 +191,7 @@ struct AccountsView: View {
             } label: {
                 Label("Cadastrar primeira conta", systemImage: AppIcon.add.systemImage)
             }
-            .buttonStyle(.borderedProminent)
+            .buttonStyle(GranaPrimaryButtonStyle())
             .disabled(formMode != nil)
         }
     }

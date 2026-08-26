@@ -27,52 +27,63 @@ struct CategoriesView: View {
     @SceneStorage("CategoriesView.inspector") private var inspectorPresented: Bool = true
 
     var body: some View {
-        Group {
-            if let loadError {
-                EmptyStateView(
-                    "Não foi possível carregar",
-                    icon: .warning,
-                    description: loadError.localizedDescription
-                )
-            } else if isLoading, !hasLoaded {
-                ProgressView()
-            } else if categories.isEmpty {
-                EmptyStateView(
-                    "Nenhuma categoria disponível",
-                    icon: .sidebarCategories,
-                    description: "O backend não devolveu categorias para a sessão atual."
-                )
-            } else {
-                grid
+        VStack(spacing: GranaTheme.Spacing.sm) {
+            header
+
+            Group {
+                if let loadError {
+                    EmptyStateView(
+                        "Não foi possível carregar",
+                        icon: .warning,
+                        description: loadError.localizedDescription
+                    )
+                } else if isLoading, !hasLoaded {
+                    ProgressView()
+                        .frame(maxWidth: .infinity, maxHeight: .infinity)
+                } else if categories.isEmpty {
+                    EmptyStateView(
+                        "Nenhuma categoria disponível",
+                        icon: .sidebarCategories,
+                        description: "O backend não devolveu categorias para a sessão atual."
+                    )
+                } else {
+                    grid
+                }
             }
         }
+        .granaPagePadding()
         .inspector(isPresented: $inspectorPresented) {
             inspector
                 .inspectorColumnWidth(min: 220, ideal: 280, max: 360)
         }
-        .toolbar {
-            ToolbarItem(placement: .primaryAction) {
-                Button {
-                    Task { await refresh() }
-                } label: {
-                    Label("Atualizar", systemImage: "arrow.clockwise")
-                }
-                .help("Atualizar catálogo")
-                .disabled(isLoading)
-            }
-            ToolbarItem(placement: .primaryAction) {
-                Button {
-                    inspectorPresented.toggle()
-                } label: {
-                    Label("Painel de detalhes", systemImage: AppIcon.inspectorToggle.systemImage)
-                }
-                .help(inspectorPresented ? "Ocultar painel de detalhes" : "Mostrar painel de detalhes")
-            }
-        }
-        .navigationTitle("Categorias")
+        .navigationTitle("")
+        .toolbar(.hidden, for: .windowToolbar)
         .task { await load() }
         .onChange(of: rootIds) { _, ids in
             reconcileSelection(rootIds: ids)
+        }
+    }
+
+    private var header: some View {
+        FeatureScreenHeader(
+            title: "Categorias",
+            subtitle: "\(rootIds.count) categorias raiz no catálogo global"
+        ) {
+            Button {
+                Task { await refresh() }
+            } label: {
+                Label("Atualizar", systemImage: "arrow.clockwise")
+            }
+            .buttonStyle(GranaPrimaryButtonStyle())
+            .disabled(isLoading)
+
+            Button {
+                inspectorPresented.toggle()
+            } label: {
+                Label("Detalhes", systemImage: AppIcon.inspectorToggle.systemImage)
+            }
+            .buttonStyle(GranaSecondaryButtonStyle())
+            .help(inspectorPresented ? "Ocultar painel de detalhes" : "Mostrar painel de detalhes")
         }
     }
 
@@ -118,7 +129,6 @@ struct CategoriesView: View {
                     }
                 }
             }
-            .granaPagePadding()
             .frame(maxWidth: .infinity, alignment: .leading)
         }
     }

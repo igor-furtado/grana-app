@@ -1,17 +1,6 @@
 import Foundation
 import SwiftUI
 
-/// Tela de Cartões de crédito. Layout mestre-detalhe inspirado no Notas do
-/// macOS e na visão web do Inter: sidebar à esquerda com a lista de cartões
-/// + totais, detalhe à direita com header do cartão, gauge de limite,
-/// timeline de faturas, trio de cards de ciclo (anterior / atual / próxima)
-/// e lançamentos da fatura selecionada.
-///
-/// A `CreditCardsView` é só o orquestrador: mantém `selectedCardId` e
-/// delega o lado esquerdo pra `CreditCardsSidebar` e o lado direito pra
-/// `CreditCardDetailView`. Estado de seleção é local (`@State`) — não se
-/// preserva entre lançamentos do app, mas re-seleciona o primeiro cartão
-/// não-arquivado automaticamente quando o stream emite.
 struct CreditCardsView: View {
     @Environment(AppEnvironment.self) private var environment
     @State private var store: AccountStore?
@@ -37,27 +26,29 @@ struct CreditCardsView: View {
             if let store {
                 content(store: store)
                     .task { await store.load() }
-                    .toolbar { toolbarContent(store: store) }
             } else {
                 ProgressView()
                     .task { store = AccountStore(container: environment.container) }
             }
         }
-        .navigationTitle("Cartões de crédito")
+        .toolbar(.hidden, for: .windowToolbar)
     }
 
-    @ViewBuilder
     private func content(store: AccountStore) -> some View {
         let visibleCards = visible(store: store)
-        Group {
-            if visibleCards.isEmpty {
-                emptyState
-                    .granaPagePadding()
-                    .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .center)
-            } else {
-                splitContent(store: store, cards: visibleCards)
+        return VStack(spacing: GranaTheme.Spacing.sm) {
+            header(store: store, visibleCount: visibleCards.count)
+
+            Group {
+                if visibleCards.isEmpty {
+                    emptyState
+                        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .center)
+                } else {
+                    splitContent(store: store, cards: visibleCards)
+                }
             }
         }
+        .granaPagePadding()
         .sheet(item: $formMode) { mode in
             AccountFormView(
                 existing: editingAccount(from: mode),
@@ -96,6 +87,29 @@ struct CreditCardsView: View {
         }
     }
 
+    private func header(store: AccountStore, visibleCount: Int) -> some View {
+        FeatureScreenHeader(
+            title: "Cartões de crédito",
+            subtitle: cardsSubtitle(store: store, visibleCount: visibleCount)
+        ) {
+            Button {
+                formMode = .create
+            } label: {
+                Label("Novo cartão", systemImage: AppIcon.add.systemImage)
+            }
+            .buttonStyle(GranaPrimaryButtonStyle())
+
+            if hasArchivedCard {
+                Menu {
+                    Toggle("Mostrar arquivados", isOn: $showArchived)
+                } label: {
+                    Label("Mais", systemImage: AppIcon.more.systemImage)
+                }
+                .buttonStyle(GranaSecondaryButtonStyle())
+            }
+        }
+    }
+
     private func splitContent(store: AccountStore, cards: [Account]) -> some View {
         // `HSplitView` em vez de aninhar outro `NavigationSplitView`: o
         // pai (`ContentView`) já é split — aninhar deixa o macOS confuso
@@ -105,7 +119,25 @@ struct CreditCardsView: View {
             CreditCardsSidebar(
                 store: store,
                 cards: cards,
-                selectedId: $selectedCardId
+                selectedId: $selectedCardId,
+                onEdit: { account in
+                    selectedCardId = account.id
+                    formMode = .edit(account)
+                },
+                onToggleArchive: { account in
+                    selectedCardId = account.id
+                    Task {
+                        do {
+                            try await store.setArchived(account, archived: !account.archived)
+                        } catch {
+                            NoticeCenter.shared.report(error)
+                        }
+                    }
+                },
+                onRequestDelete: { account in
+                    selectedCardId = account.id
+                    showDeleteConfirm = true
+                }
             )
             .frame(minWidth: 240, idealWidth: 280, maxWidth: 360)
 
@@ -120,75 +152,6 @@ struct CreditCardsView: View {
                 // removido). Mostra placeholder em vez de detalhe quebrado.
                 placeholderDetail
                     .frame(minWidth: 520, maxWidth: .infinity, maxHeight: .infinity)
-            }
-        }
-    }
-
-    @ToolbarContentBuilder
-    private func toolbarContent(store: AccountStore) -> some ToolbarContent {
-        let cards = visible(store: store)
-        let selected = cards.first(where: { $0.id == selectedCardId })
-
-        // `ToolbarSpacer(.fixed, ...)` é o que quebra a pílula única que o
-        // SwiftUI faz pra items adjacentes no mesmo placement — sem isso
-        // editar/arquivar/apagar + "+" + mais ficam todos colados num
-        // único grupo visual. Padrão Liquid Glass do macOS 26+.
-        if let selected {
-            ToolbarItemGroup(placement: .primaryAction) {
-                Button {
-                    formMode = .edit(selected)
-                } label: {
-                    Label("Editar", systemImage: AppIcon.edit.systemImage)
-                }
-                .help("Editar cartão")
-
-                Button {
-                    Task {
-                        do {
-                            try await store.setArchived(selected, archived: !selected.archived)
-                        } catch {
-                            NoticeCenter.shared.report(error)
-                        }
-                    }
-                } label: {
-                    Label(
-                        selected.archived ? "Desarquivar" : "Arquivar",
-                        systemImage: selected.archived
-                            ? AppIcon.unarchive.systemImage
-                            : AppIcon.archive.systemImage
-                    )
-                }
-                .help(selected.archived ? "Desarquivar cartão" : "Arquivar cartão")
-
-                Button(role: .destructive) {
-                    showDeleteConfirm = true
-                } label: {
-                    Label("Apagar", systemImage: AppIcon.delete.systemImage)
-                }
-                .help("Apagar cartão")
-            }
-
-            ToolbarSpacer(.fixed, placement: .primaryAction)
-        }
-
-        ToolbarItem(placement: .primaryAction) {
-            Button {
-                formMode = .create
-            } label: {
-                Label("Novo cartão", systemImage: AppIcon.add.systemImage)
-            }
-            .help("Novo cartão")
-        }
-
-        if hasArchivedCard {
-            ToolbarSpacer(.fixed, placement: .primaryAction)
-
-            ToolbarItem(placement: .primaryAction) {
-                Menu {
-                    Toggle("Mostrar arquivados", isOn: $showArchived)
-                } label: {
-                    Label("Mais", systemImage: AppIcon.more.systemImage)
-                }
             }
         }
     }
@@ -208,6 +171,16 @@ struct CreditCardsView: View {
 
     private var hasArchivedCard: Bool {
         store?.accounts.contains { $0.type == .creditCard && $0.archived } ?? false
+    }
+
+    private func cardsSubtitle(store: AccountStore, visibleCount: Int) -> String {
+        let totalCount = store.accounts.filter { $0.type == .creditCard }.count
+        if hasArchivedCard {
+            return showArchived
+                ? "\(visibleCount) de \(totalCount) cartões visíveis"
+                : "\(visibleCount) cartões ativos"
+        }
+        return "\(visibleCount) \(visibleCount == 1 ? "cartão" : "cartões")"
     }
 
     /// Reconcilia a seleção quando a lista de cartões visíveis muda: se a
@@ -230,7 +203,7 @@ struct CreditCardsView: View {
             } label: {
                 Label("Cadastrar primeiro cartão", systemImage: AppIcon.add.systemImage)
             }
-            .buttonStyle(.borderedProminent)
+            .buttonStyle(GranaPrimaryButtonStyle())
             .disabled(formMode != nil)
         }
     }

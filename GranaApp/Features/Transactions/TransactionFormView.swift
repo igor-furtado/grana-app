@@ -40,7 +40,9 @@ struct TransactionFormView: View {
     }
 
     var body: some View {
-        NavigationStack {
+        VStack(spacing: GranaTheme.Spacing.none) {
+            SheetHeaderView(title: existing == nil ? "Nova transação" : "Editar transação")
+
             Form {
                 // `prompt:` é o placeholder DENTRO do campo. O primeiro
                 // argumento ("Descrição") é o LABEL que aparece à esquerda
@@ -63,10 +65,6 @@ struct TransactionFormView: View {
                     }
                 }
                 .onChange(of: accountId) { _, newValue in
-                    // Origem mudou pra mesma conta que o destino → zera o
-                    // destino. Sem isso o save passaria com origem == destino
-                    // (transferência pra si mesma, neutra no saldo mas suja
-                    // na lista).
                     if destinationAccountId == newValue {
                         destinationAccountId = nil
                     }
@@ -81,15 +79,8 @@ struct TransactionFormView: View {
                     }
                 }
                 .onChange(of: categoryId) { oldValue, _ in
-                    // Só zerar quando o usuário troca a categoria de fato.
-                    // Em `loadExisting` (modo edição), `oldValue` é nil porque
-                    // categoryId começa nulo — se zerássemos aqui também,
-                    // sobrescreveríamos a subcategoria que está sendo carregada.
                     if oldValue != nil {
                         subcategoryId = nil
-                        // Sair de uma categoria "transfer" → joga fora o destino
-                        // (só faz sentido pra transferências). `loadExisting`
-                        // preserva o destino porque `oldValue == nil` nesse caso.
                         if selectedCategoryKind != .transfer {
                             destinationAccountId = nil
                         }
@@ -107,10 +98,6 @@ struct TransactionFormView: View {
                     }
                 }
 
-                // Fase 4.5: contraparte da transferência. Só aparece se a
-                // categoria selecionada for `transfer` — pra qualquer outra,
-                // destination_account_id fica NULL e o saldo se comporta como
-                // sempre (sinal vem do kind income/expense).
                 if selectedCategoryKind == .transfer {
                     Picker("Conta de destino", selection: $destinationAccountId) {
                         Text("(nenhuma)").tag(UUID?.none)
@@ -133,19 +120,9 @@ struct TransactionFormView: View {
                     statementPaymentSection
                 }
 
-                // Dois DatePickers separados pro mesmo Date — cada um só edita
-                // seus componentes (data não mexe na hora e vice-versa). No
-                // macOS o estilo default é `.stepperField`: segmentos numéricos
-                // com setas, exatamente o "preenche com números" que queremos.
                 DatePicker("Data", selection: $occurredAt, displayedComponents: [.date])
                 DatePicker("Hora", selection: $occurredAt, displayedComponents: [.hourAndMinute])
 
-                // `TextEditor` em vez de `TextField` porque precisa aceitar
-                // Enter como quebra de linha real. `TextField(axis: .vertical)`
-                // existe, mas no macOS o Enter ainda é interpretado como
-                // submit em alguns contextos. `TextEditor` é o controle nativo
-                // pra texto livre multilinha. Placeholder via overlay porque
-                // `TextEditor` não tem prompt nativo.
                 LabeledContent("Notas") {
                     ZStack(alignment: .topLeading) {
                         if notes.isEmpty {
@@ -168,40 +145,33 @@ struct TransactionFormView: View {
                 }
             }
             .formStyle(.grouped)
-            .navigationTitle(existing == nil ? "Nova transação" : "Editar transação")
-            .toolbar {
-                ToolbarItem(placement: .cancellationAction) {
-                    Button("Cancelar") { dismiss() }
-                }
-                ToolbarItem(placement: .confirmationAction) {
-                    Button("Salvar", action: requestSave)
-                        .disabled(!canSave)
-                }
+
+            BottomActionBar {
+                Button("Cancelar") { dismiss() }
+                Button("Salvar", action: requestSave)
+                    .buttonStyle(.borderedProminent)
+                    .disabled(!canSave)
             }
-            .alert("Prévia do recálculo", isPresented: $showsRetroactivePreview) {
-                Button("Cancelar", role: .cancel) {}
-                Button("Confirmar alteração") {
-                    Task { await save() }
-                }
-            } message: {
-                Text(retroactivePreviewText)
+        }
+        .toolbar(.hidden, for: .windowToolbar)
+        .frame(minWidth: 680, idealWidth: 720, minHeight: 560)
+        .alert("Prévia do recálculo", isPresented: $showsRetroactivePreview) {
+            Button("Cancelar", role: .cancel) {}
+            Button("Confirmar alteração") {
+                Task { await save() }
             }
-            .onAppear(perform: loadExisting)
-            // `loadExisting` define os defaults no `onAppear`, mas
-            // `store.accounts`/`store.categories` chegam do `load()` async
-            // e podem ainda não ter sido carregados
-            // quando o sheet aparece — em "novo" o `canSave` ficaria preso
-            // em `false` mesmo com descrição e valor preenchidos. Os onChange
-            // abaixo aplicam o default assim que os dados chegam.
-            .onChange(of: store.accounts) { _, newAccounts in
-                if existing == nil, accountId == nil, let first = newAccounts.first {
-                    accountId = first.id
-                }
+        } message: {
+            Text(retroactivePreviewText)
+        }
+        .onAppear(perform: loadExisting)
+        .onChange(of: store.accounts) { _, newAccounts in
+            if existing == nil, accountId == nil, let first = newAccounts.first {
+                accountId = first.id
             }
-            .onChange(of: store.categories) { _, _ in
-                if existing == nil, categoryId == nil, let first = store.rootCategories.first {
-                    categoryId = first.id
-                }
+        }
+        .onChange(of: store.categories) { _, _ in
+            if existing == nil, categoryId == nil, let first = store.rootCategories.first {
+                categoryId = first.id
             }
         }
     }

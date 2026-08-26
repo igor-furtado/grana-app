@@ -2,8 +2,9 @@ import SwiftUI
 
 /// Sidebar da tela de Cartões. Cabeçalho com totais agregados (dívida total,
 /// limite total, % usado) + lista de linhas compactas — uma por cartão —
-/// com mini-logo, last4, dívida atual e barra de uso. Ações de criar/editar/
-/// arquivar/apagar vivem na window toolbar do `CreditCardsView`.
+/// com mini-logo, last4, dívida atual e barra de uso. Ações contextuais
+/// vivem no menu de contexto de cada linha enquanto o inspetor dedicado
+/// ainda não existe.
 ///
 /// **Por que não reusa `CreditCardListItem` (versão "cartão grande")**: a
 /// linha aqui é compacta (~64pt de altura) e foca em densidade — o
@@ -12,6 +13,9 @@ struct CreditCardsSidebar: View {
     let store: AccountStore
     let cards: [Account]
     @Binding var selectedId: UUID?
+    let onEdit: (Account) -> Void
+    let onToggleArchive: (Account) -> Void
+    let onRequestDelete: (Account) -> Void
 
     var body: some View {
         VStack(spacing: GranaTheme.Spacing.none) {
@@ -31,7 +35,10 @@ struct CreditCardsSidebar: View {
                             institution: store.institution(forAccount: account),
                             details: store.creditCard(for: account.id),
                             currentBalance: store.currentBalance(for: account),
-                            isSelected: account.id == selectedId
+                            isSelected: account.id == selectedId,
+                            onEdit: { onEdit(account) },
+                            onToggleArchive: { onToggleArchive(account) },
+                            onRequestDelete: { onRequestDelete(account) }
                         )
                         .contentShape(Rectangle())
                         .onTapGesture { selectedId = account.id }
@@ -129,6 +136,9 @@ private struct SidebarCardRow: View {
     let details: CreditCardDetails?
     let currentBalance: Decimal
     let isSelected: Bool
+    let onEdit: () -> Void
+    let onToggleArchive: () -> Void
+    let onRequestDelete: () -> Void
 
     @State private var isHovered = false
 
@@ -183,6 +193,12 @@ private struct SidebarCardRow: View {
         .opacity(account.archived ? 0.65 : 1)
         .onHover { hovering in
             withAnimation(.easeOut(duration: 0.12)) { isHovered = hovering }
+        }
+        .contextMenu {
+            Button("Editar", action: onEdit)
+            Button(account.archived ? "Desarquivar" : "Arquivar", action: onToggleArchive)
+            Divider()
+            Button("Apagar", role: .destructive, action: onRequestDelete)
         }
     }
 

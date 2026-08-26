@@ -22,8 +22,11 @@ Leia `docs/design-system.md` antes de alterar UI SwiftUI no GranaApp.
   `xxs`.
 - Mantenha a fase atual restrita a linguagem visual. Nao importe metricas,
   abas, textos ou modelos dos prototipos sem pedido explicito.
-- Preserve toolbars nativas das telas. Nao crie header visual proprio em telas
-  padrao quando a toolbar nativa ja carrega titulo/acoes.
+- Feature screens podem ocultar a window toolbar nativa quando tiverem header
+  proprio alinhado ao tema. Nesses casos, o header inline assume titulo e acoes
+  primarias da tela.
+- Modais e sheets podem ocultar a toolbar nativa quando o conteudo introduzir
+  titulo inline e barra de acoes no rodape.
 - Em telas padrao, use o padding de pagina do tema: topo 0, laterais e base com
   respiro. O rail autenticado acompanha o topo da area util, sem margem
   superior externa.

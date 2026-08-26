@@ -50,8 +50,8 @@ struct ImportHistoryView: View {
                     .task { store = ImportStore(container: environment.container) }
             }
         }
-        .navigationTitle("Importar dados")
-        .navigationSubtitle(importsSubtitle)
+        .navigationTitle("")
+        .toolbar(.hidden, for: .windowToolbar)
         // Drop destination cobre a área inteira da tela — incluindo o empty
         // state e a lista populada. O `isTargeted` dirige o overlay visual.
         .dropDestination(for: URL.self, action: handleDrop, isTargeted: setDropTargeted)
@@ -76,16 +76,6 @@ struct ImportHistoryView: View {
                     .environment(environment)
             }
         )
-        .toolbar {
-            ToolbarItem(placement: .primaryAction) {
-                Button {
-                    presentImportSheet(file: nil)
-                } label: {
-                    Label("Nova importação", systemImage: AppIcon.add.systemImage)
-                }
-                .help("Importar extrato bancário (OFX ou CSV)")
-            }
-        }
     }
 
     private var importsSubtitle: String {
@@ -96,36 +86,55 @@ struct ImportHistoryView: View {
 
     @ViewBuilder
     private func content(store: ImportStore) -> some View {
-        if store.batches.isEmpty {
-            EmptyStateDropZone(
-                isHighlighted: isDropTargeted,
-                onBrowse: { presentImportSheet(file: nil) }
-            )
-            .frame(maxWidth: .infinity, maxHeight: .infinity)
-            .granaPagePadding()
-        } else {
-            list(store: store)
+        VStack(spacing: GranaTheme.Spacing.sm) {
+            header
+
+            if store.batches.isEmpty {
+                EmptyStateDropZone(
+                    isHighlighted: isDropTargeted,
+                    onBrowse: { presentImportSheet(file: nil) }
+                )
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
-                .confirmationDialog(
-                    "Desfazer importação?",
-                    isPresented: Binding(
-                        get: { pendingDeleteBatch != nil },
-                        set: { if !$0 { pendingDeleteBatch = nil } }
-                    ),
-                    presenting: pendingDeleteBatch
-                ) { batch in
-                    Button("Apagar lote (\(batch.rowCount) transações)", role: .destructive) {
-                        Task {
-                            await store.undo(batchId: batch.id)
-                            pendingDeleteBatch = nil
-                        }
-                    }
-                    Button("Cancelar", role: .cancel) { pendingDeleteBatch = nil }
-                } message: { batch in
-                    Text(
-                        "As \(batch.rowCount) transações de **\(batch.sourceFilename)** serão removidas permanentemente."
-                    )
+            } else {
+                list(store: store)
+                    .frame(maxWidth: .infinity, maxHeight: .infinity)
+            }
+        }
+        .granaPagePadding()
+        .confirmationDialog(
+            "Desfazer importação?",
+            isPresented: Binding(
+                get: { pendingDeleteBatch != nil },
+                set: { if !$0 { pendingDeleteBatch = nil } }
+            ),
+            presenting: pendingDeleteBatch
+        ) { batch in
+            Button("Apagar lote (\(batch.rowCount) transações)", role: .destructive) {
+                Task {
+                    await store.undo(batchId: batch.id)
+                    pendingDeleteBatch = nil
                 }
+            }
+            Button("Cancelar", role: .cancel) { pendingDeleteBatch = nil }
+        } message: { batch in
+            Text(
+                "As \(batch.rowCount) transações de **\(batch.sourceFilename)** serão removidas permanentemente."
+            )
+        }
+    }
+
+    private var header: some View {
+        FeatureScreenHeader(
+            title: "Importar dados",
+            subtitle: importsSubtitle.isEmpty ? "OFX e CSV com revisão antes do commit" : importsSubtitle
+        ) {
+            Button {
+                presentImportSheet(file: nil)
+            } label: {
+                Label("Nova importação", systemImage: AppIcon.add.systemImage)
+            }
+            .buttonStyle(GranaPrimaryButtonStyle())
+            .help("Importar extrato bancário (OFX ou CSV)")
         }
     }
 

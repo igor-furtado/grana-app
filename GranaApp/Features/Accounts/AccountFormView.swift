@@ -71,7 +71,9 @@ struct AccountFormView: View {
     }
 
     var body: some View {
-        NavigationStack {
+        VStack(spacing: GranaTheme.Spacing.none) {
+            SheetHeaderView(title: navigationTitle)
+
             Form {
                 identitySection
                 if type == .creditCard {
@@ -89,34 +91,32 @@ struct AccountFormView: View {
                 }
             }
             .formStyle(.grouped)
-            .navigationTitle(navigationTitle)
-            .toolbar {
-                ToolbarItem(placement: .cancellationAction) {
-                    Button("Cancelar", action: onCancel)
-                }
-                ToolbarItem(placement: .confirmationAction) {
-                    Button(existing == nil ? "Cadastrar" : "Salvar") {
-                        if cycleConfigurationChanged, cycleChangeScope == .current {
-                            showsCurrentCyclePreview = true
-                        } else {
-                            Task { await save() }
-                        }
+
+            BottomActionBar {
+                Button("Cancelar", action: onCancel)
+                Button(existing == nil ? "Cadastrar" : "Salvar") {
+                    if cycleConfigurationChanged, cycleChangeScope == .current {
+                        showsCurrentCyclePreview = true
+                    } else {
+                        Task { await save() }
                     }
-                    .disabled(!canSave || isSaving)
                 }
-            }
-            .alert("Prévia do recálculo", isPresented: $showsCurrentCyclePreview) {
-                Button("Cancelar", role: .cancel) {}
-                Button("Confirmar alteração") {
-                    Task { await save() }
-                }
-            } message: {
-                Text(
-                    "O ciclo atual e todos os ciclos posteriores serão reconstruídos. Compras, estornos, créditos, pagamentos e datas de quitação podem ser redistribuídos; a alteração será rejeitada se algum pagamento ficar sem dívida elegível."
-                )
+                .buttonStyle(.borderedProminent)
+                .disabled(!canSave || isSaving)
             }
         }
+        .toolbar(.hidden, for: .windowToolbar)
         .frame(minWidth: 520, idealWidth: 520, maxWidth: 520, minHeight: 520)
+        .alert("Prévia do recálculo", isPresented: $showsCurrentCyclePreview) {
+            Button("Cancelar", role: .cancel) {}
+            Button("Confirmar alteração") {
+                Task { await save() }
+            }
+        } message: {
+            Text(
+                "O ciclo atual e todos os ciclos posteriores serão reconstruídos. Compras, estornos, créditos, pagamentos e datas de quitação podem ser redistribuídos; a alteração será rejeitada se algum pagamento ficar sem dívida elegível."
+            )
+        }
         .onAppear(perform: loadExisting)
         // Race: o stream de instituições pode emitir antes ou depois do
         // `onAppear`. Tentamos no `loadExisting` e também aqui — quem chegar

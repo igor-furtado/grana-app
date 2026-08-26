@@ -15,34 +15,39 @@ struct SupportedInstitutionsView: View {
     @State private var store: InstitutionCatalogStore?
 
     var body: some View {
-        Group {
-            if let loadError {
-                EmptyStateView(
-                    "Não foi possível carregar",
-                    icon: .warning,
-                    description: loadError.localizedDescription
-                )
-            } else if isLoading, !hasLoaded {
-                ProgressView()
-            } else if institutions.isEmpty {
-                EmptyStateView(
-                    "Nenhuma instituição disponível",
-                    icon: .sidebarInstitutions,
-                    description: "O backend não devolveu instituições suportadas para a sessão atual."
-                )
-            } else {
-                ScrollView {
-                    VStack(alignment: .leading, spacing: GranaTheme.Spacing.md) {
-                        Text(
-                            "Catálogo global das instituições suportadas pelo produto. Tipos de conta e formatos de importação vêm do backend e definem o que a UI pode oferecer."
-                        )
-                        .font(GranaTheme.Typography.callout)
-                        .foregroundStyle(.secondary)
-                        .fixedSize(horizontal: false, vertical: true)
+        VStack(spacing: GranaTheme.Spacing.sm) {
+            header
 
-                        LazyVGrid(columns: columns, spacing: GranaTheme.Spacing.md) {
-                            ForEach(institutions) { institution in
-                                InstitutionCatalogCard(institution: institution)
+            Group {
+                if let loadError {
+                    EmptyStateView(
+                        "Não foi possível carregar",
+                        icon: .warning,
+                        description: loadError.localizedDescription
+                    )
+                } else if isLoading, !hasLoaded {
+                    ProgressView()
+                        .frame(maxWidth: .infinity, maxHeight: .infinity)
+                } else if institutions.isEmpty {
+                    EmptyStateView(
+                        "Nenhuma instituição disponível",
+                        icon: .sidebarInstitutions,
+                        description: "O backend não devolveu instituições suportadas para a sessão atual."
+                    )
+                } else {
+                    ScrollView {
+                        VStack(alignment: .leading, spacing: GranaTheme.Spacing.md) {
+                            Text(
+                                "Catálogo global das instituições suportadas pelo produto. Tipos de conta e formatos de importação vêm do backend e definem o que a UI pode oferecer."
+                            )
+                            .font(GranaTheme.Typography.callout)
+                            .foregroundStyle(.secondary)
+                            .fixedSize(horizontal: false, vertical: true)
+
+                            LazyVGrid(columns: columns, spacing: GranaTheme.Spacing.md) {
+                                ForEach(institutions) { institution in
+                                    InstitutionCatalogCard(institution: institution)
+                                }
                             }
                         }
                     }
@@ -50,18 +55,24 @@ struct SupportedInstitutionsView: View {
             }
         }
         .granaPagePadding()
-        .navigationTitle("Bancos suportados")
-        .toolbar {
-            ToolbarItem(placement: .primaryAction) {
-                Button {
-                    Task { await refresh() }
-                } label: {
-                    Label("Atualizar", systemImage: "arrow.clockwise")
-                }
-                .disabled(isLoading)
-            }
-        }
+        .navigationTitle("")
+        .toolbar(.hidden, for: .windowToolbar)
         .task { await load() }
+    }
+
+    private var header: some View {
+        FeatureScreenHeader(
+            title: "Bancos suportados",
+            subtitle: "\(institutions.count) instituições no catálogo global"
+        ) {
+            Button {
+                Task { await refresh() }
+            } label: {
+                Label("Atualizar", systemImage: "arrow.clockwise")
+            }
+            .buttonStyle(GranaPrimaryButtonStyle())
+            .disabled(isLoading)
+        }
     }
 
     private var institutions: [Institution] {
