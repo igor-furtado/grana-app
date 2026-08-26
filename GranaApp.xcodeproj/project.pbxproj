@@ -14,6 +14,7 @@
 		28AC0A122FB3CA67008BAD35 /* Realtime in Frameworks */ = {isa = PBXBuildFile; productRef = 28AC0A112FB3CA67008BAD35 /* Realtime */; };
 		28AC0A142FB3CA67008BAD35 /* Storage in Frameworks */ = {isa = PBXBuildFile; productRef = 28AC0A132FB3CA67008BAD35 /* Storage */; };
 		28AC0A162FB3CA67008BAD35 /* Supabase in Frameworks */ = {isa = PBXBuildFile; productRef = 28AC0A152FB3CA67008BAD35 /* Supabase */; };
+		28ECA003303F000000000001 /* ComposableArchitecture in Frameworks */ = {isa = PBXBuildFile; productRef = 28ECA002303F000000000001 /* ComposableArchitecture */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -50,6 +51,7 @@
 			buildActionMask = 2147483647;
 			files = (
 				282D1F3F303DDC20005ECB68 /* Inject in Frameworks */,
+				28ECA003303F000000000001 /* ComposableArchitecture in Frameworks */,
 				28AC0A122FB3CA67008BAD35 /* Realtime in Frameworks */,
 				28AC0A102FB3CA67008BAD35 /* PostgREST in Frameworks */,
 				28AC0A0E2FB3CA67008BAD35 /* Functions in Frameworks */,
@@ -109,6 +111,7 @@
 			name = GranaApp;
 			packageProductDependencies = (
 				282D1F40303DDC20005ECB68 /* Inject */,
+				28ECA002303F000000000001 /* ComposableArchitecture */,
 				28AC0A0B2FB3CA67008BAD35 /* Auth */,
 				28AC0A0D2FB3CA67008BAD35 /* Functions */,
 				28AC0A0F2FB3CA67008BAD35 /* PostgREST */,
@@ -174,6 +177,7 @@
 			packageReferences = (
 				28AC0A0A2FB3CA67008BAD35 /* XCRemoteSwiftPackageReference "supabase-swift" */,
 				282D1F3E303DDC20005ECB68 /* XCRemoteSwiftPackageReference "Inject" */,
+				28ECA001303F000000000001 /* XCRemoteSwiftPackageReference "swift-composable-architecture" */,
 			);
 			preferredProjectObjectVersion = 77;
 			productRefGroup = 2898A1B52FB3C58D0070C51B /* Products */;
@@ -574,6 +578,14 @@
 				minimumVersion = 2.5.1;
 			};
 		};
+		28ECA001303F000000000001 /* XCRemoteSwiftPackageReference "swift-composable-architecture" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/pointfreeco/swift-composable-architecture";
+			requirement = {
+				kind = upToNextMajorVersion;
+				minimumVersion = 1.26.1;
+			};
+		};
 /* End XCRemoteSwiftPackageReference section */
 
 /* Begin XCSwiftPackageProductDependency section */
@@ -611,6 +623,11 @@
 			isa = XCSwiftPackageProductDependency;
 			package = 28AC0A0A2FB3CA67008BAD35 /* XCRemoteSwiftPackageReference "supabase-swift" */;
 			productName = Supabase;
+		};
+		28ECA002303F000000000001 /* ComposableArchitecture */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 28ECA001303F000000000001 /* XCRemoteSwiftPackageReference "swift-composable-architecture" */;
+			productName = ComposableArchitecture;
 		};
 /* End XCSwiftPackageProductDependency section */
 	};

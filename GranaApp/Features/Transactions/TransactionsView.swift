@@ -1,27 +1,15 @@
+import ComposableArchitecture
 import SwiftUI
 
 struct TransactionsView: View {
-    private static let ptBR = Locale(identifier: "pt_BR")
-
     @Environment(AppEnvironment.self) private var environment
-    @Environment(\.calendar) private var calendar
-    @State private var store: TransactionStore?
-    @State private var showingForm = false
-    @State private var showingImport = false
-    @State private var editing: Transaction?
-    @State private var pendingDelete: Transaction?
-    @State private var searchText = ""
-    @State private var kindFilter: TransactionKindFilter = .all
-    @State private var categoryFilter: TransactionCategoryFilter = .all
-    @State private var periodFilter: TransactionPeriodFilter = .month
-    @State private var bankFilter: TransactionBankFilter = .all
-    @State private var presentedHeaderFilter: TransactionsHeaderPresentedFilter?
+    @State private var store: StoreOf<TransactionsFeature>?
 
     var body: some View {
         Group {
             if let store {
-                content(store: store)
-                    .environment(store)
+                TransactionsContentView(store: store)
+                    .environment(environment)
             } else {
                 ProgressView()
                     .frame(maxWidth: .infinity, maxHeight: .infinity)
@@ -29,14 +17,26 @@ struct TransactionsView: View {
         }
         .onAppear {
             if store == nil {
-                store = TransactionStore(container: environment.container)
+                store = Store(initialState: TransactionsFeature.State()) {
+                    TransactionsFeature()
+                } withDependencies: {
+                    $0.transactionsClient = .live(container: environment.container)
+                }
             }
         }
     }
+}
 
-    private func content(store: TransactionStore) -> some View {
+private struct TransactionsContentView: View {
+    private static let ptBR = Locale(identifier: "pt_BR")
+
+    @Bindable var store: StoreOf<TransactionsFeature>
+    @Environment(AppEnvironment.self) private var environment
+    @Environment(\.calendar) private var calendar
+
+    var body: some View {
         VStack(spacing: GranaTheme.Spacing.none) {
-            mainContent(store: store)
+            mainContent
                 .overlay {
                     if store.transactions.isEmpty && !store.isLoading {
                         EmptyStateView(
@@ -56,7 +56,7 @@ struct TransactionsView: View {
                             .controlSize(.small)
                     } else {
                         Button("Carregar mais") {
-                            Task { await store.loadMoreTransactions() }
+                            store.send(.loadMoreButtonTapped)
                         }
                     }
                     Spacer()
@@ -66,112 +66,71 @@ struct TransactionsView: View {
         }
         .navigationTitle("")
         .toolbar(.hidden, for: .windowToolbar)
-        .sheet(isPresented: $showingForm) {
-            TransactionFormView()
-                .environment(store)
+        .sheet(
+            item: $store.scope(\.$destination, action: \.destination).addForm
+        ) { formStore in
+            TransactionFormView(store: formStore)
         }
-        .sheet(item: $editing) { transaction in
-            TransactionFormView(existing: transaction)
-                .environment(store)
+        .sheet(
+            item: $store.scope(\.$destination, action: \.destination).editForm
+        ) { formStore in
+            TransactionFormView(store: formStore)
         }
-        .sheet(isPresented: $showingImport) {
+        .sheet(
+            item: $store.scope(\.$destination, action: \.destination).importFlow
+        ) { _ in
             ImportView()
                 .environment(environment)
         }
-        .confirmationDialog(
-            "Apagar transação?",
-            isPresented: Binding(
-                get: { pendingDelete != nil },
-                set: { if !$0 { pendingDelete = nil } }
-            ),
-            presenting: pendingDelete
-        ) { transaction in
-            Button("Apagar", role: .destructive) {
-                Task {
-                    do {
-                        try await store.delete(id: transaction.id)
-                    } catch {
-                        NoticeCenter.shared.report(error)
-                    }
-                    pendingDelete = nil
-                }
-            }
-            Button("Cancelar", role: .cancel) { pendingDelete = nil }
-        } message: { transaction in
-            Text(deletePreview(for: transaction, store: store))
-        }
+        .confirmationDialog($store.scope(\.confirmationDialog, action: \.confirmationDialog))
         .task {
-            await store.load()
+            await store.send(.task).finish()
         }
     }
 
-    private func mainContent(store: TransactionStore) -> some View {
-        contentBody(store: store)
-    }
-
-    private func contentBody(store: TransactionStore) -> some View {
+    private var mainContent: some View {
         VStack(spacing: GranaTheme.Spacing.sm) {
-            transactionsHeader(store: store)
-            transactionsContentSection(store: store)
+            transactionsHeader
+            transactionsContentSection
         }
         .granaPagePadding()
     }
 
-    private func transactionsHeader(store: TransactionStore) -> some View {
+    private var transactionsHeader: some View {
         TransactionsHeaderView(
-            searchText: $searchText,
-            countText: transactionsCountText(store: store),
-            onImport: { showingImport = true },
-            onAdd: { showingForm = true },
-            bankControl: AnyView(headerBankMenu(store: store)),
+            searchText: $store.searchText,
+            countText: store.state.transactionsCountText(calendar: calendar),
+            onImport: { store.send(.importButtonTapped) },
+            onAdd: { store.send(.addButtonTapped) },
+            bankControl: AnyView(headerBankMenu),
             periodControl: AnyView(headerPeriodMenu),
-            categoryControl: AnyView(headerCategoryMenu(store: store)),
+            categoryControl: AnyView(headerCategoryMenu),
             kindControl: AnyView(headerKindMenu)
         )
     }
 
-    private func transactionsContentSection(store: TransactionStore) -> some View {
+    private var transactionsContentSection: some View {
         VStack(spacing: GranaTheme.Spacing.sm) {
             transactionsTableCard {
                 transactionsTableHeader()
 
-                ForEach(filtered(store: store)) { transaction in
-                    transactionRow(transaction, store: store)
+                ForEach(store.state.filtered(calendar: calendar)) { transaction in
+                    transactionRow(transaction)
                 }
             }
         }
-    }
-
-    private func deletePreview(
-        for transaction: Transaction,
-        store: TransactionStore
-    ) -> String {
-        var message = "\(transaction.description) — \(transaction.amount.formatted(.currency(code: "BRL")))"
-        let affectsCard = store.account(for: transaction.accountId)?.type == .creditCard
-            || transaction.destinationAccountId.flatMap(store.account(for:))?.type == .creditCard
-        if affectsCard {
-            message += "\n\nFaturas, créditos, pagamentos e quitações posteriores serão recalculados antes da exclusão."
-        }
-        let linkedRefundCount = store.transactions.filter {
-            $0.refundOfTransactionId == transaction.id
-        }.count
-        if linkedRefundCount > 0 {
-            message += "\nA exclusão será rejeitada enquanto houver \(linkedRefundCount) estorno(s) vinculado(s)."
-        }
-        return message
     }
 
     private var headerPeriodMenu: some View {
         headerFilterPopoverCard(
             caption: "Período",
-            value: periodFilter.name,
+            value: store.periodFilter.name,
             icon: "calendar",
             filter: .period
         ) {
             ForEach(TransactionPeriodFilter.allCases) { filter in
                 headerFilterOption(filter.name) {
-                    periodFilter = filter
-                    presentedHeaderFilter = nil
+                    store.send(.periodFilterSelected(filter))
                 }
             }
         }
@@ -180,56 +139,51 @@ struct TransactionsView: View {
     private var headerKindMenu: some View {
         headerFilterPopoverCard(
             caption: "Tipo",
-            value: kindFilter.name,
+            value: store.kindFilter.name,
             icon: "arrow.left.arrow.right.circle",
             filter: .kind
         ) {
             ForEach(TransactionKindFilter.allCases) { filter in
                 headerFilterOption(filter.name) {
-                    kindFilter = filter
-                    presentedHeaderFilter = nil
+                    store.send(.kindFilterSelected(filter))
                 }
             }
         }
     }
 
-    private func headerBankMenu(store: TransactionStore) -> some View {
+    private var headerBankMenu: some View {
         headerFilterPopoverCard(
             caption: "Banco",
-            value: bankFilter.name(store: store),
+            value: store.bankFilterName,
             icon: AppIcon.sidebarAccounts.systemImage,
             filter: .bank
         ) {
             headerFilterOption("Todos bancos") {
-                bankFilter = .all
-                presentedHeaderFilter = nil
+                store.send(.bankFilterSelected(.all))
             }
             Divider()
-            ForEach(availableBanks(store: store)) { institution in
+            ForEach(store.availableBanks) { institution in
                 headerFilterOption(institution.name) {
-                    bankFilter = .bank(institution.id)
-                    presentedHeaderFilter = nil
+                    store.send(.bankFilterSelected(.bank(institution.id)))
                 }
             }
         }
     }
 
-    private func headerCategoryMenu(store: TransactionStore) -> some View {
+    private var headerCategoryMenu: some View {
         headerFilterPopoverCard(
             caption: "Categoria",
-            value: categoryFilter.name(store: store),
+            value: store.categoryFilterName,
             icon: "tag",
             filter: .category
         ) {
             headerFilterOption("Todas categorias") {
-                categoryFilter = .all
-                presentedHeaderFilter = nil
+                store.send(.categoryFilterSelected(.all))
             }
             Divider()
-            ForEach(rootCategories(store: store)) { category in
+            ForEach(store.sortedRootCategories) { category in
                 headerFilterOption(category.name) {
-                    categoryFilter = .category(category.id)
-                    presentedHeaderFilter = nil
+                    store.send(.categoryFilterSelected(.category(category.id)))
                 }
             }
         }
@@ -274,9 +228,9 @@ struct TransactionsView: View {
         }
     }
 
-    private func transactionRow(_ transaction: Transaction, store: TransactionStore) -> some View {
+    private func transactionRow(_ transaction: Transaction) -> some View {
         HStack(spacing: GranaTheme.Spacing.sm) {
-            bankCell(transaction, store: store)
+            bankCell(transaction)
 
             Text(transaction.occurredAt.formatted(date: .numeric, time: .omitted))
                 .font(GranaTheme.Typography.caption1)
@@ -286,14 +240,14 @@ struct TransactionsView: View {
             descriptionCell(transaction)
                 .frame(maxWidth: .infinity, alignment: .leading)
 
-            categoryCell(transaction, store: store)
+            categoryCell(transaction)
                 .frame(width: 160, alignment: .leading)
 
             accountingAmount(transaction.amount)
-                .foregroundStyle(amountColor(for: transaction, store: store))
+                .foregroundStyle(amountColor(for: transaction))
                 .frame(width: 132, alignment: .trailing)
 
-            rowActions(transaction, store: store)
+            rowActions(transaction)
                 .frame(width: 76)
         }
         .padding(.horizontal, GranaTheme.Spacing.md)
@@ -313,17 +267,17 @@ struct TransactionsView: View {
         @ViewBuilder content: @escaping () -> Content
     ) -> some View {
         Button {
-            presentedHeaderFilter = filter
+            store.send(.headerFilterPresented(filter))
         } label: {
             headerFilterCard(caption: caption, value: value, icon: icon)
         }
         .buttonStyle(.plain)
         .popover(
             isPresented: Binding(
-                get: { presentedHeaderFilter == filter },
+                get: { store.presentedHeaderFilter == filter },
                 set: { isPresented in
-                    if !isPresented, presentedHeaderFilter == filter {
-                        presentedHeaderFilter = nil
+                    if !isPresented, store.presentedHeaderFilter == filter {
+                        store.send(.headerFilterPresented(nil))
                     }
                 }
             ),
@@ -400,33 +354,33 @@ struct TransactionsView: View {
             .lineLimit(1)
     }
 
-    private func categoryCell(_ transaction: Transaction, store: TransactionStore) -> some View {
+    private func categoryCell(_ transaction: Transaction) -> some View {
         HStack(spacing: GranaTheme.Spacing.xs) {
             CategoryBadge(
-                category: store.category(for: transaction.categoryId),
-                icon: store.icon(for: transaction.categoryId),
+                category: store.state.category(for: transaction.categoryId),
+                icon: store.state.icon(for: transaction.categoryId),
                 iconOnly: true
             )
-            Text(subcategoryName(for: transaction, store: store) ?? categoryName(for: transaction, store: store))
+            Text(store.state.subcategoryName(for: transaction) ?? store.state.categoryName(for: transaction))
                 .font(GranaTheme.Typography.footnoteEmphasis)
                 .foregroundStyle(.secondary)
                 .lineLimit(1)
         }
     }
 
-    private func bankCell(_ transaction: Transaction, store: TransactionStore) -> some View {
-        InstitutionIcon(kind: institutionKind(for: transaction, store: store), size: 22)
+    private func bankCell(_ transaction: Transaction) -> some View {
+        InstitutionIcon(kind: store.state.institutionKind(for: transaction), size: 22)
             .frame(width: 60, alignment: .center)
-            .help(accountName(for: transaction, store: store))
+            .help(store.state.accountName(for: transaction))
     }
 
-    private func rowActions(_ transaction: Transaction, store: TransactionStore) -> some View {
-        let canMutate = store.supportsBasicMutation(for: transaction)
+    private func rowActions(_ transaction: Transaction) -> some View {
+        let canMutate = store.state.supportsBasicMutation(for: transaction)
         let unsupportedMessage = "A edição desta transação não está disponível nesta configuração."
 
         return HStack(spacing: GranaTheme.Spacing.sm) {
             Button {
-                editing = transaction
+                store.send(.editButtonTapped(transaction))
             } label: {
                 Image(systemName: AppIcon.edit.systemImage)
                     .foregroundStyle(.secondary)
@@ -436,7 +390,7 @@ struct TransactionsView: View {
             .help(canMutate ? "Editar" : unsupportedMessage)
 
             Button(role: .destructive) {
-                pendingDelete = transaction
+                store.send(.deleteButtonTapped(transaction))
             } label: {
                 Image(systemName: AppIcon.delete.systemImage)
                     .foregroundStyle(.secondary)
@@ -445,32 +399,6 @@ struct TransactionsView: View {
             .disabled(!canMutate)
             .help(canMutate ? "Apagar" : unsupportedMessage)
         }
-    }
-
-    private func institutionKind(
-        for transaction: Transaction,
-        store: TransactionStore
-    ) -> InstitutionKind {
-        guard let account = store.account(for: transaction.accountId),
-              let institutionId = account.institutionId,
-              let institution = store.institution(for: institutionId)
-        else {
-            return .other
-        }
-        return institution.kind
-    }
-
-    private func subcategoryName(for transaction: Transaction, store: TransactionStore) -> String? {
-        guard let subcategoryId = transaction.subcategoryId else { return nil }
-        return store.category(for: subcategoryId)?.name
-    }
-
-    private func categorySummary(for transaction: Transaction, store: TransactionStore) -> String {
-        let category = categoryName(for: transaction, store: store)
-        guard let subcategory = subcategoryName(for: transaction, store: store) else {
-            return category
-        }
-        return "\(category) · \(subcategory)"
     }
 
     private func accountingAmount(_ amount: Decimal) -> some View {
@@ -488,73 +416,14 @@ struct TransactionsView: View {
         .font(GranaTheme.Typography.moneySubheadline)
     }
 
-    private func amountColor(for transaction: Transaction, store: TransactionStore) -> Color {
-        switch store.category(for: transaction.categoryId)?.kind {
+    private func amountColor(for transaction: Transaction) -> Color {
+        switch store.state.category(for: transaction.categoryId)?.kind {
         case .income: return .income
         case .transfer: return .transfer
         case .expense: return .expense
         case .none: return .primary
         }
     }
-
-    private func accountName(for transaction: Transaction, store: TransactionStore) -> String {
-        store.account(for: transaction.accountId).map { store.displayName(for: $0) } ?? "-"
-    }
-
-    private func categoryName(for transaction: Transaction, store: TransactionStore) -> String {
-        store.category(for: transaction.categoryId)?.name ?? "-"
-    }
-
-    private func filtered(store: TransactionStore) -> [Transaction] {
-        let trimmed = searchText.trimmingCharacters(in: .whitespacesAndNewlines)
-        let needle = trimmed.lowercased()
-        return store.transactions.filter { transaction in
-            if !kindFilter.matches(transaction, store: store) {
-                return false
-            }
-            if !periodFilter.matches(transaction, calendar: calendar) {
-                return false
-            }
-            if !bankFilter.matches(transaction, store: store) {
-                return false
-            }
-            if !categoryFilter.matches(transaction, store: store) {
-                return false
-            }
-            guard !needle.isEmpty else { return true }
-            if transaction.description.lowercased().contains(needle) { return true }
-            if categorySummary(for: transaction, store: store).lowercased().contains(needle) {
-                return true
-            }
-            if accountName(for: transaction, store: store).lowercased().contains(needle) {
-                return true
-            }
-            return false
-        }
-    }
-
-    private func transactionsCountText(store: TransactionStore) -> String {
-        let visible = filtered(store: store).count, total = store.transactions.count
-        return visible == total ? "\(visible) transações" : "\(visible) de \(total) transações"
-    }
-
-    private func rootCategories(store: TransactionStore) -> [Category] {
-        store.categories.filter { $0.parentId == nil }
-            .sorted { $0.name.localizedStandardCompare($1.name) == .orderedAscending }
-    }
-
-    private func availableBanks(store: TransactionStore) -> [Institution] {
-        let ids = Set(store.accounts.compactMap(\.institutionId))
-        return store.institutions.filter { ids.contains($0.id) }
-            .sorted { $0.name.localizedStandardCompare($1.name) == .orderedAscending }
-    }
-}
-
-private enum TransactionsHeaderPresentedFilter {
-    case bank
-    case category
-    case period
-    case kind
 }
 
 private struct TransactionsHeaderView: View {
@@ -620,7 +489,7 @@ private struct TransactionsHeaderView: View {
                     Image(systemName: "xmark.circle.fill")
                         .foregroundStyle(.secondary)
                 }
-                    .buttonStyle(.plain)
+                .buttonStyle(.plain)
             }
         }
         .padding(.horizontal, GranaTheme.Spacing.md)
@@ -663,85 +532,5 @@ private struct TransactionsHeaderView: View {
             }
             .buttonStyle(GranaSecondaryButtonStyle())
         }
-    }
-}
-
-private enum TransactionKindFilter: CaseIterable, Identifiable {
-    case all, expense, income, transfer
-    var id: Self {
-        self
-    }
-
-    var name: String {
-        self == .all ? "Todas" : self == .expense ? "Despesas" : self == .income ? "Receitas" : "Transferências"
-    }
-
-    func matches(_ transaction: Transaction, store: TransactionStore) -> Bool {
-        let kind = store.category(for: transaction.categoryId)?.kind
-        return self == .all || self == .expense && kind == .expense || self == .income && kind == .income || self ==
-            .transfer && kind == .transfer
-    }
-}
-
-private enum TransactionCategoryFilter: Equatable {
-    case all, category(UUID)
-
-    func name(store: TransactionStore) -> String {
-        if case let .category(id) = self {
-            return store.category(for: id)?.name ?? "Categoria"
-        }
-        return "Todas categorias"
-    }
-
-    func matches(
-        _ transaction: Transaction,
-        store _: TransactionStore
-    ) -> Bool {
-        if case let .category(id) = self {
-            return transaction.categoryId == id || transaction.subcategoryId == id
-        }
-        return true
-    }
-}
-
-private enum TransactionPeriodFilter: CaseIterable, Identifiable {
-    case month, quarter, year, all
-    var id: Self {
-        self
-    }
-
-    var name: String {
-        self == .month ? "Este mês" : self == .quarter ? "90 dias" : self == .year ? "Este ano" : "Tudo"
-    }
-
-    func matches(_ transaction: Transaction, calendar: Calendar = .current, today: Date = Date()) -> Bool {
-        if self == .all { return true }
-        if self ==
-            .month { return calendar.dateInterval(of: .month, for: today)?.contains(transaction.occurredAt) ?? true }
-        if self ==
-            .year { return calendar.dateInterval(of: .year, for: today)?.contains(transaction.occurredAt) ?? true }
-        guard let start = calendar.date(byAdding: .day, value: -90, to: today) else { return true }
-        return transaction.occurredAt >= start && transaction.occurredAt <= today
-    }
-}
-
-private enum TransactionBankFilter: Equatable {
-    case all, bank(UUID)
-
-    func name(store: TransactionStore) -> String {
-        if case let .bank(id) = self {
-            return store.institution(for: id)?.name ?? "Banco"
-        }
-        return "Todos bancos"
-    }
-
-    func matches(
-        _ transaction: Transaction,
-        store: TransactionStore
-    ) -> Bool {
-        if case let .bank(id) = self {
-            return store.account(for: transaction.accountId)?.institutionId == id
-        }
-        return true
     }
 }

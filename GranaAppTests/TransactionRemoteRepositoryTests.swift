@@ -19,7 +19,7 @@ struct TransactionRemoteRepositoryTests {
                     id: firstId,
                     accountId: accountId,
                     categoryId: categoryId,
-                    amountCents: 12_345,
+                    amountCents: 12345,
                     occurredAt: now,
                     createdAt: now.addingTimeInterval(-10)
                 ),
@@ -27,7 +27,7 @@ struct TransactionRemoteRepositoryTests {
                     id: secondId,
                     accountId: accountId,
                     categoryId: categoryId,
-                    amountCents: 6_789,
+                    amountCents: 6789,
                     occurredAt: now.addingTimeInterval(-60),
                     createdAt: now.addingTimeInterval(-70)
                 ),
@@ -125,443 +125,275 @@ struct TransactionRemoteRepositoryTests {
             input: input
         )
 
-        #expect(createRequest.pAmountCents == 12_345)
-        #expect(updateRequest.pAmountCents == 12_345)
+        #expect(createRequest.pAmountCents == 12345)
+        #expect(updateRequest.pAmountCents == 12345)
     }
 }
 
 @MainActor
-@Suite("TransactionStore remote load and refresh")
-struct TransactionStoreRemoteTests {
-    @Test("Carrega primeira página remota e lookups auxiliares")
-    func loadsFirstPageAndLookups() async {
-        let institution = makeRemoteInstitution(
-            id: UUID(),
-            code: "077",
-            name: "Banco Inter",
-            kind: .inter,
-            accountTypes: [.checking]
+@Suite("TransactionsFeature")
+struct TransactionsFeatureTests {
+    @Test("Carrega snapshot remoto e lookups auxiliares")
+    func appliesSnapshotAndLookups() {
+        let data = makeTransactionsFeatureFixture()
+        let cursor = TransactionRemotePageCursor(
+            occurredAt: data.transaction.occurredAt,
+            createdAt: data.transaction.createdAt,
+            id: data.transaction.id
         )
-        let category = makeRemoteCategory(
-            id: UUID(),
-            name: "Restaurantes",
-            kind: .expense,
-            slug: "alimentacao"
+        let snapshot = makeTransactionsSnapshot(
+            page: TransactionRemotePage(transactions: [data.transaction], nextCursor: cursor),
+            accounts: [data.account],
+            institutions: [data.institution],
+            categories: [data.category]
         )
-        let account = makeRemoteCheckingAccount(
-            id: UUID(),
-            institutionId: institution.id,
-            balance: 300
-        )
-        let repository = SequencedTransactionRemoteRepository(pages: [
-            TransactionRemotePage(
-                transactions: [
-                    makeTransaction(
-                        id: UUID(),
-                        accountId: account.id,
-                        categoryId: category.id,
-                        amount: 42
-                    ),
-                ],
-                nextCursor: TransactionRemotePageCursor(
-                    occurredAt: Date().addingTimeInterval(-60),
-                    createdAt: Date().addingTimeInterval(-60),
-                    id: UUID()
-                )
-            ),
-        ])
-        let container = AppContainer.inMemoryForTesting(
-            categoryCatalog: StaticCategoryCatalogRepository(categories: [category]),
-            institutionCatalog: StaticInstitutionCatalogRepository(institutions: [institution]),
-            remoteAccounts: StaticAccountRemoteRepository(
-                snapshot: makeRemoteSnapshot(accounts: [account])
-            ),
-            remoteStatements: StaticStatementRemoteRepository(snapshot: .empty),
-            remoteTransactions: repository
-        )
-        let store = TransactionStore(container: container)
 
-        await store.load()
+        var state = TransactionsFeature.State()
+        state.apply(snapshot)
 
-        #expect(store.transactions.count == 1)
-        #expect(store.accounts.map(\.id) == [account.id])
-        #expect(store.rootCategories.map(\.id) == [category.id])
-        #expect(store.institutions.map(\.code) == ["077"])
-        #expect(store.hasMoreTransactions == true)
+        #expect(state.transactionsCountText() == "1 transações")
+        #expect(state.accountName(for: data.transaction).contains("Banco Inter"))
+        #expect(state.hasMoreTransactions == true)
     }
 
-    @Test("Carrega página seguinte com cursor estável")
-    func loadsNextPage() async {
-        let institution = makeRemoteInstitution(
-            id: UUID(),
-            code: "341",
-            name: "Itaú",
-            kind: .itau,
-            accountTypes: [.checking]
-        )
-        let category = makeRemoteCategory(
-            id: UUID(),
-            name: "Salário",
-            kind: .income,
-            slug: "renda"
-        )
-        let account = makeRemoteCheckingAccount(
-            id: UUID(),
-            institutionId: institution.id,
-            balance: 0
-        )
-        let first = makeTransaction(id: UUID(), accountId: account.id, categoryId: category.id, amount: 100)
+    @Test("Carrega página seguinte com cursor explícito")
+    func appendsNextPage() {
+        let data = makeTransactionsFeatureFixture()
         let second = makeTransaction(
             id: UUID(),
-            accountId: account.id,
-            categoryId: category.id,
+            accountId: data.account.id,
+            categoryId: data.category.id,
             amount: 80,
-            occurredAt: first.occurredAt.addingTimeInterval(-60),
-            createdAt: first.createdAt.addingTimeInterval(-60)
+            occurredAt: data.transaction.occurredAt.addingTimeInterval(-60),
+            createdAt: data.transaction.createdAt.addingTimeInterval(-60)
         )
-        let cursor = TransactionRemotePageCursor(
-            occurredAt: first.occurredAt,
-            createdAt: first.createdAt,
-            id: first.id
-        )
-        let repository = SequencedTransactionRemoteRepository(pages: [
-            TransactionRemotePage(transactions: [first], nextCursor: cursor),
-            TransactionRemotePage(transactions: [second], nextCursor: nil),
-        ])
-        let container = AppContainer.inMemoryForTesting(
-            categoryCatalog: StaticCategoryCatalogRepository(categories: [category]),
-            institutionCatalog: StaticInstitutionCatalogRepository(institutions: [institution]),
-            remoteAccounts: StaticAccountRemoteRepository(
-                snapshot: makeRemoteSnapshot(accounts: [account])
-            ),
-            remoteStatements: StaticStatementRemoteRepository(snapshot: .empty),
-            remoteTransactions: repository
-        )
-        let store = TransactionStore(container: container)
+        var initialState = TransactionsFeature.State()
+        initialState.transactions = [data.transaction]
+        initialState.hasMoreTransactions = true
+        let nextPage = TransactionRemotePage(transactions: [second], nextCursor: nil)
 
-        await store.load()
-        await store.loadMoreTransactions()
+        initialState.append(nextPage)
 
-        #expect(store.transactions.map(\.id) == [first.id, second.id])
-        #expect(store.hasMoreTransactions == false)
-        let requestedCursors = await repository.requestedCursors()
-        #expect(requestedCursors == [nil, cursor])
+        #expect(initialState.transactions.map(\.id) == [data.transaction.id, second.id])
+        #expect(initialState.hasMoreTransactions == false)
     }
 
-    @Test("Recarrega após criar transação")
-    func refreshesAfterCreate() async throws {
-        let institution = makeRemoteInstitution(
+    @Test("Mensagem de exclusão mostra efeitos de cartão e estornos vinculados")
+    func deletePreviewIncludesCardAndLinkedRefunds() {
+        let data = makeTransactionsFeatureFixture()
+        let card = makeRemoteCreditCardAccount(id: UUID(), institutionId: data.institution.id)
+        var purchase = makeTransaction(
             id: UUID(),
-            code: "001",
-            name: "Banco do Brasil",
-            kind: .bb,
-            accountTypes: [.checking]
+            accountId: card.id,
+            categoryId: data.category.id,
+            amount: 100
         )
-        let category = makeRemoteCategory(
+        purchase.statementId = UUID()
+        let refund = makeTransaction(
             id: UUID(),
-            name: "Mercado",
-            kind: .expense,
-            slug: "alimentacao"
+            accountId: card.id,
+            categoryId: data.category.id,
+            amount: 20,
+            refundOfTransactionId: purchase.id
         )
-        let account = makeRemoteCheckingAccount(
-            id: UUID(),
-            institutionId: institution.id,
-            balance: 0
-        )
-        let created = makeTransaction(id: UUID(), accountId: account.id, categoryId: category.id, amount: 55)
-        let repository = SequencedTransactionRemoteRepository(pages: [
-            .empty,
-            TransactionRemotePage(transactions: [created], nextCursor: nil),
-        ])
-        let container = AppContainer.inMemoryForTesting(
-            categoryCatalog: StaticCategoryCatalogRepository(categories: [category]),
-            institutionCatalog: StaticInstitutionCatalogRepository(institutions: [institution]),
-            remoteAccounts: StaticAccountRemoteRepository(
-                snapshot: makeRemoteSnapshot(accounts: [account])
-            ),
-            remoteStatements: StaticStatementRemoteRepository(snapshot: .empty),
-            remoteTransactions: repository
-        )
-        let store = TransactionStore(container: container)
-
-        await store.load()
-        try await store.add(
-            accountId: account.id,
-            categoryId: category.id,
-            subcategoryId: nil,
-            amount: 55,
-            occurredAt: created.occurredAt,
-            description: created.description,
-            notes: created.notes
-        )
-
-        #expect(store.transactions.map(\.id) == [created.id])
-        #expect(await repository.loadCallCount() == 2)
-        let operations = await repository.operations()
-        #expect(operations.first?.kind == .create)
-    }
-
-    @Test("Recarrega após editar transação")
-    func refreshesAfterUpdate() async throws {
-        let institution = makeRemoteInstitution(
-            id: UUID(),
-            code: "104",
-            name: "Caixa",
-            kind: .caixa,
-            accountTypes: [.checking]
-        )
-        let category = makeRemoteCategory(
-            id: UUID(),
-            name: "Freelance",
-            kind: .income,
-            slug: "renda"
-        )
-        let account = makeRemoteCheckingAccount(
-            id: UUID(),
-            institutionId: institution.id,
-            balance: 0
-        )
-        let original = makeTransaction(id: UUID(), accountId: account.id, categoryId: category.id, amount: 10)
-        let updated = makeTransaction(
-            id: original.id,
-            accountId: account.id,
-            categoryId: category.id,
-            amount: 25,
-            occurredAt: original.occurredAt,
-            createdAt: original.createdAt
-        )
-        let repository = SequencedTransactionRemoteRepository(pages: [
-            TransactionRemotePage(transactions: [original], nextCursor: nil),
-            TransactionRemotePage(transactions: [updated], nextCursor: nil),
-        ])
-        let container = AppContainer.inMemoryForTesting(
-            categoryCatalog: StaticCategoryCatalogRepository(categories: [category]),
-            institutionCatalog: StaticInstitutionCatalogRepository(institutions: [institution]),
-            remoteAccounts: StaticAccountRemoteRepository(
-                snapshot: makeRemoteSnapshot(accounts: [account])
-            ),
-            remoteStatements: StaticStatementRemoteRepository(snapshot: .empty),
-            remoteTransactions: repository
-        )
-        let store = TransactionStore(container: container)
-
-        await store.load()
-        var transaction = try #require(store.transactions.first)
-        transaction.amount = 25
-
-        try await store.update(transaction)
-
-        #expect(store.transactions.first?.amount == 25)
-        let operations = await repository.operations()
-        #expect(operations.first?.kind == .update)
-    }
-
-    @Test("Recarrega após apagar transação")
-    func refreshesAfterDelete() async throws {
-        let institution = makeRemoteInstitution(
-            id: UUID(),
-            code: "336",
-            name: "C6",
-            kind: .c6,
-            accountTypes: [.checking]
-        )
-        let category = makeRemoteCategory(
-            id: UUID(),
-            name: "Transferência",
-            kind: .transfer,
-            slug: "transferencias"
-        )
-        let account = makeRemoteCheckingAccount(
-            id: UUID(),
-            institutionId: institution.id,
-            balance: 0
-        )
-        let transaction = makeTransaction(id: UUID(), accountId: account.id, categoryId: category.id, amount: 15)
-        let repository = SequencedTransactionRemoteRepository(pages: [
-            TransactionRemotePage(transactions: [transaction], nextCursor: nil),
-            .empty,
-        ])
-        let container = AppContainer.inMemoryForTesting(
-            categoryCatalog: StaticCategoryCatalogRepository(categories: [category]),
-            institutionCatalog: StaticInstitutionCatalogRepository(institutions: [institution]),
-            remoteAccounts: StaticAccountRemoteRepository(
-                snapshot: makeRemoteSnapshot(accounts: [account])
-            ),
-            remoteStatements: StaticStatementRemoteRepository(snapshot: .empty),
-            remoteTransactions: repository
-        )
-        let store = TransactionStore(container: container)
-
-        await store.load()
-        try await store.delete(id: transaction.id)
-
-        #expect(store.transactions.isEmpty)
-        let operations = await repository.operations()
-        #expect(operations.first?.kind == .delete)
-    }
-
-    @Test("Propaga erro estável de destino inválido")
-    func surfacesStableError() async {
-        let category = makeRemoteCategory(
-            id: UUID(),
-            name: "Transferência",
-            kind: .transfer,
-            slug: "transferencias"
-        )
-        let institution = makeRemoteInstitution(
-            id: UUID(),
-            code: "077",
-            name: "Banco Inter",
-            kind: .inter,
-            accountTypes: [.checking]
-        )
-        let account = makeRemoteCheckingAccount(
-            id: UUID(),
-            institutionId: institution.id,
-            balance: 0
-        )
-        let container = AppContainer.inMemoryForTesting(
-            categoryCatalog: StaticCategoryCatalogRepository(categories: [category]),
-            institutionCatalog: StaticInstitutionCatalogRepository(institutions: [institution]),
-            remoteAccounts: StaticAccountRemoteRepository(
-                snapshot: makeRemoteSnapshot(accounts: [account])
-            ),
-            remoteStatements: StaticStatementRemoteRepository(snapshot: .empty),
-            remoteTransactions: FailingTransactionRemoteRepository(
-                error: TransactionRemoteRepositoryError.invalidTransferDestination
+        var state = TransactionsFeature.State()
+        state.apply(
+            makeTransactionsSnapshot(
+                page: TransactionRemotePage(transactions: [purchase, refund], nextCursor: nil),
+                accounts: [card],
+                institutions: [data.institution],
+                categories: [data.category]
             )
         )
-        let store = TransactionStore(container: container)
 
-        await #expect(throws: TransactionRemoteRepositoryError.invalidTransferDestination) {
-            try await store.add(
-                accountId: account.id,
-                categoryId: category.id,
-                subcategoryId: nil,
-                amount: 30,
-                occurredAt: Date(),
-                description: "Transferência inválida",
-                notes: nil,
-                destinationAccountId: account.id
-            )
-        }
+        let message = state.deletePreview(for: purchase)
+
+        #expect(message.contains("Faturas, créditos, pagamentos e quitações posteriores"))
+        #expect(message.contains("1 estorno(s) vinculado(s)"))
     }
 
-    @Test("Repropaga falha de refresh após criar transação")
-    func rethrowsRefreshFailureAfterCreate() async {
-        let category = makeRemoteCategory(
+    @Test("TransactionsClient permite compor delete e refresh por dependência")
+    func clientDeletesAndReloads() async throws {
+        let data = makeTransactionsFeatureFixture()
+        let refreshed = makeTransactionsSnapshot(
+            accounts: [data.account],
+            institutions: [data.institution],
+            categories: [data.category]
+        )
+        let recorder = TransactionDeleteRecorder()
+        let client = TransactionsClient(
+            loadSnapshot: { refreshed },
+            loadNextPage: { _ in .empty },
+            create: { _ in },
+            update: { _, _ in },
+            delete: { id in await recorder.record(id) }
+        )
+
+        try await client.delete(data.transaction.id)
+        let snapshot = try await client.loadSnapshot()
+
+        #expect(await recorder.deletedIds() == [data.transaction.id])
+        #expect(snapshot.page.transactions.isEmpty)
+    }
+}
+
+@MainActor
+@Suite("TransactionFormFeature")
+struct TransactionFormFeatureTests {
+    @Test("Cria transação a partir do formulário")
+    func buildsCreateInput() {
+        let data = makeTransactionsFeatureFixture()
+        var state = makeTransactionFormState(data: data)
+        state.description = "Mercado"
+        state.amountCents = 4250
+
+        let input = state.mutationInput()
+        #expect(input?.accountId == data.account.id)
+        #expect(input?.categoryId == data.category.id)
+        #expect(input?.amount == Decimal(string: "42.5"))
+    }
+
+    @Test("Trocar categoria limpa subcategoria e destino quando não é transferência")
+    func changingCategoryClearsDependentSelection() {
+        let account = makeRemoteCheckingAccount(id: UUID(), institutionId: UUID(), balance: 0)
+        let transfer = makeRemoteCategory(id: UUID(), name: "Transferência", kind: .transfer, slug: "transferencias")
+        let expense = makeRemoteCategory(id: UUID(), name: "Mercado", kind: .expense, slug: "alimentacao")
+        var state = TransactionFormFeature.State(
+            transactions: [],
+            accounts: [account],
+            institutions: [],
+            bankDetails: [],
+            creditCards: [],
+            categories: [transfer, expense],
+            statements: [],
+            statementPayments: []
+        )
+        state.categoryId = transfer.id
+        state.subcategoryId = UUID()
+        state.destinationAccountId = UUID()
+
+        state.categoryId = expense.id
+        state.categorySelectionChanged()
+
+        #expect(state.subcategoryId == nil)
+        #expect(state.destinationAccountId == nil)
+    }
+
+    @Test("Selecionar estorno herda categoria da compra")
+    func selectingRefundInheritsPurchaseCategory() {
+        let data = makeTransactionsFeatureFixture()
+        let subcategory = GranaApp.Category(
             id: UUID(),
-            name: "Mercado",
+            parentId: data.category.id,
+            name: "Restaurante",
             kind: .expense,
-            slug: "alimentacao"
+            slug: nil,
+            createdAt: Date()
         )
-        let institution = makeRemoteInstitution(
-            id: UUID(),
-            code: "077",
-            name: "Banco Inter",
-            kind: .inter,
-            accountTypes: [.checking]
+        var purchase = data.transaction
+        purchase.subcategoryId = subcategory.id
+        var state = makeTransactionFormState(
+            data: data,
+            transactions: [purchase],
+            categories: [data.category, subcategory]
         )
-        let account = makeRemoteCheckingAccount(
-            id: UUID(),
-            institutionId: institution.id,
-            balance: 0
-        )
-        let repository = RefreshFailingAfterMutationRepository(
-            initialPage: .empty,
-            refreshError: TransactionRemoteRepositoryError.unexpectedResponse
-        )
-        let container = AppContainer.inMemoryForTesting(
-            categoryCatalog: StaticCategoryCatalogRepository(categories: [category]),
-            institutionCatalog: StaticInstitutionCatalogRepository(institutions: [institution]),
-            remoteAccounts: StaticAccountRemoteRepository(
-                snapshot: makeRemoteSnapshot(accounts: [account])
-            ),
-            remoteStatements: StaticStatementRemoteRepository(snapshot: .empty),
-            remoteTransactions: repository
-        )
-        let store = TransactionStore(container: container)
+        state.occurredAt = purchase.occurredAt.addingTimeInterval(60)
 
-        await store.load()
+        state.refundOfTransactionId = purchase.id
+        state.refundSelectionChanged()
 
-        await #expect(throws: TransactionRemoteRepositoryError.unexpectedResponse) {
-            try await store.add(
-                accountId: account.id,
-                categoryId: category.id,
-                subcategoryId: nil,
-                amount: 30,
-                occurredAt: Date(),
-                description: "Mercado",
-                notes: nil
-            )
-        }
-        #expect(store.lastError as? TransactionRemoteRepositoryError == .unexpectedResponse)
+        #expect(state.categoryId == purchase.categoryId)
+        #expect(state.subcategoryId == purchase.subcategoryId)
+    }
+}
+
+private actor TransactionDeleteRecorder {
+    private var recordedIds: [UUID] = []
+
+    func record(_ id: UUID) {
+        recordedIds.append(id)
     }
 
-    @Test("Recarrega faturas após mutação de cartão")
-    func refreshesStatementsAfterCardMutation() async throws {
-        let institution = makeRemoteInstitution(
-            id: UUID(),
-            code: "077",
-            name: "Banco Inter",
-            kind: .inter,
-            accountTypes: [.checking, .creditCard]
-        )
-        let category = makeRemoteCategory(
-            id: UUID(),
-            name: "Mercado",
-            kind: .expense,
-            slug: "alimentacao"
-        )
-        let account = makeRemoteCreditCardAccount(
-            id: UUID(),
-            institutionId: institution.id
-        )
-        let statement = makeStatement(accountId: account.id, amount: 55)
-        var transaction = makeTransaction(
-            id: UUID(),
-            accountId: account.id,
-            categoryId: category.id,
-            amount: 55,
-            occurredAt: statement.closingDate.addingTimeInterval(-86_400)
-        )
-        transaction.statementId = statement.id
-        let repository = SequencedTransactionRemoteRepository(pages: [
-            .empty,
-            TransactionRemotePage(transactions: [transaction], nextCursor: nil),
-        ])
-        let container = AppContainer.inMemoryForTesting(
-            categoryCatalog: StaticCategoryCatalogRepository(categories: [category]),
-            institutionCatalog: StaticInstitutionCatalogRepository(institutions: [institution]),
-            remoteAccounts: StaticAccountRemoteRepository(
-                snapshot: makeRemoteSnapshot(accounts: [account])
-            ),
-            remoteStatements: SequencedStatementRemoteRepository(snapshots: [
-                .empty,
-                StatementRemoteSnapshot(
-                    statements: [statement],
-                    payments: []
-                ),
-            ]),
-            remoteTransactions: repository
-        )
-        let store = TransactionStore(container: container)
-
-        await store.load()
-        try await store.add(
-            accountId: account.id,
-            categoryId: category.id,
-            subcategoryId: nil,
-            amount: 55,
-            occurredAt: transaction.occurredAt,
-            description: transaction.description,
-            notes: transaction.notes
-        )
-
-        #expect(store.supportsAdvancedCardRules == true)
-        #expect(store.statements.map(\.id) == [statement.id])
-        #expect(store.statement(for: transaction)?.id == statement.id)
+    func deletedIds() -> [UUID] {
+        recordedIds
     }
+}
+
+private func makeTransactionsFeatureFixture() -> (
+    institution: Institution,
+    category: GranaApp.Category,
+    account: Account,
+    transaction: Transaction
+) {
+    let institution = makeRemoteInstitution(
+        id: UUID(),
+        code: "077",
+        name: "Banco Inter",
+        kind: .inter,
+        accountTypes: [.checking]
+    )
+    let category = makeRemoteCategory(
+        id: UUID(),
+        name: "Restaurantes",
+        kind: .expense,
+        slug: "alimentacao"
+    )
+    let account = makeRemoteCheckingAccount(
+        id: UUID(),
+        institutionId: institution.id,
+        balance: 300
+    )
+    let transaction = makeTransaction(
+        id: UUID(),
+        accountId: account.id,
+        categoryId: category.id,
+        amount: 42
+    )
+    return (institution, category, account, transaction)
+}
+
+private func makeTransactionsSnapshot(
+    page: TransactionRemotePage = .empty,
+    accounts: [Account] = [],
+    institutions: [Institution] = [],
+    categories: [GranaApp.Category] = [],
+    statements: [Statement] = [],
+    statementPayments: [StatementPayment] = []
+) -> TransactionsSnapshot {
+    let accountSnapshot = makeRemoteSnapshot(accounts: accounts)
+    return TransactionsSnapshot(
+        page: page,
+        accounts: accounts,
+        institutions: institutions,
+        bankDetails: accountSnapshot.bankDetails,
+        creditCards: accountSnapshot.creditCards,
+        categories: categories,
+        statements: statements,
+        statementPayments: statementPayments
+    )
+}
+
+private func makeTransactionFormState(
+    data: (
+        institution: Institution,
+        category: GranaApp.Category,
+        account: Account,
+        transaction: Transaction
+    ),
+    transactions: [Transaction] = [],
+    categories: [GranaApp.Category]? = nil
+) -> TransactionFormFeature.State {
+    let accountSnapshot = makeRemoteSnapshot(accounts: [data.account])
+    return TransactionFormFeature.State(
+        transactions: transactions,
+        accounts: [data.account],
+        institutions: [data.institution],
+        bankDetails: accountSnapshot.bankDetails,
+        creditCards: accountSnapshot.creditCards,
+        categories: categories ?? [data.category],
+        statements: [],
+        statementPayments: []
+    )
 }
 
 private actor FakeTransactionRemoteStore: TransactionRemoteStore {
@@ -772,6 +604,7 @@ private func makeTransaction(
     occurredAt: Date = Date(),
     description: String = "Transação",
     notes: String? = nil,
+    refundOfTransactionId: UUID? = nil,
     createdAt: Date = Date().addingTimeInterval(-5)
 ) -> Transaction {
     Transaction(
@@ -784,7 +617,7 @@ private func makeTransaction(
         description: description,
         notes: notes,
         destinationAccountId: nil,
-        refundOfTransactionId: nil,
+        refundOfTransactionId: refundOfTransactionId,
         createdAt: createdAt,
         updatedAt: createdAt
     )
@@ -868,21 +701,21 @@ private func makeRemoteSnapshot(
         bankDetails: accounts
             .filter { $0.type == .checking }
             .map { account in
-            BankAccountDetails(
-                accountId: account.id,
-                branchId: "0001",
-                accountNumber: "1234",
-                createdAt: account.createdAt,
-                updatedAt: account.updatedAt
-            )
-        },
+                BankAccountDetails(
+                    accountId: account.id,
+                    branchId: "0001",
+                    accountNumber: "1234",
+                    createdAt: account.createdAt,
+                    updatedAt: account.updatedAt
+                )
+            },
         creditCards: accounts
             .filter { $0.type == .creditCard }
             .map { account in
                 CreditCardDetails(
                     accountId: account.id,
                     cardLastFour: "1234",
-                    creditLimit: 1_000,
+                    creditLimit: 1000,
                     statementClosingDay: 8,
                     paymentDueDay: 15,
                     createdAt: account.createdAt,
@@ -901,7 +734,7 @@ private func makeStatement(
         id: UUID(),
         accountId: accountId,
         closingDate: now,
-        dueDate: now.addingTimeInterval(86_400 * 10),
+        dueDate: now.addingTimeInterval(86400 * 10),
         netAmount: amount,
         creditReceived: 0,
         paymentApplied: 0,

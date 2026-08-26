@@ -5,7 +5,7 @@ import Foundation
 ///
 /// **`slug` só na raiz:** decisão de produto — subcategorias herdam o ícone
 /// do pai pra reduzir ruído visual. No banco, subcategoria tem `slug = NULL`;
-/// a UI consulta o ícone do pai via `TransactionStore.icon(for:)`.
+/// a UI consulta o ícone do pai via estado derivado da feature de transações.
 ///
 /// **Por que slug em vez de coluna `icon`:** categorias são catálogo global
 /// somente leitura (usuário não cria nem edita por enquanto), então gravar o
@@ -23,7 +23,7 @@ struct Category: Identifiable, Codable, Hashable {
 
     /// Ícone derivado do slug. Subcategorias sempre retornam `nil` aqui —
     /// quem precisa do ícone "efetivo" da subcategoria usa
-    /// `TransactionStore.icon(for:)`, que cai no pai.
+    /// o estado derivado da feature de transações, que cai no pai.
     var icon: CategoryIcon? {
         slug.flatMap(CategoryIcon.forSlug)
     }
