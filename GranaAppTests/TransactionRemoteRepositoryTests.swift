@@ -180,7 +180,7 @@ struct TransactionsFeatureTests {
 
         let message = state.deletePreview(for: purchase)
 
-        #expect(message.contains("Faturas, créditos, pagamentos e quitações posteriores"))
+        #expect(message.contains("Pagamentos vinculados a outras faturas permanecem onde foram registrados"))
         #expect(message.contains("1 estorno(s) vinculado(s)"))
     }
 
@@ -629,6 +629,21 @@ private actor SequencedStatementRemoteRepository: StatementRemoteRepositoryProto
 
     func loadTransactions(statementId _: UUID) async throws -> [Transaction] {
         []
+    }
+
+    func updateDates(
+        statementId: UUID,
+        closingDate _: Date,
+        dueDate _: Date
+    ) async throws -> StatementDateUpdateResult {
+        StatementDateUpdateResult(
+            statementId: statementId,
+            movedTransactionCount: 0,
+            enteredTransactionCount: 0,
+            exitedTransactionCount: 0,
+            affectedStatementCount: 0,
+            paymentDifferenceStatementCount: 0
+        )
     }
 }
 

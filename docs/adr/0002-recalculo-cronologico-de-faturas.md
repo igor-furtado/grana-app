@@ -1,6 +1,6 @@
 # Recálculo cronológico de faturas
 
-Status: accepted
+Status: superseded by ADR-0008
 
 ## Contexto
 

@@ -180,20 +180,16 @@ struct TransactionFormFeature {
         var retroactivePreviewText: String {
             var effects: [String] = []
             if selectedAccountIsCreditCard {
-                let closing = StatementWindow.resolve(
-                    closingDay: selectedCardDetails?.statementClosingDay ?? 1,
-                    paymentDueDay: selectedCardDetails?.paymentDueDay ?? 1,
-                    on: occurredAt
-                ).closingDate
                 effects
                     .append(
-                        "A fatura que fecha em \(closing.formatted(date: .abbreviated, time: .omitted)) será reconstruída."
+                        "A compra será vinculada à fatura que cobre a data da transação; fechamento da fatura permanece editável na tela de cartões."
                     )
             }
             if isPayingCreditCard {
                 effects
                     .append(
-                        "Pagamentos serão redistribuídos cronologicamente e a alteração será rejeitada se houver sobra."
+                        "Este pagamento será vinculado às dívidas elegíveis mais antigas. "
+                            + "Pagamentos já registrados em outras faturas não serão redistribuídos."
                     )
             }
             if let existing {
@@ -245,7 +241,7 @@ struct TransactionFormFeature {
             occurredAt: Date
         ) -> [(statement: Statement, amount: Decimal)] {
             var remaining = amount
-            var result: [(Statement, Decimal)] = []
+            var result: [(statement: Statement, amount: Decimal)] = []
             for statement in openStatements(for: accountId) where remaining > 0 {
                 let hasEntryByPaymentDate = transactions.contains {
                     $0.statementId == statement.id && $0.occurredAt <= occurredAt
@@ -253,8 +249,11 @@ struct TransactionFormFeature {
                 guard hasEntryByPaymentDate else { continue }
                 let applied = min(statement.remainingAmount, remaining)
                 guard applied > 0 else { continue }
-                result.append((statement, applied))
+                result.append((statement: statement, amount: applied))
                 remaining -= applied
+            }
+            if remaining > 0, let lastIndex = result.indices.last {
+                result[lastIndex].amount += remaining
             }
             return result
         }

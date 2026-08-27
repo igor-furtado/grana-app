@@ -1,6 +1,6 @@
 # Propagação de saldo credor entre faturas
 
-Status: accepted
+Status: superseded by ADR-0008
 
 ## Contexto
 

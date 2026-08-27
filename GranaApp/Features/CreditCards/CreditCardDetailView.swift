@@ -1,5 +1,5 @@
-import ComposableArchitecture
 import Charts
+import ComposableArchitecture
 import Foundation
 import SwiftUI
 
@@ -37,7 +37,8 @@ struct CreditCardStatementsView: View {
                             set: { store.send(.statementSelected($0)) }
                         ),
                         currency: store.card.account.currency,
-                        bestPurchaseDay: store.bestPurchaseDay
+                        bestPurchaseDay: store.bestPurchaseDay,
+                        onEditDates: { store.send(.editStatementDatesButtonTapped($0)) }
                     )
                 }
                 transactionsBlock
@@ -45,6 +46,11 @@ struct CreditCardStatementsView: View {
             .padding(GranaTheme.Spacing.xl)
         }
         .granaSurface(.subtle, cornerRadius: GranaTheme.Radius.hero)
+        .sheet(
+            item: $store.scope(\.$dateEditor, action: \.dateEditor)
+        ) { dateEditorStore in
+            StatementDateEditorView(store: dateEditorStore)
+        }
         .task {
             await store.send(.task).finish()
         }
@@ -81,11 +87,17 @@ struct CreditCardStatementsView: View {
     private func statementSummary(_ statement: Statement) -> some View {
         Grid(alignment: .leading, horizontalSpacing: 24, verticalSpacing: 6) {
             summaryRow("Compras menos estornos", value: statement.netAmount)
-            summaryRow("Créditos recebidos", value: statement.creditReceived)
             summaryRow("Pagamentos", value: statement.paymentApplied)
             summaryRow("Total a quitar", value: statement.totalAmount)
-            summaryRow("Saldo restante", value: statement.remainingAmount)
-            summaryRow("Saldo credor", value: statement.creditBalance)
+            if statement.remainingAmount > 0 {
+                summaryRow("Diferença pendente", value: statement.remainingAmount)
+            }
+            if statement.paymentExcess > 0 {
+                summaryRow("Pagamento excedente", value: statement.paymentExcess)
+            }
+            if statement.creditBalance > 0 {
+                summaryRow("Saldo credor", value: statement.creditBalance)
+            }
         }
         .padding(GranaTheme.Spacing.sm)
         .granaSurface(.solid, cornerRadius: GranaTheme.Radius.control)
@@ -234,7 +246,7 @@ private struct StatementTimelineChart: View {
         let label: String
         let total: Decimal
         let status: Status
-        let closingDate: Date
+        let dueDate: Date
 
         enum Status: Hashable {
             case paid
@@ -247,7 +259,7 @@ private struct StatementTimelineChart: View {
         var result: [Bar] = statements.map { s in
             Bar(
                 id: s.id,
-                label: Self.monthFormatter.string(from: s.closingDate),
+                label: Self.monthFormatter.string(from: s.dueDate),
                 total: s.totalAmount,
                 status: {
                     switch s.status() {
@@ -255,29 +267,26 @@ private struct StatementTimelineChart: View {
                     case .paid, .settled: .paid
                     }
                 }(),
-                closingDate: s.closingDate
+                dueDate: s.dueDate
             )
         }
         for window in projections {
-            // Reutiliza `closingDate` como id determinístico (`UUID` aqui
-            // é só pra `Identifiable`). Convertemos pra UUID via hash
-            // estável — não dá colisão na prática porque closingDate é
-            // único por cartão dentro do escopo.
             result.append(Bar(
                 id: UUID(),
-                label: Self.monthFormatter.string(from: window.closingDate),
+                label: Self.monthFormatter.string(from: window.dueDate),
                 total: 0,
                 status: .projected,
-                closingDate: window.closingDate
+                dueDate: window.dueDate
             ))
         }
-        return result.sorted { $0.closingDate < $1.closingDate }
+        return result.sorted { $0.dueDate < $1.dueDate }
     }
 
     private static let monthFormatter: DateFormatter = {
         let f = DateFormatter()
         f.dateFormat = "MMM"
         f.locale = Locale(identifier: "pt_BR")
+        f.timeZone = TimeZone(secondsFromGMT: 0)
         return f
     }()
 
@@ -391,6 +400,7 @@ private struct StatementCyclePanel: View {
     /// Dia "ideal" pra fazer uma compra (fechamento + 1) — só faz sentido
     /// pra fatura em aberto.
     let bestPurchaseDay: Int?
+    let onEditDates: (UUID) -> Void
 
     var body: some View {
         HStack(alignment: .top, spacing: GranaTheme.Spacing.sm) {
@@ -414,6 +424,14 @@ private struct StatementCyclePanel: View {
             case .none: return nil
             }
         }
+
+        var dueDate: Date? {
+            switch self {
+            case let .statement(s): return s.dueDate
+            case let .projection(w): return w.dueDate
+            case .none: return nil
+            }
+        }
     }
 
     /// Lista unificada (statements + projeções) ordenada por closingDate.
@@ -423,7 +441,7 @@ private struct StatementCyclePanel: View {
         var items: [CycleItem] = statements.map { .statement($0) }
         items.append(contentsOf: projections.map { .projection($0) })
         return items.sorted { a, b -> Bool in
-            (a.closingDate ?? .distantPast) < (b.closingDate ?? .distantPast)
+            (a.dueDate ?? .distantPast) < (b.dueDate ?? .distantPast)
         }
     }
 
@@ -461,10 +479,11 @@ private struct StatementCyclePanel: View {
         switch item {
         case let .statement(s):
             StatementCycleCard(
-                title: monthTitle(s.closingDate),
+                title: monthTitle(s.dueDate),
                 amount: s.totalAmount,
                 statusLabel: s.status().displayName,
                 statusTint: s.status() == .forming ? .info : .neutral,
+                closingDate: s.closingDate,
                 dueDate: s.dueDate,
                 bestPurchaseDay: role == .selected && s.status() == .forming
                     ? bestPurchaseDay
@@ -472,20 +491,23 @@ private struct StatementCyclePanel: View {
                 currency: currency,
                 isHighlighted: role == .selected,
                 isMuted: role != .selected,
-                onTap: role == .selected ? nil : { selectedId = s.id }
+                onTap: role == .selected ? nil : { selectedId = s.id },
+                onEditDates: role == .selected ? { onEditDates(s.id) } : nil
             )
         case let .projection(w):
             StatementCycleCard(
-                title: monthTitle(w.closingDate),
+                title: monthTitle(w.dueDate),
                 amount: 0,
                 statusLabel: "Prevista",
                 statusTint: .neutral,
+                closingDate: w.closingDate,
                 dueDate: w.dueDate,
                 bestPurchaseDay: nil,
                 currency: currency,
                 isHighlighted: false,
                 isMuted: true,
-                onTap: nil
+                onTap: nil,
+                onEditDates: nil
             )
         case .none:
             // Slot vazio com mesma largura pra manter o trio alinhado.
@@ -499,6 +521,7 @@ private struct StatementCyclePanel: View {
         let f = DateFormatter()
         f.dateFormat = "MMMM"
         f.locale = Locale(identifier: "pt_BR")
+        f.timeZone = TimeZone(secondsFromGMT: 0)
         return f
     }()
 
@@ -515,12 +538,14 @@ private struct StatementCycleCard: View {
     let amount: Decimal
     let statusLabel: String
     let statusTint: BadgeTint
+    let closingDate: Date
     let dueDate: Date
     let bestPurchaseDay: Int?
     let currency: String
     let isHighlighted: Bool
     let isMuted: Bool
     let onTap: (() -> Void)?
+    let onEditDates: (() -> Void)?
 
     enum BadgeTint {
         case info, neutral
@@ -533,6 +558,23 @@ private struct StatementCycleCard: View {
                     .font(GranaTheme.Typography.calloutEmphasis)
                 StatusBadge(label: statusLabel, tint: statusTint)
                 Spacer()
+                if let onEditDates {
+                    Button(action: onEditDates) {
+                        Image(systemName: AppIcon.edit.systemImage)
+                            .font(.system(size: GranaTheme.IconSize.small, weight: .semibold))
+                    }
+                    .buttonStyle(.plain)
+                    .foregroundStyle(GranaTheme.Palette.muted)
+                    .frame(width: 28, height: 28)
+                    .background(
+                        Circle().fill(GranaTheme.Palette.paper.opacity(0.95))
+                    )
+                    .overlay {
+                        Circle().strokeBorder(GranaTheme.Palette.line, lineWidth: 1)
+                    }
+                    .help("Editar datas da fatura")
+                    .accessibilityLabel("Editar datas da fatura")
+                }
             }
 
             Text(amount.formatted(.currency(code: currency)))
@@ -541,6 +583,14 @@ private struct StatementCycleCard: View {
             Divider()
 
             VStack(alignment: .leading, spacing: GranaTheme.Spacing.xxs) {
+                HStack {
+                    Text("Data de fechamento")
+                        .font(GranaTheme.Typography.caption1)
+                        .foregroundStyle(.secondary)
+                    Spacer()
+                    Text(Self.dayMonthFormatter.string(from: closingDate))
+                        .font(GranaTheme.Typography.footnoteEmphasis)
+                }
                 HStack {
                     Text("Data de vencimento")
                         .font(GranaTheme.Typography.caption1)
@@ -583,6 +633,7 @@ private struct StatementCycleCard: View {
         let f = DateFormatter()
         f.dateFormat = "dd/MM"
         f.locale = Locale(identifier: "pt_BR")
+        f.timeZone = TimeZone(secondsFromGMT: 0)
         return f
     }()
 
@@ -614,5 +665,73 @@ private struct StatementCycleCard: View {
             case .neutral: return Color.secondary
             }
         }
+    }
+}
+
+private struct StatementDateEditorView: View {
+    @Bindable var store: StoreOf<StatementDateEditorFeature>
+
+    var body: some View {
+        VStack(spacing: GranaTheme.Spacing.none) {
+            Form {
+                Section {
+                    DatePicker(
+                        "Data de fechamento",
+                        selection: $store.closingDate,
+                        displayedComponents: .date
+                    )
+                    .disabled(store.isSaving)
+
+                    DatePicker(
+                        "Data de vencimento",
+                        selection: $store.dueDate,
+                        displayedComponents: .date
+                    )
+                    .disabled(store.isSaving)
+                } header: {
+                    Text(store.title)
+                } footer: {
+                    Text(
+                        "Alterar o fechamento realoca compras e estornos entre faturas. Pagamentos permanecem na fatura onde foram registrados."
+                    )
+                }
+
+                if let message = store.validationMessage ?? store.saveError {
+                    Section {
+                        Label {
+                            Text(message)
+                                .foregroundStyle(.danger)
+                        } icon: {
+                            Image(systemName: AppIcon.invalidDate.systemImage)
+                                .foregroundStyle(.danger)
+                        }
+                    }
+                }
+            }
+            .formStyle(.grouped)
+
+            BottomActionBar {
+                Button("Cancelar") {
+                    store.send(.cancelButtonTapped)
+                }
+                .disabled(store.isSaving)
+
+                Button {
+                    store.send(.saveButtonTapped)
+                } label: {
+                    if store.isSaving {
+                        ProgressView()
+                            .controlSize(.small)
+                    } else {
+                        Text("Salvar datas")
+                    }
+                }
+                .buttonStyle(.borderedProminent)
+                .disabled(!store.canSave || store.isSaving)
+            }
+        }
+        .toolbar(.hidden, for: .windowToolbar)
+        .frame(minWidth: 460, idealWidth: 460, maxWidth: 460, minHeight: 300)
+        .environment(\.timeZone, TimeZone(secondsFromGMT: 0) ?? .current)
     }
 }

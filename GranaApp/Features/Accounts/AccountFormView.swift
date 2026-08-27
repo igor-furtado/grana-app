@@ -13,18 +13,6 @@ import SwiftUI
 /// **Sem campo "Nome".** O nome amigável é derivado em runtime via
 /// `Account.displayName(for:institutions:bankAccounts:creditCards:)`.
 struct AccountFormView: View {
-    private enum CycleChangeScope: String, CaseIterable {
-        case current
-        case future
-
-        var label: String {
-            switch self {
-            case .current: "Ciclo atual"
-            case .future: "Próximo ciclo"
-            }
-        }
-    }
-
     @Environment(AccountStore.self) private var store
 
     let existing: Account?
@@ -52,11 +40,9 @@ struct AccountFormView: View {
     @State private var hasCreditLimit: Bool = false
     @State private var statementClosingDay: Int = 1
     @State private var paymentDueDay: Int = 10
-    @State private var cycleChangeScope: CycleChangeScope = .future
 
     @State private var saveError: String?
     @State private var isSaving: Bool = false
-    @State private var showsCurrentCyclePreview = false
 
     init(
         existing: Account? = nil,
@@ -93,11 +79,7 @@ struct AccountFormView: View {
             VStack(spacing: GranaTheme.Spacing.none) {
                 Button("Cancelar", action: onCancel)
                 Button(existing == nil ? "Cadastrar" : "Salvar") {
-                    if cycleConfigurationChanged, cycleChangeScope == .current {
-                        showsCurrentCyclePreview = true
-                    } else {
-                        Task { await save() }
-                    }
+                    Task { await save() }
                 }
                 .buttonStyle(.borderedProminent)
                 .disabled(!canSave || isSaving)
@@ -105,16 +87,6 @@ struct AccountFormView: View {
         }
         .toolbar(.hidden, for: .windowToolbar)
         .frame(minWidth: 520, idealWidth: 520, maxWidth: 520, minHeight: 520)
-        .alert("Prévia do recálculo", isPresented: $showsCurrentCyclePreview) {
-            Button("Cancelar", role: .cancel) {}
-            Button("Confirmar alteração") {
-                Task { await save() }
-            }
-        } message: {
-            Text(
-                "O ciclo atual e todos os ciclos posteriores serão reconstruídos. Compras, estornos, créditos, pagamentos e datas de quitação podem ser redistribuídos; a alteração será rejeitada se algum pagamento ficar sem dívida elegível."
-            )
-        }
         .onAppear(perform: loadExisting)
         // Race: o stream de instituições pode emitir antes ou depois do
         // `onAppear`. Tentamos no `loadExisting` e também aqui — quem chegar
@@ -136,11 +108,12 @@ struct AccountFormView: View {
         }
 
         if let institutionId,
-           institutions.contains(where: { $0.id == institutionId }) {
+           institutions.contains(where: { $0.id == institutionId })
+        {
             return
         }
 
-        self.institutionId = institutions.first?.id
+        institutionId = institutions.first?.id
     }
 
     // MARK: - Sections
@@ -244,18 +217,11 @@ struct AccountFormView: View {
                     Text("\(day)").tag(day)
                 }
             }
-            if existing != nil, cycleConfigurationChanged {
-                Picker("Aplicar a partir de", selection: $cycleChangeScope) {
-                    ForEach(CycleChangeScope.allCases, id: \.rawValue) { scope in
-                        Text(scope.label).tag(scope)
-                    }
-                }
-            }
         } header: {
             Text("Ciclo da fatura")
         } footer: {
             Text(
-                "Dias inexistentes usam o último dia do mês. Alterar o ciclo atual recalcula faturas, créditos e pagamentos retroativamente."
+                "Dias inexistentes usam o último dia do mês. Estes dias são o padrão para novas faturas; faturas já existentes mantêm datas próprias."
             )
         }
     }
@@ -431,13 +397,6 @@ struct AccountFormView: View {
     }
 
     private var cycleEffectiveFrom: Date? {
-        guard cycleConfigurationChanged, cycleChangeScope == .current,
-              let existing, let old = store.creditCard(for: existing.id)
-        else { return nil }
-        return StatementWindow.resolve(
-            closingDay: old.statementClosingDay,
-            paymentDueDay: old.paymentDueDay,
-            on: Date()
-        ).openingDate
+        nil
     }
 }

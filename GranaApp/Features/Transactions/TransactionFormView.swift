@@ -122,7 +122,7 @@ struct TransactionFormView: View {
             Text("Distribuição automática")
         } footer: {
             Text(
-                "O valor inteiro será aplicado às dívidas elegíveis mais antigas. O salvamento será rejeitado se sobrar valor."
+                "O valor será aplicado às dívidas elegíveis mais antigas. Excesso sobre uma fatura paga fica visível como pagamento excedente."
             )
         }
     }
@@ -146,11 +146,19 @@ struct TransactionFormView: View {
     }
 
     private func statementPickerLabel(_ statement: Statement) -> String {
-        let monthYear = statement.closingDate.formatted(.dateTime.month().year())
+        let monthYear = Self.statementMonthFormatter.string(from: statement.dueDate)
         let remaining = store.state.remainingAmount(of: statement)
         let total = statement.totalAmount
         let remainingStr = remaining.formatted(.currency(code: "BRL"))
         let totalStr = total.formatted(.currency(code: "BRL"))
         return "Fatura \(monthYear) · Faltam \(remainingStr) de \(totalStr)"
     }
+
+    private static let statementMonthFormatter: DateFormatter = {
+        let formatter = DateFormatter()
+        formatter.dateFormat = "MMMM/yyyy"
+        formatter.locale = Locale(identifier: "pt_BR")
+        formatter.timeZone = TimeZone(secondsFromGMT: 0)
+        return formatter
+    }()
 }

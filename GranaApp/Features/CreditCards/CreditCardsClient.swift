@@ -38,7 +38,7 @@ struct StatementTransactionsSnapshot: Equatable {
     let rows: [StatementTransactionRow]
 }
 
-struct CreditCardMutationInput: Equatable, Sendable {
+struct CreditCardMutationInput: Equatable {
     var institutionId: UUID?
     var currency: String = "BRL"
     var cardLastFour: String
@@ -51,8 +51,15 @@ struct CreditCardsClient {
     var loadList: @Sendable () async throws -> CreditCardListSnapshot
     var loadStatements: @Sendable (_ card: CreditCardListItem) async throws -> CreditCardStatementsSnapshot
     var loadStatementTransactions: @Sendable (_ statementId: UUID) async throws -> StatementTransactionsSnapshot
+    var updateStatementDates: @Sendable (_ statementId: UUID, _ closingDate: Date, _ dueDate: Date) async throws
+        -> StatementDateUpdateResult
     var create: @Sendable (_ input: CreditCardMutationInput) async throws -> Void
-    var update: @Sendable (_ cardId: UUID, _ archived: Bool, _ input: CreditCardMutationInput, _ cycleEffectiveFrom: Date?) async throws -> Void
+    var update: @Sendable (
+        _ cardId: UUID,
+        _ archived: Bool,
+        _ input: CreditCardMutationInput,
+        _ cycleEffectiveFrom: Date?
+    ) async throws -> Void
     var setArchived: @Sendable (_ cardId: UUID, _ archived: Bool) async throws -> Void
     var delete: @Sendable (_ cardId: UUID) async throws -> Void
 
@@ -112,41 +119,22 @@ struct CreditCardsClient {
                     }
                 )
             },
+            updateStatementDates: { statementId, closingDate, dueDate in
+                try await container.remoteStatements.updateDates(
+                    statementId: statementId,
+                    closingDate: closingDate,
+                    dueDate: dueDate
+                )
+            },
             create: { input in
                 try await container.remoteAccounts.create(
-                    input: AccountMutationInput(
-                        type: .creditCard,
-                        initialBalance: 0,
-                        archived: false,
-                        institutionId: input.institutionId,
-                        currency: input.currency,
-                        bankDetails: nil,
-                        creditCardDetails: CreditCardDetailsInput(
-                            cardLastFour: input.cardLastFour,
-                            creditLimit: input.creditLimit,
-                            statementClosingDay: input.statementClosingDay,
-                            paymentDueDay: input.paymentDueDay
-                        )
-                    )
+                    input: accountMutationInput(from: input, archived: false)
                 )
             },
             update: { cardId, archived, input, cycleEffectiveFrom in
                 try await container.remoteAccounts.update(
                     accountId: cardId,
-                    input: AccountMutationInput(
-                        type: .creditCard,
-                        initialBalance: 0,
-                        archived: archived,
-                        institutionId: input.institutionId,
-                        currency: input.currency,
-                        bankDetails: nil,
-                        creditCardDetails: CreditCardDetailsInput(
-                            cardLastFour: input.cardLastFour,
-                            creditLimit: input.creditLimit,
-                            statementClosingDay: input.statementClosingDay,
-                            paymentDueDay: input.paymentDueDay
-                        )
-                    ),
+                    input: accountMutationInput(from: input, archived: archived),
                     cycleEffectiveFrom: cycleEffectiveFrom
                 )
             },
@@ -157,19 +145,16 @@ struct CreditCardsClient {
                 else { return }
                 try await container.remoteAccounts.update(
                     accountId: cardId,
-                    input: AccountMutationInput(
-                        type: .creditCard,
-                        initialBalance: 0,
-                        archived: archived,
-                        institutionId: account.institutionId,
-                        currency: account.currency,
-                        bankDetails: nil,
-                        creditCardDetails: CreditCardDetailsInput(
+                    input: accountMutationInput(
+                        from: CreditCardMutationInput(
+                            institutionId: account.institutionId,
+                            currency: account.currency,
                             cardLastFour: details.cardLastFour,
                             creditLimit: details.creditLimit,
                             statementClosingDay: details.statementClosingDay,
                             paymentDueDay: details.paymentDueDay
-                        )
+                        ),
+                        archived: archived
                     ),
                     cycleEffectiveFrom: nil
                 )
@@ -177,6 +162,26 @@ struct CreditCardsClient {
             delete: { cardId in
                 try await container.remoteAccounts.delete(accountId: cardId)
             }
+        )
+    }
+
+    private static func accountMutationInput(
+        from input: CreditCardMutationInput,
+        archived: Bool
+    ) -> AccountMutationInput {
+        AccountMutationInput(
+            type: .creditCard,
+            initialBalance: 0,
+            archived: archived,
+            institutionId: input.institutionId,
+            currency: input.currency,
+            bankDetails: nil,
+            creditCardDetails: CreditCardDetailsInput(
+                cardLastFour: input.cardLastFour,
+                creditLimit: input.creditLimit,
+                statementClosingDay: input.statementClosingDay,
+                paymentDueDay: input.paymentDueDay
+            )
         )
     }
 
@@ -228,6 +233,16 @@ extension CreditCardsClient: DependencyKey {
         loadStatementTransactions: { _ in
             StatementTransactionsSnapshot(rows: [])
         },
+        updateStatementDates: { statementId, _, _ in
+            StatementDateUpdateResult(
+                statementId: statementId,
+                movedTransactionCount: 0,
+                enteredTransactionCount: 0,
+                exitedTransactionCount: 0,
+                affectedStatementCount: 0,
+                paymentDifferenceStatementCount: 0
+            )
+        },
         create: { _ in },
         update: { _, _, _, _ in },
         setArchived: { _, _ in },
@@ -238,6 +253,7 @@ extension CreditCardsClient: DependencyKey {
         loadList: unimplemented("CreditCardsClient.loadList"),
         loadStatements: unimplemented("CreditCardsClient.loadStatements"),
         loadStatementTransactions: unimplemented("CreditCardsClient.loadStatementTransactions"),
+        updateStatementDates: unimplemented("CreditCardsClient.updateStatementDates"),
         create: unimplemented("CreditCardsClient.create"),
         update: unimplemented("CreditCardsClient.update"),
         setArchived: unimplemented("CreditCardsClient.setArchived"),

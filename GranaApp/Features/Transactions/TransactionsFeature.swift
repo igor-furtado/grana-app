@@ -376,7 +376,7 @@ struct TransactionsFeature {
             let affectsCard = account(for: transaction.accountId)?.type == .creditCard
                 || transaction.destinationAccountId.flatMap(account(for:))?.type == .creditCard
             if affectsCard {
-                message += "\n\nFaturas, créditos, pagamentos e quitações posteriores serão recalculados antes da exclusão."
+                message += "\n\nFaturas afetadas serão recalculadas. Pagamentos vinculados a outras faturas permanecem onde foram registrados."
             }
             let linkedRefundCount = transactions.filter {
                 $0.refundOfTransactionId == transaction.id

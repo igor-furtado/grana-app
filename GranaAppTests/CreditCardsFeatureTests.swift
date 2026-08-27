@@ -58,6 +58,12 @@ struct CreditCardsFeatureTests {
         await store.receive(.statements(.task)) {
             $0.statements?.isLoading = true
         }
+        await store.receive(.statements(.snapshotLoaded(.success(
+            CreditCardStatementsSnapshot(card: first, statements: [], projections: [])
+        )))) {
+            $0.statements?.isLoading = false
+            $0.statements?.hasLoaded = true
+        }
     }
 
     @Test("Salvar criação envia payload dedicado do cartão")
@@ -77,9 +83,7 @@ struct CreditCardsFeatureTests {
             }
         }
 
-        await store.send(.binding(.set(\.institutionId, institution.id))) {
-            $0.institutionId = institution.id
-        }
+        await store.send(.binding(.set(\.institutionId, institution.id)))
         await store.send(.binding(.set(\.cardLastFour, "1234"))) {
             $0.cardLastFour = "1234"
         }
@@ -168,6 +172,118 @@ struct CreditCardsFeatureTests {
         await store.receive(.statementList(.task)) {
             $0.statementList?.isLoading = true
         }
+        await store.receive(.statementList(.snapshotLoaded(.success(
+            StatementTransactionsSnapshot(rows: [row])
+        )))) {
+            $0.statementList?.rows = [row]
+            $0.statementList?.isLoading = false
+            $0.statementList?.hasLoaded = true
+        }
+    }
+
+    @Test("Editar datas da fatura chama backend, mostra feedback e recarrega")
+    func statementDateEditorSavesAndReloads() async {
+        let scenario = statementDateEditorScenario()
+        let card = scenario.card
+        let statement = scenario.statement
+        let updated = scenario.updated
+        let result = scenario.result
+        let originalClosing = statement.closingDate
+        let originalDue = statement.dueDate
+        let updates = LockIsolated<[(UUID, Date, Date)]>([])
+        let notices = LockIsolated<[(String, String?)]>([])
+
+        let store = TestStore(
+            initialState: CreditCardStatementsFeature.State(card: card)
+        ) {
+            CreditCardStatementsFeature()
+        } withDependencies: {
+            $0.creditCardsClient.loadStatements = { _ in
+                CreditCardStatementsSnapshot(card: card, statements: [updated], projections: [])
+            }
+            $0.creditCardsClient.loadStatementTransactions = { _ in
+                StatementTransactionsSnapshot(rows: [])
+            }
+            $0.creditCardsClient.updateStatementDates = { statementId, closingDate, dueDate in
+                updates.withValue { $0.append((statementId, closingDate, dueDate)) }
+                return result
+            }
+            $0.noticeClient.info = { title, message in
+                notices.withValue { $0.append((title, message)) }
+            }
+            $0.noticeClient.report = { _, _ in }
+        }
+
+        await store.send(.snapshotLoaded(.success(
+            CreditCardStatementsSnapshot(card: card, statements: [statement], projections: [])
+        ))) {
+            $0.hasLoaded = true
+            $0.statements = [statement]
+            $0.selectedStatementId = statement.id
+            $0.statementList = StatementListFeature.State(statementId: statement.id)
+        }
+        await store.receive(.statementList(.task)) {
+            $0.statementList?.isLoading = true
+        }
+        await store.receive(.statementList(.snapshotLoaded(.success(
+            StatementTransactionsSnapshot(rows: [])
+        )))) {
+            $0.statementList?.isLoading = false
+            $0.statementList?.hasLoaded = true
+        }
+        await store.send(.editStatementDatesButtonTapped(statement.id)) {
+            $0.dateEditor = StatementDateEditorFeature.State(
+                statementId: statement.id,
+                title: "Outubro/2023",
+                closingDate: originalClosing,
+                dueDate: originalDue,
+                previousClosingDate: nil,
+                nextClosingDate: nil
+            )
+        }
+        await store.send(.dateEditor(.presented(.binding(.set(\.closingDate, updated.closingDate))))) {
+            $0.dateEditor?.closingDate = updated.closingDate
+        }
+        await store.send(.dateEditor(.presented(.binding(.set(\.dueDate, updated.dueDate))))) {
+            $0.dateEditor?.dueDate = updated.dueDate
+        }
+        await store.send(.dateEditor(.presented(.saveButtonTapped))) {
+            $0.dateEditor?.isSaving = true
+            $0.dateEditor?.saveError = nil
+        }
+        await store.receive(.dateEditor(.presented(.saveSucceeded(result)))) {
+            $0.dateEditor?.isSaving = false
+        }
+        await store.receive(.dateEditor(.presented(.delegate(.saved(result))))) {
+            $0.dateEditor = nil
+            $0.isLoading = true
+        }
+        await store.receive(.snapshotLoaded(.success(
+            CreditCardStatementsSnapshot(card: card, statements: [updated], projections: [])
+        ))) {
+            $0.card = card
+            $0.statements = [updated]
+            $0.selectedStatementId = updated.id
+            $0.statementList = StatementListFeature.State(statementId: updated.id)
+            $0.isLoading = false
+            $0.hasLoaded = true
+        }
+        await store.receive(.statementList(.task)) {
+            $0.statementList?.isLoading = true
+        }
+        await store.receive(.statementList(.snapshotLoaded(.success(
+            StatementTransactionsSnapshot(rows: [])
+        )))) {
+            $0.statementList?.isLoading = false
+            $0.statementList?.hasLoaded = true
+        }
+
+        let update = updates.value.first
+        #expect(updates.value.count == 1)
+        #expect(update?.0 == statement.id)
+        #expect(update?.1 == updated.closingDate)
+        #expect(update?.2 == updated.dueDate)
+        #expect(notices.value.first?.0 == "Datas da fatura atualizadas")
     }
 
     @Test("Arquivar cartão usa client dedicado")
@@ -204,6 +320,57 @@ struct CreditCardsFeatureTests {
         #expect(calls.first?.0 == card.id)
         #expect(calls.first?.1 == true)
     }
+}
+
+private func statementDateEditorScenario() -> (
+    card: CreditCardListItem,
+    statement: Statement,
+    updated: Statement,
+    result: StatementDateUpdateResult
+) {
+    let card = CreditCardListItem(
+        account: .fixture(id: UUID(), institutionId: UUID(), archived: false),
+        institution: nil,
+        details: .fixture(accountId: UUID(), last4: "1234"),
+        currentBalance: 300
+    )
+    let statement = Statement(
+        id: UUID(),
+        accountId: card.id,
+        closingDate: Date(timeIntervalSince1970: 1_695_556_800),
+        dueDate: Date(timeIntervalSince1970: 1_696_248_000),
+        netAmount: 300,
+        creditReceived: 0,
+        paymentApplied: 0,
+        settledAt: nil,
+        createdAt: Date(),
+        updatedAt: Date()
+    )
+    let updated = Statement(
+        id: statement.id,
+        accountId: card.id,
+        closingDate: Date(timeIntervalSince1970: 1_695_470_400),
+        dueDate: Date(timeIntervalSince1970: 1_696_334_400),
+        netAmount: 300,
+        creditReceived: 0,
+        paymentApplied: 0,
+        settledAt: nil,
+        createdAt: statement.createdAt,
+        updatedAt: Date()
+    )
+    return (
+        card: card,
+        statement: statement,
+        updated: updated,
+        result: StatementDateUpdateResult(
+            statementId: statement.id,
+            movedTransactionCount: 2,
+            enteredTransactionCount: 1,
+            exitedTransactionCount: 0,
+            affectedStatementCount: 2,
+            paymentDifferenceStatementCount: 1
+        )
+    )
 }
 
 private extension Account {
@@ -245,7 +412,7 @@ private extension CreditCardDetails {
         CreditCardDetails(
             accountId: accountId,
             cardLastFour: last4,
-            creditLimit: 1_000,
+            creditLimit: 1000,
             statementClosingDay: 10,
             paymentDueDay: 20,
             createdAt: Date(),

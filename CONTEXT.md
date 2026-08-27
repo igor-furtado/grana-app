@@ -34,7 +34,12 @@ _Evite_: Conta bancária, quando for necessário distingui-la de outros tipos de
 Conta que representa compras a crédito e a dívida associada a elas. Suas compras são organizadas em faturas.
 No modelo persistente atual, permanece sob o agregado central de conta com detalhes específicos de cartão. Na arquitetura
 do app, porém, a vertical de Cartões é autônoma e não depende da feature de contas bancárias.
+Mantém datas padrão atuais de fechamento e vencimento para criação automática de novas faturas.
 _Evite_: Cartão, conta-cartão, conta corrente
+
+**Datas padrão do cartão**:
+Fechamento e vencimento atuais do cartão de crédito usados para criar novas faturas automaticamente. Não representam necessariamente as datas históricas das faturas antigas.
+_Evite_: Datas da fatura, quando estiver falando da configuração atual do cartão
 
 **Saldo inicial**:
 Valor da conta no ponto anterior ao primeiro histórico acompanhado pelo produto.
@@ -83,20 +88,40 @@ _Evite_: Outros, desconhecido
 ## Cartão e faturas
 
 **Fatura**:
-Ciclo de compras de um cartão de crédito, identificado por suas datas de fechamento e vencimento. Reúne as transações de cartão que pertencem ao mesmo ciclo.
+Ciclo de compras de um cartão de crédito, identificado por suas próprias datas de fechamento e vencimento. Reúne as transações de cartão que pertencem ao intervalo encerrado por sua data de fechamento.
 _Evite_: Extrato, boleto, invoice
 
+**Mês da fatura**:
+Mês civil usado para nomear a fatura na interface, determinado pela data de vencimento da fatura.
+_Evite_: Mês de fechamento, quando estiver nomeando a fatura
+
+**Período da fatura**:
+Intervalo de compras coberto por uma fatura, começando no dia seguinte ao fechamento da fatura anterior do mesmo cartão e terminando de forma inclusiva na data de fechamento da própria fatura.
+_Evite_: Período do cartão, quando estiver falando de uma fatura específica
+
 **Data de fechamento**:
-Data que encerra o período de compras de uma fatura.
+Data civil própria da fatura que encerra seu período de compras no fuso do usuário. Alterar essa data pode realocar transações entre faturas do mesmo cartão.
 _Evite_: Data de corte
 
 **Data de vencimento**:
-Data prevista para quitação de uma fatura.
+Data própria da fatura prevista para quitação. Alterar essa data muda o vencimento registrado para aquela fatura, sem por si só definir o período de compras.
 _Evite_: Data de pagamento
 
+**Realocação de transações**:
+Mudança automática de vínculo de transações entre faturas do mesmo cartão após alteração de data de fechamento. A realocação preserva as transações originais e recalcula os totais das faturas afetadas.
+_Evite_: Reimportação, quando as transações já existem no produto
+
 **Pagamento de fatura**:
-Distribuição integral de uma transferência entre uma ou mais faturas, com cada aplicação limitada ao saldo restante da respectiva fatura. Uma fatura pode receber vários pagamentos.
+Aplicação de uma transferência a uma ou mais faturas, com cada aplicação vinculada à fatura que o pagamento quitou. Quando uma correção posterior muda o total da fatura, o vínculo do pagamento permanece auditável e qualquer diferença deve ficar visível para ajuste pelo usuário.
 _Evite_: Compra, despesa, baixa
+
+**Pagamento excedente**:
+Diferença visível quando os pagamentos vinculados a uma fatura superam o total a quitar depois de uma correção de datas, transações ou valores.
+_Evite_: Saldo credor, quando o excedente veio de pagamento vinculado
+
+**Diferença pendente**:
+Diferença visível quando o total a quitar de uma fatura supera os pagamentos vinculados depois de uma correção de datas, transações ou valores.
+_Evite_: Atraso, quando a divergência ainda é uma pendência de reconciliação
 
 **Estorno de cartão**:
 Reversão total ou parcial de uma compra específica, lançada no ciclo da data do estorno. Uma compra pode receber vários estornos, cuja soma não pode superar seu valor original.
@@ -112,10 +137,10 @@ _Evite_: Fatura paga, fatura quitada
 
 **Fatura paga**:
 Fatura fechada cujo total foi integralmente coberto por pagamentos.
-_Evite_: Fatura quitada, quando houver saldo credor aplicado
+_Evite_: Fatura quitada, quando a cobertura não depender exclusivamente de pagamento
 
 **Fatura quitada**:
-Fatura fechada cujo total foi integralmente coberto por pagamentos, saldos credores ou uma combinação de ambos.
+Fatura fechada cujo total não apresenta diferença pendente.
 _Evite_: Fatura paga, quando não houver pagamento
 
 **Data de quitação**:
@@ -123,16 +148,12 @@ Momento em que pagamentos e saldos credores passaram a cobrir integralmente o to
 _Evite_: Data de pagamento, quando a quitação não depender exclusivamente de pagamento
 
 **Total da fatura**:
-Valor líquido a quitar em um ciclo, resultante das compras menos os estornos e os saldos credores recebidos. Os componentes permanecem distinguíveis para auditoria.
+Valor líquido a quitar em um ciclo, resultante das compras menos os estornos vinculados à fatura. Os componentes permanecem distinguíveis para auditoria.
 _Evite_: Soma das compras, saldo restante
 
 **Saldo credor da fatura**:
-Crédito resultante quando os estornos de um ciclo superam suas compras. Não exige pagamento e o excedente reduz a fatura seguinte do mesmo cartão de crédito.
+Crédito visível quando os estornos vinculados a uma fatura superam suas compras. Não é propagado automaticamente para faturas seguintes no MVP.
 _Evite_: Pagamento antecipado, receita, desconto
-
-**Crédito pendente do cartão**:
-Parcela de saldo credor ainda não aplicada porque não existe uma fatura posterior materializada. É consumida quando a próxima fatura do cartão surge.
-_Evite_: Fatura futura, pagamento antecipado, saldo da conta
 
 ## Importação e classificação
 

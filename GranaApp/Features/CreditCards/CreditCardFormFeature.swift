@@ -3,24 +3,12 @@ import Foundation
 
 @Reducer
 struct CreditCardFormFeature {
-    enum CycleChangeScope: String, CaseIterable, Equatable {
-        case current
-        case future
-
-        var label: String {
-            switch self {
-            case .current: "Ciclo atual"
-            case .future: "Próximo ciclo"
-            }
-        }
-    }
-
     @ObservableState
     struct State: Equatable {
         var existingCard: CreditCardListItem?
         var institutions: [Institution]
         var calendar: Calendar = .current
-        var referenceDate: Date = Date()
+        var referenceDate: Date = .init()
         var institutionId: UUID?
         var currency = "BRL"
         var cardLastFour = ""
@@ -28,10 +16,8 @@ struct CreditCardFormFeature {
         var hasCreditLimit = false
         var statementClosingDay = 1
         var paymentDueDay = 10
-        var cycleChangeScope: CycleChangeScope = .future
         var saveError: String?
         var isSaving = false
-        var showsCurrentCyclePreview = false
 
         init(
             existingCard: CreditCardListItem? = nil,
@@ -41,17 +27,17 @@ struct CreditCardFormFeature {
             self.institutions = institutions
 
             if let existingCard {
-                institutionId = existingCard.account.institutionId
-                currency = existingCard.account.currency
-                cardLastFour = existingCard.details?.cardLastFour ?? ""
-                statementClosingDay = existingCard.details?.statementClosingDay ?? 1
-                paymentDueDay = existingCard.details?.paymentDueDay ?? 10
+                self.institutionId = existingCard.account.institutionId
+                self.currency = existingCard.account.currency
+                self.cardLastFour = existingCard.details?.cardLastFour ?? ""
+                self.statementClosingDay = existingCard.details?.statementClosingDay ?? 1
+                self.paymentDueDay = existingCard.details?.paymentDueDay ?? 10
                 if let creditLimit = existingCard.details?.creditLimit {
-                    hasCreditLimit = true
-                    creditLimitCents = Int(truncatingIfNeeded: Converters.decimalToCents(creditLimit))
+                    self.hasCreditLimit = true
+                    self.creditLimitCents = Int(truncatingIfNeeded: Converters.decimalToCents(creditLimit))
                 }
             } else {
-                institutionId = availableInstitutions.first?.id
+                self.institutionId = availableInstitutions.first?.id
             }
         }
 
@@ -78,16 +64,7 @@ struct CreditCardFormFeature {
         }
 
         var cycleEffectiveFrom: Date? {
-            guard cycleConfigurationChanged,
-                  cycleChangeScope == .current,
-                  let details = existingCard?.details
-            else { return nil }
-            return StatementWindow.resolve(
-                closingDay: details.statementClosingDay,
-                paymentDueDay: details.paymentDueDay,
-                on: referenceDate,
-                calendar: calendar
-            ).openingDate
+            nil
         }
 
         func mutationInput() -> CreditCardMutationInput? {
@@ -107,7 +84,6 @@ struct CreditCardFormFeature {
         case binding(BindingAction<State>)
         case cancelButtonTapped
         case saveButtonTapped
-        case currentCyclePreviewConfirmed
         case saveSucceeded
         case saveFailed(String)
         case delegate(Delegate)
@@ -138,15 +114,6 @@ struct CreditCardFormFeature {
                 return .send(.delegate(.cancel))
 
             case .saveButtonTapped:
-                guard state.canSave else { return .none }
-                if state.cycleConfigurationChanged, state.cycleChangeScope == .current {
-                    state.showsCurrentCyclePreview = true
-                    return .none
-                }
-                return save(&state)
-
-            case .currentCyclePreviewConfirmed:
-                state.showsCurrentCyclePreview = false
                 guard state.canSave else { return .none }
                 return save(&state)
 

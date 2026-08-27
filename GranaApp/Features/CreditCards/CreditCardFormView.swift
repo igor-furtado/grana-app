@@ -30,16 +30,6 @@ struct CreditCardFormView: View {
         }
         .toolbar(.hidden, for: .windowToolbar)
         .frame(minWidth: 520, idealWidth: 520, maxWidth: 520, minHeight: 480)
-        .alert("Prévia do recálculo", isPresented: $store.showsCurrentCyclePreview) {
-            Button("Cancelar", role: .cancel) {}
-            Button("Confirmar alteração") {
-                store.send(.currentCyclePreviewConfirmed)
-            }
-        } message: {
-            Text(
-                "O ciclo atual e todos os ciclos posteriores serão reconstruídos. Compras, estornos, créditos, pagamentos e datas de quitação podem ser redistribuídos; a alteração será rejeitada se algum pagamento ficar sem dívida elegível."
-            )
-        }
     }
 
     private var identitySection: some View {
@@ -88,17 +78,12 @@ struct CreditCardFormView: View {
                     Text("\(day)").tag(day)
                 }
             }
-            if store.existingCard != nil, store.cycleConfigurationChanged {
-                Picker("Aplicar a partir de", selection: $store.cycleChangeScope) {
-                    ForEach(CreditCardFormFeature.CycleChangeScope.allCases, id: \.rawValue) { scope in
-                        Text(scope.label).tag(scope)
-                    }
-                }
-            }
         } header: {
             Text("Ciclo da fatura")
         } footer: {
-            Text("Dias inexistentes usam o último dia do mês. Alterar o ciclo atual recalcula faturas, créditos e pagamentos retroativamente.")
+            Text(
+                "Dias inexistentes usam o último dia do mês. Estes dias são o padrão para novas faturas; faturas já existentes mantêm datas próprias."
+            )
         }
     }
 

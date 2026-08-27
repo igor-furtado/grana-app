@@ -141,6 +141,131 @@ struct StatementListFeature {
 }
 
 @Reducer
+struct StatementDateEditorFeature {
+    @ObservableState
+    struct State: Equatable {
+        let statementId: UUID
+        let title: String
+        var closingDate: Date
+        var dueDate: Date
+        let previousClosingDate: Date?
+        let nextClosingDate: Date?
+        var isSaving = false
+        var saveError: String?
+
+        var canSave: Bool {
+            guard dueDate > closingDate else { return false }
+            if let previousClosingDate, closingDate <= previousClosingDate {
+                return false
+            }
+            if let nextClosingDate, closingDate >= nextClosingDate {
+                return false
+            }
+            return true
+        }
+
+        var validationMessage: String? {
+            guard dueDate > closingDate else {
+                return "A data de vencimento precisa ser posterior ao fechamento."
+            }
+            if let previousClosingDate, closingDate <= previousClosingDate {
+                return "O fechamento precisa ficar depois da fatura anterior."
+            }
+            if let nextClosingDate, closingDate >= nextClosingDate {
+                return "O fechamento precisa ficar antes da próxima fatura."
+            }
+            return nil
+        }
+    }
+
+    enum Action: Equatable, BindableAction {
+        case binding(BindingAction<State>)
+        case cancelButtonTapped
+        case saveButtonTapped
+        case saveSucceeded(StatementDateUpdateResult)
+        case saveFailed(String)
+        case delegate(Delegate)
+    }
+
+    enum Delegate: Equatable {
+        case cancel
+        case saved(StatementDateUpdateResult)
+    }
+
+    @Dependency(\.creditCardsClient) private var creditCardsClient
+    @Dependency(\.noticeClient) private var noticeClient
+
+    var body: some Reducer<State, Action> {
+        BindingReducer()
+
+        Reduce { state, action in
+            switch action {
+            case .binding:
+                state.saveError = nil
+                return .none
+
+            case .cancelButtonTapped:
+                return .send(.delegate(.cancel))
+
+            case .saveButtonTapped:
+                guard state.canSave else {
+                    state.saveError = state.validationMessage
+                    return .none
+                }
+                state.isSaving = true
+                state.saveError = nil
+                let statementId = state.statementId
+                let closingDate = state.closingDate
+                let dueDate = state.dueDate
+                return .run { send in
+                    do {
+                        let result = try await creditCardsClient.updateStatementDates(
+                            statementId,
+                            closingDate,
+                            dueDate
+                        )
+                        await noticeClient.info(
+                            "Datas da fatura atualizadas",
+                            Self.successMessage(for: result)
+                        )
+                        await send(.saveSucceeded(result))
+                    } catch {
+                        await noticeClient.report(error, "Falha ao salvar datas da fatura")
+                        await send(.saveFailed(error.localizedDescription))
+                    }
+                }
+
+            case let .saveSucceeded(result):
+                state.isSaving = false
+                return .send(.delegate(.saved(result)))
+
+            case let .saveFailed(message):
+                state.isSaving = false
+                state.saveError = message
+                return .none
+
+            case .delegate:
+                return .none
+            }
+        }
+    }
+
+    private static func successMessage(for result: StatementDateUpdateResult) -> String {
+        let moved = result.movedTransactionCount
+        let transactionText = moved == 1
+            ? "1 transação foi realocada."
+            : "\(moved) transações foram realocadas."
+        guard result.paymentDifferenceStatementCount > 0 else {
+            return transactionText
+        }
+        let differenceText = result.paymentDifferenceStatementCount == 1
+            ? " 1 fatura ficou com diferença de pagamento visível."
+            : " \(result.paymentDifferenceStatementCount) faturas ficaram com diferença de pagamento visível."
+        return transactionText + differenceText
+    }
+}
+
+@Reducer
 struct CreditCardStatementsFeature {
     @ObservableState
     struct State: Equatable {
@@ -151,6 +276,8 @@ struct CreditCardStatementsFeature {
         var statementList: StatementListFeature.State?
         var isLoading = false
         var hasLoaded = false
+
+        @Presents var dateEditor: StatementDateEditorFeature.State?
 
         var defaultStatementId: UUID? {
             if let open = statements.first(where: {
@@ -198,6 +325,34 @@ struct CreditCardStatementsFeature {
                 statementList = nil
             }
         }
+
+        func statementDateEditorState(for statementId: UUID) -> StatementDateEditorFeature.State? {
+            let orderedStatements = statements.sorted { $0.closingDate < $1.closingDate }
+            guard let index = orderedStatements.firstIndex(where: { $0.id == statementId }) else {
+                return nil
+            }
+            let statement = orderedStatements[index]
+            return StatementDateEditorFeature.State(
+                statementId: statement.id,
+                title: Self.statementTitle(for: statement.dueDate),
+                closingDate: statement.closingDate,
+                dueDate: statement.dueDate,
+                previousClosingDate: index > 0 ? orderedStatements[index - 1].closingDate : nil,
+                nextClosingDate: index + 1 < orderedStatements.count ? orderedStatements[index + 1].closingDate : nil
+            )
+        }
+
+        private static func statementTitle(for dueDate: Date) -> String {
+            monthYearFormatter.string(from: dueDate).capitalized
+        }
+
+        private static let monthYearFormatter: DateFormatter = {
+            let formatter = DateFormatter()
+            formatter.dateFormat = "MMMM/yyyy"
+            formatter.locale = Locale(identifier: "pt_BR")
+            formatter.timeZone = TimeZone(secondsFromGMT: 0)
+            return formatter
+        }()
     }
 
     enum Action: Equatable {
@@ -206,6 +361,8 @@ struct CreditCardStatementsFeature {
         case snapshotLoaded(TaskResult<CreditCardStatementsSnapshot>)
         case statementSelected(UUID?)
         case statementList(StatementListFeature.Action)
+        case editStatementDatesButtonTapped(UUID)
+        case dateEditor(PresentationAction<StatementDateEditorFeature.Action>)
     }
 
     @Dependency(\.creditCardsClient) private var creditCardsClient
@@ -251,10 +408,28 @@ struct CreditCardStatementsFeature {
 
             case .statementList:
                 return .none
+
+            case let .editStatementDatesButtonTapped(statementId):
+                state.dateEditor = state.statementDateEditorState(for: statementId)
+                return .none
+
+            case .dateEditor(.presented(.delegate(.cancel))):
+                state.dateEditor = nil
+                return .none
+
+            case .dateEditor(.presented(.delegate(.saved))):
+                state.dateEditor = nil
+                return load(&state)
+
+            case .dateEditor:
+                return .none
             }
         }
         .ifLet(\.statementList, action: \.statementList) {
             StatementListFeature()
+        }
+        .ifLet(\.$dateEditor, action: \.dateEditor) {
+            StatementDateEditorFeature()
         }
     }
 

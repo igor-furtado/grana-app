@@ -1,19 +1,16 @@
 import Foundation
 
-/// Fatura de cartão de crédito (ciclo de fechamento).
+/// Fatura de cartão de crédito.
 ///
-/// Criada **lazy** pelo backend: quando uma transação em
-/// conta-cartão entra, o resolver de janela calcula `(closingDate, dueDate)`
-/// do ciclo que cobre `occurredAt`; se não há Statement com esse
-/// `closingDate`, uma nova é criada antes do insert da transação.
+/// Criada **lazy** pelo backend com as datas padrão vigentes no cartão quando
+/// uma transação entra. Depois de criada, a fatura tem `closingDate` e
+/// `dueDate` próprios: editar essas datas altera a fatura específica, não a
+/// configuração padrão do cartão.
 ///
-/// **Imutabilidade de `closingDate`/`dueDate`:** o usuário pode editar
-/// `statement_closing_day`/`payment_due_day` na `CreditCardDetails` depois,
-/// mas Statements já criadas mantêm o snapshot original — senão mudaria
-/// retroativamente a qual fatura uma compra antiga pertence.
-///
-/// Todos os valores são projeções denormalizadas e reconstruíveis a partir
-/// das transações, configurações de ciclo, pagamentos e créditos.
+/// Os valores financeiros são lidos como projeções calculáveis a partir de
+/// transações e pagamentos. `creditReceived` permanece no contrato por
+/// compatibilidade, mas saldo credor automático entre faturas não é mais regra
+/// de domínio.
 struct Statement: Identifiable, Codable, Hashable {
     let id: UUID
     let accountId: UUID
@@ -21,7 +18,7 @@ struct Statement: Identifiable, Codable, Hashable {
     let dueDate: Date
     /// Compras menos estornos do próprio ciclo. Pode ser negativo.
     var netAmount: Decimal
-    /// Saldo credor trazido de faturas anteriores.
+    /// Crédito explícito/legado informado pelo backend, sem propagação automática.
     var creditReceived: Decimal
     /// Soma das transferências aplicadas à fatura.
     var paymentApplied: Decimal
@@ -35,7 +32,11 @@ struct Statement: Identifiable, Codable, Hashable {
     }
 
     var creditBalance: Decimal {
-        max(0, creditReceived + paymentApplied - netAmount)
+        max(0, -netAmount)
+    }
+
+    var paymentExcess: Decimal {
+        max(0, paymentApplied - totalAmount)
     }
 
     var remainingAmount: Decimal {
@@ -86,8 +87,8 @@ struct StatementPayment: Identifiable, Codable, Hashable {
     var updatedAt: Date
 }
 
-/// Parcela de saldo credor produzida por uma fatura fechada e consumida por
-/// uma fatura posterior do mesmo cartão.
+/// Aplicação explícita/legada de crédito entre faturas. O fluxo atual não cria
+/// saldo credor automático entre faturas.
 struct StatementCreditApplication: Identifiable, Codable, Hashable {
     let id: UUID
     let sourceStatementId: UUID
