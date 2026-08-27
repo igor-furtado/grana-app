@@ -80,80 +80,13 @@ struct ContentView: View {
     }
 
     private var authenticatedContent: some View {
-        ZStack {
-            GranaBackground()
-            HStack(spacing: GranaTheme.Spacing.none) {
-                AppNavigationRail(selection: selection) { section in
-                    selectionRaw = section.rawValue
-                }
-                .padding(GranaTheme.Layout.railInsets)
-
-                NavigationStack {
-                    selectedSectionView
-                }
-                .padding(GranaTheme.Layout.pageInsets)
-                .frame(maxWidth: .infinity, maxHeight: .infinity)
-            }
-        }
-        .dropDestination(for: URL.self, action: handleImportDrop, isTargeted: setImportDropTargeted)
-        .overlay {
-            if isImportDropTargeted, environment.importFeatureStore.wizard == nil {
-                GlobalImportDropOverlay()
-                    .transition(.opacity.combined(with: .scale(scale: 0.98)))
-                    .allowsHitTesting(false)
-            }
-        }
-        .animation(.easeOut(duration: 0.18), value: isImportDropTargeted)
-        .sheet(
-            isPresented: Binding(
-                get: { environment.importFeatureStore.wizard != nil },
-                set: { isPresented in
-                    if !isPresented {
-                        environment.importFeatureStore.send(.wizard(.cancel))
-                    }
-                }
-            )
-        ) {
-            if let wizardStore = environment.importFeatureStore.scope(state: \.wizard, action: \.wizard) {
-                ImportView(store: wizardStore)
-            }
-        }
-        .onReceive(NotificationCenter.default.publisher(for: .appSectionNavigationRequested)) { notification in
-            guard let rawValue = notification.object as? String,
-                  let section = AppSection(rawValue: rawValue)
-            else { return }
-            selectionRaw = section.rawValue
-        }
-        .frame(minWidth: 1280, minHeight: 820)
-    }
-
-    @ViewBuilder
-    private var selectedSectionView: some View {
-        switch selection {
-        case .dashboard: DashboardView()
-        case .transactions: TransactionsView()
-        case .creditCards: CreditCardsView(store: environment.creditCardsFeatureStore)
-        case .accounts: AccountsView()
-        case .import: ImportHistoryView(store: environment.importFeatureStore)
-        case .categories: CategoriesView()
-        case .institutions: SupportedInstitutionsView()
-        case .designSystem: DesignSystemView()
-        case .profile: ProfileView()
-        }
-    }
-
-    private func handleImportDrop(_ urls: [URL], at _: CGPoint) -> Bool {
-        let decision = ImportDropPolicy.evaluate(
-            urls: urls,
-            supportedExtensions: ImportWizardFeature.State.supportedExtensions,
-            isImportInProgress: environment.importFeatureStore.wizard != nil
+        AuthenticatedShellView(
+            selectionRaw: $selectionRaw,
+            container: environment.container
         )
-        environment.importFeatureStore.send(.globalFileDrop(urls))
-        return decision.acceptsDrop
-    }
-
-    private func setImportDropTargeted(_ targeted: Bool) {
-        isImportDropTargeted = targeted
+        .id(ObjectIdentifier(environment.container))
+        .environment(environment)
+        .frame(minWidth: 1280, minHeight: 820)
     }
 }
 
@@ -194,5 +127,153 @@ private struct GlobalImportDropOverlay: View {
             .shadow(color: GranaTheme.Shadow.cardColor, radius: 24, y: 10)
             .padding(GranaTheme.Spacing.xxxl)
         }
+    }
+}
+
+private struct AppShellBranchView<Root: View>: View {
+    @Bindable var branch: AppShellBranch
+    let isActive: Bool
+    @ViewBuilder let root: () -> Root
+
+    var body: some View {
+        NavigationStack(path: $branch.path) {
+            root()
+        }
+        .opacity(isActive ? 1 : 0)
+        .allowsHitTesting(isActive)
+        .accessibilityHidden(!isActive)
+        .zIndex(isActive ? 1 : 0)
+    }
+}
+
+private struct AuthenticatedShellView: View {
+    @Environment(AppEnvironment.self) private var environment
+    @Binding var selectionRaw: String
+    @State private var isImportDropTargeted = false
+    @State private var shellStore: AppShellStore
+    @State private var accountStore: AccountStore
+    @State private var categoryCatalogStore: CategoryCatalogStore
+    @State private var institutionCatalogStore: InstitutionCatalogStore
+    @State private var transactionsFeatureStore: StoreOf<TransactionsFeature>
+
+    init(selectionRaw: Binding<String>, container: AppContainer) {
+        _selectionRaw = selectionRaw
+        _shellStore = State(initialValue: AppShellStore())
+        _accountStore = State(initialValue: AccountStore(container: container))
+        _categoryCatalogStore = State(initialValue: CategoryCatalogStore(container: container))
+        _institutionCatalogStore = State(initialValue: InstitutionCatalogStore(container: container))
+        _transactionsFeatureStore = State(initialValue: Store(initialState: TransactionsFeature.State()) {
+            TransactionsFeature()
+        } withDependencies: {
+            $0.transactionsClient = .live(container: container)
+        })
+    }
+
+    private var selection: AppSection {
+        AppSection(rawValue: selectionRaw) ?? .dashboard
+    }
+
+    var body: some View {
+        ZStack {
+            GranaBackground()
+            HStack(spacing: GranaTheme.Spacing.none) {
+                AppNavigationRail(selection: selection) { section in
+                    activate(section)
+                }
+                .padding(GranaTheme.Layout.railInsets)
+
+                shellContent
+                    .padding(GranaTheme.Layout.pageInsets)
+                    .frame(maxWidth: .infinity, maxHeight: .infinity)
+            }
+        }
+        .dropDestination(for: URL.self, action: handleImportDrop, isTargeted: setImportDropTargeted)
+        .overlay {
+            if isImportDropTargeted, environment.importFeatureStore.wizard == nil {
+                GlobalImportDropOverlay()
+                    .transition(.opacity.combined(with: .scale(scale: 0.98)))
+                    .allowsHitTesting(false)
+            }
+        }
+        .animation(.easeOut(duration: 0.18), value: isImportDropTargeted)
+        .sheet(
+            isPresented: Binding(
+                get: { environment.importFeatureStore.wizard != nil },
+                set: { isPresented in
+                    if !isPresented {
+                        environment.importFeatureStore.send(.wizard(.cancel))
+                    }
+                }
+            )
+        ) {
+            if let wizardStore = environment.importFeatureStore.scope(state: \.wizard, action: \.wizard) {
+                ImportView(store: wizardStore)
+            }
+        }
+        .onReceive(NotificationCenter.default.publisher(for: .appSectionNavigationRequested)) { notification in
+            guard let rawValue = notification.object as? String,
+                  let section = AppSection(rawValue: rawValue)
+            else { return }
+            activate(section)
+        }
+        .onAppear { activate(selection) }
+    }
+
+    private var shellContent: some View {
+        ZStack {
+            ForEach(AppSection.allCases) { section in
+                if shellStore.isMounted(section) {
+                    AppShellBranchView(
+                        branch: shellStore.branch(for: section),
+                        isActive: section == selection
+                    ) {
+                        sectionRootView(for: section)
+                    }
+                }
+            }
+        }
+    }
+
+    @ViewBuilder
+    private func sectionRootView(for section: AppSection) -> some View {
+        switch section {
+        case .dashboard:
+            DashboardView()
+        case .transactions:
+            TransactionsView(store: transactionsFeatureStore)
+        case .creditCards:
+            CreditCardsView(store: environment.creditCardsFeatureStore)
+        case .accounts:
+            AccountsView(store: accountStore)
+        case .import:
+            ImportHistoryView(store: environment.importFeatureStore)
+        case .categories:
+            CategoriesView(store: categoryCatalogStore)
+        case .institutions:
+            SupportedInstitutionsView(store: institutionCatalogStore)
+        case .designSystem:
+            DesignSystemView()
+        case .profile:
+            ProfileView()
+        }
+    }
+
+    private func handleImportDrop(_ urls: [URL], at _: CGPoint) -> Bool {
+        let decision = ImportDropPolicy.evaluate(
+            urls: urls,
+            supportedExtensions: ImportWizardFeature.State.supportedExtensions,
+            isImportInProgress: environment.importFeatureStore.wizard != nil
+        )
+        environment.importFeatureStore.send(.globalFileDrop(urls))
+        return decision.acceptsDrop
+    }
+
+    private func setImportDropTargeted(_ targeted: Bool) {
+        isImportDropTargeted = targeted
+    }
+
+    private func activate(_ section: AppSection) {
+        shellStore.activate(section)
+        selectionRaw = section.rawValue
     }
 }

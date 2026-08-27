@@ -14,6 +14,10 @@ struct SupportedInstitutionsView: View {
     ]
     @State private var store: InstitutionCatalogStore?
 
+    init(store: InstitutionCatalogStore? = nil) {
+        _store = State(initialValue: store)
+    }
+
     var body: some View {
         VStack(spacing: GranaTheme.Spacing.sm) {
             header

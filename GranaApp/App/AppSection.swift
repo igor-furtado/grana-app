@@ -2,7 +2,7 @@
 ///
 /// A ordem visual do rail é determinada por `AppNavigationRail`, não pela ordem
 /// do `enum`.
-enum AppSection: String, Hashable, Identifiable {
+enum AppSection: String, CaseIterable, Hashable, Identifiable {
     case dashboard
     case transactions
     case creditCards

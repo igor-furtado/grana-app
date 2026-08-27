@@ -28,6 +28,10 @@ struct AccountsView: View {
         }
     }
 
+    init(store: AccountStore? = nil) {
+        _store = State(initialValue: store)
+    }
+
     var body: some View {
         Group {
             if let store {

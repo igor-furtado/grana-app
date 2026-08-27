@@ -26,6 +26,10 @@ struct CategoriesView: View {
     /// vê-lo aparecer de novo na próxima vez que abre o app.
     @SceneStorage("CategoriesView.inspector") private var inspectorPresented: Bool = true
 
+    init(store: CategoryCatalogStore? = nil) {
+        _store = State(initialValue: store)
+    }
+
     var body: some View {
         VStack(spacing: GranaTheme.Spacing.sm) {
             header
