@@ -1,65 +1,43 @@
+import ComposableArchitecture
 import SwiftUI
 
 struct CSVReviewStepView: View {
-    @Bindable var store: ImportStore
-    let dismiss: DismissAction
-
-    private var resolution: CSVStatementResolution? {
-        store.csvResolution
-    }
-
-    private var creditCardAccounts: [Account] {
-        store.accounts.filter { account in
-            guard account.type == .creditCard,
-                  !account.archived,
-                  let institutionId = account.institutionId,
-                  let institution = store.institutions.first(where: { $0.id == institutionId })
-            else { return false }
-            return institution.capabilities.supports(.interCreditCardCSV)
-        }
-    }
+    @Bindable var store: StoreOf<CSVImportFeature>
+    let onClose: () -> Void
+    let onConfirm: () -> Void
 
     private var totalSelected: Int {
-        resolution?.selectedCount ?? 0
-    }
-
-    private var duplicateCount: Int {
-        resolution?.duplicateCount ?? 0
+        store.state.resolution.selectedCount
     }
 
     private var canConfirm: Bool {
-        guard let resolution else { return false }
-        guard totalSelected > 0 else { return false }
-        return resolution.accountId != nil
+        totalSelected > 0 && store.state.resolution.accountId != nil
     }
 
     var body: some View {
-        ImportWizardStageScaffold() {
+        ImportWizardStageScaffold {
             VStack(spacing: GranaTheme.Spacing.md) {
-                CSVAccountInfoCard(
-                    store: store,
-                    accounts: creditCardAccounts
+                CSVAccountInfoCard(store: store)
+
+                CSVTransactionsListCard(
+                    resolution: Binding(
+                        get: { store.state.resolution },
+                        set: { store.send(.resolutionUpdated($0)) }
+                    ),
+                    institutionKind: store.state.bankKind(for: store.state.resolution.accountId)
                 )
+                .frame(maxHeight: .infinity)
 
-                if let resolutionBinding = Binding($store.csvResolution) {
-                    CSVTransactionsListCard(
-                        resolution: resolutionBinding,
-                        institutionKind: bankKind(for: resolutionBinding.wrappedValue.accountId)
-                    )
-                    .frame(maxHeight: .infinity)
+                if !store.state.resolution.negativeRows.isEmpty {
+                    negativeRowsSection(rows: store.state.resolution.negativeRows)
                 }
-
-                 if let negatives = resolution?.negativeRows, !negatives.isEmpty {
-                    negativeRowsSection(rows: negatives)
-                }
-
 
                 BottomActionBar(caption: selectionCaption) {
-                    Button("Fechar") { dismiss() }
+                    Button("Fechar") { onClose() }
                         .buttonStyle(GranaSecondaryButtonStyle())
 
                     Button("Avançar com \(totalSelected) \(totalSelected == 1 ? "transação" : "transações")") {
-                        Task { await store.confirmCSVImport() }
+                        onConfirm()
                     }
                     .buttonStyle(GranaPrimaryButtonStyle())
                     .disabled(!canConfirm)
@@ -69,15 +47,11 @@ struct CSVReviewStepView: View {
     }
 
     private var selectionCaption: String? {
-        guard let resolution else { return nil }
-        return resolution.accountId == nil ? "Escolha a conta-cartão de destino" : nil
+        store.state.resolution.accountId == nil ? "Escolha a conta-cartão de destino" : nil
     }
 
     private func negativeRowsSection(rows: [CSVNegativePreviewRow]) -> some View {
-        let count = rows.count
-        return ImportWizardSectionCard(
-            title: "Negativos para revisão",
-        ) {
+        ImportWizardSectionCard(title: "Negativos para revisão") {
             VStack(alignment: .leading, spacing: GranaTheme.Spacing.sm) {
                 ForEach(rows) { row in
                     VStack(alignment: .leading, spacing: GranaTheme.Spacing.xs) {
@@ -100,16 +74,18 @@ struct CSVReviewStepView: View {
                         }
 
                         if row.raw.kind == .refund {
-                            Picker("Compra original", selection: Binding(
-                                get: { row.purchaseId },
-                                set: { store.setCSVRefundPurchase(rowId: row.id, purchaseId: $0) }
-                            )) {
+                            Picker(
+                                "Compra original",
+                                selection: Binding(
+                                    get: { row.purchaseId },
+                                    set: { store.send(.refundPurchaseSelected(rowId: row.id, purchaseId: $0)) }
+                                )
+                            ) {
                                 Text("Não importar este estorno").tag(UUID?.none)
-                                ForEach(store.eligibleCSVRefundPurchases(for: row)) { purchase in
-                                    Text(
-                                        "\(purchase.description) · \(purchase.amount.formatted(.currency(code: "BRL")))"
+                                ForEach(store.state.eligibleRefundPurchases(for: row)) { purchase in
+                                    Text("\(purchase.description) · \(purchase.amount.formatted(.currency(code: "BRL")))").tag(
+                                        UUID?.some(purchase.id)
                                     )
-                                    .tag(UUID?.some(purchase.id))
                                 }
                             }
                             .pickerStyle(.menu)
@@ -127,65 +103,33 @@ struct CSVReviewStepView: View {
             }
         }
     }
-
-    private func bankKind(for accountId: UUID?) -> InstitutionKind? {
-        guard let accountId,
-              let account = store.accounts.first(where: { $0.id == accountId }),
-              let institutionId = account.institutionId,
-              let institution = store.institutions.first(where: { $0.id == institutionId })
-        else { return nil }
-        return institution.kind
-    }
 }
 
 private struct CSVAccountInfoCard: View {
-    @Bindable var store: ImportStore
-    let accounts: [Account]
-
-    private var resolution: CSVStatementResolution? {
-        store.csvResolution
-    }
+    @Bindable var store: StoreOf<CSVImportFeature>
 
     var body: some View {
         ImportWizardSectionCard(
             title: "Conta de destino",
             subtitle: "Selecione",
             trailing: AnyView(
-                 Picker("Conta-cartão", selection: Binding(
-                            get: { store.csvResolution?.accountId },
-                            set: { newValue in
-                                Task { await store.setCSVAccount(newValue) }
-                            }
-                        )) {
-                            Text("Selecione…").tag(UUID?.none)
-                            ForEach(accounts) { account in
-                                Text(Account.displayName(
-                                    for: account,
-                                    institutions: store.institutions,
-                                    bankAccounts: store.bankDetails,
-                                    creditCards: store.creditCards
-                                ))
-                                .tag(UUID?.some(account.id))
-                            }
-                        }
-                        .labelsHidden()
-                        .pickerStyle(.menu)
-                        .frame(maxWidth: .infinity, alignment: .leading)
+                Picker(
+                    "Conta-cartão",
+                    selection: Binding(
+                        get: { store.state.resolution.accountId },
+                        set: { store.send(.accountSelected($0)) }
+                    )
+                ) {
+                    Text("Selecione…").tag(UUID?.none)
+                    ForEach(store.state.creditCardAccounts) { account in
+                        Text(store.state.accountLabel(for: account)).tag(UUID?.some(account.id))
+                    }
+                }
+                .labelsHidden()
+                .pickerStyle(.menu)
+                .frame(maxWidth: .infinity, alignment: .leading)
             )
-        ) {
-        }
-    }
-
-    private func selectedAccountName(for accountId: UUID?) -> String? {
-        guard let accountId,
-              let account = store.accounts.first(where: { $0.id == accountId })
-        else { return nil }
-        return Account.displayName(
-            for: account,
-            institutions: store.institutions,
-            bankAccounts: store.bankDetails,
-            creditCards: store.creditCards
-        )
+        ) {}
     }
 }
 
@@ -198,16 +142,14 @@ private struct CSVTransactionsListCard: View {
     }
 
     var body: some View {
-        ImportWizardSectionCard(
-            title: "Compras detectadas",
-        ) {
+        ImportWizardSectionCard(title: "Compras detectadas") {
             VStack(spacing: GranaTheme.Spacing.none) {
                 TransactionsSelectionRow(
                     summary: selectionSummary,
                     allSelected: allSelected,
                     onToggleAll: { value in
-                        for idx in resolution.rows.indices {
-                            resolution.rows[idx].selected = value
+                        for index in resolution.rows.indices {
+                            resolution.rows[index].selected = value
                         }
                     }
                 )

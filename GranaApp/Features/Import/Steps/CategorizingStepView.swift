@@ -1,7 +1,9 @@
+import ComposableArchitecture
 import SwiftUI
 
 struct CategorizingStepView: View {
-    @Bindable var store: ImportStore
+    @Bindable var store: StoreOf<CategorizationFeature>
+    let onCancel: () -> Void
 
     private enum LoadingStage {
         case preparing
@@ -9,16 +11,16 @@ struct CategorizingStepView: View {
     }
 
     var body: some View {
-        ImportWizardStageScaffold() {
+        ImportWizardStageScaffold {
             VStack(spacing: GranaTheme.Spacing.md) {
                 loadingCard
 
                 BottomActionBar(caption: "Cancelar descarta os rascunhos desta importação.") {
-                    Button("Cancelar") { store.backToPreviewFromReview() }
+                    Button("Cancelar") { onCancel() }
                         .buttonStyle(GranaSecondaryButtonStyle())
                 }
             }
-        } 
+        }
     }
 
     private var loadingCard: some View {
@@ -54,7 +56,7 @@ struct CategorizingStepView: View {
 
     @ViewBuilder
     private var progressIndicator: some View {
-        switch store.categorization.status {
+        switch store.status {
         case let .classifying(processed, total, _) where total > 0:
             ProgressView(value: Double(processed), total: Double(total))
                 .progressViewStyle(.linear)
@@ -70,7 +72,7 @@ struct CategorizingStepView: View {
     }
 
     private var headlineText: String {
-        switch store.categorization.status {
+        switch store.status {
         case .idle:
             "Preparando classificação"
         case .classifying:
@@ -84,7 +86,7 @@ struct CategorizingStepView: View {
 
     @ViewBuilder
     private var statusText: some View {
-        switch store.categorization.status {
+        switch store.status {
         case .idle:
             Text("Carregando categorias e contexto necessário para a próxima etapa.")
                 .font(GranaTheme.Typography.callout)
@@ -97,16 +99,9 @@ struct CategorizingStepView: View {
                     .foregroundStyle(GranaTheme.Palette.ink)
 
                 TimelineView(.periodic(from: .now, by: 1.8)) { context in
-                    Text(rotatingMessage(
-                        for: loadingStage(
-                            processed: processed,
-                            total: total,
-                            message: message
-                        ),
-                        date: context.date
-                    ))
-                    .font(GranaTheme.Typography.callout)
-                    .foregroundStyle(GranaTheme.Palette.muted)
+                    Text(rotatingMessage(for: loadingStage(processed: processed, total: total, message: message), date: context.date))
+                        .font(GranaTheme.Typography.callout)
+                        .foregroundStyle(GranaTheme.Palette.muted)
                 }
             }
         case .ready:
@@ -116,52 +111,6 @@ struct CategorizingStepView: View {
                 .font(GranaTheme.Typography.callout)
                 .foregroundStyle(GranaTheme.Palette.muted)
                 .multilineTextAlignment(.center)
-        }
-    }
-
-    private var processedValue: String {
-        switch store.categorization.status {
-        case .idle:
-            return "0"
-        case let .classifying(processed, _, _):
-            return "\(processed)"
-        case let .ready(total, _):
-            return "\(total)"
-        case .failed:
-            return "Erro"
-        }
-    }
-
-    private var totalValue: String? {
-        switch store.categorization.status {
-        case let .classifying(_, total, _):
-            return "\(total)"
-        case let .ready(total, _):
-            return "\(total)"
-        case .idle, .failed:
-            return nil
-        }
-    }
-
-    private var stageLabel: String {
-        switch store.categorization.status {
-        case .idle:
-            return "Preparando"
-        case .classifying:
-            return stageLabel(for: .preparing)
-        case .ready:
-            return "Finalizado"
-        case .failed:
-            return "Falhou"
-        }
-    }
-
-    private func stageLabel(for stage: LoadingStage) -> String {
-        switch stage {
-        case .preparing:
-            return "Classificando"
-        case .finishing:
-            return "Finalizando"
         }
     }
 

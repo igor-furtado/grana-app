@@ -38,7 +38,7 @@ final class GranaAIFeedbackService: Sendable {
         try await granaAI.learn(request)
     }
 
-    static func buildLearningRequest(
+    nonisolated static func buildLearningRequest(
         suggestions: [CategorizationSuggestion],
         categories: [Category]
     ) throws -> GranaAIClassificationLearningRequest? {

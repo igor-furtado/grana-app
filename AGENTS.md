@@ -38,6 +38,8 @@ SwiftUI View -> @Observable Store -> Repository -> Supabase backend
 - Stores recebem `AppContainer`; coordenam estado e operações.
 - Repositories concentram chamadas remotas, DTOs e mapeamento entre contratos backend e models.
 - `AppContainer` é o composition root e expõe repositories e serviços.
+- Features stateful novas ou migradas, especialmente com fluxo multi-etapa, devem preferir TCA (`@Reducer`, `StoreOf`, `DependencyValues`) com clients explícitos para efeitos.
+- Reducers não conhecem `AppContainer`; a composição `AppContainer -> client live -> dependency` acontece na borda SwiftUI/composition root.
 - O app não persiste dados financeiros localmente. Supabase Auth pode manter sessão/token local; dados financeiros só em
   memória durante sessão válida.
 - Use `load()` e `refresh()` explícitos por tela. Não introduza `watch()`/Realtime sem decisão específica.
@@ -69,6 +71,7 @@ SwiftUI View -> @Observable Store -> Repository -> Supabase backend
 ## Convenções Swift e UI
 
 - Use `@Observable`; não introduza `ObservableObject`, `@Published` nem Combine.
+- Em features TCA, prefira `@ObservableState`, `BindableAction` e subfeatures explícitas para fluxos complexos; evite concentrar histórico, wizard, parsing e commit em um único reducer.
 - Use `async/await`.
 - Estado apenas visual fica em `@State`; dados persistidos ou compartilhados ficam no Store.
 - Dados financeiros não podem ser persistidos em `UserDefaults`, arquivos, SQLite, banco local ou caches em disco.

@@ -1,28 +1,18 @@
+import ComposableArchitecture
 import SwiftUI
 
-/// Tela de revisão das classificações sugeridas antes da importação.
-///
-/// Visual segue o mesmo padrão do `OFXReviewStepView`: `Form { Section }`
-/// nativo com **uma única row** contendo `ScrollView { LazyVStack { ... } }`.
-/// Assim ganhamos:
-/// - Visual de card grouped idêntico à `AccountInfoCard` (Form `.grouped`).
-/// - Virtualização real das sugestões via `LazyVStack` (mesmo com 500+ rows).
-///
-/// Dois modos:
-/// - `.modal`: NavigationStack próprio + toolbar com Fechar/Confirmar tudo.
-/// - `.wizard(onImport:onBack:)`: bottom bar com Voltar/Importar.
 struct CategorizationReviewView: View {
     enum Mode {
         case modal
         case wizard(
-            onImport: @MainActor () async -> Void,
+            onImport: @MainActor () -> Void,
             onBack: @MainActor () -> Void,
             onClose: @MainActor () -> Void
         )
     }
 
     @Environment(\.dismiss) private var dismiss
-    @Bindable var store: CategorizationStore
+    @Bindable var store: StoreOf<CategorizationFeature>
     var mode: Mode = .modal
 
     var body: some View {
@@ -33,40 +23,32 @@ struct CategorizationReviewView: View {
                 BottomActionBar {
                     Button("Fechar") { dismiss() }
                     Button {
-                        Task {
-                            await store.confirmAll()
-                            dismiss()
-                        }
+                        store.send(.confirmAll)
+                        dismiss()
                     } label: {
                         Text("Confirmar tudo")
                     }
                     .buttonStyle(.borderedProminent)
-                    .disabled(store.suggestions.allSatisfy { $0.isReviewed })
+                    .disabled(store.suggestions.allSatisfy(\.isReviewed))
                 }
             }
             .toolbar(.hidden, for: .windowToolbar)
             .frame(minWidth: 700, minHeight: 600)
         case let .wizard(onImport, onBack, onClose):
-            ImportWizardStageScaffold() {
+            ImportWizardStageScaffold {
                 VStack(spacing: GranaTheme.Spacing.md) {
                     content
                     wizardBottomBar(onImport: onImport, onBack: onBack, onClose: onClose)
                 }
-            } 
+            }
         }
     }
-
-    // MARK: - Form (núcleo)
 
     @ViewBuilder
     private var content: some View {
         if store.suggestions.isEmpty {
             emptyState
         } else {
-            // Mesma estrutura do `TransactionsListCard` em ImportView:
-            // Form { Section { ScrollView { LazyVStack { ... } } } }.
-            // Form materializa só UMA row (o ScrollView); a LazyVStack
-            // virtualiza as sugestões — handle de 500+ sem travar.
             Form {
                 Section {
                     ScrollView {
@@ -83,7 +65,7 @@ struct CategorizationReviewView: View {
                     }
                     .listRowInsets(EdgeInsets())
                 } header: {
-                    Text(headerTitle)
+                    Text("Pendentes de revisão")
                 }
             }
             .formStyle(.grouped)
@@ -92,9 +74,6 @@ struct CategorizationReviewView: View {
         }
     }
 
-    /// Linha de resumo logo abaixo do header — mesmo tratamento visual da
-    /// `TransactionsSelectionRow` do import. Aqui não há checkbox (revisão
-    /// é caso a caso, não em lote) — só o texto de progresso.
     private var summaryRow: some View {
         HStack(spacing: GranaTheme.Spacing.sm) {
             Text(summaryText)
@@ -111,10 +90,6 @@ struct CategorizationReviewView: View {
         let total = store.suggestions.count
         let reviewed = store.suggestions.filter(\.isReviewed).count
         return "\(reviewed) de \(total) revisadas"
-    }
-
-    private var headerTitle: String {
-        "Pendentes de revisão"
     }
 
     @ViewBuilder
@@ -134,21 +109,18 @@ struct CategorizationReviewView: View {
         }
     }
 
-    // MARK: - Bottom bar (wizard)
-
     private func wizardBottomBar(
-        onImport: @escaping @MainActor () async -> Void,
+        onImport: @escaping @MainActor () -> Void,
         onBack: @escaping @MainActor () -> Void,
         onClose: @escaping @MainActor () -> Void
     ) -> some View {
-        // Caption omitida — stats de revisão vivem no `summaryRow` da lista.
         BottomActionBar {
             Button("Fechar") { onClose() }
                 .buttonStyle(GranaSecondaryButtonStyle())
             Button("Voltar") { onBack() }
                 .buttonStyle(GranaSecondaryButtonStyle())
             Button {
-                Task { await onImport() }
+                onImport()
             } label: {
                 Text("Importar \(store.suggestions.count) \(store.suggestions.count == 1 ? "transação" : "transações")")
             }
@@ -158,25 +130,9 @@ struct CategorizationReviewView: View {
     }
 
     private var isClassifying: Bool {
-        if case .classifying = store.status { return true }
-        return false
-    }
-
-    private var reviewedCount: Int {
-        store.suggestions.filter(\.isReviewed).count
-    }
-
-    private var fallbackCount: Int {
-        if case let .ready(_, fallback) = store.status {
-            return fallback
+        if case .classifying = store.status {
+            return true
         }
-        return store.suggestions.filter { suggestion in
-            categoryName(for: suggestion.categoryId).caseInsensitiveCompare("Não Classificado") == .orderedSame
-        }.count
-    }
-
-
-    private func categoryName(for id: UUID) -> String {
-        store.category(for: id)?.name ?? ""
+        return false
     }
 }

@@ -1,19 +1,8 @@
+import ComposableArchitecture
 import SwiftUI
 
-/// Row da tela de revisão de categorizações.
-///
-/// Layout alinhado com `TransactionRow.importPreview` (mesma altura, mesmo
-/// padding, mesma posição de logo banco/descrição/data/valor). A diferença
-/// fica no miolo: aqui as duas chips de categoria são **editáveis** via
-/// `Menu`.
-///
-/// **`Menu` em vez de `Picker`:** `Picker` materializa todas as opções
-/// imediatamente — com 15 categorias × 2 pickers × N rows, são 30N+ `Text`
-/// views instanciados na construção da lista. Em listas com 100+ sugestões
-/// isso trava o scroll. `Menu` só constrói o conteúdo quando o usuário
-/// abre, reduzindo o custo por row em ordem de magnitude.
 struct CategorizationRowView: View {
-    @Bindable var store: CategorizationStore
+    @Bindable var store: StoreOf<CategorizationFeature>
     let index: Int
 
     private var suggestion: CategorizationSuggestion {
@@ -21,16 +10,8 @@ struct CategorizationRowView: View {
     }
 
     var body: some View {
-        // **Layout proporcional:** colunas fixas (ícone, valor/data)
-        // ocupam seu tamanho natural; descrição, categoria e subcategoria
-        // dividem o espaço restante **igualmente** via `maxWidth: .infinity`.
-        // SwiftUI não tem equivalente direto ao `Expanded(flex: N)` do Flutter
-        // pra ratios assimétricos (2:1:1) sem `Layout` custom — o `minWidth`
-        // baseline diferenciado dá prioridade visual à descrição em larguras
-        // apertadas, mas em larguras confortáveis as três crescem na mesma
-        // proporção.
         HStack(alignment: .center, spacing: GranaTheme.Spacing.sm) {
-            if let kind = store.institutionKind(forAccountId: suggestion.transactionAccountId) {
+            if let kind = store.state.institutionKind(forAccountId: suggestion.transactionAccountId) {
                 InstitutionIcon(kind: kind, size: 24)
             }
 
@@ -57,11 +38,8 @@ struct CategorizationRowView: View {
         .opacity(suggestion.isReviewed ? 0.6 : 1.0)
     }
 
-    /// Convenção visual: só receita destaca (verde). Despesa neutra, transfer
-    /// cinza. Igual `TransactionRow` — pra listas onde quase tudo é despesa,
-    /// pintar tudo de vermelho deixa de informar nada.
     private var amountColor: Color {
-        guard let category = store.category(for: suggestion.categoryId) else {
+        guard let category = store.state.category(for: suggestion.categoryId) else {
             return .primary
         }
         switch category.kind {
@@ -71,19 +49,17 @@ struct CategorizationRowView: View {
         }
     }
 
-    // MARK: - Menus
-
     private var categoryMenu: some View {
         Menu {
             ForEach(store.rootCategories) { category in
                 Button(category.name) {
-                    Task {
-                        await store.applyCorrection(
-                            at: index,
-                            correctedCategoryId: category.id,
-                            correctedSubcategoryId: nil
+                    store.send(
+                        .applyCorrection(
+                            index: index,
+                            categoryId: category.id,
+                            subcategoryId: nil
                         )
-                    }
+                    )
                 }
             }
         } label: {
@@ -97,23 +73,23 @@ struct CategorizationRowView: View {
     private var subcategoryMenu: some View {
         Menu {
             Button("Nenhuma") {
-                Task {
-                    await store.applyCorrection(
-                        at: index,
-                        correctedCategoryId: suggestion.categoryId,
-                        correctedSubcategoryId: nil
+                store.send(
+                    .applyCorrection(
+                        index: index,
+                        categoryId: suggestion.categoryId,
+                        subcategoryId: nil
                     )
-                }
+                )
             }
-            ForEach(store.subcategories(of: suggestion.categoryId)) { sub in
-                Button(sub.name) {
-                    Task {
-                        await store.applyCorrection(
-                            at: index,
-                            correctedCategoryId: suggestion.categoryId,
-                            correctedSubcategoryId: sub.id
+            ForEach(store.state.subcategories(of: suggestion.categoryId)) { subcategory in
+                Button(subcategory.name) {
+                    store.send(
+                        .applyCorrection(
+                            index: index,
+                            categoryId: suggestion.categoryId,
+                            subcategoryId: subcategory.id
                         )
-                    }
+                    )
                 }
             }
         } label: {
@@ -125,24 +101,20 @@ struct CategorizationRowView: View {
     }
 
     private var rootName: String {
-        store.category(for: suggestion.categoryId)?.name ?? "Categoria"
+        store.state.category(for: suggestion.categoryId)?.name ?? "Categoria"
     }
 
     private var subName: String? {
-        guard let subId = suggestion.subcategoryId else { return nil }
-        return store.category(for: subId)?.name
+        guard let subcategoryId = suggestion.subcategoryId else { return nil }
+        return store.state.category(for: subcategoryId)?.name
     }
 
-    /// Mesmo formato dd/MM/yyyy usado pela `TransactionRow` no import — pra
-    /// data alinhar visualmente entre as duas telas do wizard.
     private static let dateFormatter: DateFormatter = {
-        let f = DateFormatter()
-        f.dateFormat = "dd/MM/yyyy"
-        return f
+        let formatter = DateFormatter()
+        formatter.dateFormat = "dd/MM/yyyy"
+        return formatter
     }()
 
-    /// Label estilizado igual ao `Picker .menu` mas leve — o conteúdo
-    /// (lista de opções) só é construído quando o menu abre.
     private func menuLabel(text: String) -> some View {
         HStack(spacing: GranaTheme.Spacing.xxs) {
             Text(text)

@@ -1,60 +1,51 @@
+import ComposableArchitecture
 import SwiftUI
 
 struct OFXReviewStepView: View {
-    @Bindable var store: ImportStore
-    let dismiss: DismissAction
-
-    private var totalRows: Int {
-        store.ofxResolutions.reduce(0) { $0 + $1.rows.count }
-    }
+    @Bindable var store: StoreOf<OFXImportFeature>
+    let onClose: () -> Void
+    let onConfirm: () -> Void
 
     private var totalSelected: Int {
-        store.ofxResolutions.reduce(0) { $0 + $1.rows.filter(\.selected).count }
-    }
-
-    private var duplicateCount: Int {
-        store.ofxResolutions.reduce(0) { $0 + $1.rows.filter(\.isDuplicate).count }
-    }
-
-    private var resolvedAccountsCount: Int {
-        store.ofxResolutions.filter { $0.accountId != nil }.count
+        store.state.totalSelected
     }
 
     private var allAccountsSelected: Bool {
-        store.ofxResolutions.allSatisfy { $0.accountId != nil }
+        store.state.allAccountsSelected
     }
 
     var body: some View {
-        ImportWizardStageScaffold() {
+        ImportWizardStageScaffold {
             VStack(spacing: GranaTheme.Spacing.md) {
                 accountAssignmentsPanel
                 OFXTransactionsListCard(
-                    resolutions: $store.ofxResolutions,
-                    showsBankInHeader: store.ofxResolutions.count > 1,
-                    bankKind: { accountId in bankKind(for: accountId) }
+                    resolutions: Binding(
+                        get: { store.state.resolutions },
+                        set: { store.send(.resolutionsUpdated($0)) }
+                    ),
+                    showsBankInHeader: store.state.resolutions.count > 1,
+                    bankKind: { accountId in store.state.bankKind(for: accountId) }
                 )
                 .frame(maxHeight: .infinity)
 
                 BottomActionBar(caption: selectionCaption) {
-                    Button("Fechar") { dismiss() }
+                    Button("Fechar") { onClose() }
                         .buttonStyle(GranaSecondaryButtonStyle())
 
                     Button("Avançar com \(totalSelected) \(totalSelected == 1 ? "transação" : "transações")") {
-                        Task { await store.confirmOFXImport() }
+                        onConfirm()
                     }
                     .buttonStyle(GranaPrimaryButtonStyle())
                     .disabled(totalSelected == 0 || !allAccountsSelected)
                 }
             }
-        } 
+        }
     }
 
     private var accountAssignmentsPanel: some View {
-        ImportWizardSectionCard(
-            title: "Mapeamento das contas",
-        ) {
+        ImportWizardSectionCard(title: "Mapeamento das contas") {
             VStack(alignment: .leading, spacing: GranaTheme.Spacing.md) {
-                ForEach(store.ofxResolutions.indices, id: \.self) { idx in
+                ForEach(store.state.resolutions.indices, id: \.self) { idx in
                     OFXAccountInfoCard(store: store, statementIndex: idx)
                 }
             }
@@ -62,35 +53,17 @@ struct OFXReviewStepView: View {
         }
     }
 
-    private var heroSubtitle: String {
-        if store.ofxResolutions.count == 1 {
-            return "O arquivo já foi analisado. Agora confirme a conta de destino e revise a seleção das transações."
-        }
-        return "O arquivo contém \(store.ofxResolutions.count) extratos. Revise cada vínculo de conta e só então avance para a categorização."
-    }
-
     private var selectionCaption: String? {
         allAccountsSelected ? nil : "Escolha a conta de destino de cada extrato"
-    }
-
-    private func bankKind(for accountId: UUID?) -> InstitutionKind? {
-        guard let accountId,
-              let account = store.accounts.first(where: { $0.id == accountId }),
-              let institutionId = account.institutionId,
-              let institution = store.institutions.first(where: { $0.id == institutionId })
-        else { return nil }
-        return institution.kind
     }
 }
 
 private struct OFXAccountInfoCard: View {
-    @Bindable var store: ImportStore
+    @Bindable var store: StoreOf<OFXImportFeature>
     let statementIndex: Int
 
     private var resolution: OFXStatementResolution? {
-        store.ofxResolutions.indices.contains(statementIndex)
-            ? store.ofxResolutions[statementIndex]
-            : nil
+        store.state.resolutions.indices.contains(statementIndex) ? store.state.resolutions[statementIndex] : nil
     }
 
     var body: some View {
@@ -131,13 +104,13 @@ private struct OFXAccountInfoCard: View {
                         selection: Binding(
                             get: { resolution.accountId },
                             set: { newValue in
-                                Task { await store.setOFXAccount(statementIndex: statementIndex, to: newValue) }
+                                store.send(.accountSelected(statementIndex: statementIndex, accountId: newValue))
                             }
                         )
                     ) {
                         Text("Selecione…").tag(UUID?.none)
-                        ForEach(availableAccounts) { account in
-                            Text(label(for: account)).tag(UUID?.some(account.id))
+                        ForEach(store.state.availableAccounts) { account in
+                            Text(store.state.label(for: account)).tag(UUID?.some(account.id))
                         }
                     }
                     .labelsHidden()
@@ -151,27 +124,6 @@ private struct OFXAccountInfoCard: View {
         .background(
             GranaTheme.Palette.paper.opacity(0.64),
             in: RoundedRectangle(cornerRadius: GranaTheme.Radius.control, style: .continuous)
-        )
-    }
-
-    private var availableAccounts: [Account] {
-        store.accounts
-            .filter { account in
-                guard !account.archived,
-                      let institutionId = account.institutionId,
-                      let institution = store.institutions.first(where: { $0.id == institutionId })
-                else { return false }
-                return institution.capabilities.supports(.ofx)
-            }
-            .sorted { label(for: $0).localizedCaseInsensitiveCompare(label(for: $1)) == .orderedAscending }
-    }
-
-    private func label(for account: Account) -> String {
-        Account.displayName(
-            for: account,
-            institutions: store.institutions,
-            bankAccounts: store.bankDetails,
-            creditCards: store.creditCards
         )
     }
 
@@ -210,9 +162,7 @@ private struct OFXTransactionsListCard: View {
     }
 
     var body: some View {
-        ImportWizardSectionCard(
-            title: "Transações detectadas",
-        ) {
+        ImportWizardSectionCard(title: "Transações detectadas") {
             VStack(spacing: GranaTheme.Spacing.none) {
                 TransactionsSelectionRow(
                     summary: selectionSummary,
@@ -245,7 +195,7 @@ private struct OFXTransactionsListCard: View {
 
     private func bankSubheader(for resolution: OFXStatementResolution) -> some View {
         HStack {
-            Text(bankName(for: resolution))
+            Text(resolution.ofxBankLabel)
                 .font(GranaTheme.Typography.caption1Emphasis)
                 .foregroundStyle(GranaTheme.Palette.tealDeep)
             Spacer()
@@ -255,14 +205,10 @@ private struct OFXTransactionsListCard: View {
         .background(GranaTheme.Palette.teal.opacity(0.08))
     }
 
-    private func bankName(for resolution: OFXStatementResolution) -> String {
-        resolution.ofxBankLabel
-    }
-
     private func toggleAll(to value: Bool) {
-        for resIdx in resolutions.indices {
-            for rowIdx in resolutions[resIdx].rows.indices {
-                resolutions[resIdx].rows[rowIdx].selected = value
+        for resolutionIndex in resolutions.indices {
+            for rowIndex in resolutions[resolutionIndex].rows.indices {
+                resolutions[resolutionIndex].rows[rowIndex].selected = value
             }
         }
     }

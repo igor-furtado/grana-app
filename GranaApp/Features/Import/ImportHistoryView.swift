@@ -1,120 +1,143 @@
-import Foundation
+import ComposableArchitecture
 import SwiftUI
-import UniformTypeIdentifiers
 
 struct ImportHistoryView: View {
     @Environment(AppEnvironment.self) private var environment
-    @State private var store: ImportStore?
-    @State private var pendingDeleteBatch: ImportBatch?
-    @State private var importContext: ImportContext?
+    @State private var store: StoreOf<ImportFeature>?
     @State private var isDropTargeted = false
     @State private var sortOrder = [
         KeyPathComparator(\ImportHistoryBatchPresentation.importedAt, order: .reverse),
     ]
-    @State private var institutionFilter: String = "Todas"
+    @State private var institutionFilter = "Todas"
     @State private var filenameFilter = ""
     @State private var accountFilter = ""
-
-    private struct ImportContext: Identifiable {
-        let id = UUID()
-        let file: URL?
-    }
 
     var body: some View {
         Group {
             if let store {
-                content(store: store)
-                    .task { await store.start() }
-                    .task {
-                        for await _ in NotificationCenter.default.notifications(
-                            named: ImportStore.didMutateImportsNotification
-                        ) {
-                            await store.refresh()
-                        }
-                    }
+                ImportHistoryContentView(
+                    store: store,
+                    isDropTargeted: $isDropTargeted,
+                    sortOrder: $sortOrder,
+                    institutionFilter: $institutionFilter,
+                    filenameFilter: $filenameFilter,
+                    accountFilter: $accountFilter
+                )
             } else {
                 ProgressView()
                     .frame(maxWidth: .infinity, maxHeight: .infinity)
-                    .task { store = ImportStore(container: environment.container) }
+            }
+        }
+        .onAppear {
+            if store == nil {
+                store = Store(initialState: ImportFeature.State()) {
+                    ImportFeature()
+                } withDependencies: {
+                    $0.importClient = .live(container: environment.container)
+                    $0.categorizationClient = .live(container: environment.container)
+                }
+            }
+        }
+    }
+}
+
+private struct ImportHistoryContentView: View {
+    @Bindable var store: StoreOf<ImportFeature>
+    @Binding var isDropTargeted: Bool
+    @Binding var sortOrder: [KeyPathComparator<ImportHistoryBatchPresentation>]
+    @Binding var institutionFilter: String
+    @Binding var filenameFilter: String
+    @Binding var accountFilter: String
+
+    private var historyStore: StoreOf<ImportHistoryFeature> {
+        store.scope(state: \.history, action: \.history)
+    }
+
+    var body: some View {
+        VStack(spacing: GranaTheme.Spacing.sm) {
+            header
+            summaryRow
+
+            if historyStore.snapshot.batches.isEmpty {
+                EmptyStateDropZone(
+                    isHighlighted: isDropTargeted,
+                    onBrowse: { historyStore.send(.importButtonTapped(nil)) }
+                )
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
+            } else {
+                dashboard
+                    .frame(maxWidth: .infinity, maxHeight: .infinity)
             }
         }
         .navigationTitle("")
         .toolbar(.hidden, for: .windowToolbar)
         .dropDestination(for: URL.self, action: handleDrop, isTargeted: setDropTargeted)
         .overlay {
-            if isDropTargeted, !(store?.batches.isEmpty ?? true) {
+            if isDropTargeted, !historyStore.snapshot.batches.isEmpty {
                 DropOverlay()
                     .transition(.opacity.combined(with: .scale(scale: 0.98)))
                     .allowsHitTesting(false)
             }
         }
         .animation(.easeOut(duration: 0.18), value: isDropTargeted)
-        .sheet(
-            item: $importContext,
-            onDismiss: {
-                guard let store else { return }
-                Task { await store.refresh() }
-            },
-            content: { context in
-                ImportView(initialFile: context.file)
-                    .environment(environment)
-            }
-        )
-    }
-
-    private func content(store: ImportStore) -> some View {
-        VStack(spacing: GranaTheme.Spacing.sm) {
-            header(store: store)
-            summaryRow(store: store)
-
-            if store.batches.isEmpty {
-                EmptyStateDropZone(
-                    isHighlighted: isDropTargeted,
-                    onBrowse: { presentImportSheet(file: nil) }
-                )
-                .frame(maxWidth: .infinity, maxHeight: .infinity)
-            } else {
-                dashboard(store: store)
-                    .frame(maxWidth: .infinity, maxHeight: .infinity)
-            }
-        }
         .confirmationDialog(
             "Desfazer importação?",
             isPresented: Binding(
-                get: { pendingDeleteBatch != nil },
-                set: { if !$0 { pendingDeleteBatch = nil } }
-            ),
-            presenting: pendingDeleteBatch
-        ) { batch in
-            Button("Apagar lote (\(batch.rowCount) transações)", role: .destructive) {
-                Task {
-                    await store.undo(batchId: batch.id)
-                    pendingDeleteBatch = nil
+                get: { historyStore.pendingDelete != nil },
+                set: { isPresented in
+                    if !isPresented {
+                        historyStore.send(.confirmationDialog(.dismiss))
+                    }
+                }
+            )
+        ) {
+            if let batch = historyStore.pendingDelete {
+                Button("Apagar lote (\(batch.rowCount) transações)", role: .destructive) {
+                    historyStore.send(.confirmationDialog(.presented(.deleteConfirmed)))
+                }
+                Button("Cancelar", role: .cancel) {
+                    historyStore.send(.confirmationDialog(.dismiss))
                 }
             }
-            Button("Cancelar", role: .cancel) { pendingDeleteBatch = nil }
-        } message: { batch in
-            Text(
-                "As \(batch.rowCount) transações de **\(batch.sourceFilename)** serão removidas permanentemente."
+        } message: {
+            if let batch = historyStore.pendingDelete {
+                Text("As \(batch.rowCount) transações de **\(batch.sourceFilename)** serão removidas permanentemente.")
+            }
+        }
+        .sheet(
+            isPresented: Binding(
+                get: { store.wizard != nil },
+                set: { isPresented in
+                    if !isPresented {
+                        store.send(.wizard(.cancel))
+                    }
+                }
             )
+        ) {
+            if let wizardStore = store.scope(state: \.wizard, action: \.wizard) {
+                ImportView(store: wizardStore)
+            }
+        }
+        .task {
+            await historyStore.send(.task).finish()
         }
     }
 
-    private func header(store: ImportStore) -> some View {
+    private var header: some View {
         FeatureScreenHeader(
             title: "Importar transações",
-            subtitle: store.summarySubtitle
+            subtitle: historyStore.summarySubtitle
         ) {
             HStack(spacing: GranaTheme.Spacing.sm) {
                 Button {
-                    presentImportSheet(file: nil)
+                    historyStore.send(.importButtonTapped(nil))
                 } label: {
                     Label("Selecionar arquivo", systemImage: AppIcon.importFile.systemImage)
                 }
                 .buttonStyle(GranaSecondaryButtonStyle())
 
                 Button {
-                    presentImportSheet(file: nil)
+                    historyStore.send(.importButtonTapped(nil))
                 } label: {
                     Label("Nova importação", systemImage: AppIcon.add.systemImage)
                 }
@@ -124,57 +147,51 @@ struct ImportHistoryView: View {
         }
     }
 
-    private func summaryRow(store: ImportStore) -> some View {
+    private var summaryRow: some View {
         HStack(spacing: GranaTheme.Spacing.sm) {
             ImportSummaryBadge(
                 title: "Lotes",
-                value: "\(store.batches.count)",
+                value: "\(historyStore.snapshot.batches.count)",
                 detail: "histórico ativo"
             )
             ImportSummaryBadge(
                 title: "Linhas",
-                value: "\(store.totalImportedRows)",
+                value: "\(historyStore.totalImportedRows)",
                 detail: "já consolidadas"
             )
             ImportSummaryBadge(
                 title: "Última",
-                value: store.latestImportShortText,
+                value: historyStore.latestImportShortText,
                 detail: "importação concluída"
             )
         }
     }
 
-    private func dashboard(store: ImportStore) -> some View {
-        let rows = filteredRows(from: presentationRows(for: store.batches, store: store))
+    private var dashboard: some View {
+        let rows = filteredRows(from: presentationRows(for: historyStore.snapshot.batches))
         return ImportHistoryMainPanel(
             rows: rows,
             sortOrder: $sortOrder,
             institutionFilter: $institutionFilter,
             filenameFilter: $filenameFilter,
             accountFilter: $accountFilter,
-            onUndo: { row in pendingDeleteBatch = row.batch }
+            onUndo: { row in historyStore.send(.undoButtonTapped(row.batch)) }
         )
-        .frame(maxWidth: .infinity, maxHeight: .infinity)
     }
 
-    private func presentationRows(
-        for batches: [ImportBatch],
-        store: ImportStore
-    ) -> [ImportHistoryBatchPresentation] {
+    private func presentationRows(for batches: [ImportBatch]) -> [ImportHistoryBatchPresentation] {
         batches
             .sorted { $0.importedAt > $1.importedAt }
             .map { batch in
                 ImportHistoryBatchPresentation(
                     batch: batch,
-                    accountDisplayName: accountDisplayName(for: batch, store: store),
-                    institution: institution(for: batch, store: store)
+                    accountDisplayName: accountDisplayName(for: batch),
+                    institution: institution(for: batch)
                 )
             }
     }
 
-    private func filteredRows(
-        from rows: [ImportHistoryBatchPresentation]
-    ) -> [ImportHistoryBatchPresentation] {
+    private func filteredRows(from rows: [ImportHistoryBatchPresentation]) -> [ImportHistoryBatchPresentation] {
         rows
             .filter { row in
                 institutionFilter == "Todas" || row.institutionName == institutionFilter
@@ -190,31 +207,28 @@ struct ImportHistoryView: View {
             .sorted(using: sortOrder)
     }
 
-    private func institution(for batch: ImportBatch, store: ImportStore) -> Institution? {
-        guard let account = store.account(for: batch.accountId),
-              let id = account.institutionId else { return nil }
-        return store.institutions.first { $0.id == id }
+    private func institution(for batch: ImportBatch) -> Institution? {
+        guard let account = historyStore.state.account(for: batch.accountId),
+              let institutionId = account.institutionId
+        else { return nil }
+        return historyStore.snapshot.institutions.first { $0.id == institutionId }
     }
 
-    private func accountDisplayName(for batch: ImportBatch, store: ImportStore) -> String? {
-        guard let account = store.account(for: batch.accountId) else { return nil }
+    private func accountDisplayName(for batch: ImportBatch) -> String? {
+        guard let account = historyStore.state.account(for: batch.accountId) else { return nil }
         return Account.displayName(
             for: account,
-            institutions: store.institutions,
-            bankAccounts: store.bankDetails,
-            creditCards: store.creditCards
+            institutions: historyStore.snapshot.institutions,
+            bankAccounts: historyStore.snapshot.bankDetails,
+            creditCards: historyStore.snapshot.creditCards
         )
-    }
-
-    private func presentImportSheet(file: URL?) {
-        importContext = ImportContext(file: file)
     }
 
     private func handleDrop(_ urls: [URL], at _: CGPoint) -> Bool {
         guard let url = urls.first else { return false }
         let ext = url.pathExtension.lowercased()
 
-        guard ImportStore.supportedExtensions.contains(ext) else {
+        guard ImportWizardFeature.State.supportedExtensions.contains(ext) else {
             NoticeCenter.shared.report(
                 ImportError.unsupportedFormat(extension: ext.isEmpty ? "(sem extensão)" : ext),
                 title: "Arquivo não suportado"
@@ -229,7 +243,7 @@ struct ImportHistoryView: View {
             )
         }
 
-        presentImportSheet(file: url)
+        historyStore.send(.importButtonTapped(url))
         return true
     }
 
@@ -243,43 +257,20 @@ private struct ImportHistoryBatchPresentation: Identifiable {
     let accountDisplayName: String?
     let institution: Institution?
 
-    var id: UUID {
-        batch.id
-    }
-
-    var institutionKind: InstitutionKind {
-        institution?.kind ?? .other
-    }
-
-    var institutionName: String {
-        institution?.name ?? "Conta desconhecida"
-    }
-
-    var accountName: String {
-        accountDisplayName ?? institutionName
-    }
+    var id: UUID { batch.id }
+    var institutionKind: InstitutionKind { institution?.kind ?? .other }
+    var institutionName: String { institution?.name ?? "Conta desconhecida" }
+    var accountName: String { accountDisplayName ?? institutionName }
 
     var formatName: String {
         let ext = URL(fileURLWithPath: batch.sourceFilename).pathExtension
-        guard !ext.isEmpty else { return "ARQ" }
-        return ext.uppercased()
+        return ext.isEmpty ? "ARQ" : ext.uppercased()
     }
 
-    var sourceFilename: String {
-        batch.sourceFilename
-    }
-
-    var rowCount: Int {
-        batch.rowCount
-    }
-
-    var importedAtText: String {
-        batch.importedAt.formatted(date: .abbreviated, time: .shortened)
-    }
-
-    var importedAt: Date {
-        batch.importedAt
-    }
+    var sourceFilename: String { batch.sourceFilename }
+    var rowCount: Int { batch.rowCount }
+    var importedAtText: String { batch.importedAt.formatted(date: .abbreviated, time: .shortened) }
+    var importedAt: Date { batch.importedAt }
 }
 
 private struct ImportHistoryMainPanel: View {
@@ -293,7 +284,7 @@ private struct ImportHistoryMainPanel: View {
     var body: some View {
         VStack(alignment: .leading, spacing: GranaTheme.Spacing.none) {
             GranaTable(rows, sortOrder: $sortOrder) {
-                TableColumn("Instituição", value: \.institutionName) { (row: ImportHistoryBatchPresentation) in
+                TableColumn("Instituição", value: \.institutionName) { row in
                     HStack(spacing: GranaTheme.Spacing.sm) {
                         InstitutionIcon(kind: row.institutionKind, size: 24)
                         Text(row.institutionName)
@@ -305,7 +296,7 @@ private struct ImportHistoryMainPanel: View {
                 }
                 .width(min: 180, ideal: 220, max: 260)
 
-                TableColumn("Arquivo", value: \.sourceFilename) { (row: ImportHistoryBatchPresentation) in
+                TableColumn("Arquivo", value: \.sourceFilename) { row in
                     VStack(alignment: .leading, spacing: GranaTheme.Spacing.xxs) {
                         Text(row.batch.sourceFilename)
                             .font(GranaTheme.Typography.subheadlineEmphasis)
@@ -320,7 +311,7 @@ private struct ImportHistoryMainPanel: View {
                 }
                 .width(min: 220, ideal: 320)
 
-                TableColumn("Conta", value: \.accountName) { (row: ImportHistoryBatchPresentation) in
+                TableColumn("Conta", value: \.accountName) { row in
                     Text(row.accountName)
                         .font(GranaTheme.Typography.subheadline)
                         .foregroundStyle(GranaTheme.Palette.muted)
@@ -329,7 +320,7 @@ private struct ImportHistoryMainPanel: View {
                 }
                 .width(min: 180, ideal: 220)
 
-                TableColumn("Linhas", value: \.rowCount) { (row: ImportHistoryBatchPresentation) in
+                TableColumn("Linhas", value: \.rowCount) { row in
                     Text("\(row.batch.rowCount)")
                         .font(GranaTheme.Typography.subheadlineEmphasis)
                         .foregroundStyle(GranaTheme.Palette.ink)
@@ -337,7 +328,7 @@ private struct ImportHistoryMainPanel: View {
                 }
                 .width(min: 72, ideal: 86, max: 96)
 
-                TableColumn("Importado", value: \.importedAt) { (row: ImportHistoryBatchPresentation) in
+                TableColumn("Importado", value: \.importedAt) { row in
                     Text(row.importedAtText)
                         .font(GranaTheme.Typography.footnote)
                         .foregroundStyle(GranaTheme.Palette.muted)
@@ -386,18 +377,8 @@ private struct ImportHistoryFilterBar: View {
                 options: institutionOptions,
                 selection: $institutionFilter
             )
-
-            filterSearchField(
-                title: "Arquivo",
-                prompt: "Buscar arquivo",
-                text: $filenameFilter
-            )
-
-            filterSearchField(
-                title: "Conta",
-                prompt: "Buscar conta",
-                text: $accountFilter
-            )
+            filterSearchField(title: "Arquivo", prompt: "Buscar arquivo", text: $filenameFilter)
+            filterSearchField(title: "Conta", prompt: "Buscar conta", text: $accountFilter)
         }
     }
 
@@ -411,7 +392,6 @@ private struct ImportHistoryFilterBar: View {
             Text(title)
                 .font(GranaTheme.Typography.caption2Emphasis)
                 .foregroundStyle(GranaTheme.Palette.muted)
-
             Menu {
                 ForEach(options, id: \.self) { option in
                     Button(option) {
@@ -435,16 +415,13 @@ private struct ImportHistoryFilterBar: View {
             Text(title)
                 .font(GranaTheme.Typography.caption2Emphasis)
                 .foregroundStyle(GranaTheme.Palette.muted)
-
             HStack(spacing: GranaTheme.Spacing.sm) {
                 Image(systemName: "magnifyingglass")
                     .font(.system(size: GranaTheme.IconSize.small, weight: .semibold))
                     .foregroundStyle(GranaTheme.Palette.tealDeep)
-
                 TextField(prompt, text: text)
                     .textFieldStyle(.plain)
                     .font(GranaTheme.Typography.footnoteEmphasis)
-
                 if !text.wrappedValue.isEmpty {
                     Button {
                         text.wrappedValue = ""
@@ -474,14 +451,11 @@ private struct ImportHistoryFilterBar: View {
             Image(systemName: icon)
                 .font(.system(size: GranaTheme.IconSize.small, weight: .semibold))
                 .foregroundStyle(GranaTheme.Palette.tealDeep)
-
             Text(value)
                 .font(GranaTheme.Typography.footnoteEmphasis)
                 .foregroundStyle(GranaTheme.Palette.ink)
                 .lineLimit(1)
-
             Spacer(minLength: GranaTheme.Spacing.none)
-
             Image(systemName: "chevron.down")
                 .font(.system(size: GranaTheme.IconSize.micro, weight: .semibold))
                 .foregroundStyle(GranaTheme.Palette.muted)
@@ -537,27 +511,22 @@ private struct EmptyStateDropZone: View {
                     .foregroundStyle(GranaTheme.Palette.tealDeep)
                     .symbolEffect(.bounce, value: isHighlighted)
             }
-
             VStack(spacing: GranaTheme.Spacing.sm) {
                 Text(isHighlighted ? "Solte o extrato para revisar" : "Importe o primeiro extrato")
                     .font(GranaTheme.Typography.title2)
                     .foregroundStyle(GranaTheme.Palette.ink)
                     .multilineTextAlignment(.center)
-                Text(
-                    "Arraste um arquivo para a tela ou selecione manualmente. O fluxo revisa OFX e CSV antes do commit definitivo."
-                )
-                .font(GranaTheme.Typography.callout)
-                .foregroundStyle(GranaTheme.Palette.muted)
-                .multilineTextAlignment(.center)
-                .frame(maxWidth: 520)
+                Text("Arraste um arquivo para a tela ou selecione manualmente. O fluxo revisa OFX e CSV antes do commit definitivo.")
+                    .font(GranaTheme.Typography.callout)
+                    .foregroundStyle(GranaTheme.Palette.muted)
+                    .multilineTextAlignment(.center)
+                    .frame(maxWidth: 520)
             }
-
             HStack(spacing: GranaTheme.Spacing.sm) {
                 ImportEmptyStateInfoPill(icon: AppIcon.sidebarAccounts.systemImage, title: "OFX bancário")
                 ImportEmptyStateInfoPill(icon: AppIcon.sidebarCreditCards.systemImage, title: "CSV de fatura")
                 ImportEmptyStateInfoPill(icon: AppIcon.completedSeal.systemImage, title: "Revisão antes do commit")
             }
-
             Button {
                 onBrowse()
             } label: {
@@ -609,7 +578,6 @@ private struct DropOverlay: View {
             Rectangle()
                 .fill(.regularMaterial)
                 .opacity(0.84)
-
             VStack(spacing: GranaTheme.Spacing.md) {
                 ZStack {
                     Circle()
@@ -641,54 +609,5 @@ private struct DropOverlay: View {
             .shadow(color: GranaTheme.Shadow.cardColor, radius: 24, y: 10)
             .padding(GranaTheme.Spacing.xxxl)
         }
-    }
-}
-
-private extension ImportStore {
-    var totalImportedRows: Int {
-        batches.reduce(0) { $0 + $1.rowCount }
-    }
-
-    var summarySubtitle: String {
-        if batches.isEmpty {
-            return "OFX e CSV com revisão antes do commit"
-        }
-        return "\(batches.count) \(batches.count == 1 ? "importação" : "importações") no histórico"
-    }
-
-    var latestImportShortText: String {
-        guard let latest = batches.max(by: { $0.importedAt < $1.importedAt }) else {
-            return "Sem histórico"
-        }
-        return latest.importedAt.formatted(date: .numeric, time: .omitted)
-    }
-
-    var latestImportLongText: String {
-        guard let latest = batches.max(by: { $0.importedAt < $1.importedAt }) else {
-            return "Nenhum lote importado ainda"
-        }
-        return latest.importedAt.formatted(date: .abbreviated, time: .shortened)
-    }
-
-    var latestImportedAccountName: String {
-        guard let latest = batches.max(by: { $0.importedAt < $1.importedAt }),
-              let account = account(for: latest.accountId)
-        else {
-            return "Sem conta associada"
-        }
-
-        return Account.displayName(
-            for: account,
-            institutions: institutions,
-            bankAccounts: bankDetails,
-            creditCards: creditCards
-        )
-    }
-
-    static var supportedExtensionsDisplayText: String {
-        supportedExtensions
-            .map { $0.uppercased() }
-            .sorted()
-            .joined(separator: " · ")
     }
 }
