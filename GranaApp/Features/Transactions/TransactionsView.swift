@@ -5,6 +5,10 @@ struct TransactionsView: View {
     @Environment(AppEnvironment.self) private var environment
     @State private var store: StoreOf<TransactionsFeature>?
 
+    init(store: StoreOf<TransactionsFeature>? = nil) {
+        _store = State(initialValue: store)
+    }
+
     var body: some View {
         Group {
             if let store {
@@ -31,14 +35,16 @@ private struct TransactionsContentView: View {
     private static let ptBR = Locale(identifier: "pt_BR")
 
     @Bindable var store: StoreOf<TransactionsFeature>
-    @Environment(AppEnvironment.self) private var environment
     @Environment(\.calendar) private var calendar
+    @State private var sortOrder = [
+        KeyPathComparator(\TransactionTableRow.occurredAt, order: .reverse),
+    ]
 
     var body: some View {
         VStack(spacing: GranaTheme.Spacing.none) {
             mainContent
                 .overlay {
-                    if store.transactions.isEmpty && !store.isLoading {
+                    if tableRows.isEmpty && !store.isLoading {
                         EmptyStateView(
                             "Sem transações ainda",
                             icon: .sidebarTransactions,
@@ -46,332 +52,133 @@ private struct TransactionsContentView: View {
                         )
                     }
                 }
-
-            if store.hasMoreTransactions || store.isLoadingMoreTransactions {
-                Divider()
-                HStack {
-                    Spacer()
-                    if store.isLoadingMoreTransactions {
-                        ProgressView()
-                            .controlSize(.small)
-                    } else {
-                        Button("Carregar mais") {
-                            store.send(.loadMoreButtonTapped)
-                        }
-                    }
-                    Spacer()
-                }
-                .padding(.vertical, GranaTheme.Spacing.sm)
-            }
         }
         .navigationTitle("")
         .toolbar(.hidden, for: .windowToolbar)
-        .sheet(
-            item: $store.scope(\.$destination, action: \.destination).addForm
-        ) { formStore in
-            TransactionFormView(store: formStore)
-        }
         .sheet(
             item: $store.scope(\.$destination, action: \.destination).editForm
         ) { formStore in
             TransactionFormView(store: formStore)
         }
-        .sheet(
-            item: $store.scope(\.$destination, action: \.destination).importFlow
-        ) { _ in
-            ImportView()
-                .environment(environment)
-        }
         .confirmationDialog($store.scope(\.confirmationDialog, action: \.confirmationDialog))
         .task {
             await store.send(.task).finish()
+        }
+        .onChange(of: sortOrder) { _, newValue in
+            let selectedSort = TransactionsSortMapper.map(newValue)
+            guard selectedSort != store.tableSort else { return }
+            store.send(.tableSortSelected(selectedSort))
         }
     }
 
     private var mainContent: some View {
         VStack(spacing: GranaTheme.Spacing.sm) {
-            transactionsHeader
-            transactionsContentSection
-        }
-        .granaPagePadding()
-    }
-
-    private var transactionsHeader: some View {
-        TransactionsHeaderView(
-            searchText: $store.searchText,
-            countText: store.state.transactionsCountText(calendar: calendar),
-            onImport: { store.send(.importButtonTapped) },
-            onAdd: { store.send(.addButtonTapped) },
-            bankControl: AnyView(headerBankMenu),
-            periodControl: AnyView(headerPeriodMenu),
-            categoryControl: AnyView(headerCategoryMenu),
-            kindControl: AnyView(headerKindMenu)
-        )
-    }
-
-    private var transactionsContentSection: some View {
-        VStack(spacing: GranaTheme.Spacing.sm) {
-            transactionsTableCard {
-                transactionsTableHeader()
-
-                ForEach(store.state.filtered(calendar: calendar)) { transaction in
-                    transactionRow(transaction)
-                }
+            FeatureScreenHeader(
+                title: "Transações",
+                subtitle: store.state.transactionsCountText(calendar: calendar)
+            ) {
+                EmptyView()
             }
-        }
-    }
 
-    private var headerPeriodMenu: some View {
-        headerFilterPopoverCard(
-            caption: "Período",
-            value: store.periodFilter.name,
-            icon: "calendar",
-            filter: .period
-        ) {
-            ForEach(TransactionPeriodFilter.allCases) { filter in
-                headerFilterOption(filter.name) {
-                    store.send(.periodFilterSelected(filter))
-                }
-            }
-        }
-    }
-
-    private var headerKindMenu: some View {
-        headerFilterPopoverCard(
-            caption: "Tipo",
-            value: store.kindFilter.name,
-            icon: "arrow.left.arrow.right.circle",
-            filter: .kind
-        ) {
-            ForEach(TransactionKindFilter.allCases) { filter in
-                headerFilterOption(filter.name) {
-                    store.send(.kindFilterSelected(filter))
-                }
-            }
-        }
-    }
-
-    private var headerBankMenu: some View {
-        headerFilterPopoverCard(
-            caption: "Banco",
-            value: store.bankFilterName,
-            icon: AppIcon.sidebarAccounts.systemImage,
-            filter: .bank
-        ) {
-            headerFilterOption("Todos bancos") {
-                store.send(.bankFilterSelected(.all))
-            }
-            Divider()
-            ForEach(store.availableBanks) { institution in
-                headerFilterOption(institution.name) {
-                    store.send(.bankFilterSelected(.bank(institution.id)))
-                }
-            }
-        }
-    }
-
-    private var headerCategoryMenu: some View {
-        headerFilterPopoverCard(
-            caption: "Categoria",
-            value: store.categoryFilterName,
-            icon: "tag",
-            filter: .category
-        ) {
-            headerFilterOption("Todas categorias") {
-                store.send(.categoryFilterSelected(.all))
-            }
-            Divider()
-            ForEach(store.sortedRootCategories) { category in
-                headerFilterOption(category.name) {
-                    store.send(.categoryFilterSelected(.category(category.id)))
-                }
-            }
-        }
-    }
-
-    private func transactionsTableCard<Content: View>(
-        @ViewBuilder content: () -> Content
-    ) -> some View {
-        ScrollView {
-            VStack(spacing: GranaTheme.Spacing.none) {
-                content()
-            }
-        }
-        .granaSurface(.solid, cornerRadius: GranaTheme.Radius.panel)
-        .clipShape(RoundedRectangle(cornerRadius: GranaTheme.Radius.panel, style: .continuous))
-    }
-
-    private func transactionsTableHeader() -> some View {
-        HStack(spacing: GranaTheme.Spacing.sm) {
-            Text("Banco")
-                .frame(width: 60, alignment: .center)
-            Text("Data")
-                .frame(width: 92, alignment: .leading)
-            Text("Descrição")
-                .frame(maxWidth: .infinity, alignment: .leading)
-            Text("Categoria")
-                .frame(width: 160, alignment: .leading)
-            Text("Valor")
-                .frame(width: 132, alignment: .trailing)
-            Text("Ações")
-                .frame(width: 76, alignment: .center)
-        }
-        .font(GranaTheme.Typography.footnoteEmphasis)
-        .foregroundStyle(.secondary)
-        .padding(.horizontal, GranaTheme.Spacing.md)
-        .frame(minHeight: 44)
-        .background(GranaTheme.Palette.paper.opacity(0.55))
-        .overlay(alignment: .bottom) {
-            Rectangle()
-                .fill(GranaTheme.Palette.line)
-                .frame(height: 1)
-        }
-    }
-
-    private func transactionRow(_ transaction: Transaction) -> some View {
-        HStack(spacing: GranaTheme.Spacing.sm) {
-            bankCell(transaction)
-
-            Text(transaction.occurredAt.formatted(date: .numeric, time: .omitted))
-                .font(GranaTheme.Typography.caption1)
-                .foregroundStyle(.secondary)
-                .frame(width: 92, alignment: .leading)
-
-            descriptionCell(transaction)
-                .frame(maxWidth: .infinity, alignment: .leading)
-
-            categoryCell(transaction)
-                .frame(width: 160, alignment: .leading)
-
-            accountingAmount(transaction.amount)
-                .foregroundStyle(amountColor(for: transaction))
-                .frame(width: 132, alignment: .trailing)
-
-            rowActions(transaction)
-                .frame(width: 76)
-        }
-        .padding(.horizontal, GranaTheme.Spacing.md)
-        .frame(minHeight: 54)
-        .overlay(alignment: .top) {
-            Rectangle()
-                .fill(GranaTheme.Palette.line)
-                .frame(height: 1)
-        }
-    }
-
-    private func headerFilterPopoverCard<Content: View>(
-        caption: String,
-        value: String,
-        icon: String,
-        filter: TransactionsHeaderPresentedFilter,
-        @ViewBuilder content: @escaping () -> Content
-    ) -> some View {
-        Button {
-            store.send(.headerFilterPresented(filter))
-        } label: {
-            headerFilterCard(caption: caption, value: value, icon: icon)
-        }
-        .buttonStyle(.plain)
-        .popover(
-            isPresented: Binding(
-                get: { store.presentedHeaderFilter == filter },
-                set: { isPresented in
-                    if !isPresented, store.presentedHeaderFilter == filter {
-                        store.send(.headerFilterPresented(nil))
+            GranaTable(tableRows, sortOrder: $sortOrder) {
+                TableColumn("Instituição", value: \.institutionName) { row in
+                    HStack(spacing: GranaTheme.Spacing.sm) {
+                        InstitutionIcon(kind: row.institutionKind, size: 22)
+                        VStack(alignment: .leading, spacing: GranaTheme.Spacing.xxs) {
+                            Text(row.institutionName)
+                                .font(GranaTheme.Typography.subheadlineEmphasis)
+                                .foregroundStyle(GranaTheme.Palette.ink)
+                                .lineLimit(1)
+                            Text(row.accountName)
+                                .font(GranaTheme.Typography.caption1)
+                                .foregroundStyle(GranaTheme.Palette.muted)
+                                .lineLimit(1)
+                        }
                     }
                 }
-            ),
-            attachmentAnchor: .rect(.bounds),
-            arrowEdge: .top
-        ) {
-            ScrollView {
-                VStack(alignment: .leading, spacing: GranaTheme.Spacing.none) {
-                    content()
+                .width(min: 210, ideal: 240, max: 300)
+
+                TableColumn("Data", value: \.occurredAt) { row in
+                    Text(row.occurredAt.formatted(date: .numeric, time: .omitted))
+                        .font(GranaTheme.Typography.caption1)
+                        .foregroundStyle(GranaTheme.Palette.muted)
                 }
-                .padding(GranaTheme.Spacing.xs)
+                .width(min: 92, ideal: 110, max: 132)
+
+                TableColumn("Descrição", value: \.description) { row in
+                    Text(row.description)
+                        .font(GranaTheme.Typography.subheadlineEmphasis)
+                        .foregroundStyle(GranaTheme.Palette.ink)
+                        .lineLimit(1)
+                }
+
+                TableColumn("Categoria", value: \.categorySummary) { row in
+                    HStack(spacing: GranaTheme.Spacing.xs) {
+                        CategoryBadge(
+                            category: store.state.category(for: row.transaction.categoryId),
+                            icon: store.state.icon(for: row.transaction.categoryId),
+                            iconOnly: true
+                        )
+                        Text(row.categorySummary)
+                            .font(GranaTheme.Typography.footnoteEmphasis)
+                            .foregroundStyle(GranaTheme.Palette.muted)
+                            .lineLimit(1)
+                    }
+                }
+                .width(min: 170, ideal: 220, max: 260)
+
+                TableColumn("Valor", value: \.amount) { row in
+                    accountingAmount(row.amount)
+                        .foregroundStyle(amountColor(for: row.transaction))
+                        .frame(maxWidth: .infinity, alignment: .trailing)
+                }
+                .width(min: 132, ideal: 148, max: 180)
+
+                TableColumn("Ações") { row in
+                    rowActions(row.transaction)
+                }
+                .width(min: 76, ideal: 92, max: 112)
+            } filterBar: {
+                TransactionsFilterBar(
+                    searchText: $store.searchText,
+                    bankFilterName: store.bankFilterName,
+                    categoryFilterName: store.categoryFilterName,
+                    periodFilterName: store.periodFilter.name,
+                    kindFilterName: store.kindFilter.name,
+                    availableBanks: store.availableBanks,
+                    categories: store.sortedRootCategories,
+                    onBankSelected: { store.send(.bankFilterSelected($0)) },
+                    onCategorySelected: { store.send(.categoryFilterSelected($0)) },
+                    onPeriodSelected: { store.send(.periodFilterSelected($0)) },
+                    onKindSelected: { store.send(.kindFilterSelected($0)) }
+                )
             }
-            .frame(minWidth: 220, maxHeight: 320)
-            .background(GranaTheme.Palette.paperSolid)
         }
     }
 
-    private func headerFilterOption(
-        _ title: String,
-        action: @escaping () -> Void
-    ) -> some View {
-        Button(action: action) {
-            Text(title)
-                .font(GranaTheme.Typography.footnoteEmphasis)
-                .foregroundStyle(GranaTheme.Palette.ink)
-                .frame(maxWidth: .infinity, alignment: .leading)
-                .padding(.horizontal, GranaTheme.Spacing.sm)
-                .padding(.vertical, GranaTheme.Spacing.xs)
-                .contentShape(Rectangle())
-        }
-        .buttonStyle(.plain)
-    }
-
-    private func headerFilterCard(
-        caption: String,
-        value: String,
-        icon: String
-    ) -> some View {
-        HStack(spacing: GranaTheme.Spacing.sm) {
-            Image(systemName: icon)
-                .font(.system(size: GranaTheme.IconSize.small, weight: .semibold))
-                .foregroundStyle(GranaTheme.Palette.tealDeep)
-
-            VStack(alignment: .leading, spacing: GranaTheme.Spacing.xxs) {
-                Text(caption)
-                    .font(GranaTheme.Typography.caption2Emphasis)
-                    .foregroundStyle(.secondary)
-                Text(value)
-                    .font(GranaTheme.Typography.footnoteEmphasis)
-                    .lineLimit(1)
-            }
-
-            Spacer(minLength: GranaTheme.Spacing.xs)
-
-            Image(systemName: "chevron.down")
-                .font(.system(size: GranaTheme.IconSize.micro, weight: .semibold))
-                .foregroundStyle(.secondary)
-        }
-        .padding(.horizontal, GranaTheme.Spacing.md)
-        .frame(minWidth: 168, minHeight: 64, alignment: .leading)
-        .background(
-            RoundedRectangle(cornerRadius: 14, style: .continuous)
-                .fill(GranaTheme.Palette.paper.opacity(0.84))
-        )
-        .overlay {
-            RoundedRectangle(cornerRadius: 14, style: .continuous)
-                .stroke(GranaTheme.Palette.line, lineWidth: 1)
-        }
-    }
-
-    private func descriptionCell(_ transaction: Transaction) -> some View {
-        Text(transaction.description)
-            .font(GranaTheme.Typography.subheadlineEmphasis)
-            .lineLimit(1)
-    }
-
-    private func categoryCell(_ transaction: Transaction) -> some View {
-        HStack(spacing: GranaTheme.Spacing.xs) {
-            CategoryBadge(
-                category: store.state.category(for: transaction.categoryId),
-                icon: store.state.icon(for: transaction.categoryId),
-                iconOnly: true
+    private var tableRows: [TransactionTableRow] {
+        store.state.filtered(calendar: calendar).map { transaction in
+            TransactionTableRow(
+                transaction: transaction,
+                institutionName: institutionName(for: transaction),
+                institutionKind: store.state.institutionKind(for: transaction),
+                accountName: store.state.accountName(for: transaction),
+                occurredAt: transaction.occurredAt,
+                description: transaction.description,
+                categorySummary: store.state.categorySummary(for: transaction),
+                amount: transaction.amount
             )
-            Text(store.state.subcategoryName(for: transaction) ?? store.state.categoryName(for: transaction))
-                .font(GranaTheme.Typography.footnoteEmphasis)
-                .foregroundStyle(.secondary)
-                .lineLimit(1)
         }
     }
 
-    private func bankCell(_ transaction: Transaction) -> some View {
-        InstitutionIcon(kind: store.state.institutionKind(for: transaction), size: 22)
-            .frame(width: 60, alignment: .center)
-            .help(store.state.accountName(for: transaction))
+    private func institutionName(for transaction: Transaction) -> String {
+        guard let account = store.state.account(for: transaction.accountId),
+              let institutionId = account.institutionId,
+              let institution = store.state.institution(for: institutionId)
+        else {
+            return "Sem instituição"
+        }
+        return institution.name
     }
 
     private func rowActions(_ transaction: Transaction) -> some View {
@@ -383,7 +190,7 @@ private struct TransactionsContentView: View {
                 store.send(.editButtonTapped(transaction))
             } label: {
                 Image(systemName: AppIcon.edit.systemImage)
-                    .foregroundStyle(.secondary)
+                    .foregroundStyle(GranaTheme.Palette.muted)
             }
             .buttonStyle(.borderless)
             .disabled(!canMutate)
@@ -393,7 +200,7 @@ private struct TransactionsContentView: View {
                 store.send(.deleteButtonTapped(transaction))
             } label: {
                 Image(systemName: AppIcon.delete.systemImage)
-                    .foregroundStyle(.secondary)
+                    .foregroundStyle(GranaTheme.Palette.muted)
             }
             .buttonStyle(.borderless)
             .disabled(!canMutate)
@@ -409,7 +216,7 @@ private struct TransactionsContentView: View {
         )
         return HStack(spacing: GranaTheme.Spacing.xxs) {
             Text("R$")
-                .foregroundStyle(.secondary)
+                .foregroundStyle(GranaTheme.Palette.muted)
             Spacer(minLength: GranaTheme.Spacing.xxs)
             Text(number)
         }
@@ -426,58 +233,137 @@ private struct TransactionsContentView: View {
     }
 }
 
-private struct TransactionsHeaderView: View {
+private struct TransactionTableRow: Identifiable {
+    let transaction: Transaction
+    let institutionName: String
+    let institutionKind: InstitutionKind
+    let accountName: String
+    let occurredAt: Date
+    let description: String
+    let categorySummary: String
+    let amount: Decimal
+
+    var id: UUID {
+        transaction.id
+    }
+}
+
+private enum TransactionsSortMapper {
+    static func map(_ comparators: [KeyPathComparator<TransactionTableRow>]) -> TransactionsTableSort {
+        guard let comparator = comparators.first else { return TransactionsTableSort.occurredAtDescending }
+
+        switch comparator.keyPath {
+        case \TransactionTableRow.institutionName:
+            return comparator.order == .forward
+                ? TransactionsTableSort.institutionAscending
+                : TransactionsTableSort.institutionDescending
+        case \TransactionTableRow.occurredAt:
+            return comparator.order == .forward
+                ? TransactionsTableSort.occurredAtAscending
+                : TransactionsTableSort.occurredAtDescending
+        case \TransactionTableRow.description:
+            return comparator.order == .forward
+                ? TransactionsTableSort.descriptionAscending
+                : TransactionsTableSort.descriptionDescending
+        case \TransactionTableRow.categorySummary:
+            return comparator.order == .forward
+                ? TransactionsTableSort.categoryAscending
+                : TransactionsTableSort.categoryDescending
+        case \TransactionTableRow.amount:
+            return comparator.order == .forward
+                ? TransactionsTableSort.amountAscending
+                : TransactionsTableSort.amountDescending
+        default:
+            return TransactionsTableSort.occurredAtDescending
+        }
+    }
+}
+
+private struct TransactionsFilterBar: View {
     @Binding var searchText: String
-    let countText: String
-    let onImport, onAdd: () -> Void
-    let bankControl, periodControl, categoryControl, kindControl: AnyView
+    let bankFilterName: String
+    let categoryFilterName: String
+    let periodFilterName: String
+    let kindFilterName: String
+    let availableBanks: [Institution]
+    let categories: [Category]
+    let onBankSelected: (TransactionBankFilter) -> Void
+    let onCategorySelected: (TransactionCategoryFilter) -> Void
+    let onPeriodSelected: (TransactionPeriodFilter) -> Void
+    let onKindSelected: (TransactionKindFilter) -> Void
 
     var body: some View {
-        HStack(alignment: .top, spacing: GranaTheme.Spacing.sm) {
-            VStack(alignment: .leading, spacing: GranaTheme.Spacing.md) {
-                HStack(alignment: .top, spacing: GranaTheme.Spacing.md) {
-                    VStack(alignment: .leading, spacing: GranaTheme.Spacing.xs) {
-                        HStack(spacing: GranaTheme.Spacing.sm) {
-                            Text("Transações")
-                                .font(GranaTheme.Typography.title3)
-                        }
-                        Text(countText)
-                            .font(GranaTheme.Typography.subheadline)
-                            .foregroundStyle(.secondary)
-                    }
-                    Spacer(minLength: GranaTheme.Spacing.none)
-                    searchBox
-                        .frame(width: 520)
-                }
-                HStack(spacing: GranaTheme.Spacing.sm) {
-                    bankControl
-                    categoryControl
-                    periodControl
-                    kindControl
-                    Spacer(minLength: GranaTheme.Spacing.none)
-                }
-            }
-            .padding(GranaTheme.Spacing.md)
-            .frame(maxWidth: .infinity, alignment: .leading)
-            .granaSurface(.subtle, cornerRadius: GranaTheme.Radius.panel)
+        VStack(alignment: .leading, spacing: GranaTheme.Spacing.sm) {
+            searchField
 
-            VStack(alignment: .leading, spacing: GranaTheme.Spacing.sm) {
-                actionsCard
+            HStack(alignment: .top, spacing: GranaTheme.Spacing.sm) {
+                filterMenu(
+                    title: "Banco",
+                    value: bankFilterName,
+                    icon: AppIcon.sidebarAccounts.systemImage
+                ) {
+                    Button("Todos bancos") {
+                        onBankSelected(.all)
+                    }
+                    Divider()
+                    ForEach(availableBanks) { institution in
+                        Button(institution.name) {
+                            onBankSelected(.bank(institution.id))
+                        }
+                    }
+                }
+
+                filterMenu(
+                    title: "Categoria",
+                    value: categoryFilterName,
+                    icon: "tag"
+                ) {
+                    Button("Todas categorias") {
+                        onCategorySelected(.all)
+                    }
+                    Divider()
+                    ForEach(categories) { category in
+                        Button(category.name) {
+                            onCategorySelected(.category(category.id))
+                        }
+                    }
+                }
+
+                filterMenu(
+                    title: "Período",
+                    value: periodFilterName,
+                    icon: "calendar"
+                ) {
+                    ForEach(TransactionPeriodFilter.allCases) { filter in
+                        Button(filter.name) {
+                            onPeriodSelected(filter)
+                        }
+                    }
+                }
+
+                filterMenu(
+                    title: "Tipo",
+                    value: kindFilterName,
+                    icon: "arrow.left.arrow.right.circle"
+                ) {
+                    ForEach(TransactionKindFilter.allCases) { filter in
+                        Button(filter.name) {
+                            onKindSelected(filter)
+                        }
+                    }
+                }
+
+                Spacer(minLength: GranaTheme.Spacing.none)
             }
-            .frame(width: 288)
         }
     }
 
-    private var searchBox: some View {
+    private var searchField: some View {
         HStack(spacing: GranaTheme.Spacing.sm) {
-            ZStack {
-                Circle()
-                    .fill(GranaTheme.Palette.teal.opacity(0.12))
-                    .frame(width: 28, height: 28)
-                Image(systemName: "magnifyingglass")
-                    .font(.system(size: GranaTheme.IconSize.small, weight: .semibold))
-                    .foregroundStyle(GranaTheme.Palette.tealDeep)
-            }
+            Image(systemName: "magnifyingglass")
+                .font(.system(size: GranaTheme.IconSize.small, weight: .semibold))
+                .foregroundStyle(GranaTheme.Palette.tealDeep)
+
             TextField("Descrição, categoria ou conta", text: $searchText)
                 .textFieldStyle(.plain)
                 .font(GranaTheme.Typography.subheadlineEmphasis)
@@ -487,14 +373,13 @@ private struct TransactionsHeaderView: View {
                     searchText = ""
                 } label: {
                     Image(systemName: "xmark.circle.fill")
-                        .foregroundStyle(.secondary)
+                        .foregroundStyle(GranaTheme.Palette.muted)
                 }
                 .buttonStyle(.plain)
             }
         }
-        .padding(.horizontal, GranaTheme.Spacing.md)
-        .padding(.vertical, GranaTheme.Spacing.sm)
-        .frame(height: 52)
+        .padding(.horizontal, GranaTheme.Spacing.sm)
+        .frame(maxWidth: .infinity, minHeight: 40, alignment: .leading)
         .background(
             RoundedRectangle(cornerRadius: 14, style: .continuous)
                 .fill(GranaTheme.Palette.paper.opacity(0.92))
@@ -505,32 +390,48 @@ private struct TransactionsHeaderView: View {
         }
     }
 
-    private var actionsCard: some View {
-        VStack(spacing: GranaTheme.Spacing.xs) {
-            action("Adicionar", AppIcon.add.systemImage, onAdd, true)
-            action("Importar", AppIcon.importFile.systemImage, onImport, false)
-        }
-        .padding(GranaTheme.Spacing.md)
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .granaSurface(.subtle, cornerRadius: GranaTheme.Radius.panel)
-    }
-
-    @ViewBuilder private func action(
-        _ title: String,
-        _ icon: String,
-        _ run: @escaping () -> Void,
-        _ primary: Bool
+    private func filterMenu<Content: View>(
+        title: String,
+        value: String,
+        icon: String,
+        @ViewBuilder content: () -> Content
     ) -> some View {
-        if primary {
-            Button(action: run) {
-                Label(title, systemImage: icon)
+        VStack(alignment: .leading, spacing: GranaTheme.Spacing.xxs) {
+            Text(title)
+                .font(GranaTheme.Typography.caption2Emphasis)
+                .foregroundStyle(GranaTheme.Palette.muted)
+
+            Menu {
+                content()
+            } label: {
+                HStack(spacing: GranaTheme.Spacing.sm) {
+                    Image(systemName: icon)
+                        .font(.system(size: GranaTheme.IconSize.small, weight: .semibold))
+                        .foregroundStyle(GranaTheme.Palette.tealDeep)
+
+                    Text(value)
+                        .font(GranaTheme.Typography.footnoteEmphasis)
+                        .foregroundStyle(GranaTheme.Palette.ink)
+                        .lineLimit(1)
+
+                    Spacer(minLength: GranaTheme.Spacing.none)
+
+                    Image(systemName: "chevron.down")
+                        .font(.system(size: GranaTheme.IconSize.micro, weight: .semibold))
+                        .foregroundStyle(GranaTheme.Palette.muted)
+                }
+                .padding(.horizontal, GranaTheme.Spacing.sm)
+                .frame(minWidth: 180, minHeight: 40, alignment: .leading)
+                .background(
+                    RoundedRectangle(cornerRadius: 14, style: .continuous)
+                        .fill(GranaTheme.Palette.paper.opacity(0.92))
+                )
+                .overlay {
+                    RoundedRectangle(cornerRadius: 14, style: .continuous)
+                        .stroke(GranaTheme.Palette.line, lineWidth: 1)
+                }
             }
-            .buttonStyle(GranaPrimaryButtonStyle())
-        } else {
-            Button(action: run) {
-                Label(title, systemImage: icon)
-            }
-            .buttonStyle(GranaSecondaryButtonStyle())
+            .buttonStyle(.plain)
         }
     }
 }

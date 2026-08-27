@@ -136,13 +136,8 @@ struct TransactionsFeatureTests {
     @Test("Carrega snapshot remoto e lookups auxiliares")
     func appliesSnapshotAndLookups() {
         let data = makeTransactionsFeatureFixture()
-        let cursor = TransactionRemotePageCursor(
-            occurredAt: data.transaction.occurredAt,
-            createdAt: data.transaction.createdAt,
-            id: data.transaction.id
-        )
         let snapshot = makeTransactionsSnapshot(
-            page: TransactionRemotePage(transactions: [data.transaction], nextCursor: cursor),
+            page: TransactionRemotePage(transactions: [data.transaction], nextCursor: nil),
             accounts: [data.account],
             institutions: [data.institution],
             categories: [data.category]
@@ -153,29 +148,6 @@ struct TransactionsFeatureTests {
 
         #expect(state.transactionsCountText() == "1 transações")
         #expect(state.accountName(for: data.transaction).contains("Banco Inter"))
-        #expect(state.hasMoreTransactions == true)
-    }
-
-    @Test("Carrega página seguinte com cursor explícito")
-    func appendsNextPage() {
-        let data = makeTransactionsFeatureFixture()
-        let second = makeTransaction(
-            id: UUID(),
-            accountId: data.account.id,
-            categoryId: data.category.id,
-            amount: 80,
-            occurredAt: data.transaction.occurredAt.addingTimeInterval(-60),
-            createdAt: data.transaction.createdAt.addingTimeInterval(-60)
-        )
-        var initialState = TransactionsFeature.State()
-        initialState.transactions = [data.transaction]
-        initialState.hasMoreTransactions = true
-        let nextPage = TransactionRemotePage(transactions: [second], nextCursor: nil)
-
-        initialState.append(nextPage)
-
-        #expect(initialState.transactions.map(\.id) == [data.transaction.id, second.id])
-        #expect(initialState.hasMoreTransactions == false)
     }
 
     @Test("Mensagem de exclusão mostra efeitos de cartão e estornos vinculados")
@@ -222,18 +194,124 @@ struct TransactionsFeatureTests {
         )
         let recorder = TransactionDeleteRecorder()
         let client = TransactionsClient(
-            loadSnapshot: { refreshed },
-            loadNextPage: { _ in .empty },
+            loadSnapshot: { _ in refreshed },
             create: { _ in },
             update: { _, _ in },
             delete: { id in await recorder.record(id) }
         )
 
         try await client.delete(data.transaction.id)
-        let snapshot = try await client.loadSnapshot()
+        let snapshot = try await client.loadSnapshot(TransactionsTableQuery())
 
         #expect(await recorder.deletedIds() == [data.transaction.id])
         #expect(snapshot.page.transactions.isEmpty)
+    }
+
+    @Test("Query de transações filtra por banco e tipo")
+    func queryFiltersByBankAndKind() {
+        let institutionA = makeRemoteInstitution(
+            id: UUID(),
+            code: "077",
+            name: "Banco Inter",
+            kind: .inter,
+            accountTypes: [.checking]
+        )
+        let institutionB = makeRemoteInstitution(
+            id: UUID(),
+            code: "102",
+            name: "XP",
+            kind: .xp,
+            accountTypes: [.checking]
+        )
+        let expenseCategory = makeRemoteCategory(
+            id: UUID(),
+            name: "Mercado",
+            kind: .expense,
+            slug: "mercado"
+        )
+        let incomeCategory = makeRemoteCategory(
+            id: UUID(),
+            name: "Salário",
+            kind: .income,
+            slug: "salario"
+        )
+        let accountA = makeRemoteCheckingAccount(id: UUID(), institutionId: institutionA.id, balance: 0)
+        let accountB = makeRemoteCheckingAccount(id: UUID(), institutionId: institutionB.id, balance: 0)
+        let accountsById = [
+            accountA.id: accountA,
+            accountB.id: accountB,
+        ]
+        let categoriesById = [
+            expenseCategory.id: expenseCategory,
+            incomeCategory.id: incomeCategory,
+        ]
+        let query = TransactionsTableQuery(
+            kindFilter: .expense,
+            categoryFilter: .all,
+            periodFilter: .all,
+            bankFilter: .bank(institutionA.id),
+            sort: .occurredAtDescending
+        )
+
+        let matchesExpense = query.matches(
+            makeTransaction(id: UUID(), accountId: accountA.id, categoryId: expenseCategory.id, amount: 40),
+            accountsById: accountsById,
+            categoriesById: categoriesById
+        )
+        let matchesOtherBank = query.matches(
+            makeTransaction(id: UUID(), accountId: accountB.id, categoryId: expenseCategory.id, amount: 40),
+            accountsById: accountsById,
+            categoriesById: categoriesById
+        )
+        let matchesOtherKind = query.matches(
+            makeTransaction(id: UUID(), accountId: accountA.id, categoryId: incomeCategory.id, amount: 40),
+            accountsById: accountsById,
+            categoriesById: categoriesById
+        )
+
+        #expect(matchesExpense)
+        #expect(!matchesOtherBank)
+        #expect(!matchesOtherKind)
+    }
+
+    @Test("Query de transações ordena por valor decrescente com desempate estável")
+    func querySortsByAmountDescending() {
+        let now = Date()
+        let account = makeRemoteCheckingAccount(id: UUID(), institutionId: UUID(), balance: 0)
+        let category = makeRemoteCategory(
+            id: UUID(),
+            name: "Mercado",
+            kind: .expense,
+            slug: "mercado"
+        )
+        let query = TransactionsTableQuery(sort: .amountDescending)
+        let accountsById = [account.id: account]
+        let categoriesById = [category.id: category]
+
+        let higher = makeTransaction(
+            id: UUID(),
+            accountId: account.id,
+            categoryId: category.id,
+            amount: 90,
+            occurredAt: now
+        )
+        let lower = makeTransaction(
+            id: UUID(),
+            accountId: account.id,
+            categoryId: category.id,
+            amount: 25,
+            occurredAt: now.addingTimeInterval(-60)
+        )
+
+        #expect(
+            query.areInIncreasingOrder(
+                higher,
+                lower,
+                accountsById: accountsById,
+                institutionsById: [:],
+                categoriesById: categoriesById
+            )
+        )
     }
 }
 

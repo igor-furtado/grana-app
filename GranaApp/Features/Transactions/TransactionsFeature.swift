@@ -35,6 +35,14 @@ enum TransactionKindFilter: CaseIterable, Equatable, Identifiable {
             || self == .income && kind == .income
             || self == .transfer && kind == .transfer
     }
+
+    func matches(_ transaction: Transaction, categoriesById: [UUID: Category]) -> Bool {
+        let kind = categoriesById[transaction.categoryId]?.kind
+        return self == .all
+            || self == .expense && kind == .expense
+            || self == .income && kind == .income
+            || self == .transfer && kind == .transfer
+    }
 }
 
 enum TransactionCategoryFilter: Equatable {
@@ -107,27 +115,175 @@ enum TransactionBankFilter: Equatable {
         }
         return true
     }
+
+    func matches(_ transaction: Transaction, accountsById: [UUID: Account]) -> Bool {
+        if case let .bank(id) = self {
+            return accountsById[transaction.accountId]?.institutionId == id
+        }
+        return true
+    }
+}
+
+enum TransactionsTableSort: Equatable {
+    case institutionAscending
+    case institutionDescending
+    case occurredAtAscending
+    case occurredAtDescending
+    case descriptionAscending
+    case descriptionDescending
+    case categoryAscending
+    case categoryDescending
+    case amountAscending
+    case amountDescending
+}
+
+struct TransactionsTableQuery: Equatable {
+    var kindFilter: TransactionKindFilter = .all
+    var categoryFilter: TransactionCategoryFilter = .all
+    var periodFilter: TransactionPeriodFilter = .month
+    var bankFilter: TransactionBankFilter = .all
+    var sort: TransactionsTableSort = .occurredAtDescending
+
+    func matches(
+        _ transaction: Transaction,
+        accountsById: [UUID: Account],
+        categoriesById: [UUID: Category],
+        calendar: Calendar = .current,
+        today: Date = Date()
+    ) -> Bool {
+        if !kindFilter.matches(transaction, categoriesById: categoriesById) {
+            return false
+        }
+        if !periodFilter.matches(transaction, calendar: calendar, today: today) {
+            return false
+        }
+        if !bankFilter.matches(transaction, accountsById: accountsById) {
+            return false
+        }
+        if !categoryFilter.matches(transaction) {
+            return false
+        }
+        return true
+    }
+
+    func areInIncreasingOrder(
+        _ lhs: Transaction,
+        _ rhs: Transaction,
+        accountsById: [UUID: Account],
+        institutionsById: [UUID: Institution],
+        categoriesById: [UUID: Category]
+    ) -> Bool {
+        switch sort {
+        case .institutionAscending:
+            compareStrings(
+                institutionName(for: lhs, accountsById: accountsById, institutionsById: institutionsById),
+                institutionName(for: rhs, accountsById: accountsById, institutionsById: institutionsById),
+                lhs: lhs,
+                rhs: rhs
+            )
+        case .institutionDescending:
+            compareStrings(
+                institutionName(for: rhs, accountsById: accountsById, institutionsById: institutionsById),
+                institutionName(for: lhs, accountsById: accountsById, institutionsById: institutionsById),
+                lhs: lhs,
+                rhs: rhs
+            )
+        case .occurredAtAscending:
+            compareDates(lhs.occurredAt, rhs.occurredAt, lhs: lhs, rhs: rhs, reversed: false)
+        case .occurredAtDescending:
+            compareDates(lhs.occurredAt, rhs.occurredAt, lhs: lhs, rhs: rhs, reversed: true)
+        case .descriptionAscending:
+            compareStrings(lhs.description, rhs.description, lhs: lhs, rhs: rhs)
+        case .descriptionDescending:
+            compareStrings(rhs.description, lhs.description, lhs: lhs, rhs: rhs)
+        case .categoryAscending:
+            compareStrings(
+                categoryName(for: lhs, categoriesById: categoriesById),
+                categoryName(for: rhs, categoriesById: categoriesById),
+                lhs: lhs,
+                rhs: rhs
+            )
+        case .categoryDescending:
+            compareStrings(
+                categoryName(for: rhs, categoriesById: categoriesById),
+                categoryName(for: lhs, categoriesById: categoriesById),
+                lhs: lhs,
+                rhs: rhs
+            )
+        case .amountAscending:
+            compareAmounts(lhs.amount, rhs.amount, lhs: lhs, rhs: rhs, reversed: false)
+        case .amountDescending:
+            compareAmounts(lhs.amount, rhs.amount, lhs: lhs, rhs: rhs, reversed: true)
+        }
+    }
+
+    private func institutionName(
+        for transaction: Transaction,
+        accountsById: [UUID: Account],
+        institutionsById: [UUID: Institution]
+    ) -> String {
+        guard let account = accountsById[transaction.accountId],
+              let institutionId = account.institutionId
+        else {
+            return ""
+        }
+        return institutionsById[institutionId]?.name ?? ""
+    }
+
+    private func categoryName(
+        for transaction: Transaction,
+        categoriesById: [UUID: Category]
+    ) -> String {
+        categoriesById[transaction.categoryId]?.name ?? ""
+    }
+
+    private func compareStrings(
+        _ lhsValue: String,
+        _ rhsValue: String,
+        lhs: Transaction,
+        rhs: Transaction
+    ) -> Bool {
+        let order = lhsValue.localizedStandardCompare(rhsValue)
+        if order == .orderedSame {
+            return compareDates(lhs.occurredAt, rhs.occurredAt, lhs: lhs, rhs: rhs, reversed: true)
+        }
+        return order == .orderedAscending
+    }
+
+    private func compareDates(
+        _ lhsValue: Date,
+        _ rhsValue: Date,
+        lhs: Transaction,
+        rhs: Transaction,
+        reversed: Bool
+    ) -> Bool {
+        if lhsValue == rhsValue {
+            return lhs.createdAt == rhs.createdAt
+                ? lhs.id.uuidString < rhs.id.uuidString
+                : lhs.createdAt > rhs.createdAt
+        }
+        return reversed ? lhsValue > rhsValue : lhsValue < rhsValue
+    }
+
+    private func compareAmounts(
+        _ lhsValue: Decimal,
+        _ rhsValue: Decimal,
+        lhs: Transaction,
+        rhs: Transaction,
+        reversed: Bool
+    ) -> Bool {
+        if lhsValue == rhsValue {
+            return compareDates(lhs.occurredAt, rhs.occurredAt, lhs: lhs, rhs: rhs, reversed: true)
+        }
+        return reversed ? lhsValue > rhsValue : lhsValue < rhsValue
+    }
 }
 
 @Reducer
 struct TransactionsFeature {
     @Reducer
     enum Destination {
-        case addForm(TransactionFormFeature)
         case editForm(TransactionFormFeature)
-        case importFlow(ImportFlowFeature)
-    }
-
-    @Reducer
-    struct ImportFlowFeature {
-        @ObservableState
-        struct State: Equatable {}
-
-        enum Action: Equatable {}
-
-        var body: some Reducer<State, Action> {
-            EmptyReducer()
-        }
     }
 
     @CasePathable
@@ -146,11 +302,7 @@ struct TransactionsFeature {
         var statements: [Statement] = []
         var statementPayments: [StatementPayment] = []
         var isLoading = false
-        var isLoadingMoreTransactions = false
         var hasLoaded = false
-        var hasMoreTransactions = false
-        var nextCursor: TransactionRemotePageCursor?
-        var lastErrorMessage: String?
         var supportsAdvancedCardRules = true
 
         var searchText = ""
@@ -158,6 +310,7 @@ struct TransactionsFeature {
         var categoryFilter: TransactionCategoryFilter = .all
         var periodFilter: TransactionPeriodFilter = .month
         var bankFilter: TransactionBankFilter = .all
+        var tableSort: TransactionsTableSort = .occurredAtDescending
         var presentedHeaderFilter: TransactionsHeaderPresentedFilter?
         var pendingDelete: Transaction?
 
@@ -190,18 +343,6 @@ struct TransactionsFeature {
             let trimmed = searchText.trimmingCharacters(in: .whitespacesAndNewlines)
             let needle = trimmed.lowercased()
             return transactions.filter { transaction in
-                if !kindFilter.matches(transaction, feature: self) {
-                    return false
-                }
-                if !periodFilter.matches(transaction, calendar: calendar, today: today) {
-                    return false
-                }
-                if !bankFilter.matches(transaction, feature: self) {
-                    return false
-                }
-                if !categoryFilter.matches(transaction) {
-                    return false
-                }
                 guard !needle.isEmpty else { return true }
                 if transaction.description.lowercased().contains(needle) { return true }
                 if categorySummary(for: transaction).lowercased().contains(needle) {
@@ -212,6 +353,16 @@ struct TransactionsFeature {
                 }
                 return false
             }
+        }
+
+        func loadQuery() -> TransactionsTableQuery {
+            TransactionsTableQuery(
+                kindFilter: kindFilter,
+                categoryFilter: categoryFilter,
+                periodFilter: periodFilter,
+                bankFilter: bankFilter,
+                sort: tableSort
+            )
         }
 
         func transactionsCountText(calendar: Calendar = .current, today: Date = Date()) -> String {
@@ -243,10 +394,10 @@ struct TransactionsFeature {
         func icon(for categoryId: UUID) -> CategoryIcon? {
             guard let selectedCategory = category(for: categoryId) else { return nil }
             if let icon = selectedCategory.icon { return icon }
-            if let parentId = selectedCategory.parentId,
-               let parent = category(for: parentId)
-            {
-                return parent.icon
+            if let parentId = selectedCategory.parentId {
+                if let parent = category(for: parentId) {
+                    return parent.icon
+                }
             }
             return nil
         }
@@ -268,10 +419,10 @@ struct TransactionsFeature {
                 return false
             }
 
-            if let destinationAccountId = transaction.destinationAccountId,
-               account(for: destinationAccountId)?.type == .creditCard
-            {
-                return false
+            if let destinationAccountId = transaction.destinationAccountId {
+                if account(for: destinationAccountId)?.type == .creditCard {
+                    return false
+                }
             }
 
             return true
@@ -337,8 +488,6 @@ struct TransactionsFeature {
 
         mutating func apply(_ snapshot: TransactionsSnapshot) {
             transactions = snapshot.page.transactions
-            nextCursor = snapshot.page.nextCursor
-            hasMoreTransactions = snapshot.page.nextCursor != nil
             accounts = snapshot.accounts
             bankDetails = snapshot.bankDetails
             creditCards = snapshot.creditCards
@@ -346,14 +495,6 @@ struct TransactionsFeature {
             statementPayments = snapshot.statementPayments
             categories = snapshot.categories
             institutions = snapshot.institutions
-            lastErrorMessage = nil
-        }
-
-        mutating func append(_ page: TransactionRemotePage) {
-            transactions.append(contentsOf: page.transactions)
-            nextCursor = page.nextCursor
-            hasMoreTransactions = page.nextCursor != nil
-            lastErrorMessage = nil
         }
     }
 
@@ -362,20 +503,15 @@ struct TransactionsFeature {
         case task
         case refresh
         case snapshotLoaded(TransactionsSnapshot)
-        case loadFailed(String)
-        case loadMoreButtonTapped
-        case nextPageLoaded(TransactionRemotePage)
-        case nextPageFailed(String)
+        case loadFailed
         case headerFilterPresented(TransactionsHeaderPresentedFilter?)
         case periodFilterSelected(TransactionPeriodFilter)
         case kindFilterSelected(TransactionKindFilter)
         case bankFilterSelected(TransactionBankFilter)
         case categoryFilterSelected(TransactionCategoryFilter)
-        case addButtonTapped
-        case importButtonTapped
+        case tableSortSelected(TransactionsTableSort)
         case editButtonTapped(Transaction)
         case deleteButtonTapped(Transaction)
-        case mutationFailed(String)
         case destination(PresentationAction<Destination.Action>)
         case confirmationDialog(PresentationAction<ConfirmationDialog>)
     }
@@ -404,38 +540,12 @@ struct TransactionsFeature {
                 state.hasLoaded = true
                 return .none
 
-            case let .loadFailed(message):
+            case .loadFailed:
                 state.transactions = []
                 state.statements = []
                 state.statementPayments = []
-                state.nextCursor = nil
-                state.hasMoreTransactions = false
                 state.isLoading = false
                 state.hasLoaded = true
-                state.lastErrorMessage = message
-                return .none
-
-            case .loadMoreButtonTapped:
-                guard let nextCursor = state.nextCursor, !state.isLoadingMoreTransactions else { return .none }
-                state.isLoadingMoreTransactions = true
-                return .run { send in
-                    do {
-                        let page = try await transactionsClient.loadNextPage(nextCursor)
-                        await send(.nextPageLoaded(page))
-                    } catch {
-                        await noticeClient.report(error, nil)
-                        await send(.nextPageFailed(error.localizedDescription))
-                    }
-                }
-
-            case let .nextPageLoaded(page):
-                state.append(page)
-                state.isLoadingMoreTransactions = false
-                return .none
-
-            case let .nextPageFailed(message):
-                state.isLoadingMoreTransactions = false
-                state.lastErrorMessage = message
                 return .none
 
             case let .headerFilterPresented(filter):
@@ -445,30 +555,26 @@ struct TransactionsFeature {
             case let .periodFilterSelected(filter):
                 state.periodFilter = filter
                 state.presentedHeaderFilter = nil
-                return .none
+                return .send(.refresh)
 
             case let .kindFilterSelected(filter):
                 state.kindFilter = filter
                 state.presentedHeaderFilter = nil
-                return .none
+                return .send(.refresh)
 
             case let .bankFilterSelected(filter):
                 state.bankFilter = filter
                 state.presentedHeaderFilter = nil
-                return .none
+                return .send(.refresh)
 
             case let .categoryFilterSelected(filter):
                 state.categoryFilter = filter
                 state.presentedHeaderFilter = nil
-                return .none
+                return .send(.refresh)
 
-            case .addButtonTapped:
-                state.destination = .addForm(state.formState())
-                return .none
-
-            case .importButtonTapped:
-                state.destination = .importFlow(.init())
-                return .none
+            case let .tableSortSelected(sort):
+                state.tableSort = sort
+                return .send(.refresh)
 
             case let .editButtonTapped(transaction):
                 state.destination = .editForm(state.formState(existing: transaction))
@@ -491,17 +597,11 @@ struct TransactionsFeature {
                 }
                 return .none
 
-            case let .mutationFailed(message):
-                state.lastErrorMessage = message
-                return .none
-
-            case .destination(.presented(.addForm(.delegate(.cancel)))),
-                 .destination(.presented(.editForm(.delegate(.cancel)))):
+            case .destination(.presented(.editForm(.delegate(.cancel)))):
                 state.destination = nil
                 return .none
 
-            case .destination(.presented(.addForm(.delegate(.saved)))),
-                 .destination(.presented(.editForm(.delegate(.saved)))):
+            case .destination(.presented(.editForm(.delegate(.saved)))):
                 state.destination = nil
                 return .send(.refresh)
 
@@ -510,15 +610,16 @@ struct TransactionsFeature {
 
             case .confirmationDialog(.presented(.deleteConfirmed)):
                 guard let transaction = state.pendingDelete else { return .none }
+                let query = state.loadQuery()
                 state.pendingDelete = nil
                 return .run { send in
                     do {
                         try await transactionsClient.delete(transaction.id)
-                        let snapshot = try await transactionsClient.loadSnapshot()
+                        let snapshot = try await transactionsClient.loadSnapshot(query)
                         await send(.snapshotLoaded(snapshot))
                     } catch {
                         await noticeClient.report(error, nil)
-                        await send(.mutationFailed(error.localizedDescription))
+                        await send(.loadFailed)
                     }
                 }
 
@@ -533,13 +634,14 @@ struct TransactionsFeature {
 
     private func load(_ state: inout State) -> Effect<Action> {
         state.isLoading = true
+        let query = state.loadQuery()
         return .run { send in
             do {
-                let snapshot = try await transactionsClient.loadSnapshot()
+                let snapshot = try await transactionsClient.loadSnapshot(query)
                 await send(.snapshotLoaded(snapshot))
             } catch {
                 await noticeClient.report(error, nil)
-                await send(.loadFailed(error.localizedDescription))
+                await send(.loadFailed)
             }
         }
     }

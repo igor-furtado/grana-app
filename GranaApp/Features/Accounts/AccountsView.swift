@@ -6,8 +6,7 @@ struct AccountsView: View {
     @State private var store: AccountStore?
     @State private var formMode: FormMode?
     @State private var showArchived = false
-    @State private var selectedAccountId: UUID?
-    @State private var showDeleteConfirm = false
+    @State private var pendingDeleteAccount: Account?
     @State private var sortOrder = [
         KeyPathComparator(\AccountTableRow.displayName),
     ]
@@ -70,27 +69,28 @@ struct AccountsView: View {
         }
         .confirmationDialog(
             "Apagar conta?",
-            isPresented: $showDeleteConfirm,
-            titleVisibility: .visible
-        ) {
+            isPresented: Binding(
+                get: { pendingDeleteAccount != nil },
+                set: { if !$0 { pendingDeleteAccount = nil } }
+            ),
+            titleVisibility: .visible,
+            presenting: pendingDeleteAccount
+        ) { account in
             Button("Apagar", role: .destructive) {
-                guard let id = selectedAccountId else { return }
                 Task {
                     do {
-                        try await store.delete(id: id)
+                        try await store.delete(id: account.id)
+                        pendingDeleteAccount = nil
                     } catch {
                         NoticeCenter.shared.report(error)
                     }
                 }
             }
-            Button("Cancelar", role: .cancel) {}
-        } message: {
+            Button("Cancelar", role: .cancel) { pendingDeleteAccount = nil }
+        } message: { _ in
             Text(
                 "A conta só será apagada se não houver transações, faturas ou lotes de importação vinculados."
             )
-        }
-        .onChange(of: rows.map(\.id)) { _, ids in
-            reconcileSelection(visibleIds: ids)
         }
     }
 
@@ -111,40 +111,28 @@ struct AccountsView: View {
     }
 
     private func tableLayout(store: AccountStore, rows: [AccountTableRow]) -> some View {
-        HStack(alignment: .top, spacing: GranaTheme.Spacing.md) {
-            AccountsMainPanel(
-                rows: rows,
-                selectedAccountId: $selectedAccountId,
-                sortOrder: $sortOrder,
-                institutionFilter: $institutionFilter,
-                searchText: $searchText,
-                showArchived: $showArchived
-            )
-            .frame(maxWidth: .infinity, maxHeight: .infinity)
-
-            AccountsSidebar(
-                row: selectedRow(in: rows),
-                onEdit: {
-                    guard let account = selectedRow(in: rows)?.account else { return }
-                    formMode = .edit(account)
-                },
-                onToggleArchive: {
-                    guard let account = selectedRow(in: rows)?.account else { return }
-                    Task {
-                        do {
-                            try await store.setArchived(account, archived: !account.archived)
-                        } catch {
-                            NoticeCenter.shared.report(error)
-                        }
+        AccountsMainPanel(
+            rows: rows,
+            sortOrder: $sortOrder,
+            institutionFilter: $institutionFilter,
+            searchText: $searchText,
+            showArchived: $showArchived,
+            onEdit: { account in
+                formMode = .edit(account)
+            },
+            onToggleArchive: { account in
+                Task {
+                    do {
+                        try await store.setArchived(account, archived: !account.archived)
+                    } catch {
+                        NoticeCenter.shared.report(error)
                     }
-                },
-                onDelete: {
-                    guard selectedRow(in: rows) != nil else { return }
-                    showDeleteConfirm = true
                 }
-            )
-            .frame(width: 320)
-        }
+            },
+            onDelete: { account in
+                pendingDeleteAccount = account
+            }
+        )
     }
 
     private var hasArchivedAccount: Bool {
@@ -172,11 +160,6 @@ struct AccountsView: View {
                     || row.institutionName.localizedCaseInsensitiveContains(searchText)
             }
             .sorted(using: sortOrder)
-    }
-
-    private func reconcileSelection(visibleIds: [UUID]) {
-        guard let current = selectedAccountId, !visibleIds.contains(current) else { return }
-        selectedAccountId = nil
     }
 
     private var emptyState: some View {
@@ -211,11 +194,6 @@ struct AccountsView: View {
         }
     }
 
-    private func selectedRow(in rows: [AccountTableRow]) -> AccountTableRow? {
-        guard let selectedAccountId else { return nil }
-        return rows.first(where: { $0.id == selectedAccountId })
-    }
-
     private func editingAccount(from mode: FormMode) -> Account? {
         if case let .edit(account) = mode { return account }
         return nil
@@ -244,17 +222,19 @@ private struct AccountTableRow: Identifiable {
 
 private struct AccountsMainPanel: View {
     let rows: [AccountTableRow]
-    @Binding var selectedAccountId: UUID?
     @Binding var sortOrder: [KeyPathComparator<AccountTableRow>]
     @Binding var institutionFilter: String
     @Binding var searchText: String
     @Binding var showArchived: Bool
+    let onEdit: (Account) -> Void
+    let onToggleArchive: (Account) -> Void
+    let onDelete: (Account) -> Void
 
     var body: some View {
         VStack(alignment: .leading, spacing: GranaTheme.Spacing.none) {
             panelHeader
 
-            GranaTable(rows, selection: $selectedAccountId, sortOrder: $sortOrder) {
+            GranaTable(rows, sortOrder: $sortOrder) {
                 TableColumn("Instituição", value: \.institutionName) { (row: AccountTableRow) in
                     HStack(spacing: GranaTheme.Spacing.sm) {
                         InstitutionIcon(kind: row.institutionKind, size: 24)
@@ -288,6 +268,42 @@ private struct AccountsMainPanel: View {
                         .foregroundStyle(row.account.archived ? GranaTheme.Palette.muted : GranaTheme.Palette.tealDeep)
                 }
                 .width(min: 92, ideal: 110, max: 132)
+
+                TableColumn("Ações") { row in
+                    HStack(spacing: GranaTheme.Spacing.sm) {
+                        Button {
+                            onEdit(row.account)
+                        } label: {
+                            Image(systemName: AppIcon.edit.systemImage)
+                                .foregroundStyle(GranaTheme.Palette.muted)
+                        }
+                        .buttonStyle(.borderless)
+                        .help("Editar conta")
+
+                        Button {
+                            onToggleArchive(row.account)
+                        } label: {
+                            Image(
+                                systemName: row.account.archived
+                                    ? AppIcon.unarchive.systemImage
+                                    : AppIcon.archive.systemImage
+                            )
+                            .foregroundStyle(GranaTheme.Palette.muted)
+                        }
+                        .buttonStyle(.borderless)
+                        .help(row.account.archived ? "Desarquivar conta" : "Arquivar conta")
+
+                        Button(role: .destructive) {
+                            onDelete(row.account)
+                        } label: {
+                            Image(systemName: AppIcon.delete.systemImage)
+                                .foregroundStyle(GranaTheme.Palette.muted)
+                        }
+                        .buttonStyle(.borderless)
+                        .help("Apagar conta")
+                    }
+                }
+                .width(min: 118, ideal: 132, max: 156)
             } filterBar: {
                 AccountsFilterBar(
                     institutionOptions: institutionOptions,
@@ -449,91 +465,6 @@ private struct AccountsFilterBar: View {
         .overlay {
             RoundedRectangle(cornerRadius: 14, style: .continuous)
                 .stroke(GranaTheme.Palette.line, lineWidth: 1)
-        }
-    }
-}
-
-private struct AccountsSidebar: View {
-    let row: AccountTableRow?
-    let onEdit: () -> Void
-    let onToggleArchive: () -> Void
-    let onDelete: () -> Void
-
-    var body: some View {
-        if let row {
-            VStack(alignment: .leading, spacing: GranaTheme.Spacing.md) {
-                HStack(alignment: .top, spacing: GranaTheme.Spacing.sm) {
-                    InstitutionIcon(kind: row.institutionKind, size: 46)
-
-                    VStack(alignment: .leading, spacing: GranaTheme.Spacing.xxs) {
-                        Text("Conta selecionada")
-                            .font(GranaTheme.Typography.caption1Emphasis)
-                            .foregroundStyle(GranaTheme.Palette.muted)
-                        Text(row.displayName)
-                            .font(GranaTheme.Typography.headline)
-                            .foregroundStyle(GranaTheme.Palette.ink)
-                        Text(row.institutionName)
-                            .font(GranaTheme.Typography.footnote)
-                            .foregroundStyle(GranaTheme.Palette.muted)
-                    }
-                }
-
-                VStack(alignment: .leading, spacing: GranaTheme.Spacing.xs) {
-                    accountDetailLine(
-                        "Saldo atual",
-                        row.currentBalance.formatted(.currency(code: row.account.currency))
-                    )
-                    accountDetailLine("Status", row.statusText)
-                    accountDetailLine("Moeda", row.account.currency)
-                }
-
-                Button(action: onEdit) {
-                    Label("Editar conta", systemImage: AppIcon.edit.systemImage)
-                        .frame(maxWidth: .infinity)
-                }
-                .buttonStyle(GranaPrimaryButtonStyle())
-
-                Button(action: onToggleArchive) {
-                    Label(
-                        row.account.archived ? "Desarquivar conta" : "Arquivar conta",
-                        systemImage: row.account.archived ? AppIcon.unarchive.systemImage : AppIcon.archive.systemImage
-                    )
-                    .frame(maxWidth: .infinity)
-                }
-                .buttonStyle(GranaSecondaryButtonStyle())
-
-                Button(role: .destructive, action: onDelete) {
-                    Label("Apagar conta", systemImage: AppIcon.delete.systemImage)
-                        .frame(maxWidth: .infinity)
-                }
-                .buttonStyle(GranaSecondaryButtonStyle())
-                .foregroundStyle(GranaTheme.Palette.red)
-            }
-            .padding(GranaTheme.Spacing.md)
-            .granaSurface(.solid, cornerRadius: GranaTheme.Radius.card)
-        } else {
-            VStack(alignment: .leading, spacing: GranaTheme.Spacing.md) {
-                Text("Selecione uma conta")
-                    .font(GranaTheme.Typography.headline)
-                    .foregroundStyle(GranaTheme.Palette.ink)
-                Text("A inspeção lateral concentra o saldo atual e as ações administrativas da conta.")
-                    .font(GranaTheme.Typography.footnote)
-                    .foregroundStyle(GranaTheme.Palette.muted)
-            }
-            .padding(GranaTheme.Spacing.md)
-            .granaSurface(.subtle, cornerRadius: GranaTheme.Radius.card)
-        }
-    }
-
-    private func accountDetailLine(_ label: String, _ value: String) -> some View {
-        VStack(alignment: .leading, spacing: GranaTheme.Spacing.xxs) {
-            Text(label)
-                .font(GranaTheme.Typography.caption2Emphasis)
-                .foregroundStyle(GranaTheme.Palette.muted)
-            Text(value)
-                .font(GranaTheme.Typography.footnoteEmphasis)
-                .foregroundStyle(GranaTheme.Palette.ink)
-                .lineLimit(2)
         }
     }
 }
