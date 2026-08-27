@@ -150,7 +150,7 @@ struct ImportWizardFeature {
         var csv: CSVImportFeature.State?
         var categorization = CategorizationFeature.State()
 
-        static let supportedExtensions: Set<String> = ImportStore.supportedExtensions
+        static let supportedExtensions: Set<String> = ImportFeatureConfiguration.supportedExtensions
     }
 
     enum Action: Equatable {

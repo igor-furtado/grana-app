@@ -1,3 +1,4 @@
+import ComposableArchitecture
 import Foundation
 
 @MainActor
@@ -11,6 +12,7 @@ final class AppEnvironment {
     let container: AppContainer
     let authService: AuthService
     let setupError: Error?
+    let importFeatureStore: StoreOf<ImportFeature>
 
     private let profileBootstrapper: any ProfileBootstrapRepositoryProtocol
     private var hasRestoredSession = false
@@ -41,6 +43,12 @@ final class AppEnvironment {
         self.authService = authService
         self.profileBootstrapper = profileBootstrapper
         self.setupError = error
+        self.importFeatureStore = Store(initialState: ImportFeature.State()) {
+            ImportFeature()
+        } withDependencies: {
+            $0.importClient = .live(container: container)
+            $0.categorizationClient = .live(container: container)
+        }
     }
 
     var canShowFinancialData: Bool {

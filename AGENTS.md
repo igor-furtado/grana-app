@@ -98,7 +98,7 @@ SwiftUI View -> @Observable Store -> Repository -> Supabase backend
 
 ## Importação e classificação
 
-- `ImportStore.supportedExtensions` é a fonte dos formatos aceitos.
+- `ImportFeatureConfiguration.supportedExtensions` é a fonte dos formatos aceitos.
 - Importadores aplicam `abs()` antes de persistir valores.
 - Preserve as regras existentes de deduplicação por formato.
 - Cada `STMTRS` OFX gera um `ImportBatch`; múltiplos extratos são enviados em payload estruturado para commit atômico no
@@ -117,7 +117,7 @@ SwiftUI View -> @Observable Store -> Repository -> Supabase backend
 | Nova tabela, RLS, função ou seed global | migrations Supabase versionadas no repo |
 | Novo read model ou mutação financeira | schema `api`/RPC versionada e repository remoto |
 | Nova categoria padrão | seed/migration Supabase de catálogo global |
-| Novo formato de importação | `GranaApp/Core/Import/`, `ImportStore` e step de revisão |
+| Novo formato de importação | `GranaApp/Core/Import/`, `GranaApp/Features/Import/` e step de revisão |
 | Novo repository ou serviço | Registro no `AppContainer` |
 | Novo ícone de UI | `GranaApp/Shared/Components/AppIcon.swift` |
 | Novo ícone de categoria | `GranaApp/Models/Category.swift` e extensions de `CategoryIcon` |

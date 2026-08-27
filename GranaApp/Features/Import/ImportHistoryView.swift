@@ -2,8 +2,7 @@ import ComposableArchitecture
 import SwiftUI
 
 struct ImportHistoryView: View {
-    @Environment(AppEnvironment.self) private var environment
-    @State private var store: StoreOf<ImportFeature>?
+    @Bindable var store: StoreOf<ImportFeature>
     @State private var isDropTargeted = false
     @State private var sortOrder = [
         KeyPathComparator(\ImportHistoryBatchPresentation.importedAt, order: .reverse),
@@ -13,31 +12,14 @@ struct ImportHistoryView: View {
     @State private var accountFilter = ""
 
     var body: some View {
-        Group {
-            if let store {
-                ImportHistoryContentView(
-                    store: store,
-                    isDropTargeted: $isDropTargeted,
-                    sortOrder: $sortOrder,
-                    institutionFilter: $institutionFilter,
-                    filenameFilter: $filenameFilter,
-                    accountFilter: $accountFilter
-                )
-            } else {
-                ProgressView()
-                    .frame(maxWidth: .infinity, maxHeight: .infinity)
-            }
-        }
-        .onAppear {
-            if store == nil {
-                store = Store(initialState: ImportFeature.State()) {
-                    ImportFeature()
-                } withDependencies: {
-                    $0.importClient = .live(container: environment.container)
-                    $0.categorizationClient = .live(container: environment.container)
-                }
-            }
-        }
+        ImportHistoryContentView(
+            store: store,
+            isDropTargeted: $isDropTargeted,
+            sortOrder: $sortOrder,
+            institutionFilter: $institutionFilter,
+            filenameFilter: $filenameFilter,
+            accountFilter: $accountFilter
+        )
     }
 }
 

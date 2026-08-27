@@ -29,7 +29,7 @@ struct CategorizationSuggestion: Identifiable, Hashable {
     let originalCategorySlug: String?
     let originalSubcategoryName: String?
 
-    /// Snapshot do draft pra renderizar a row sem precisar voltar no `ImportStore`.
+    /// Snapshot do draft pra renderizar a row sem depender de outro estado do wizard.
     var transactionDescription: String
     var transactionAmount: Decimal // magnitude (`abs`) — UI renderiza assim
     var transactionOccurredAt: Date

@@ -69,8 +69,8 @@ struct ImportRemoteRepositoryTests {
 }
 
 @MainActor
-@Suite("ImportStore remote commit")
-struct ImportStoreRemoteCommitTests {
+@Suite("Import client and commit builder")
+struct ImportClientAndCommitBuilderTests {
     @Test("Monta payload com slugs e propaga idempotency key até a request RPC")
     func buildsStructuredPayloadAndPassesIdempotencyKey() throws {
         let batchId = UUID()
@@ -131,7 +131,7 @@ struct ImportStoreRemoteCommitTests {
             ),
         ]
 
-        let input = try ImportStore.buildCommitInput(
+        let input = try ImportCommitBuilder.buildInput(
             idempotencyKey: key,
             reviewedRows: rows,
             pendingBatches: pendingBatches,
@@ -148,70 +148,35 @@ struct ImportStoreRemoteCommitTests {
         #expect(request.pTransactions.first?.amountCents == 4250)
     }
 
-    @Test("Faz refresh dos read models após commit remoto bem-sucedido")
-    func refreshesAffectedReadModelsAfterCommit() async throws {
-        let institution = makeInstitution(
-            code: "077",
-            name: "Banco Inter",
-            kind: .inter,
-            accountTypes: [.checking],
-            importFormats: [.ofx]
-        )
-        let account = Account(
-            id: UUID(),
-            type: .checking,
-            initialBalance: 0,
-            archived: false,
-            institutionId: institution.id,
-            createdAt: Date(),
-            updatedAt: Date()
-        )
-        let batch = ImportBatch(
-            id: UUID(),
-            sourceFilename: "extrato.ofx",
-            accountId: account.id,
-            rowCount: 1,
-            importedAt: Date(),
-            createdAt: Date(),
-            updatedAt: Date()
-        )
+    @Test("ImportClient.live propaga resultado do commit remoto")
+    func liveClientForwardsCommitResult() async throws {
+        let batchId = UUID()
         let remoteImports = RecordingImportRemoteRepository(
-            batches: [batch],
+            batches: [],
             commitResult: ImportCommitResult(
-                batchIds: [batch.id],
+                batchIds: [batchId],
                 importedRowCount: 1,
                 duplicateRows: []
             )
         )
         let container = AppContainer.inMemoryForTesting(
-            categoryCatalog: StaticCategoryCatalogRepository(categories: [
-                makeCategory(slug: "nao-classificado", name: "Não Classificado", kind: .expense),
-            ]),
-            institutionCatalog: StaticInstitutionCatalogRepository(institutions: [institution]),
-            remoteAccounts: StaticAccountRemoteRepository(
-                snapshot: AccountRemoteSnapshot(
-                    accounts: [account],
-                    bankDetails: [],
-                    creditCards: []
-                )
-            ),
-            remoteStatements: StaticStatementRemoteRepository(snapshot: .empty),
-            remoteTransactions: StaticTransactionRemoteRepository(page: .empty),
+            categoryCatalog: StaticCategoryCatalogRepository(categories: []),
+            institutionCatalog: StaticInstitutionCatalogRepository(institutions: []),
             remoteImports: remoteImports
         )
-        let store = ImportStore(container: container)
+        let client = ImportClient.live(container: container)
 
-        let result = try await store.commitReviewedImport(
-            input: ImportCommitInput(
+        let result = try await client.commit(
+            ImportCommitInput(
                 idempotencyKey: UUID(),
                 batches: [],
                 rows: []
-            )
+            ),
+            nil
         )
 
-        #expect(result.batchIds == [batch.id])
-        #expect(store.batches == [batch])
-        #expect(store.accounts.map(\.id) == [account.id])
+        #expect(result.batchIds == [batchId])
+        #expect(result.importedRowCount == 1)
         #expect(await remoteImports.recordedInputs().count == 1)
     }
 
@@ -303,15 +268,15 @@ struct ImportStoreRemoteCommitTests {
             remoteImports: remoteImports,
             granaAI: granaAI
         )
-        let store = ImportStore(container: container)
+        let client = ImportClient.live(container: container)
 
-        _ = try await store.commitReviewedImport(
-            input: ImportCommitInput(
+        _ = try await client.commit(
+            ImportCommitInput(
                 idempotencyKey: UUID(),
                 batches: [],
                 rows: []
             ),
-            learnRequest: learnRequest
+            learnRequest
         )
 
         let events = await recorder.snapshot()

@@ -168,53 +168,100 @@ struct CatalogLoadingTests {
     }
 
     @MainActor
-    @Test("ImportStore carrega categorias e instituições remotas por slug e code")
-    func importStoreLoadsRemoteCatalogs() async {
+    @Test("ImportClient carrega snapshot com catálogos e contas remotas")
+    func importClientLoadsSnapshot() async throws {
+        let institution = makeInstitution(
+            code: "077",
+            name: "Banco Inter",
+            kind: .inter,
+            accountTypes: [.checking, .creditCard],
+            importFormats: [.ofx, .interCreditCardCSV]
+        )
+        let account = Account(
+            id: UUID(),
+            type: .checking,
+            initialBalance: 0,
+            archived: false,
+            institutionId: institution.id,
+            createdAt: Date(),
+            updatedAt: Date()
+        )
+        let batch = ImportBatch(
+            id: UUID(),
+            sourceFilename: "extrato.ofx",
+            accountId: account.id,
+            rowCount: 1,
+            importedAt: Date(),
+            createdAt: Date(),
+            updatedAt: Date()
+        )
         let container = AppContainer.inMemoryForTesting(
             categoryCatalog: StaticCategoryCatalogRepository(categories: [
                 makeCategory(slug: "nao-classificado", name: "Não Classificado", kind: .expense),
             ]),
             institutionCatalog: StaticInstitutionCatalogRepository(institutions: [
-                makeInstitution(
-                    code: "077",
-                    name: "Banco Inter",
-                    kind: .inter,
-                    accountTypes: [.checking, .creditCard],
-                    importFormats: [.ofx, .interCreditCardCSV]
+                institution,
+            ]),
+            remoteAccounts: StaticAccountRemoteRepository(
+                snapshot: AccountRemoteSnapshot(
+                    accounts: [account],
+                    bankDetails: [],
+                    creditCards: []
                 ),
-            ])
+            ),
+            remoteImports: StaticImportRemoteRepository(batches: [batch])
         )
-        let store = ImportStore(container: container)
+        let client = ImportClient.live(container: container)
 
-        await store.loadInitialData()
+        let snapshot = try await client.loadSnapshot()
 
-        #expect(store.categories.rootCategory(slug: "nao-classificado")?.name == "Não Classificado")
-        #expect(store.institutions.institution(code: "077")?.name == "Banco Inter")
+        #expect(snapshot.categories.rootCategory(slug: "nao-classificado")?.name == "Não Classificado")
+        #expect(snapshot.institutions.institution(code: "077")?.name == "Banco Inter")
+        #expect(snapshot.accounts.map(\.id) == [account.id])
+        #expect(snapshot.batches == [batch])
     }
 
     @MainActor
-    @Test("CategorizationStore carrega catálogos remotos para os consumidores")
-    func categorizationStoreLoadsRemoteCatalogs() async {
+    @Test("CategorizationClient carrega catálogos remotos para os consumidores")
+    func categorizationClientLoadsContext() async throws {
+        let institution = makeInstitution(
+            code: "341",
+            name: "Itaú",
+            kind: .itau,
+            accountTypes: [.checking],
+            importFormats: [.ofx]
+        )
+        let account = Account(
+            id: UUID(),
+            type: .checking,
+            initialBalance: 0,
+            archived: false,
+            institutionId: institution.id,
+            createdAt: Date(),
+            updatedAt: Date()
+        )
         let container = AppContainer.inMemoryForTesting(
             categoryCatalog: StaticCategoryCatalogRepository(categories: [
                 makeCategory(slug: "renda-e-pagamentos", name: "Renda e Pagamentos", kind: .income),
             ]),
             institutionCatalog: StaticInstitutionCatalogRepository(institutions: [
-                makeInstitution(
-                    code: "341",
-                    name: "Itaú",
-                    kind: .itau,
-                    accountTypes: [.checking],
-                    importFormats: [.ofx]
+                institution,
+            ]),
+            remoteAccounts: StaticAccountRemoteRepository(
+                snapshot: AccountRemoteSnapshot(
+                    accounts: [account],
+                    bankDetails: [],
+                    creditCards: []
                 ),
-            ])
+            )
         )
-        let store = CategorizationStore(container: container)
+        let client = CategorizationClient.live(container: container)
 
-        await store.loadCategories()
+        let context = try await client.loadContext()
 
-        #expect(store.categories.rootCategory(slug: "renda-e-pagamentos")?.name == "Renda e Pagamentos")
-        #expect(store.institutions.institution(code: "341")?.kind == .itau)
+        #expect(context.categories.rootCategory(slug: "renda-e-pagamentos")?.name == "Renda e Pagamentos")
+        #expect(context.institutions.institution(code: "341")?.kind == .itau)
+        #expect(context.accounts.map(\.id) == [account.id])
     }
 
     @MainActor

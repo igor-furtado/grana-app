@@ -42,8 +42,8 @@ struct OFXTransaction: Hashable {
 }
 
 /// Saldo final reportado pelo banco (`<LEDGERBAL>`). Não persistimos hoje —
-/// fica disponível pro `ImportStore` mostrar no preview ("seu saldo no banco
-/// era R$ X em [data]") e em uma fase futura pra conciliação automática.
+/// fica disponível pro preview da importação ("seu saldo no banco era R$ X em
+/// [data]") e em uma fase futura pra conciliação automática.
 struct OFXBalance: Hashable {
     var amount: Decimal
     var asOf: Date

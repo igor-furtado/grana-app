@@ -8,12 +8,11 @@ import Foundation
 /// 2. **TRNTYPE primeiro, MEMO depois**: o tipo OFX é a fonte mais
 ///    estruturada; o MEMO entra pra capturar PIX/TED que vêm como
 ///    PAYMENT/CREDIT genéricos mas semanticamente são transferências.
-/// 3. **Sem tabelas em RAM**: recebemos os IDs das raízes resolvidas pelo
-///    `ImportStore` e devolvemos um deles — a função fica pura, fácil de testar.
+/// 3. **Sem tabelas em RAM**: recebemos os IDs das raízes resolvidas pela
+///    camada de importação e devolvemos um deles — a função fica pura, fácil de testar.
 struct OFXCategoryHeuristic {
-    /// IDs das categorias raiz relevantes pra heurística. O `ImportStore`
-    /// resolve esses IDs uma vez via `CategoryRepository.findRootByName` e
-    /// passa pra cada chamada de `categoryId(for:)`.
+    /// IDs das categorias raiz relevantes pra heurística. A camada de importação
+    /// resolve esses IDs uma vez e passa pra cada chamada de `categoryId(for:)`.
     struct RootCategoryIDs {
         let unclassified: UUID
         let transfers: UUID?

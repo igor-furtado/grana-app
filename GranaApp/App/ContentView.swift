@@ -105,7 +105,7 @@ struct ContentView: View {
         case .transactions: TransactionsView()
         case .creditCards: CreditCardsView()
         case .accounts: AccountsView()
-        case .import: ImportHistoryView()
+        case .import: ImportHistoryView(store: environment.importFeatureStore)
         case .categories: CategoriesView()
         case .institutions: SupportedInstitutionsView()
         case .designSystem: DesignSystemView()
