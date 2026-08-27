@@ -3,7 +3,6 @@ import SwiftUI
 
 struct ImportHistoryView: View {
     @Bindable var store: StoreOf<ImportFeature>
-    @State private var isDropTargeted = false
     @State private var sortOrder = [
         KeyPathComparator(\ImportHistoryBatchPresentation.importedAt, order: .reverse),
     ]
@@ -14,7 +13,6 @@ struct ImportHistoryView: View {
     var body: some View {
         ImportHistoryContentView(
             store: store,
-            isDropTargeted: $isDropTargeted,
             sortOrder: $sortOrder,
             institutionFilter: $institutionFilter,
             filenameFilter: $filenameFilter,
@@ -25,7 +23,6 @@ struct ImportHistoryView: View {
 
 private struct ImportHistoryContentView: View {
     @Bindable var store: StoreOf<ImportFeature>
-    @Binding var isDropTargeted: Bool
     @Binding var sortOrder: [KeyPathComparator<ImportHistoryBatchPresentation>]
     @Binding var institutionFilter: String
     @Binding var filenameFilter: String
@@ -42,7 +39,7 @@ private struct ImportHistoryContentView: View {
 
             if historyStore.snapshot.batches.isEmpty {
                 EmptyStateDropZone(
-                    isHighlighted: isDropTargeted,
+                    isHighlighted: false,
                     onBrowse: { historyStore.send(.importButtonTapped(nil)) }
                 )
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
@@ -53,15 +50,6 @@ private struct ImportHistoryContentView: View {
         }
         .navigationTitle("")
         .toolbar(.hidden, for: .windowToolbar)
-        .dropDestination(for: URL.self, action: handleDrop, isTargeted: setDropTargeted)
-        .overlay {
-            if isDropTargeted, !historyStore.snapshot.batches.isEmpty {
-                DropOverlay()
-                    .transition(.opacity.combined(with: .scale(scale: 0.98)))
-                    .allowsHitTesting(false)
-            }
-        }
-        .animation(.easeOut(duration: 0.18), value: isDropTargeted)
         .confirmationDialog(
             "Desfazer importação?",
             isPresented: Binding(
@@ -84,20 +72,6 @@ private struct ImportHistoryContentView: View {
         } message: {
             if let batch = historyStore.pendingDelete {
                 Text("As \(batch.rowCount) transações de **\(batch.sourceFilename)** serão removidas permanentemente.")
-            }
-        }
-        .sheet(
-            isPresented: Binding(
-                get: { store.wizard != nil },
-                set: { isPresented in
-                    if !isPresented {
-                        store.send(.wizard(.cancel))
-                    }
-                }
-            )
-        ) {
-            if let wizardStore = store.scope(state: \.wizard, action: \.wizard) {
-                ImportView(store: wizardStore)
             }
         }
         .task {
@@ -204,33 +178,6 @@ private struct ImportHistoryContentView: View {
             bankAccounts: historyStore.snapshot.bankDetails,
             creditCards: historyStore.snapshot.creditCards
         )
-    }
-
-    private func handleDrop(_ urls: [URL], at _: CGPoint) -> Bool {
-        guard let url = urls.first else { return false }
-        let ext = url.pathExtension.lowercased()
-
-        guard ImportWizardFeature.State.supportedExtensions.contains(ext) else {
-            NoticeCenter.shared.report(
-                ImportError.unsupportedFormat(extension: ext.isEmpty ? "(sem extensão)" : ext),
-                title: "Arquivo não suportado"
-            )
-            return false
-        }
-
-        if urls.count > 1 {
-            NoticeCenter.shared.info(
-                title: "Vários arquivos soltos",
-                message: "Importe um por vez. Abrindo \"\(url.lastPathComponent)\"."
-            )
-        }
-
-        historyStore.send(.importButtonTapped(url))
-        return true
-    }
-
-    private func setDropTargeted(_ targeted: Bool) {
-        isDropTargeted = targeted
     }
 }
 
@@ -551,45 +498,5 @@ private struct ImportEmptyStateInfoPill: View {
         .padding(.horizontal, GranaTheme.Spacing.sm)
         .padding(.vertical, GranaTheme.Spacing.xs)
         .background(GranaTheme.Palette.paperSolid.opacity(0.84), in: Capsule())
-    }
-}
-
-private struct DropOverlay: View {
-    var body: some View {
-        ZStack {
-            Rectangle()
-                .fill(.regularMaterial)
-                .opacity(0.84)
-            VStack(spacing: GranaTheme.Spacing.md) {
-                ZStack {
-                    Circle()
-                        .fill(GranaTheme.Palette.teal.opacity(0.18))
-                        .frame(width: 96, height: 96)
-                    Image(systemName: AppIcon.importFile.systemImage)
-                        .font(.system(size: GranaTheme.IconSize.hero, weight: .regular))
-                        .foregroundStyle(GranaTheme.Palette.tealDeep)
-                }
-                Text("Solte para importar")
-                    .font(GranaTheme.Typography.title3)
-                    .foregroundStyle(GranaTheme.Palette.ink)
-                Text("OFX ou CSV")
-                    .font(GranaTheme.Typography.callout)
-                    .foregroundStyle(GranaTheme.Palette.muted)
-            }
-            .padding(GranaTheme.Spacing.xxxl)
-            .background {
-                RoundedRectangle(cornerRadius: GranaTheme.Radius.hero, style: .continuous)
-                    .fill(GranaTheme.Palette.paper.opacity(0.92))
-            }
-            .overlay {
-                RoundedRectangle(cornerRadius: GranaTheme.Radius.hero, style: .continuous)
-                    .strokeBorder(
-                        GranaTheme.Palette.teal.opacity(0.40),
-                        style: StrokeStyle(lineWidth: 2, dash: [10, 8])
-                    )
-            }
-            .shadow(color: GranaTheme.Shadow.cardColor, radius: 24, y: 10)
-            .padding(GranaTheme.Spacing.xxxl)
-        }
     }
 }

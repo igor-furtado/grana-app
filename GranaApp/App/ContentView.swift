@@ -1,7 +1,9 @@
+import ComposableArchitecture
 import SwiftUI
 
 struct ContentView: View {
     @Environment(AppEnvironment.self) private var environment
+    @State private var isImportDropTargeted = false
 
     /// Restaurado entre sessões via `@SceneStorage` — abrir o app cai na
     /// última seção visitada (UX padrão macOS). `rawValue: String` é o que o
@@ -25,7 +27,7 @@ struct ContentView: View {
                 case .unavailable:
                     unavailableContent
                 case .unauthenticated:
-                    LoginView(authService: environment.authService)
+                    loginContent
                 case .authenticated:
                     authenticatedContent
                 }
@@ -41,7 +43,7 @@ struct ContentView: View {
             ProgressView("Restaurando sessão…")
                 .foregroundStyle(GranaTheme.Palette.ink)
         }
-        .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .frame(minWidth: 1280, minHeight: 820)
     }
 
     private var unavailableContent: some View {
@@ -65,13 +67,22 @@ struct ContentView: View {
             }
             .padding(GranaTheme.Spacing.xl)
         }
-        .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .frame(minWidth: 1280, minHeight: 820)
+    }
+
+    private var loginContent: some View {
+        ZStack {
+            GranaBackground()
+
+            LoginView(authService: environment.authService)
+        }
+        .frame(minWidth: 1280, minHeight: 820)
     }
 
     private var authenticatedContent: some View {
         ZStack {
             GranaBackground()
-            HStack {
+            HStack(spacing: GranaTheme.Spacing.none) {
                 AppNavigationRail(selection: selection) { section in
                     selectionRaw = section.rawValue
                 }
@@ -80,9 +91,32 @@ struct ContentView: View {
                 NavigationStack {
                     selectedSectionView
                 }
+                .padding(GranaTheme.Layout.pageInsets)
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
             }
-            .padding(GranaTheme.Layout.pageInsets)
+        }
+        .dropDestination(for: URL.self, action: handleImportDrop, isTargeted: setImportDropTargeted)
+        .overlay {
+            if isImportDropTargeted, environment.importFeatureStore.wizard == nil {
+                GlobalImportDropOverlay()
+                    .transition(.opacity.combined(with: .scale(scale: 0.98)))
+                    .allowsHitTesting(false)
+            }
+        }
+        .animation(.easeOut(duration: 0.18), value: isImportDropTargeted)
+        .sheet(
+            isPresented: Binding(
+                get: { environment.importFeatureStore.wizard != nil },
+                set: { isPresented in
+                    if !isPresented {
+                        environment.importFeatureStore.send(.wizard(.cancel))
+                    }
+                }
+            )
+        ) {
+            if let wizardStore = environment.importFeatureStore.scope(state: \.wizard, action: \.wizard) {
+                ImportView(store: wizardStore)
+            }
         }
         .onReceive(NotificationCenter.default.publisher(for: .appSectionNavigationRequested)) { notification in
             guard let rawValue = notification.object as? String,
@@ -90,11 +124,7 @@ struct ContentView: View {
             else { return }
             selectionRaw = section.rawValue
         }
-        // Mínimo global da janela. A tela mais "gulosa" hoje é Cartões
-        // (sidebar interna 240 + detalhe 520 = 760), somado ao rail e respiros
-        // do shell, exige ~900. Arredondado pra 1000 dá folga; 640 de altura
-        // mostra ~12 linhas de transação confortavelmente.
-        .frame(minWidth: 1000, minHeight: 640)
+        .frame(minWidth: 1280, minHeight: 820)
     }
 
     @ViewBuilder
@@ -109,6 +139,60 @@ struct ContentView: View {
         case .institutions: SupportedInstitutionsView()
         case .designSystem: DesignSystemView()
         case .profile: ProfileView()
+        }
+    }
+
+    private func handleImportDrop(_ urls: [URL], at _: CGPoint) -> Bool {
+        let decision = ImportDropPolicy.evaluate(
+            urls: urls,
+            supportedExtensions: ImportWizardFeature.State.supportedExtensions,
+            isImportInProgress: environment.importFeatureStore.wizard != nil
+        )
+        environment.importFeatureStore.send(.globalFileDrop(urls))
+        return decision.acceptsDrop
+    }
+
+    private func setImportDropTargeted(_ targeted: Bool) {
+        isImportDropTargeted = targeted
+    }
+}
+
+private struct GlobalImportDropOverlay: View {
+    var body: some View {
+        ZStack {
+            Rectangle()
+                .fill(.regularMaterial)
+                .opacity(0.84)
+            VStack(spacing: GranaTheme.Spacing.md) {
+                ZStack {
+                    Circle()
+                        .fill(GranaTheme.Palette.teal.opacity(0.18))
+                        .frame(width: 96, height: 96)
+                    Image(systemName: AppIcon.importFile.systemImage)
+                        .font(.system(size: GranaTheme.IconSize.hero, weight: .regular))
+                        .foregroundStyle(GranaTheme.Palette.tealDeep)
+                }
+                Text("Solte o extrato para revisar")
+                    .font(GranaTheme.Typography.title3)
+                    .foregroundStyle(GranaTheme.Palette.ink)
+                Text("OFX ou CSV em qualquer tela")
+                    .font(GranaTheme.Typography.callout)
+                    .foregroundStyle(GranaTheme.Palette.muted)
+            }
+            .padding(GranaTheme.Spacing.xxxl)
+            .background {
+                RoundedRectangle(cornerRadius: GranaTheme.Radius.hero, style: .continuous)
+                    .fill(GranaTheme.Palette.paper.opacity(0.92))
+            }
+            .overlay {
+                RoundedRectangle(cornerRadius: GranaTheme.Radius.hero, style: .continuous)
+                    .strokeBorder(
+                        GranaTheme.Palette.teal.opacity(0.40),
+                        style: StrokeStyle(lineWidth: 2, dash: [10, 8])
+                    )
+            }
+            .shadow(color: GranaTheme.Shadow.cardColor, radius: 24, y: 10)
+            .padding(GranaTheme.Spacing.xxxl)
         }
     }
 }
