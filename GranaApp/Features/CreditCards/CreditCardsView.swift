@@ -15,8 +15,10 @@ struct CreditCardsView: View {
 
         var id: String {
             switch self {
-            case .create: return "create"
-            case let .edit(account): return "edit-\(account.id.uuidString)"
+            case .create:
+                return "create"
+            case let .edit(account):
+                return "edit-\(account.id.uuidString)"
             }
         }
     }
@@ -44,10 +46,11 @@ struct CreditCardsView: View {
                     emptyState
                         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .center)
                 } else {
-                    splitContent(store: store, cards: visibleCards)
+                    stackedContent(store: store, cards: visibleCards)
                 }
             }
         }
+        .granaPagePadding()
         .sheet(item: $formMode) { mode in
             AccountFormView(
                 existing: editingAccount(from: mode),
@@ -111,63 +114,94 @@ struct CreditCardsView: View {
         }
     }
 
-    private func splitContent(store: AccountStore, cards: [Account]) -> some View {
-        // `HSplitView` em vez de aninhar outro `NavigationSplitView`: o
-        // pai (`ContentView`) já é split — aninhar deixa o macOS confuso
-        // quanto a qual sidebar dobra. `HSplitView` é o controle nativo
-        // pra split intra-feature, com divisor arrastável herdado do AppKit.
-        HSplitView {
-            CreditCardsSidebar(
-                store: store,
-                cards: cards,
-                selectedId: $selectedCardId,
-                onEdit: { account in
-                    selectedCardId = account.id
-                    formMode = .edit(account)
-                },
-                onToggleArchive: { account in
-                    selectedCardId = account.id
-                    Task {
-                        do {
-                            try await store.setArchived(account, archived: !account.archived)
-                        } catch {
-                            NoticeCenter.shared.report(error)
-                        }
-                    }
-                },
-                onRequestDelete: { account in
-                    selectedCardId = account.id
-                    showDeleteConfirm = true
-                }
-            )
-            .frame(minWidth: 240, idealWidth: 280, maxWidth: 360)
+    private func stackedContent(store: AccountStore, cards: [Account]) -> some View {
+        VStack(alignment: .leading, spacing: GranaTheme.Spacing.md) {
+            cardSelector(store: store, cards: cards)
 
             if let selectedId = selectedCardId,
                let account = cards.first(where: { $0.id == selectedId })
             {
                 CreditCardDetailView(account: account, store: store)
-                    .frame(minWidth: 520, maxWidth: .infinity, maxHeight: .infinity)
+                    .frame(maxWidth: .infinity, maxHeight: .infinity)
             } else {
-                // Fallback enquanto a seleção ainda não foi reconciliada
-                // (primeira renderização ou cartão único acabou de ser
-                // removido). Mostra placeholder em vez de detalhe quebrado.
                 placeholderDetail
-                    .frame(minWidth: 520, maxWidth: .infinity, maxHeight: .infinity)
+                    .frame(maxWidth: .infinity, maxHeight: .infinity)
             }
         }
     }
 
+    private func cardSelector(store: AccountStore, cards: [Account]) -> some View {
+        VStack(alignment: .leading, spacing: GranaTheme.Spacing.sm) {
+            HStack {
+                Text("Seus cartões")
+                    .font(GranaTheme.Typography.headline)
+                    .foregroundStyle(GranaTheme.Palette.ink)
+                Spacer(minLength: GranaTheme.Spacing.none)
+                Text("\(cards.count) \(cards.count == 1 ? "item" : "itens")")
+                    .font(GranaTheme.Typography.caption1)
+                    .foregroundStyle(GranaTheme.Palette.muted)
+            }
+            .padding(.horizontal, GranaTheme.Spacing.md)
+            .padding(.top, GranaTheme.Spacing.md)
+
+            ScrollView(.horizontal, showsIndicators: false) {
+                HStack(spacing: GranaTheme.Spacing.md) {
+                    ForEach(cards) { account in
+                        CreditCardSelectorCard(
+                            account: account,
+                            institution: store.institution(forAccount: account),
+                            details: store.creditCard(for: account.id),
+                            currentBalance: store.currentBalance(for: account),
+                            isSelected: account.id == selectedCardId,
+                            onSelect: { selectedCardId = account.id },
+                            onEdit: {
+                                selectedCardId = account.id
+                                formMode = .edit(account)
+                            },
+                            onToggleArchive: {
+                                selectedCardId = account.id
+                                Task {
+                                    do {
+                                        try await store.setArchived(account, archived: !account.archived)
+                                    } catch {
+                                        NoticeCenter.shared.report(error)
+                                    }
+                                }
+                            },
+                            onRequestDelete: {
+                                selectedCardId = account.id
+                                showDeleteConfirm = true
+                            }
+                        )
+                    }
+                }
+                .padding(.horizontal, GranaTheme.Spacing.md)
+                .padding(.bottom, GranaTheme.Spacing.md)
+            }
+        }
+        .granaSurface(.solid, cornerRadius: GranaTheme.Radius.card)
+    }
+
     private var placeholderDetail: some View {
         VStack(spacing: GranaTheme.Spacing.sm) {
-            Image(systemName: "creditcard")
-                .font(.system(size: GranaTheme.IconSize.large))
-                .foregroundStyle(.secondary)
+            ZStack {
+                Circle()
+                    .fill(GranaTheme.Palette.teal.opacity(0.12))
+                    .frame(width: 76, height: 76)
+                Image(systemName: AppIcon.sidebarCreditCards.systemImage)
+                    .font(.system(size: GranaTheme.IconSize.large))
+                    .foregroundStyle(GranaTheme.Palette.tealDeep)
+            }
             Text("Selecione um cartão")
                 .font(GranaTheme.Typography.title3)
-                .foregroundStyle(.secondary)
+                .foregroundStyle(GranaTheme.Palette.ink)
+            Text("O detalhe da fatura aparece logo abaixo da faixa de cartões.")
+                .font(GranaTheme.Typography.callout)
+                .foregroundStyle(GranaTheme.Palette.muted)
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
-        .background(Color(nsColor: .controlBackgroundColor))
+        .padding(GranaTheme.Spacing.xxxl)
+        .granaSurface(.subtle, cornerRadius: GranaTheme.Radius.hero)
     }
 
     private var hasArchivedCard: Bool {
@@ -184,10 +218,6 @@ struct CreditCardsView: View {
         return "\(visibleCount) \(visibleCount == 1 ? "cartão" : "cartões")"
     }
 
-    /// Reconcilia a seleção quando a lista de cartões visíveis muda: se a
-    /// seleção atual sumiu (foi arquivada / deletada / o toggle de
-    /// arquivados desligou), seleciona o primeiro disponível. Se nada
-    /// está selecionado e há cartões, seleciona o primeiro.
     private func reconcileSelection(visibleIds: [UUID]) {
         if let current = selectedCardId, visibleIds.contains(current) { return }
         selectedCardId = visibleIds.first
@@ -197,7 +227,7 @@ struct CreditCardsView: View {
         EmptyStateView(
             "Sem cartões por aqui",
             icon: .sidebarCreditCards,
-            description: "Cadastre os cartões de crédito que você usa pra acompanhar as faturas — dia de fechamento, vencimento e limite (opcional)."
+            description: "Cadastre os cartões de crédito que você usa pra acompanhar as faturas, fechamento, vencimento e limite."
         ) {
             Button {
                 formMode = .create
@@ -219,5 +249,174 @@ struct CreditCardsView: View {
     private func editingAccount(from mode: FormMode) -> Account? {
         if case let .edit(account) = mode { return account }
         return nil
+    }
+}
+
+private struct CreditCardSelectorCard: View {
+    let account: Account
+    let institution: Institution?
+    let details: CreditCardDetails?
+    let currentBalance: Decimal
+    let isSelected: Bool
+    let onSelect: () -> Void
+    let onEdit: () -> Void
+    let onToggleArchive: () -> Void
+    let onRequestDelete: () -> Void
+
+    var body: some View {
+        Button(action: onSelect) {
+            VStack(alignment: .leading, spacing: GranaTheme.Spacing.md) {
+                HStack(alignment: .center, spacing: GranaTheme.Spacing.sm) {
+                    if let institution {
+                        InstitutionIcon(kind: institution.kind, size: 40)
+                    } else {
+                        placeholderIcon
+                    }
+
+                    VStack(alignment: .leading, spacing: GranaTheme.Spacing.xxs) {
+                        Text(bankName)
+                            .font(GranaTheme.Typography.bodyEmphasis)
+                            .foregroundStyle(titleColor)
+                            .lineLimit(1)
+                        Text(maskedNumber)
+                            .font(GranaTheme.Typography.code)
+                            .foregroundStyle(subtitleColor)
+                    }
+
+                    Spacer(minLength: GranaTheme.Spacing.none)
+
+                    if account.archived {
+                        Text("Arquivado")
+                            .font(GranaTheme.Typography.caption2Emphasis)
+                            .foregroundStyle(subtitleColor)
+                            .padding(.horizontal, GranaTheme.Spacing.xs)
+                            .padding(.vertical, GranaTheme.Spacing.xxs)
+                            .background(badgeBackground, in: Capsule())
+                    }
+                }
+
+                VStack(alignment: .leading, spacing: GranaTheme.Spacing.xxs) {
+                    Text("Fatura atual")
+                        .font(GranaTheme.Typography.caption1)
+                        .foregroundStyle(subtitleColor)
+                    Text(currentBalance.magnitude.formatted(.currency(code: account.currency)))
+                        .font(GranaTheme.Typography.moneyHeadline)
+                        .foregroundStyle(titleColor)
+                }
+
+                if let limit = details?.creditLimit, limit > 0 {
+                    VStack(alignment: .leading, spacing: GranaTheme.Spacing.xs) {
+                        CreditCardUsageBar(
+                            percent: usagePercent(limit: limit),
+                            tint: barTint
+                        )
+                        HStack {
+                            Text("Limite \(limit.formatted(.currency(code: account.currency)))")
+                                .font(GranaTheme.Typography.caption1)
+                                .foregroundStyle(subtitleColor)
+                            Spacer(minLength: GranaTheme.Spacing.none)
+                            Text("\(Int(usagePercent(limit: limit) * 100))%")
+                                .font(GranaTheme.Typography.caption1Emphasis)
+                                .foregroundStyle(titleColor)
+                        }
+                    }
+                }
+            }
+            .padding(GranaTheme.Spacing.md)
+            .frame(width: 280, alignment: .leading)
+            .background(backgroundShape)
+            .overlay {
+                RoundedRectangle(cornerRadius: GranaTheme.Radius.card, style: .continuous)
+                    .strokeBorder(borderColor, lineWidth: isSelected ? 1.5 : 1)
+            }
+            .shadow(color: shadowColor, radius: isSelected ? 18 : 8, y: isSelected ? 10 : 4)
+        }
+        .buttonStyle(.plain)
+        .contextMenu {
+            Button("Editar", action: onEdit)
+            Button(account.archived ? "Desarquivar" : "Arquivar", action: onToggleArchive)
+            Divider()
+            Button("Apagar", role: .destructive, action: onRequestDelete)
+        }
+    }
+
+    private var bankName: String {
+        institution?.name ?? "Cartão"
+    }
+
+    private var maskedNumber: String {
+        guard let last4 = details?.cardLastFour, last4.count == 4 else { return "••••" }
+        return "•••• \(last4)"
+    }
+
+    private var titleColor: Color {
+        isSelected ? GranaTheme.Palette.creamText : GranaTheme.Palette.ink
+    }
+
+    private var subtitleColor: Color {
+        isSelected ? GranaTheme.Palette.creamText.opacity(0.78) : GranaTheme.Palette.muted
+    }
+
+    private var badgeBackground: Color {
+        isSelected ? Color.white.opacity(0.14) : GranaTheme.Palette.soft
+    }
+
+    private var barTint: Color {
+        isSelected ? Color.white.opacity(0.92) : GranaTheme.Palette.teal
+    }
+
+    private var borderColor: Color {
+        isSelected ? GranaTheme.Palette.teal.opacity(0.34) : GranaTheme.Palette.line
+    }
+
+    private var shadowColor: Color {
+        isSelected ? GranaTheme.Shadow.accentColor : GranaTheme.Shadow.rowColor
+    }
+
+    @ViewBuilder
+    private var backgroundShape: some View {
+        if isSelected {
+            RoundedRectangle(cornerRadius: GranaTheme.Radius.card, style: .continuous)
+                .fill(GranaTheme.brandGradient())
+        } else {
+            RoundedRectangle(cornerRadius: GranaTheme.Radius.card, style: .continuous)
+                .fill(GranaTheme.Palette.paperSolid.opacity(0.96))
+        }
+    }
+
+    private var placeholderIcon: some View {
+        RoundedRectangle(cornerRadius: GranaTheme.Radius.control, style: .continuous)
+            .fill(isSelected ? Color.white.opacity(0.14) : GranaTheme.Palette.soft)
+            .frame(width: 40, height: 40)
+            .overlay {
+                Image(systemName: AppIcon.sidebarCreditCards.systemImage)
+                    .font(.system(size: GranaTheme.IconSize.small))
+                    .foregroundStyle(subtitleColor)
+            }
+    }
+
+    private func usagePercent(limit: Decimal) -> Double {
+        let limitValue = NSDecimalNumber(decimal: limit).doubleValue
+        guard limitValue > 0 else { return 0 }
+        let debtValue = NSDecimalNumber(decimal: currentBalance.magnitude).doubleValue
+        return max(0, min(1, debtValue / limitValue))
+    }
+}
+
+private struct CreditCardUsageBar: View {
+    let percent: Double
+    let tint: Color
+
+    var body: some View {
+        GeometryReader { geometry in
+            ZStack(alignment: .leading) {
+                Capsule()
+                    .fill(tint.opacity(0.16))
+                Capsule()
+                    .fill(tint)
+                    .frame(width: max(12, geometry.size.width * percent))
+            }
+        }
+        .frame(height: 8)
     }
 }

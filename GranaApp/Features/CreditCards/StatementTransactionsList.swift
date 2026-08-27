@@ -25,14 +25,7 @@ struct StatementTransactionsList: View {
                 rows
             }
         }
-        .background(
-            RoundedRectangle(cornerRadius: 10, style: .continuous)
-                .fill(Color(nsColor: .windowBackgroundColor))
-        )
-        .overlay(
-            RoundedRectangle(cornerRadius: 10, style: .continuous)
-                .strokeBorder(Color.secondary.opacity(0.15), lineWidth: 1)
-        )
+        .granaSurface(.solid, cornerRadius: GranaTheme.Radius.card)
         .task(id: statementId) {
             await loadCategoriesOnce()
             await loadTransactions()
@@ -43,10 +36,10 @@ struct StatementTransactionsList: View {
         VStack(spacing: GranaTheme.Spacing.xs) {
             Image(systemName: "tray")
                 .font(.system(size: GranaTheme.IconSize.medium))
-                .foregroundStyle(.secondary)
+                .foregroundStyle(GranaTheme.Palette.muted)
             Text("Sem lançamentos nesta fatura")
                 .font(GranaTheme.Typography.callout)
-                .foregroundStyle(.secondary)
+                .foregroundStyle(GranaTheme.Palette.muted)
         }
         .padding(.vertical, GranaTheme.Spacing.xxl)
         .frame(maxWidth: .infinity)
@@ -66,7 +59,7 @@ struct StatementTransactionsList: View {
         return HStack(spacing: GranaTheme.Spacing.sm) {
             Text(Self.dayMonthFormatter.string(from: transaction.occurredAt))
                 .font(GranaTheme.Typography.footnote)
-                .foregroundStyle(.secondary)
+                .foregroundStyle(GranaTheme.Palette.muted)
                 .frame(width: 56, alignment: .leading)
 
             if let icon = category?.icon {
@@ -82,7 +75,7 @@ struct StatementTransactionsList: View {
                 if let category {
                     Text(category.name)
                         .font(GranaTheme.Typography.caption2)
-                        .foregroundStyle(.secondary)
+                        .foregroundStyle(GranaTheme.Palette.muted)
                 }
             }
 
@@ -90,7 +83,7 @@ struct StatementTransactionsList: View {
 
             Text("-\(transaction.amount.magnitude.formatted(.currency(code: "BRL")))")
                 .font(GranaTheme.Typography.moneySubheadline)
-                .foregroundStyle(.primary)
+                .foregroundStyle(GranaTheme.Palette.ink)
         }
         .padding(.horizontal, GranaTheme.Spacing.md)
         .padding(.vertical, GranaTheme.Spacing.sm)
@@ -98,12 +91,12 @@ struct StatementTransactionsList: View {
 
     private var placeholderIcon: some View {
         Circle()
-            .fill(Color.secondary.opacity(0.2))
+            .fill(GranaTheme.Palette.soft)
             .frame(width: 28, height: 28)
             .overlay {
                 Image(systemName: "questionmark")
                     .font(.system(size: GranaTheme.IconSize.small))
-                    .foregroundStyle(.secondary)
+                    .foregroundStyle(GranaTheme.Palette.muted)
             }
     }
 

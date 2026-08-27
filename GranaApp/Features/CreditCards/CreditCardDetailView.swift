@@ -108,8 +108,9 @@ struct CreditCardDetailView: View {
                 }
                 transactionsBlock
             }
+            .padding(GranaTheme.Spacing.xl)
         }
-        .background(Color(nsColor: .controlBackgroundColor))
+        .granaSurface(.subtle, cornerRadius: GranaTheme.Radius.hero)
         .onAppear {
             if selectedStatementId == nil { selectedStatementId = defaultStatementId }
         }
@@ -130,36 +131,37 @@ struct CreditCardDetailView: View {
             if let institution {
                 InstitutionIcon(kind: institution.kind, size: 56)
             } else {
-                RoundedRectangle(cornerRadius: 12, style: .continuous)
-                    .fill(Color.secondary.opacity(0.2))
+                RoundedRectangle(cornerRadius: GranaTheme.Radius.control, style: .continuous)
+                    .fill(GranaTheme.Palette.soft)
                     .frame(width: 56, height: 56)
                     .overlay {
                         Image(systemName: "creditcard.fill")
                             .font(.system(size: GranaTheme.IconSize.large))
-                            .foregroundStyle(.secondary)
+                            .foregroundStyle(GranaTheme.Palette.muted)
                     }
             }
 
             VStack(alignment: .leading, spacing: GranaTheme.Spacing.xxs) {
                 Text(bankName)
                     .font(GranaTheme.Typography.title3)
+                    .foregroundStyle(GranaTheme.Palette.ink)
                 Text(maskedNumber)
                     .font(GranaTheme.Typography.code)
-                    .foregroundStyle(.secondary)
+                    .foregroundStyle(GranaTheme.Palette.muted)
                 if account.archived {
                     Text("Arquivado")
-                        .font(GranaTheme.Typography.caption1)
-                        .foregroundStyle(.secondary)
+                        .font(GranaTheme.Typography.caption1Emphasis)
+                        .foregroundStyle(GranaTheme.Palette.muted)
                         .padding(.horizontal, GranaTheme.Spacing.xs)
                         .padding(.vertical, GranaTheme.Spacing.xxs)
-                        .background(
-                            Capsule().fill(Color.secondary.opacity(0.15))
-                        )
+                        .background(GranaTheme.Palette.soft, in: Capsule())
                 }
             }
 
             Spacer()
         }
+        .padding(GranaTheme.Spacing.lg)
+        .granaSurface(.solid, cornerRadius: GranaTheme.Radius.card)
     }
 
     private var bankName: String {
@@ -223,10 +225,7 @@ struct CreditCardDetailView: View {
             summaryRow("Saldo credor", value: statement.creditBalance)
         }
         .padding(GranaTheme.Spacing.sm)
-        .background(
-            RoundedRectangle(cornerRadius: 10, style: .continuous)
-                .fill(Color.secondary.opacity(0.06))
-        )
+        .granaSurface(.solid, cornerRadius: GranaTheme.Radius.control)
     }
 
     private func summaryRow(_ label: String, value: Decimal) -> some View {
@@ -259,9 +258,13 @@ struct CreditCardDetailView: View {
             Spacer()
         }
         .background(
-            RoundedRectangle(cornerRadius: 10, style: .continuous)
-                .fill(Color.secondary.opacity(0.05))
+            RoundedRectangle(cornerRadius: GranaTheme.Radius.card, style: .continuous)
+                .fill(GranaTheme.Palette.paperSolid.opacity(0.88))
         )
+        .overlay {
+            RoundedRectangle(cornerRadius: GranaTheme.Radius.card, style: .continuous)
+                .strokeBorder(GranaTheme.Palette.line, lineWidth: 1)
+        }
     }
 }
 
@@ -330,20 +333,14 @@ private struct LimitGaugeBlock: View {
             HStack(spacing: GranaTheme.Spacing.md) {
                 HStack(spacing: GranaTheme.Spacing.xs) {
                     Circle().fill(color).frame(width: 8, height: 8)
-                    Text("Usado: ")
+                    Text("Usado: \(used.formatted(.currency(code: currency)))")
                         .font(GranaTheme.Typography.caption1)
-                        .foregroundStyle(.primary)
-                        + Text(used.formatted(.currency(code: currency)))
-                        .font(GranaTheme.Typography.moneyFootnote)
                         .foregroundStyle(.primary)
                 }
                 HStack(spacing: GranaTheme.Spacing.xs) {
                     Circle().fill(Color.secondary.opacity(0.4)).frame(width: 8, height: 8)
-                    Text("Disponível: ")
+                    Text("Disponível: \(available.formatted(.currency(code: currency)))")
                         .font(GranaTheme.Typography.caption1)
-                        .foregroundStyle(.secondary)
-                        + Text(available.formatted(.currency(code: currency)))
-                        .font(GranaTheme.Typography.moneyFootnote)
                         .foregroundStyle(.secondary)
                 }
                 Spacer()
@@ -353,14 +350,7 @@ private struct LimitGaugeBlock: View {
             }
         }
         .padding(GranaTheme.Spacing.md)
-        .background(
-            RoundedRectangle(cornerRadius: 12, style: .continuous)
-                .fill(Color(nsColor: .windowBackgroundColor))
-        )
-        .overlay(
-            RoundedRectangle(cornerRadius: 12, style: .continuous)
-                .strokeBorder(Color.secondary.opacity(0.15), lineWidth: 1)
-        )
+        .granaSurface(.solid, cornerRadius: GranaTheme.Radius.card)
     }
 }
 
@@ -461,14 +451,7 @@ private struct StatementTimelineChart: View {
             .padding(.horizontal, GranaTheme.Spacing.xs)
             .padding(.vertical, GranaTheme.Spacing.sm)
             .frame(maxWidth: .infinity)
-            .background(
-                RoundedRectangle(cornerRadius: 12, style: .continuous)
-                    .fill(Color(nsColor: .windowBackgroundColor))
-            )
-            .overlay(
-                RoundedRectangle(cornerRadius: 12, style: .continuous)
-                    .strokeBorder(Color.secondary.opacity(0.15), lineWidth: 1)
-            )
+            .granaSurface(.solid, cornerRadius: GranaTheme.Radius.card)
         }
     }
 
@@ -723,13 +706,13 @@ private struct StatementCycleCard: View {
         .padding(GranaTheme.Spacing.md)
         .frame(maxWidth: .infinity, alignment: .leading)
         .background(
-            RoundedRectangle(cornerRadius: 12, style: .continuous)
-                .fill(Color(nsColor: .windowBackgroundColor))
+            RoundedRectangle(cornerRadius: GranaTheme.Radius.card, style: .continuous)
+                .fill(GranaTheme.Palette.paperSolid.opacity(0.94))
         )
         .overlay(
-            RoundedRectangle(cornerRadius: 12, style: .continuous)
+            RoundedRectangle(cornerRadius: GranaTheme.Radius.card, style: .continuous)
                 .strokeBorder(
-                    isHighlighted ? Color.accentColor : Color.secondary.opacity(0.15),
+                    isHighlighted ? GranaTheme.Palette.teal : GranaTheme.Palette.line,
                     lineWidth: isHighlighted ? 1.5 : 1
                 )
         )
