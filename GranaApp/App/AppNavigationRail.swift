@@ -31,7 +31,6 @@ struct AppNavigationRail: View {
                 railButton(for: section)
             }
         }
-        .padding(GranaTheme.Spacing.sm)
         .frame(width: 70)
         .frame(maxHeight: .infinity)
         .granaSurface(.glass, cornerRadius: GranaTheme.Radius.rail)

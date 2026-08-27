@@ -12,7 +12,6 @@ struct CreditCardStatementsView: View {
     var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: GranaTheme.Spacing.lg) {
-                header
                 if let details = store.card.details, let limit = details.creditLimit, limit > 0 {
                     LimitGaugeBlock(
                         used: store.card.currentBalance.magnitude,
@@ -49,59 +48,6 @@ struct CreditCardStatementsView: View {
         .task {
             await store.send(.task).finish()
         }
-    }
-
-    // MARK: - Header
-
-    private var header: some View {
-        HStack(alignment: .top, spacing: GranaTheme.Spacing.md) {
-            if let institution {
-                InstitutionIcon(kind: institution.kind, size: 56)
-            } else {
-                RoundedRectangle(cornerRadius: GranaTheme.Radius.control, style: .continuous)
-                    .fill(GranaTheme.Palette.soft)
-                    .frame(width: 56, height: 56)
-                    .overlay {
-                        Image(systemName: "creditcard.fill")
-                            .font(.system(size: GranaTheme.IconSize.large))
-                            .foregroundStyle(GranaTheme.Palette.muted)
-                    }
-            }
-
-            VStack(alignment: .leading, spacing: GranaTheme.Spacing.xxs) {
-                Text(bankName)
-                    .font(GranaTheme.Typography.title3)
-                    .foregroundStyle(GranaTheme.Palette.ink)
-                Text(maskedNumber)
-                    .font(GranaTheme.Typography.code)
-                    .foregroundStyle(GranaTheme.Palette.muted)
-                if store.card.account.archived {
-                    Text("Arquivado")
-                        .font(GranaTheme.Typography.caption1Emphasis)
-                        .foregroundStyle(GranaTheme.Palette.muted)
-                        .padding(.horizontal, GranaTheme.Spacing.xs)
-                        .padding(.vertical, GranaTheme.Spacing.xxs)
-                        .background(GranaTheme.Palette.soft, in: Capsule())
-                }
-            }
-
-            Spacer()
-        }
-        .padding(GranaTheme.Spacing.lg)
-        .granaSurface(.solid, cornerRadius: GranaTheme.Radius.card)
-    }
-
-    private var institution: Institution? {
-        store.card.institution
-    }
-
-    private var bankName: String {
-        institution?.name ?? "Cartão"
-    }
-
-    private var maskedNumber: String {
-        guard let last4 = store.card.details?.cardLastFour, last4.count == 4 else { return "Cartão" }
-        return "•••• \(last4)"
     }
 
     // MARK: - Transactions block
@@ -337,7 +283,7 @@ private struct StatementTimelineChart: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: GranaTheme.Spacing.xs) {
-            Text("Histórico de faturas")
+            Text("Faturas")
                 .font(GranaTheme.Typography.headline)
 
             // Versão custom (HStack de retângulos) em vez de Swift Charts

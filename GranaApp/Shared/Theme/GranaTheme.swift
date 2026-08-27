@@ -596,8 +596,4 @@ extension View {
     ) -> some View {
         modifier(GranaSurfaceModifier(prominence: prominence, cornerRadius: cornerRadius))
     }
-
-    func granaPagePadding() -> some View {
-        padding(GranaTheme.Layout.pageInsets)
-    }
 }

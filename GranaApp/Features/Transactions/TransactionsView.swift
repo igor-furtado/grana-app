@@ -77,7 +77,14 @@ private struct TransactionsContentView: View {
                 title: "Transações",
                 subtitle: store.state.transactionsCountText(calendar: calendar)
             ) {
-                EmptyView()
+                HStack(spacing: GranaTheme.Spacing.sm) {
+                    Button {
+                        Task {  }
+                    } label: {
+                        Label("Adicionar", systemImage: AppIcon.add.systemImage)
+                    }
+                    .buttonStyle(GranaPrimaryButtonStyle())
+                 }            
             }
 
             GranaTable(tableRows, sortOrder: $sortOrder) {

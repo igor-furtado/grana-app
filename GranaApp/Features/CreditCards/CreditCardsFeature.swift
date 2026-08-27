@@ -422,6 +422,8 @@ struct CreditCardsFeature {
         var isLoading = false
         var hasLoaded = false
 
+        @Presents var destination: Destination.State?
+
         mutating func apply(_ snapshot: CreditCardListSnapshot) {
             list.items = snapshot.items
             list.institutions = snapshot.institutions

@@ -7,17 +7,12 @@ struct LoginView: View {
     @State private var isSendingMagicLink = false
 
     var body: some View {
-        ZStack {
-            GranaBackground()
-
-            HStack(spacing: GranaTheme.Spacing.lg) {
-                storyPanel
-                loginPanel
-            }
-            .frame(maxWidth: 1060)
-            .padding(GranaTheme.Spacing.xl)
+        HStack(spacing: GranaTheme.Spacing.lg) {
+            storyPanel
+            loginPanel
         }
-        .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .frame(maxWidth: 1060)
+        .padding(GranaTheme.Spacing.xl)
     }
 
     private var storyPanel: some View {

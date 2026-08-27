@@ -20,7 +20,13 @@ struct CreditCardsView: View {
 
                     if store.list.hasArchivedCard {
                         Menu {
-                            Toggle("Mostrar arquivados", isOn: $store.list.showArchived)
+                            Toggle(
+                                "Mostrar arquivados",
+                                isOn: Binding(
+                                    get: { store.list.showArchived },
+                                    set: { store.send(.list(.binding(.set(\.showArchived, $0)))) }
+                                )
+                            )
                         } label: {
                             Label("Mais", systemImage: AppIcon.more.systemImage)
                         }
@@ -45,7 +51,6 @@ struct CreditCardsView: View {
                 }
             }
         }
-        .granaPagePadding()
         .toolbar(.hidden, for: .windowToolbar)
         .sheet(
             item: $store.scope(\.$destination, action: \.destination).form
@@ -99,37 +104,21 @@ private struct CreditCardListView: View {
     @Bindable var store: StoreOf<CreditCardListFeature>
 
     var body: some View {
-        VStack(alignment: .leading, spacing: GranaTheme.Spacing.sm) {
-            HStack {
-                Text("Seus cartões")
-                    .font(GranaTheme.Typography.headline)
-                    .foregroundStyle(GranaTheme.Palette.ink)
-                Spacer(minLength: GranaTheme.Spacing.none)
-                Text("\(store.visibleCount) \(store.visibleCount == 1 ? "item" : "itens")")
-                    .font(GranaTheme.Typography.caption1)
-                    .foregroundStyle(GranaTheme.Palette.muted)
+        ScrollView(.horizontal, showsIndicators: false) {
+            HStack(spacing: GranaTheme.Spacing.md) {
+                ForEach(store.visibleItems) { card in
+                    CreditCardSelectorCard(
+                        card: card,
+                        isSelected: card.id == store.selectedCardId,
+                        onSelect: { store.send(.cardTapped(card.id)) },
+                        onEdit: { store.send(.editButtonTapped(card.id)) },
+                        onToggleArchive: { store.send(.archiveButtonTapped(card.id)) },
+                        onRequestDelete: { store.send(.deleteButtonTapped(card.id)) }
+                    )
+                }
             }
             .padding(.horizontal, GranaTheme.Spacing.md)
-            .padding(.top, GranaTheme.Spacing.md)
-
-            ScrollView(.horizontal, showsIndicators: false) {
-                HStack(spacing: GranaTheme.Spacing.md) {
-                    ForEach(store.visibleItems) { card in
-                        CreditCardSelectorCard(
-                            card: card,
-                            isSelected: card.id == store.selectedCardId,
-                            onSelect: { store.send(.cardTapped(card.id)) },
-                            onEdit: { store.send(.editButtonTapped(card.id)) },
-                            onToggleArchive: { store.send(.archiveButtonTapped(card.id)) },
-                            onRequestDelete: { store.send(.deleteButtonTapped(card.id)) }
-                        )
-                    }
-                }
-                .padding(.horizontal, GranaTheme.Spacing.md)
-                .padding(.bottom, GranaTheme.Spacing.md)
-            }
         }
-        .granaSurface(.solid, cornerRadius: GranaTheme.Radius.card)
     }
 }
 
