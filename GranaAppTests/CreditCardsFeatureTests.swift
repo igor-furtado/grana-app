@@ -250,7 +250,6 @@ struct CreditCardsFeatureTests {
         }
         await store.send(.dateEditor(.presented(.saveButtonTapped))) {
             $0.dateEditor?.isSaving = true
-            $0.dateEditor?.saveError = nil
         }
         await store.receive(.dateEditor(.presented(.saveSucceeded(result)))) {
             $0.dateEditor?.isSaving = false
@@ -286,6 +285,35 @@ struct CreditCardsFeatureTests {
         #expect(update?.2 == updated.dueDate)
         #expect(notices.value.first?.0 == "Datas da fatura atualizadas")
     }
+
+    @Test("Datas inválidas da fatura mostram aviso sem chamar backend")
+    func statementDateEditorInvalidDatesShowsNotice() async {
+        let scenario = statementDateEditorScenario()
+        let notices = LockIsolated<[(String, String?)]>([])
+        let store = TestStore(
+            initialState: StatementDateEditorFeature.State(
+                statementId: scenario.statement.id,
+                title: "Outubro/2023",
+                closingDate: scenario.statement.closingDate,
+                dueDate: scenario.statement.closingDate,
+                previousClosingDate: nil,
+                nextClosingDate: nil
+            )
+        ) {
+            StatementDateEditorFeature()
+        } withDependencies: {
+            $0.noticeClient.info = { title, message in
+                notices.withValue { $0.append((title, message)) }
+            }
+        }
+
+        await store.send(.saveButtonTapped)
+
+        #expect(notices.value.count == 1)
+        #expect(notices.value.first?.0 == "Revise as datas da fatura")
+        #expect(notices.value.first?.1 == "A data de vencimento precisa ser posterior ao fechamento.")
+    }
+
     @Test("Tabela de lançamentos deriva categoria, subcategoria e valor localmente")
     func statementListBuildsTableRows() throws {
         let rootCategoryId = UUID()
@@ -335,7 +363,6 @@ struct CreditCardsFeatureTests {
         #expect(tableRow.description == "ifood *IFD*Rosa Chur")
         #expect(tableRow.signedAmount == -27.98)
     }
-
 
     @Test("Arquivar cartão usa client dedicado")
     func archiveFeatureCallsDedicatedClient() async {

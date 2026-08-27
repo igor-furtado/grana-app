@@ -155,7 +155,6 @@ struct StatementDateEditorFeature {
         let previousClosingDate: Date?
         let nextClosingDate: Date?
         var isSaving = false
-        var saveError: String?
 
         var canSave: Bool {
             guard dueDate > closingDate else { return false }
@@ -187,7 +186,7 @@ struct StatementDateEditorFeature {
         case cancelButtonTapped
         case saveButtonTapped
         case saveSucceeded(StatementDateUpdateResult)
-        case saveFailed(String)
+        case saveFailed
         case delegate(Delegate)
     }
 
@@ -205,7 +204,6 @@ struct StatementDateEditorFeature {
         Reduce { state, action in
             switch action {
             case .binding:
-                state.saveError = nil
                 return .none
 
             case .cancelButtonTapped:
@@ -213,11 +211,12 @@ struct StatementDateEditorFeature {
 
             case .saveButtonTapped:
                 guard state.canSave else {
-                    state.saveError = state.validationMessage
-                    return .none
+                    let message = state.validationMessage
+                    return .run { _ in
+                        await noticeClient.info("Revise as datas da fatura", message)
+                    }
                 }
                 state.isSaving = true
-                state.saveError = nil
                 let statementId = state.statementId
                 let closingDate = state.closingDate
                 let dueDate = state.dueDate
@@ -235,7 +234,7 @@ struct StatementDateEditorFeature {
                         await send(.saveSucceeded(result))
                     } catch {
                         await noticeClient.report(error, "Falha ao salvar datas da fatura")
-                        await send(.saveFailed(error.localizedDescription))
+                        await send(.saveFailed)
                     }
                 }
 
@@ -243,9 +242,8 @@ struct StatementDateEditorFeature {
                 state.isSaving = false
                 return .send(.delegate(.saved(result)))
 
-            case let .saveFailed(message):
+            case .saveFailed:
                 state.isSaving = false
-                state.saveError = message
                 return .none
 
             case .delegate:
@@ -315,9 +313,7 @@ struct CreditCardStatementsFeature {
         }
 
         mutating func reconcileSelection() {
-            if let selectedStatementId,
-               statements.contains(where: { $0.id == selectedStatementId })
-            {
+            if let selectedStatementId, statements.contains(where: { $0.id == selectedStatementId }) {
                 statementList = StatementListFeature.State(statementId: selectedStatementId)
                 return
             }

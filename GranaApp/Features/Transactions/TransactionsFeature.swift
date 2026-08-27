@@ -286,11 +286,6 @@ struct TransactionsFeature {
         case editForm(TransactionFormFeature)
     }
 
-    @CasePathable
-    enum ConfirmationDialog: Equatable {
-        case deleteConfirmed
-    }
-
     @ObservableState
     struct State: Equatable {
         var transactions: [Transaction] = []
@@ -315,7 +310,6 @@ struct TransactionsFeature {
         var pendingDelete: Transaction?
 
         @Presents var destination: Destination.State?
-        @Presents var confirmationDialog: ConfirmationDialogState<ConfirmationDialog>?
 
         var rootCategories: [Category] {
             categories.filter { $0.parentId == nil }
@@ -372,19 +366,43 @@ struct TransactionsFeature {
         }
 
         func deletePreview(for transaction: Transaction) -> String {
-            var message = "\(transaction.description) — \(transaction.amount.formatted(.currency(code: "BRL")))"
-            let affectsCard = account(for: transaction.accountId)?.type == .creditCard
-                || transaction.destinationAccountId.flatMap(account(for:))?.type == .creditCard
-            if affectsCard {
-                message += "\n\nFaturas afetadas serão recalculadas. Pagamentos vinculados a outras faturas permanecem onde foram registrados."
+            let impact = deleteImpactMessage(for: transaction)
+            guard !impact.isEmpty else {
+                return deleteSummary(for: transaction)
             }
+            return deleteSummary(for: transaction) + "\n\n" + impact
+        }
+
+        func deleteSummary(for transaction: Transaction) -> String {
+            "\(transaction.description) - \(transaction.amount.formatted(.currency(code: "BRL")))"
+        }
+
+        func deleteImpactMessage(for transaction: Transaction) -> String {
+            var messages: [String] = []
+            let sourceIsCard = account(for: transaction.accountId)?.type == .creditCard
+            let destinationIsCard = transaction.destinationAccountId.flatMap(account(for:))?.type == .creditCard
+            if sourceIsCard {
+                messages.append(
+                    "A fatura desta transação será recalculada. Pagamentos já registrados permanecem nas faturas onde foram aplicados."
+                )
+            } else if destinationIsCard {
+                messages.append(
+                    "A aplicação deste pagamento será removida da fatura onde foi registrada."
+                )
+            }
+
             let linkedRefundCount = transactions.filter {
                 $0.refundOfTransactionId == transaction.id
             }.count
             if linkedRefundCount > 0 {
-                message += "\nA exclusão será rejeitada enquanto houver \(linkedRefundCount) estorno(s) vinculado(s)."
+                let refundText = linkedRefundCount == 1
+                    ? "1 estorno vinculado"
+                    : "\(linkedRefundCount) estornos vinculados"
+                messages.append(
+                    "A exclusão será rejeitada enquanto houver \(refundText)."
+                )
             }
-            return message
+            return messages.joined(separator: "\n")
         }
 
         func category(for id: UUID) -> Category? {
@@ -512,8 +530,10 @@ struct TransactionsFeature {
         case tableSortSelected(TransactionsTableSort)
         case editButtonTapped(Transaction)
         case deleteButtonTapped(Transaction)
+        case deleteConfirmationDismissed
+        case deleteConfirmedButtonTapped
+        case deleteRefreshFailed
         case destination(PresentationAction<Destination.Action>)
-        case confirmationDialog(PresentationAction<ConfirmationDialog>)
     }
 
     @Dependency(\.transactionsClient) private var transactionsClient
@@ -581,20 +601,11 @@ struct TransactionsFeature {
                 return .none
 
             case let .deleteButtonTapped(transaction):
-                let message = state.deletePreview(for: transaction)
                 state.pendingDelete = transaction
-                state.confirmationDialog = ConfirmationDialogState {
-                    TextState("Apagar transação?")
-                } actions: {
-                    ButtonState(role: .destructive, action: .deleteConfirmed) {
-                        TextState("Apagar")
-                    }
-                    ButtonState(role: .cancel) {
-                        TextState("Cancelar")
-                    }
-                } message: {
-                    TextState(message)
-                }
+                return .none
+
+            case .deleteConfirmationDismissed:
+                state.pendingDelete = nil
                 return .none
 
             case .destination(.presented(.editForm(.delegate(.cancel)))):
@@ -608,28 +619,34 @@ struct TransactionsFeature {
             case .destination:
                 return .none
 
-            case .confirmationDialog(.presented(.deleteConfirmed)):
+            case .deleteConfirmedButtonTapped:
                 guard let transaction = state.pendingDelete else { return .none }
                 let query = state.loadQuery()
                 state.pendingDelete = nil
                 return .run { send in
                     do {
                         try await transactionsClient.delete(transaction.id)
+                    } catch {
+                        await noticeClient.report(error, "Falha ao apagar transação")
+                        return
+                    }
+
+                    await noticeClient.success("Transação apagada", nil)
+
+                    do {
                         let snapshot = try await transactionsClient.loadSnapshot(query)
                         await send(.snapshotLoaded(snapshot))
                     } catch {
-                        await noticeClient.report(error, nil)
-                        await send(.loadFailed)
+                        await noticeClient.report(error, "Transação apagada, mas falha ao atualizar lista")
+                        await send(.deleteRefreshFailed)
                     }
                 }
 
-            case .confirmationDialog:
-                state.pendingDelete = nil
+            case .deleteRefreshFailed:
                 return .none
             }
         }
         .ifLet(\.$destination, action: \.destination)
-        .ifLet(\.$confirmationDialog, action: \.confirmationDialog)
     }
 
     private func load(_ state: inout State) -> Effect<Action> {

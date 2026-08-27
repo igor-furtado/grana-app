@@ -60,7 +60,16 @@ private struct TransactionsContentView: View {
         ) { formStore in
             TransactionFormView(store: formStore)
         }
-        .confirmationDialog($store.scope(\.confirmationDialog, action: \.confirmationDialog))
+        .sheet(isPresented: deleteConfirmationIsPresented) {
+            if let transaction = store.pendingDelete {
+                DeleteTransactionConfirmationView(
+                    transaction: transaction,
+                    impactMessage: store.state.deleteImpactMessage(for: transaction),
+                    onCancel: { store.send(.deleteConfirmationDismissed) },
+                    onDelete: { store.send(.deleteConfirmedButtonTapped) }
+                )
+            }
+        }
         .task {
             await store.send(.task).finish()
         }
@@ -71,6 +80,17 @@ private struct TransactionsContentView: View {
         }
     }
 
+    private var deleteConfirmationIsPresented: Binding<Bool> {
+        Binding(
+            get: { store.pendingDelete != nil },
+            set: { isPresented in
+                if !isPresented {
+                    store.send(.deleteConfirmationDismissed)
+                }
+            }
+        )
+    }
+
     private var mainContent: some View {
         VStack(spacing: GranaTheme.Spacing.sm) {
             FeatureScreenHeader(
@@ -79,12 +99,12 @@ private struct TransactionsContentView: View {
             ) {
                 HStack(spacing: GranaTheme.Spacing.sm) {
                     Button {
-                        Task {  }
+                        Task {}
                     } label: {
                         Label("Adicionar", systemImage: AppIcon.add.systemImage)
                     }
                     .buttonStyle(GranaPrimaryButtonStyle())
-                 }            
+                }
             }
 
             GranaTable(tableRows, sortOrder: $sortOrder) {
@@ -237,6 +257,81 @@ private struct TransactionsContentView: View {
         case .expense: return .expense
         case .none: return .primary
         }
+    }
+}
+
+private struct DeleteTransactionConfirmationView: View {
+    let transaction: Transaction
+    let impactMessage: String
+    let onCancel: () -> Void
+    let onDelete: () -> Void
+
+    var body: some View {
+        ZStack {
+            GranaBackground()
+
+            VStack(alignment: .leading, spacing: GranaTheme.Spacing.xl) {
+                header
+                if !impactMessage.isEmpty {
+                    messageBlock
+                }
+                Spacer(minLength: GranaTheme.Spacing.none)
+                actions
+            }
+            .padding(GranaTheme.Spacing.xl)
+        }
+        .toolbar(.hidden, for: .windowToolbar)
+        .frame(minWidth: 460, idealWidth: 460, maxWidth: 460, minHeight: 280)
+    }
+
+    private var header: some View {
+        VStack(alignment: .leading, spacing: GranaTheme.Spacing.sm) {
+            HStack(spacing: GranaTheme.Spacing.sm) {
+                Image(systemName: AppIcon.delete.systemImage)
+                    .font(.system(size: GranaTheme.IconSize.medium, weight: .semibold))
+                    .foregroundStyle(GranaTheme.Palette.red)
+
+                Text("Apagar transação?")
+                    .font(GranaTheme.Typography.title3)
+                    .foregroundStyle(GranaTheme.Palette.ink)
+            }
+
+            Text(transactionSummary)
+                .font(GranaTheme.Typography.bodyEmphasis)
+                .foregroundStyle(GranaTheme.Palette.ink)
+        }
+    }
+
+    private var messageBlock: some View {
+        HStack(alignment: .top, spacing: GranaTheme.Spacing.sm) {
+            Image(systemName: AppIcon.warning.systemImage)
+                .font(.system(size: GranaTheme.IconSize.small))
+                .foregroundStyle(GranaTheme.Palette.amber)
+                .padding(.top, GranaTheme.Spacing.xxs)
+
+            Text(impactMessage)
+                .font(GranaTheme.Typography.callout)
+                .foregroundStyle(GranaTheme.Palette.muted)
+                .fixedSize(horizontal: false, vertical: true)
+        }
+        .padding(GranaTheme.Spacing.md)
+        .granaSurface(.solid, cornerRadius: GranaTheme.Radius.card)
+    }
+
+    private var actions: some View {
+        HStack(spacing: GranaTheme.Spacing.sm) {
+            Spacer(minLength: GranaTheme.Spacing.none)
+
+            Button("Cancelar", action: onCancel)
+                .buttonStyle(GranaSecondaryButtonStyle())
+
+            Button("Apagar", action: onDelete)
+                .buttonStyle(GranaDestructiveButtonStyle())
+        }
+    }
+
+    private var transactionSummary: String {
+        "\(transaction.description) - \(transaction.amount.formatted(.currency(code: "BRL")))"
     }
 }
 

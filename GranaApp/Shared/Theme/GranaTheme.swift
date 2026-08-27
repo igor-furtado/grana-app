@@ -589,6 +589,24 @@ struct GranaSecondaryButtonStyle: ButtonStyle {
     }
 }
 
+struct GranaDestructiveButtonStyle: ButtonStyle {
+    func makeBody(configuration: Configuration) -> some View {
+        configuration.label
+            .font(GranaTheme.Typography.calloutEmphasis)
+            .foregroundStyle(GranaTheme.Palette.creamText)
+            .padding(.horizontal, GranaTheme.Spacing.lg)
+            .frame(minHeight: 48)
+            .background(
+                configuration.isPressed
+                    ? GranaTheme.Palette.red.opacity(0.86)
+                    : GranaTheme.Palette.red,
+                in: RoundedRectangle(cornerRadius: GranaTheme.Radius.control, style: .continuous)
+            )
+            .shadow(color: GranaTheme.Palette.red.opacity(0.20), radius: configuration.isPressed ? 8 : 14, y: 8)
+            .opacity(configuration.isPressed ? 0.92 : 1)
+    }
+}
+
 extension View {
     func granaSurface(
         _ prominence: GranaSurfaceProminence = .subtle,

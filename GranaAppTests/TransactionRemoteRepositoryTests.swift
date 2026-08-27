@@ -1,3 +1,4 @@
+import ComposableArchitecture
 import Foundation
 import Testing
 @testable import GranaApp
@@ -180,8 +181,8 @@ struct TransactionsFeatureTests {
 
         let message = state.deletePreview(for: purchase)
 
-        #expect(message.contains("Pagamentos vinculados a outras faturas permanecem onde foram registrados"))
-        #expect(message.contains("1 estorno(s) vinculado(s)"))
+        #expect(message.contains("Pagamentos já registrados permanecem nas faturas onde foram aplicados"))
+        #expect(message.contains("1 estorno vinculado"))
     }
 
     @Test("TransactionsClient permite compor delete e refresh por dependência")

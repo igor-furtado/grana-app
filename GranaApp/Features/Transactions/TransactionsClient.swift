@@ -143,6 +143,7 @@ extension DependencyValues {
 struct NoticeClient {
     var report: @Sendable (_ error: any Error, _ title: String?) async -> Void
     var info: @Sendable (_ title: String, _ message: String?) async -> Void
+    var success: @Sendable (_ title: String, _ message: String?) async -> Void
 }
 
 extension NoticeClient: DependencyKey {
@@ -158,11 +159,16 @@ extension NoticeClient: DependencyKey {
         await MainActor.run {
             _ = NoticeCenter.shared.info(title: title, message: message)
         }
+    } success: { title, message in
+        await MainActor.run {
+            _ = NoticeCenter.shared.success(title: title, message: message)
+        }
     }
 
     static let testValue = NoticeClient(
         report: unimplemented("NoticeClient.report"),
-        info: unimplemented("NoticeClient.info")
+        info: unimplemented("NoticeClient.info"),
+        success: unimplemented("NoticeClient.success")
     )
 }
 
