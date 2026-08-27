@@ -11,6 +11,12 @@ struct ImportHistoryView: View {
     @State private var importContext: ImportContext?
     @State private var isDropTargeted = false
     @State private var selectedBatchId: UUID?
+    @State private var sortOrder = [
+        KeyPathComparator(\ImportHistoryBatchPresentation.importedAt, order: .reverse),
+    ]
+    @State private var institutionFilter: String = "Todas"
+    @State private var filenameFilter = ""
+    @State private var accountFilter = ""
 
     private struct ImportContext: Identifiable {
         let id = UUID()
@@ -140,13 +146,17 @@ struct ImportHistoryView: View {
     }
 
     private func dashboard(store: ImportStore) -> some View {
-        let rows = presentationRows(for: store.batches, store: store)
+        let rows = filteredRows(from: presentationRows(for: store.batches, store: store))
         let selectedRow = selectedRow(in: rows)
 
         return HStack(alignment: .top, spacing: GranaTheme.Spacing.md) {
             ImportHistoryMainPanel(
                 rows: rows,
-                selectedBatchId: $selectedBatchId
+                selectedBatchId: $selectedBatchId,
+                sortOrder: $sortOrder,
+                institutionFilter: $institutionFilter,
+                filenameFilter: $filenameFilter,
+                accountFilter: $accountFilter
             )
             .frame(maxWidth: .infinity, maxHeight: .infinity)
 
@@ -183,6 +193,24 @@ struct ImportHistoryView: View {
             return selected
         }
         return rows.first
+    }
+
+    private func filteredRows(
+        from rows: [ImportHistoryBatchPresentation]
+    ) -> [ImportHistoryBatchPresentation] {
+        rows
+            .filter { row in
+                institutionFilter == "Todas" || row.institutionName == institutionFilter
+            }
+            .filter { row in
+                filenameFilter.isEmpty
+                    || row.batch.sourceFilename.localizedCaseInsensitiveContains(filenameFilter)
+            }
+            .filter { row in
+                accountFilter.isEmpty
+                    || row.accountName.localizedCaseInsensitiveContains(accountFilter)
+            }
+            .sorted(using: sortOrder)
     }
 
     private func institution(for batch: ImportBatch, store: ImportStore) -> Institution? {
@@ -260,21 +288,41 @@ private struct ImportHistoryBatchPresentation: Identifiable {
         return ext.uppercased()
     }
 
+    var sourceFilename: String {
+        batch.sourceFilename
+    }
+
+    var rowCount: Int {
+        batch.rowCount
+    }
+
     var importedAtText: String {
         batch.importedAt.formatted(date: .abbreviated, time: .shortened)
+    }
+
+    var importedAt: Date {
+        batch.importedAt
     }
 }
 
 private struct ImportHistoryMainPanel: View {
     let rows: [ImportHistoryBatchPresentation]
     @Binding var selectedBatchId: UUID?
+    @Binding var sortOrder: [KeyPathComparator<ImportHistoryBatchPresentation>]
+    @Binding var institutionFilter: String
+    @Binding var filenameFilter: String
+    @Binding var accountFilter: String
 
     var body: some View {
         VStack(alignment: .leading, spacing: GranaTheme.Spacing.none) {
             panelHeader
 
-            GranaTable(rows, selection: $selectedBatchId) {
-                TableColumn("Instituição") { row in
+            GranaTable(
+                rows,
+                selection: $selectedBatchId,
+                sortOrder: $sortOrder
+            ) {
+                TableColumn("Instituição", value: \.institutionName) { (row: ImportHistoryBatchPresentation) in
                     HStack(spacing: GranaTheme.Spacing.sm) {
                         InstitutionIcon(kind: row.institutionKind, size: 24)
                         Text(row.institutionName)
@@ -286,7 +334,7 @@ private struct ImportHistoryMainPanel: View {
                 }
                 .width(min: 180, ideal: 220, max: 260)
 
-                TableColumn("Arquivo") { row in
+                TableColumn("Arquivo", value: \.sourceFilename) { (row: ImportHistoryBatchPresentation) in
                     VStack(alignment: .leading, spacing: GranaTheme.Spacing.xxs) {
                         Text(row.batch.sourceFilename)
                             .font(GranaTheme.Typography.subheadlineEmphasis)
@@ -301,7 +349,7 @@ private struct ImportHistoryMainPanel: View {
                 }
                 .width(min: 220, ideal: 320)
 
-                TableColumn("Conta") { row in
+                TableColumn("Conta", value: \.accountName) { (row: ImportHistoryBatchPresentation) in
                     Text(row.accountName)
                         .font(GranaTheme.Typography.subheadline)
                         .foregroundStyle(GranaTheme.Palette.muted)
@@ -310,7 +358,7 @@ private struct ImportHistoryMainPanel: View {
                 }
                 .width(min: 180, ideal: 220)
 
-                TableColumn("Linhas") { row in
+                TableColumn("Linhas", value: \.rowCount) { (row: ImportHistoryBatchPresentation) in
                     Text("\(row.batch.rowCount)")
                         .font(GranaTheme.Typography.subheadlineEmphasis)
                         .foregroundStyle(GranaTheme.Palette.ink)
@@ -318,16 +366,27 @@ private struct ImportHistoryMainPanel: View {
                 }
                 .width(min: 72, ideal: 86, max: 96)
 
-                TableColumn("Importado") { row in
+                TableColumn("Importado", value: \.importedAt) { (row: ImportHistoryBatchPresentation) in
                     Text(row.importedAtText)
                         .font(GranaTheme.Typography.footnote)
                         .foregroundStyle(GranaTheme.Palette.muted)
                         .frame(maxWidth: .infinity, alignment: .trailing)
                 }
                 .width(min: 170, ideal: 190, max: 220)
+            } filterBar: {
+                ImportHistoryFilterBar(
+                    institutionOptions: institutionOptions,
+                    institutionFilter: $institutionFilter,
+                    filenameFilter: $filenameFilter,
+                    accountFilter: $accountFilter
+                )
             }
             .padding(GranaTheme.Spacing.md)
         }
+    }
+
+    private var institutionOptions: [String] {
+        ["Todas"] + Array(Set(rows.map(\.institutionName))).sorted()
     }
 
     private var panelHeader: some View {
@@ -356,6 +415,133 @@ private struct ImportHistoryMainPanel: View {
             Rectangle()
                 .fill(GranaTheme.Palette.line)
                 .frame(height: 1)
+        }
+    }
+}
+
+private struct ImportHistoryFilterBar: View {
+    let institutionOptions: [String]
+    @Binding var institutionFilter: String
+    @Binding var filenameFilter: String
+    @Binding var accountFilter: String
+
+    var body: some View {
+        HStack(alignment: .top, spacing: GranaTheme.Spacing.sm) {
+            importFilterMenu(
+                title: "Instituição",
+                value: institutionFilter,
+                options: institutionOptions,
+                selection: $institutionFilter
+            )
+
+            filterSearchField(
+                title: "Arquivo",
+                prompt: "Buscar arquivo",
+                text: $filenameFilter
+            )
+
+            filterSearchField(
+                title: "Conta",
+                prompt: "Buscar conta",
+                text: $accountFilter
+            )
+        }
+    }
+
+    private func importFilterMenu(
+        title: String,
+        value: String,
+        options: [String],
+        selection: Binding<String>
+    ) -> some View {
+        VStack(alignment: .leading, spacing: GranaTheme.Spacing.xxs) {
+            Text(title)
+                .font(GranaTheme.Typography.caption2Emphasis)
+                .foregroundStyle(GranaTheme.Palette.muted)
+
+            Menu {
+                ForEach(options, id: \.self) { option in
+                    Button(option) {
+                        selection.wrappedValue = option
+                    }
+                }
+            } label: {
+                filterChip(value: value, icon: "building.columns")
+            }
+            .buttonStyle(.plain)
+        }
+        .frame(width: 220, alignment: .leading)
+    }
+
+    private func filterSearchField(
+        title: String,
+        prompt: String,
+        text: Binding<String>
+    ) -> some View {
+        VStack(alignment: .leading, spacing: GranaTheme.Spacing.xxs) {
+            Text(title)
+                .font(GranaTheme.Typography.caption2Emphasis)
+                .foregroundStyle(GranaTheme.Palette.muted)
+
+            HStack(spacing: GranaTheme.Spacing.sm) {
+                Image(systemName: "magnifyingglass")
+                    .font(.system(size: GranaTheme.IconSize.small, weight: .semibold))
+                    .foregroundStyle(GranaTheme.Palette.tealDeep)
+
+                TextField(prompt, text: text)
+                    .textFieldStyle(.plain)
+                    .font(GranaTheme.Typography.footnoteEmphasis)
+
+                if !text.wrappedValue.isEmpty {
+                    Button {
+                        text.wrappedValue = ""
+                    } label: {
+                        Image(systemName: "xmark.circle.fill")
+                            .foregroundStyle(GranaTheme.Palette.muted)
+                    }
+                    .buttonStyle(.plain)
+                }
+            }
+            .padding(.horizontal, GranaTheme.Spacing.sm)
+            .frame(height: 40)
+            .background(
+                RoundedRectangle(cornerRadius: 14, style: .continuous)
+                    .fill(GranaTheme.Palette.paper.opacity(0.92))
+            )
+            .overlay {
+                RoundedRectangle(cornerRadius: 14, style: .continuous)
+                    .stroke(GranaTheme.Palette.line, lineWidth: 1)
+            }
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+    }
+
+    private func filterChip(value: String, icon: String) -> some View {
+        HStack(spacing: GranaTheme.Spacing.sm) {
+            Image(systemName: icon)
+                .font(.system(size: GranaTheme.IconSize.small, weight: .semibold))
+                .foregroundStyle(GranaTheme.Palette.tealDeep)
+
+            Text(value)
+                .font(GranaTheme.Typography.footnoteEmphasis)
+                .foregroundStyle(GranaTheme.Palette.ink)
+                .lineLimit(1)
+
+            Spacer(minLength: GranaTheme.Spacing.none)
+
+            Image(systemName: "chevron.down")
+                .font(.system(size: GranaTheme.IconSize.micro, weight: .semibold))
+                .foregroundStyle(GranaTheme.Palette.muted)
+        }
+        .padding(.horizontal, GranaTheme.Spacing.sm)
+        .frame(height: 40)
+        .background(
+            RoundedRectangle(cornerRadius: 14, style: .continuous)
+                .fill(GranaTheme.Palette.paper.opacity(0.92))
+        )
+        .overlay {
+            RoundedRectangle(cornerRadius: 14, style: .continuous)
+                .stroke(GranaTheme.Palette.line, lineWidth: 1)
         }
     }
 }

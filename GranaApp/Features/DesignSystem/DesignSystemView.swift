@@ -22,7 +22,6 @@ struct DesignSystemView: View {
     private let radiusTokens: [RadiusToken] = [
         RadiusToken(name: "control", radius: GranaTheme.Radius.control, usage: "Botões, inputs e badges"),
         RadiusToken(name: "card", radius: GranaTheme.Radius.card, usage: "Cards de conteúdo"),
-        RadiusToken(name: "panel", radius: GranaTheme.Radius.panel, usage: "Mesmo valor do card", note: "igual a card"),
         RadiusToken(name: "rail", radius: GranaTheme.Radius.rail, usage: "Shell lateral autenticado"),
         RadiusToken(name: "hero", radius: GranaTheme.Radius.hero, usage: "Header e agrupamentos amplos"),
     ]
@@ -38,70 +37,25 @@ struct DesignSystemView: View {
 
     var body: some View {
         ScrollView {
-            standardSections
-                .granaPagePadding()
+            content
         }
         .background(.clear)
-        .navigationTitle("Design System")
+        .navigationTitle("")
+        .toolbar(.hidden, for: .windowToolbar)
     }
 
-    private var columns: [GridItem] {
+    private var detailColumns: [GridItem] {
         [
             GridItem(.adaptive(minimum: 430), spacing: GranaTheme.Spacing.md, alignment: .top),
         ]
     }
 
-    private var standardSections: some View {
-        VStack(alignment: .leading, spacing: GranaTheme.Spacing.md) {
-            DesignSystemCard(title: "Amostra tipográfica", content: {
-                TypographyComparisonSample()
-            })
-
-            LazyVGrid(columns: columns, alignment: .leading, spacing: GranaTheme.Spacing.md) {
-                DesignSystemCard(title: "Tabela de tokens", content: {
-                    TokenTable(tokens: paletteTokens)
-                })
-
-                DesignSystemCard(title: "Tabela de tipografia", content: {
-                    TypographyTable(tokens: GranaTheme.Typography.tokens)
-                })
-
-                DesignSystemCard(title: "Tabela de spacing", content: {
-                    SpacingTable(tokens: GranaTheme.Spacing.tokens)
-                })
-
-                DesignSystemCard(title: "Tabela de raios", content: {
-                    RadiusTable(tokens: radiusTokens)
-                })
-
-                DesignSystemCard(title: "Estados semânticos", content: {
-                    SemanticStateTable(tokens: semanticTokens)
-                })
-
-                DesignSystemCard(title: "Camadas de profundidade das superfícies", content: {
-                    SurfaceDepthLayers()
-                })
-
-                DesignSystemCard(title: "Botões", content: {
-                    ButtonsShowcase()
-                })
-
-                DesignSystemCard(title: "Empty states", content: {
-                    EmptyStatesShowcase()
-                })
-            }
-
-            DesignSystemCard(title: "Exemplo de dashboard", content: {
-                DashboardExample()
-            })
-
-            DesignSystemCard(title: "Exemplo de tabela de transações", content: {
-                TransactionsTableExample()
-            })
-
-            DesignSystemCard(title: "Notice overlay", content: {
-                NoticeOverlayShowcase(notices: sampleNotices)
-            })
+    private var content: some View {
+        VStack(alignment: .leading, spacing: GranaTheme.Spacing.xxl) {
+            heroSection
+            foundationsSection
+            componentsSection
+            examplesSection
         }
     }
 
@@ -124,6 +78,152 @@ struct DesignSystemView: View {
                 dismissAfter: .seconds(10)
             ),
         ]
+    }
+
+    private var heroSection: some View {
+        VStack(alignment: .leading, spacing: GranaTheme.Spacing.lg) {
+            DesignSystemHeroCard()
+
+            HStack(alignment: .top, spacing: GranaTheme.Spacing.md) {
+                DesignSystemCard(
+                    eyebrow: "Leitura",
+                    title: "Amostra tipográfica",
+                    subtitle: "Como texto, dinheiro e código convivem na mesma superfície."
+                ) {
+                    TypographyComparisonSample()
+                }
+
+                DesignSystemCard(
+                    eyebrow: "Resumo",
+                    title: "Princípios visuais",
+                    subtitle: "O shell usa glass; conteúdo usa papel quente, tinta escura e acento teal."
+                ) {
+                    DesignSystemPrinciplesSummary()
+                }
+                .frame(width: 320)
+            }
+        }
+    }
+
+    private var foundationsSection: some View {
+        VStack(alignment: .leading, spacing: GranaTheme.Spacing.md) {
+            DesignSystemSectionHeader(
+                eyebrow: "Fundamentos",
+                title: "Tokens e superfícies",
+                subtitle: "Paleta, semântica, tipografia, spacing, raios e profundidade visual."
+            )
+
+            HStack(alignment: .top, spacing: GranaTheme.Spacing.md) {
+                DesignSystemCard(
+                    eyebrow: "Cor",
+                    title: "Paleta e estados",
+                    subtitle: "Marca, significado financeiro e feedback ficam separados."
+                ) {
+                    VStack(spacing: GranaTheme.Spacing.md) {
+                        TokenTable(tokens: paletteTokens)
+                        SemanticStateTable(tokens: semanticTokens)
+                    }
+                }
+
+                DesignSystemCard(
+                    eyebrow: "Matéria",
+                    title: "Camadas de profundidade",
+                    subtitle: "Glass para shell; subtle e solid para leitura analítica."
+                ) {
+                    SurfaceDepthLayers()
+                }
+                .frame(width: 360)
+            }
+
+            LazyVGrid(columns: detailColumns, alignment: .leading, spacing: GranaTheme.Spacing.md) {
+                DesignSystemCard(
+                    eyebrow: "Tipo",
+                    title: "Escala tipográfica",
+                    subtitle: "Tokens textuais, monetários e de código."
+                ) {
+                    TypographyTable(tokens: GranaTheme.Typography.tokens)
+                }
+
+                DesignSystemCard(
+                    eyebrow: "Ritmo",
+                    title: "Spacing",
+                    subtitle: "A respiração padrão de cards, tabelas e grupos."
+                ) {
+                    SpacingTable(tokens: GranaTheme.Spacing.tokens)
+                }
+
+                DesignSystemCard(
+                    eyebrow: "Forma",
+                    title: "Raios",
+                    subtitle: "Escala de curvatura para controles, cards, rail e hero."
+                ) {
+                    RadiusTable(tokens: radiusTokens)
+                }
+            }
+        }
+    }
+
+    private var componentsSection: some View {
+        VStack(alignment: .leading, spacing: GranaTheme.Spacing.md) {
+            DesignSystemSectionHeader(
+                eyebrow: "Componentes",
+                title: "Controles e feedback",
+                subtitle: "Botões, estados vazios e notices no vocabulário final do app."
+            )
+
+            HStack(alignment: .top, spacing: GranaTheme.Spacing.md) {
+                DesignSystemCard(
+                    eyebrow: "Ações",
+                    title: "Botões",
+                    subtitle: "Primário e secundário no papel do app, sem cair em visual genérico."
+                ) {
+                    ButtonsShowcase()
+                }
+                .frame(width: 320)
+
+                DesignSystemCard(
+                    eyebrow: "Feedback",
+                    title: "Notice overlay",
+                    subtitle: "Toasts e mensagens flutuantes com contraste suficiente."
+                ) {
+                    NoticeOverlayShowcase(notices: sampleNotices)
+                }
+            }
+
+            DesignSystemCard(
+                eyebrow: "Vazio",
+                title: "Empty states",
+                subtitle: "Estados amplos e positivos, com tipografia e iconografia coerentes."
+            ) {
+                EmptyStatesShowcase()
+            }
+        }
+    }
+
+    private var examplesSection: some View {
+        VStack(alignment: .leading, spacing: GranaTheme.Spacing.md) {
+            DesignSystemSectionHeader(
+                eyebrow: "Aplicação",
+                title: "Exemplos completos",
+                subtitle: "Como os fundamentos escalam para dashboard e leitura de transações."
+            )
+
+            DesignSystemCard(
+                eyebrow: "Painel",
+                title: "Dashboard",
+                subtitle: "Cards, gráfico e ranking em uma composição de análise financeira."
+            ) {
+                DashboardExample()
+            }
+
+            DesignSystemCard(
+                eyebrow: "Tabela",
+                title: "Transações",
+                subtitle: "Densidade, hierarquia e legibilidade em uma lista operacional."
+            ) {
+                TransactionsTableExample()
+            }
+        }
     }
 }
 
@@ -164,19 +264,173 @@ private struct TypographyComparisonSample: View {
 }
 
 private struct DesignSystemCard<Content: View>: View {
+    let eyebrow: String?
     let title: String
+    let subtitle: String?
     let content: () -> Content
 
+    init(
+        eyebrow: String? = nil,
+        title: String,
+        subtitle: String? = nil,
+        @ViewBuilder content: @escaping () -> Content
+    ) {
+        self.eyebrow = eyebrow
+        self.title = title
+        self.subtitle = subtitle
+        self.content = content
+    }
+
     var body: some View {
-        VStack(alignment: .leading, spacing: GranaTheme.Spacing.sm) {
-            Text(title)
-                .font(GranaTheme.Typography.headline)
-                .foregroundStyle(GranaTheme.Palette.ink)
+        VStack(alignment: .leading, spacing: GranaTheme.Spacing.md) {
+            VStack(alignment: .leading, spacing: GranaTheme.Spacing.xs) {
+                if let eyebrow, !eyebrow.isEmpty {
+                    Text(eyebrow)
+                        .font(GranaTheme.Typography.caption1Emphasis)
+                        .foregroundStyle(GranaTheme.Palette.tealDeep)
+                }
+                Text(title)
+                    .font(GranaTheme.Typography.headline)
+                    .foregroundStyle(GranaTheme.Palette.ink)
+                if let subtitle, !subtitle.isEmpty {
+                    Text(subtitle)
+                        .font(GranaTheme.Typography.caption1)
+                        .foregroundStyle(GranaTheme.Palette.muted)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
+            }
             content()
         }
         .padding(GranaTheme.Spacing.md)
         .frame(maxWidth: .infinity, alignment: .topLeading)
         .granaSurface(.subtle, cornerRadius: GranaTheme.Radius.card)
+    }
+}
+
+private struct DesignSystemHeroCard: View {
+    var body: some View {
+        VStack(alignment: .leading, spacing: GranaTheme.Spacing.lg) {
+            HStack(alignment: .top, spacing: GranaTheme.Spacing.lg) {
+                VStack(alignment: .leading, spacing: GranaTheme.Spacing.sm) {
+                    Text("Design System")
+                        .font(GranaTheme.Typography.largeTitle)
+                        .foregroundStyle(GranaTheme.Palette.ink)
+                    Text(
+                        "Painel quente, analítico e light-only. O objetivo aqui é validar matéria, contraste, densidade e hierarquia antes de espalhar padrões pelas features."
+                    )
+                    .font(GranaTheme.Typography.body)
+                    .foregroundStyle(GranaTheme.Palette.muted)
+                    .fixedSize(horizontal: false, vertical: true)
+                }
+
+                Spacer(minLength: GranaTheme.Spacing.lg)
+
+                VStack(alignment: .trailing, spacing: GranaTheme.Spacing.sm) {
+                    Text("ink -> teal")
+                        .font(GranaTheme.Typography.code)
+                        .foregroundStyle(GranaTheme.Palette.tealDeep)
+                    LinearGradient(
+                        colors: [
+                            GranaTheme.Palette.ink,
+                            GranaTheme.Palette.teal,
+                        ],
+                        startPoint: .topLeading,
+                        endPoint: .bottomTrailing
+                    )
+                    .frame(width: 180, height: 14)
+                    .clipShape(Capsule(style: .continuous))
+                }
+            }
+
+            HStack(spacing: GranaTheme.Spacing.sm) {
+                HeroBadge(label: "Light only", tint: GranaTheme.Palette.gold)
+                HeroBadge(label: "Glass no shell", tint: GranaTheme.Palette.teal)
+                HeroBadge(label: "Paper no conteúdo", tint: GranaTheme.Palette.green)
+                HeroBadge(label: "Teal != receita", tint: GranaTheme.Palette.red)
+            }
+        }
+        .padding(GranaTheme.Spacing.xl)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(
+            LinearGradient(
+                colors: [
+                    GranaTheme.Palette.paper.opacity(0.98),
+                    GranaTheme.Palette.teal.opacity(0.08),
+                ],
+                startPoint: .topLeading,
+                endPoint: .bottomTrailing
+            ),
+            in: RoundedRectangle(cornerRadius: GranaTheme.Radius.hero, style: .continuous)
+        )
+        .overlay {
+            RoundedRectangle(cornerRadius: GranaTheme.Radius.hero, style: .continuous)
+                .stroke(GranaTheme.Palette.line, lineWidth: 1)
+        }
+    }
+}
+
+private struct DesignSystemSectionHeader: View {
+    let eyebrow: String
+    let title: String
+    let subtitle: String
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: GranaTheme.Spacing.xs) {
+            Text(eyebrow)
+                .font(GranaTheme.Typography.caption1Emphasis)
+                .foregroundStyle(GranaTheme.Palette.tealDeep)
+            Text(title)
+                .font(GranaTheme.Typography.title3)
+                .foregroundStyle(GranaTheme.Palette.ink)
+            Text(subtitle)
+                .font(GranaTheme.Typography.subheadline)
+                .foregroundStyle(GranaTheme.Palette.muted)
+                .fixedSize(horizontal: false, vertical: true)
+        }
+    }
+}
+
+private struct DesignSystemPrinciplesSummary: View {
+    private let rows = [
+        ("Superfícies", "Glass só no chrome; cards usam subtle; tabelas usam solid."),
+        ("Tipografia", "Texto em tokens; dinheiro monoespaçado; código separado."),
+        ("Semântica", "Teal é interação. Receita, despesa e transferência mantêm significado próprio."),
+    ]
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: GranaTheme.Spacing.sm) {
+            ForEach(rows, id: \.0) { row in
+                VStack(alignment: .leading, spacing: GranaTheme.Spacing.xxs) {
+                    Text(row.0)
+                        .font(GranaTheme.Typography.subheadlineEmphasis)
+                        .foregroundStyle(GranaTheme.Palette.ink)
+                    Text(row.1)
+                        .font(GranaTheme.Typography.caption1)
+                        .foregroundStyle(GranaTheme.Palette.muted)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
+                if row.0 != rows.last?.0 {
+                    TableDivider()
+                        .padding(.leading, GranaTheme.Spacing.none)
+                }
+            }
+        }
+        .padding(GranaTheme.Spacing.md)
+        .tableSurface()
+    }
+}
+
+private struct HeroBadge: View {
+    let label: String
+    let tint: Color
+
+    var body: some View {
+        Text(label)
+            .font(GranaTheme.Typography.caption1Emphasis)
+            .foregroundStyle(tint)
+            .padding(.horizontal, GranaTheme.Spacing.sm)
+            .padding(.vertical, GranaTheme.Spacing.xs)
+            .background(tint.opacity(0.12), in: Capsule(style: .continuous))
     }
 }
 
@@ -658,6 +912,10 @@ private struct CategoryRankingPanel: View {
 
 private struct TransactionsTableExample: View {
     @State private var selectedRows: Set<String> = ["Mercado União", "Salário"]
+    @State private var sortOrder = [
+        KeyPathComparator(\TransactionPreview.description),
+    ]
+    @State private var filterText = ""
 
     private let rows: [TransactionPreview] = [
         TransactionPreview(
@@ -695,42 +953,93 @@ private struct TransactionsTableExample: View {
     ]
 
     var body: some View {
-        VStack(spacing: GranaTheme.Spacing.none) {
-            TransactionHeaderRow()
-                .tableRowContent()
-            TableDivider()
+        GranaTable(filteredRows, selection: $selectedRows, sortOrder: $sortOrder) {
+            TableColumn("Instituição", value: \.institutionName) { (row: TransactionPreview) in
+                HStack(spacing: GranaTheme.Spacing.sm) {
+                    InstitutionIcon(kind: row.institution, size: 24)
+                    Text(row.institutionName)
+                        .font(GranaTheme.Typography.subheadlineEmphasis)
+                        .foregroundStyle(GranaTheme.Palette.ink)
+                }
+            }
+            .width(min: 160, ideal: 180, max: 220)
 
-            ForEach(Array(rows.enumerated()), id: \.element.id) { index, row in
-                TransactionRow(
-                    selection: binding(for: row.id),
-                    institutionKind: row.institution,
-                    description: row.description,
-                    memo: row.memo,
-                    date: Date(timeIntervalSince1970: 1_787_529_600),
-                    amount: row.amount,
-                    amountKind: row.amountKind,
-                    status: row.status
-                )
-                .tableRowContent()
+            TableColumn("Transação", value: \.description) { (row: TransactionPreview) in
+                VStack(alignment: .leading, spacing: GranaTheme.Spacing.xxs) {
+                    Text(row.description)
+                        .font(GranaTheme.Typography.subheadlineEmphasis)
+                        .foregroundStyle(GranaTheme.Palette.ink)
+                    Text(row.memo)
+                        .font(GranaTheme.Typography.caption1)
+                        .foregroundStyle(GranaTheme.Palette.muted)
+                }
+            }
+            .width(min: 220, ideal: 280)
 
-                if index < rows.count - 1 {
-                    TableDivider()
+            TableColumn("Status", value: \.statusRank) { (row: TransactionPreview) in
+                Text(row.statusLabel)
+                    .font(GranaTheme.Typography.caption1Emphasis)
+                    .foregroundStyle(row.statusColor)
+            }
+            .width(min: 92, ideal: 110, max: 132)
+
+            TableColumn("Valor", value: \.amount) { (row: TransactionPreview) in
+                Text(row.amount.formatted(.currency(code: "BRL")))
+                    .font(GranaTheme.Typography.moneySubheadline)
+                    .foregroundStyle(row.amountColor)
+                    .frame(maxWidth: .infinity, alignment: .trailing)
+            }
+            .width(min: 120, ideal: 148, max: 180)
+        } filterBar: {
+            HStack(spacing: GranaTheme.Spacing.sm) {
+                VStack(alignment: .leading, spacing: GranaTheme.Spacing.xxs) {
+                    Text("Transação")
+                        .font(GranaTheme.Typography.caption2Emphasis)
+                        .foregroundStyle(GranaTheme.Palette.muted)
+
+                    HStack(spacing: GranaTheme.Spacing.sm) {
+                        Image(systemName: "magnifyingglass")
+                            .font(.system(size: GranaTheme.IconSize.small, weight: .semibold))
+                            .foregroundStyle(GranaTheme.Palette.tealDeep)
+
+                        TextField("Buscar descrição", text: $filterText)
+                            .textFieldStyle(.plain)
+                            .font(GranaTheme.Typography.footnoteEmphasis)
+
+                        if !filterText.isEmpty {
+                            Button {
+                                filterText = ""
+                            } label: {
+                                Image(systemName: "xmark.circle.fill")
+                                    .foregroundStyle(GranaTheme.Palette.muted)
+                            }
+                            .buttonStyle(.plain)
+                        }
+                    }
+                    .padding(.horizontal, GranaTheme.Spacing.sm)
+                    .frame(width: 240, height: 40)
+                    .background(
+                        RoundedRectangle(cornerRadius: 14, style: .continuous)
+                            .fill(GranaTheme.Palette.paper.opacity(0.92))
+                    )
+                    .overlay {
+                        RoundedRectangle(cornerRadius: 14, style: .continuous)
+                            .stroke(GranaTheme.Palette.line, lineWidth: 1)
+                    }
                 }
             }
         }
-        .tableSurface()
+        .frame(height: 300)
     }
 
-    private func binding(for id: String) -> Binding<Bool> {
-        Binding {
-            selectedRows.contains(id)
-        } set: { isSelected in
-            if isSelected {
-                selectedRows.insert(id)
-            } else {
-                selectedRows.remove(id)
+    private var filteredRows: [TransactionPreview] {
+        rows
+            .filter { row in
+                filterText.isEmpty
+                    || row.description.localizedCaseInsensitiveContains(filterText)
+                    || row.memo.localizedCaseInsensitiveContains(filterText)
             }
-        }
+            .sorted(using: sortOrder)
     }
 }
 
@@ -745,22 +1054,44 @@ private struct TransactionPreview: Identifiable {
     var id: String {
         description
     }
-}
 
-private struct TransactionHeaderRow: View {
-    var body: some View {
-        HStack {
-            Text("Selecionar")
-                .frame(width: 78, alignment: .leading)
-            Text("Transação")
-                .frame(maxWidth: .infinity, alignment: .leading)
-            Text("Status")
-                .frame(width: 96, alignment: .leading)
-            Text("Valor")
-                .frame(width: 118, alignment: .trailing)
+    var institutionName: String {
+        institution.displayName
+    }
+
+    var statusLabel: String {
+        status?.label ?? "Sem status"
+    }
+
+    var statusRank: Int {
+        switch status?.tint {
+        case .success?: 0
+        case .warning?: 1
+        case .info?: 2
+        case .neutral?: 3
+        case nil: 4
         }
-        .font(GranaTheme.Typography.footnoteEmphasis)
-        .foregroundStyle(GranaTheme.Palette.muted)
+    }
+
+    var statusColor: Color {
+        switch status?.tint {
+        case .success?: GranaTheme.Palette.green
+        case .warning?: GranaTheme.Palette.amber
+        case .info?: GranaTheme.Palette.tealDeep
+        case .neutral?: GranaTheme.Palette.muted
+        case nil: GranaTheme.Palette.muted
+        }
+    }
+
+    var amountColor: Color {
+        switch amountKind {
+        case .incoming:
+            GranaTheme.Palette.green
+        case .outgoing:
+            GranaTheme.Palette.red
+        case .transfer:
+            GranaTheme.Palette.tealDeep
+        }
     }
 }
 

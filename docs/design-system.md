@@ -45,6 +45,11 @@ Listas densas, tabelas, formularios e rows repetidas usam `solid`: preenchimento
 quente solido, sombra baixa e linha `line`. `solid` e a unica superficie base
 com contorno de linha aparente.
 
+Quando uma feature precisar de tabela, use `GranaTable` como ponto de entrada.
+Ela encapsula o shell visual padrao das tabelas do app sobre `SwiftUI.Table`.
+Estado de selecao, ordenacao, filtros e qualquer `load()`/`refresh()` continua
+na tela ou store; a tabela nao possui estado de dados.
+
 ## Navegacao
 
 No estado autenticado, use rail lateral compacto icon-only. Todas as secoes
