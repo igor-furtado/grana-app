@@ -1,109 +1,44 @@
+import ComposableArchitecture
 import Charts
 import Foundation
 import SwiftUI
 
-/// Painel direito da tela de Cartões: detalhe do cartão selecionado.
-/// Estrutura inspirada na visão web do Inter — header com identificação +
-/// gauge de limite, timeline de faturas, trio de cards de ciclo (anterior /
-/// atual / próxima) e tabela de lançamentos da fatura selecionada.
-///
-/// **Estado local:** `selectedStatementId` mantém a fatura focada. Default
-/// pra fatura em aberto mais próxima do fechamento (a "próxima fatura" do
-/// usuário); cai pra mais recente quando todas estão pagas. Re-resolve
-/// quando o usuário muda de cartão (via `.onChange(of: account.id)`).
-struct CreditCardDetailView: View {
-    let account: Account
-    let store: AccountStore
-
-    @State private var selectedStatementId: UUID?
-
-    private var institution: Institution? {
-        store.institution(forAccount: account)
-    }
-
-    private var details: CreditCardDetails? {
-        store.creditCard(for: account.id)
-    }
-
-    /// Faturas reais (persistidas) do cartão, ordenadas cronologicamente
-    /// — base pra timeline e pra resolver a "anterior / atual / próxima"
-    /// no `StatementCyclePanel`.
-    private var statements: [Statement] {
-        store.statements
-            .filter { $0.accountId == account.id }
-            .sorted { $0.closingDate < $1.closingDate }
-    }
-
-    /// Default da seleção: prefere a fatura em aberto mais próxima do
-    /// fechamento (próxima a vencer); cai pra última paga se tudo já foi
-    /// pago. `nil` apenas quando não há nenhuma fatura — cartão sem compras.
-    private var defaultStatementId: UUID? {
-        if let open = statements.first(where: {
-            $0.status() == .forming || $0.remainingAmount > 0
-        }) {
-            return open.id
-        }
-        return statements.last?.id
-    }
-
-    /// Janela do **próximo** ciclo após a última fatura existente — usado
-    /// pra projetar "Julho" e "Agosto" na timeline e no card de "próxima
-    /// fatura" quando o cartão ainda não teve compra naquele ciclo.
-    ///
-    /// Sem `CreditCardDetails` (cartão sem dia de fechamento configurado),
-    /// projeção é impossível — devolve array vazio.
-    private var projectedCycles: [StatementWindow] {
-        guard let details else { return [] }
-        let now = Date()
-        // Ponto de partida: max(closing_date da última fatura + 1d, hoje).
-        // Cobre os dois casos: cartão sem fatura ainda (parte de "hoje") e
-        // cartão com histórico (parte do dia seguinte ao último fechamento).
-        let start: Date = {
-            if let last = statements.last {
-                return Calendar.current.date(byAdding: .day, value: 1, to: last.closingDate) ?? now
-            }
-            return now
-        }()
-        var cycles: [StatementWindow] = []
-        var cursor = start
-        for _ in 0 ..< 2 {
-            let window = StatementWindow.resolve(
-                closingDay: details.statementClosingDay,
-                paymentDueDay: details.paymentDueDay,
-                on: cursor
-            )
-            cycles.append(window)
-            // Avança pra dia seguinte ao fechamento da janela atual pra
-            // iterar pro próximo ciclo.
-            cursor = Calendar.current.date(byAdding: .day, value: 1, to: window.closingDate) ?? cursor
-        }
-        return cycles
-    }
+/// Painel de detalhe do cartão selecionado.
+/// A view só renderiza o read model do reducer; seleção de fatura e
+/// carregamento de lançamentos ficam em `CreditCardStatementsFeature`.
+struct CreditCardStatementsView: View {
+    @Bindable var store: StoreOf<CreditCardStatementsFeature>
 
     var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: GranaTheme.Spacing.lg) {
                 header
-                if let details, let limit = details.creditLimit, limit > 0 {
+                if let details = store.card.details, let limit = details.creditLimit, limit > 0 {
                     LimitGaugeBlock(
-                        used: store.currentBalance(for: account).magnitude,
+                        used: store.card.currentBalance.magnitude,
                         limit: limit,
-                        currency: account.currency
+                        currency: store.card.account.currency
                     )
                 }
-                if !statements.isEmpty || !projectedCycles.isEmpty {
+                if !store.statements.isEmpty || !store.projections.isEmpty {
                     StatementTimelineChart(
-                        statements: statements,
-                        projections: projectedCycles,
-                        currency: account.currency,
-                        selectedId: $selectedStatementId
+                        statements: store.statements,
+                        projections: store.projections,
+                        currency: store.card.account.currency,
+                        selectedId: Binding(
+                            get: { store.selectedStatementId },
+                            set: { store.send(.statementSelected($0)) }
+                        )
                     )
                     StatementCyclePanel(
-                        statements: statements,
-                        projections: projectedCycles,
-                        selectedId: $selectedStatementId,
-                        currency: account.currency,
-                        bestPurchaseDay: bestPurchaseDay()
+                        statements: store.statements,
+                        projections: store.projections,
+                        selectedId: Binding(
+                            get: { store.selectedStatementId },
+                            set: { store.send(.statementSelected($0)) }
+                        ),
+                        currency: store.card.account.currency,
+                        bestPurchaseDay: store.bestPurchaseDay
                     )
                 }
                 transactionsBlock
@@ -111,16 +46,8 @@ struct CreditCardDetailView: View {
             .padding(GranaTheme.Spacing.xl)
         }
         .granaSurface(.subtle, cornerRadius: GranaTheme.Radius.hero)
-        .onAppear {
-            if selectedStatementId == nil { selectedStatementId = defaultStatementId }
-        }
-        .onChange(of: account.id) { _, _ in
-            selectedStatementId = defaultStatementId
-        }
-        .onChange(of: statements.map(\.id)) { _, _ in
-            if selectedStatementId == nil || !statements.contains(where: { $0.id == selectedStatementId }) {
-                selectedStatementId = defaultStatementId
-            }
+        .task {
+            await store.send(.task).finish()
         }
     }
 
@@ -148,7 +75,7 @@ struct CreditCardDetailView: View {
                 Text(maskedNumber)
                     .font(GranaTheme.Typography.code)
                     .foregroundStyle(GranaTheme.Palette.muted)
-                if account.archived {
+                if store.card.account.archived {
                     Text("Arquivado")
                         .font(GranaTheme.Typography.caption1Emphasis)
                         .foregroundStyle(GranaTheme.Palette.muted)
@@ -164,24 +91,17 @@ struct CreditCardDetailView: View {
         .granaSurface(.solid, cornerRadius: GranaTheme.Radius.card)
     }
 
+    private var institution: Institution? {
+        store.card.institution
+    }
+
     private var bankName: String {
         institution?.name ?? "Cartão"
     }
 
     private var maskedNumber: String {
-        guard let last4 = details?.cardLastFour, last4.count == 4 else { return "Cartão" }
+        guard let last4 = store.card.details?.cardLastFour, last4.count == 4 else { return "Cartão" }
         return "•••• \(last4)"
-    }
-
-    /// "Melhor dia de compra" = dia seguinte ao fechamento. Faz a compra
-    /// começar o ciclo no dia 1 — maior prazo até o vencimento. Só faz
-    /// sentido pra fatura em aberto (a próxima a fechar).
-    private func bestPurchaseDay() -> Int? {
-        guard let details else { return nil }
-        let day = details.statementClosingDay + 1
-        // Wraps de mês curto não importam aqui — é hint de UX, não data
-        // exata. Saturamos em 31; o usuário entende que vira o mês.
-        return day > 31 ? 1 : day
     }
 
     // MARK: - Transactions block
@@ -192,21 +112,18 @@ struct CreditCardDetailView: View {
                 Text("Lançamentos")
                     .font(GranaTheme.Typography.headline)
                 Spacer()
-                if let total = selectedStatementTotal {
-                    Text(total.formatted(.currency(code: account.currency)))
+                if let total = store.selectedStatementTotal {
+                    Text(total.formatted(.currency(code: store.card.account.currency)))
                         .font(GranaTheme.Typography.moneySubheadline)
                         .foregroundStyle(.secondary)
                 }
             }
 
-            if let selectedId = selectedStatementId,
-               let statement = statements.first(where: { $0.id == selectedId })
-            {
+            if let statement = store.selectedStatement {
                 statementSummary(statement)
-                StatementTransactionsList(
-                    statementId: selectedId,
-                    container: store.container
-                )
+                if let statementListStore = store.scope(state: \.statementList, action: \.statementList) {
+                    StatementListView(store: statementListStore)
+                }
             } else {
                 // Fatura projetada (não persistida) ou nenhuma seleção:
                 // não há transações pra listar.
@@ -232,15 +149,10 @@ struct CreditCardDetailView: View {
         GridRow {
             Text(label)
                 .foregroundStyle(.secondary)
-            Text(value.formatted(.currency(code: account.currency)))
+            Text(value.formatted(.currency(code: store.card.account.currency)))
                 .font(GranaTheme.Typography.moneySubheadline)
                 .gridColumnAlignment(.trailing)
         }
-    }
-
-    private var selectedStatementTotal: Decimal? {
-        guard let selectedId = selectedStatementId else { return nil }
-        return statements.first(where: { $0.id == selectedId })?.totalAmount
     }
 
     private var emptyTransactions: some View {

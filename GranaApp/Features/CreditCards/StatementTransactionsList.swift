@@ -1,3 +1,4 @@
+import ComposableArchitecture
 import Foundation
 import SwiftUI
 
@@ -6,29 +7,23 @@ import SwiftUI
 ///
 /// Mantém `[UUID: Category]` carregado uma vez (snapshot) pra resolver o
 /// nome + ícone da categoria de cada row sem segundo round-trip.
-struct StatementTransactionsList: View {
-    let statementId: UUID
-    let container: AppContainer
-
-    @State private var transactions: [Transaction] = []
-    @State private var categoryById: [UUID: Category] = [:]
-    @State private var isLoading = true
+struct StatementListView: View {
+    @Bindable var store: StoreOf<StatementListFeature>
 
     var body: some View {
         VStack(spacing: GranaTheme.Spacing.none) {
-            if isLoading, transactions.isEmpty {
+            if store.isLoading, store.rows.isEmpty {
                 ProgressView()
                     .padding(.vertical, GranaTheme.Spacing.lg)
-            } else if transactions.isEmpty {
+            } else if store.rows.isEmpty {
                 emptyView
             } else {
                 rows
             }
         }
         .granaSurface(.solid, cornerRadius: GranaTheme.Radius.card)
-        .task(id: statementId) {
-            await loadCategoriesOnce()
-            await loadTransactions()
+        .task(id: store.statementId) {
+            await store.send(.task).finish()
         }
     }
 
@@ -47,32 +42,31 @@ struct StatementTransactionsList: View {
 
     private var rows: some View {
         VStack(spacing: GranaTheme.Spacing.none) {
-            ForEach(Array(transactions.enumerated()), id: \.element.id) { idx, transaction in
+            ForEach(Array(store.rows.enumerated()), id: \.element.id) { idx, row in
                 if idx > 0 { Divider() }
-                row(for: transaction)
+                rowView(for: row)
             }
         }
     }
 
-    private func row(for transaction: Transaction) -> some View {
-        let category = categoryById[transaction.categoryId]
+    private func rowView(for row: StatementTransactionRow) -> some View {
         return HStack(spacing: GranaTheme.Spacing.sm) {
-            Text(Self.dayMonthFormatter.string(from: transaction.occurredAt))
+            Text(Self.dayMonthFormatter.string(from: row.transaction.occurredAt))
                 .font(GranaTheme.Typography.footnote)
                 .foregroundStyle(GranaTheme.Palette.muted)
                 .frame(width: 56, alignment: .leading)
 
-            if let icon = category?.icon {
+            if let icon = row.category?.icon {
                 CategoryIconBubble(icon: icon, size: 28)
             } else {
                 placeholderIcon
             }
 
             VStack(alignment: .leading, spacing: GranaTheme.Spacing.xxs) {
-                Text(transaction.description)
+                Text(row.transaction.description)
                     .font(GranaTheme.Typography.callout)
                     .lineLimit(1)
-                if let category {
+                if let category = row.category {
                     Text(category.name)
                         .font(GranaTheme.Typography.caption2)
                         .foregroundStyle(GranaTheme.Palette.muted)
@@ -81,7 +75,7 @@ struct StatementTransactionsList: View {
 
             Spacer()
 
-            Text("-\(transaction.amount.magnitude.formatted(.currency(code: "BRL")))")
+            Text("-\(row.transaction.amount.magnitude.formatted(.currency(code: "BRL")))")
                 .font(GranaTheme.Typography.moneySubheadline)
                 .foregroundStyle(GranaTheme.Palette.ink)
         }
@@ -106,33 +100,6 @@ struct StatementTransactionsList: View {
         f.locale = Locale(identifier: "pt_BR")
         return f
     }()
-
-    // MARK: - Loading
-
-    private func loadTransactions() async {
-        isLoading = true
-        defer { isLoading = false }
-        do {
-            transactions = try await container.remoteStatements.loadTransactions(statementId: statementId)
-        } catch is CancellationError {
-        } catch {
-            NoticeCenter.shared.report(error)
-        }
-    }
-
-    /// Carrega categorias uma vez (snapshot) — não precisam de stream porque
-    /// raramente mudam durante a visualização. Mapa por id pro lookup O(1)
-    /// no `row(for:)`.
-    private func loadCategoriesOnce() async {
-        guard categoryById.isEmpty else { return }
-        do {
-            let categories = try await container.categoryCatalog.load()
-            categoryById = Dictionary(uniqueKeysWithValues: categories.map { ($0.id, $0) })
-        } catch {
-            // Não bloqueante — sem categoria a row mostra só descrição.
-            NoticeCenter.capture(error, title: "Falha ao carregar categorias")
-        }
-    }
 }
 
 /// Bolha redonda com o ícone da categoria + cor associada. Match visual

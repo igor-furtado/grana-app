@@ -9,8 +9,6 @@ import OSLog
 @MainActor
 @Observable
 final class AccountStore {
-    /// Escape hatch transitório enquanto detalhe de cartão e transações
-    /// ainda não migraram para read models remotos dedicados.
     let container: AppContainer
 
     private(set) var accounts: [Account] = []

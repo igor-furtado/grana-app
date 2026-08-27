@@ -32,6 +32,8 @@ _Evite_: Conta bancária, quando for necessário distingui-la de outros tipos de
 
 **Cartão de crédito**:
 Conta que representa compras a crédito e a dívida associada a elas. Suas compras são organizadas em faturas.
+No modelo persistente atual, permanece sob o agregado central de conta com detalhes específicos de cartão. Na arquitetura
+do app, porém, a vertical de Cartões é autônoma e não depende da feature de contas bancárias.
 _Evite_: Cartão, conta-cartão, conta corrente
 
 **Saldo inicial**:

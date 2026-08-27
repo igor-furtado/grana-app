@@ -13,6 +13,7 @@ final class AppEnvironment {
     let authService: AuthService
     let setupError: Error?
     let importFeatureStore: StoreOf<ImportFeature>
+    let creditCardsFeatureStore: StoreOf<CreditCardsFeature>
 
     private let profileBootstrapper: any ProfileBootstrapRepositoryProtocol
     private var hasRestoredSession = false
@@ -48,6 +49,11 @@ final class AppEnvironment {
         } withDependencies: {
             $0.importClient = .live(container: container)
             $0.categorizationClient = .live(container: container)
+        }
+        self.creditCardsFeatureStore = Store(initialState: CreditCardsFeature.State()) {
+            CreditCardsFeature()
+        } withDependencies: {
+            $0.creditCardsClient = .live(container: container)
         }
     }
 

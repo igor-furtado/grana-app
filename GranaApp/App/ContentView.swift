@@ -81,9 +81,8 @@ struct ContentView: View {
                     selectedSectionView
                 }
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
-            }    
+            }
             .padding(GranaTheme.Layout.pageInsets)
-
         }
         .onReceive(NotificationCenter.default.publisher(for: .appSectionNavigationRequested)) { notification in
             guard let rawValue = notification.object as? String,
@@ -103,7 +102,7 @@ struct ContentView: View {
         switch selection {
         case .dashboard: DashboardView()
         case .transactions: TransactionsView()
-        case .creditCards: CreditCardsView()
+        case .creditCards: CreditCardsView(store: environment.creditCardsFeatureStore)
         case .accounts: AccountsView()
         case .import: ImportHistoryView(store: environment.importFeatureStore)
         case .categories: CategoriesView()
