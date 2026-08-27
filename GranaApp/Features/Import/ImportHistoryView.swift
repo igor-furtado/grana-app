@@ -59,7 +59,6 @@ struct ImportHistoryView: View {
         )
     }
 
-    @ViewBuilder
     private func content(store: ImportStore) -> some View {
         VStack(spacing: GranaTheme.Spacing.sm) {
             header(store: store)
@@ -147,8 +146,7 @@ struct ImportHistoryView: View {
         return HStack(alignment: .top, spacing: GranaTheme.Spacing.md) {
             ImportHistoryMainPanel(
                 rows: rows,
-                selectedBatchId: selectedRow?.id,
-                onSelect: { selectedBatchId = $0 }
+                selectedBatchId: $selectedBatchId
             )
             .frame(maxWidth: .infinity, maxHeight: .infinity)
 
@@ -240,10 +238,21 @@ private struct ImportHistoryBatchPresentation: Identifiable {
     let accountDisplayName: String?
     let institution: Institution?
 
-    var id: UUID { batch.id }
-    var institutionKind: InstitutionKind { institution?.kind ?? .other }
-    var institutionName: String { institution?.name ?? "Conta desconhecida" }
-    var accountName: String { accountDisplayName ?? institutionName }
+    var id: UUID {
+        batch.id
+    }
+
+    var institutionKind: InstitutionKind {
+        institution?.kind ?? .other
+    }
+
+    var institutionName: String {
+        institution?.name ?? "Conta desconhecida"
+    }
+
+    var accountName: String {
+        accountDisplayName ?? institutionName
+    }
 
     var formatName: String {
         let ext = URL(fileURLWithPath: batch.sourceFilename).pathExtension
@@ -254,51 +263,71 @@ private struct ImportHistoryBatchPresentation: Identifiable {
     var importedAtText: String {
         batch.importedAt.formatted(date: .abbreviated, time: .shortened)
     }
-
-    var importedAtShortText: String {
-        batch.importedAt.formatted(date: .numeric, time: .omitted)
-    }
-
-    var monthLabel: String {
-        batch.importedAt.formatted(.dateTime.month(.wide).year())
-    }
 }
 
 private struct ImportHistoryMainPanel: View {
     let rows: [ImportHistoryBatchPresentation]
-    let selectedBatchId: UUID?
-    let onSelect: (UUID) -> Void
-
-    private var groupedRows: [(key: String, rows: [ImportHistoryBatchPresentation])] {
-        Dictionary(grouping: rows, by: \.monthLabel)
-            .sorted { lhs, rhs in
-                guard let left = lhs.value.first?.batch.importedAt,
-                      let right = rhs.value.first?.batch.importedAt else { return lhs.key > rhs.key }
-                return left > right
-            }
-            .map { (key: $0.key, rows: $0.value) }
-    }
+    @Binding var selectedBatchId: UUID?
 
     var body: some View {
         VStack(alignment: .leading, spacing: GranaTheme.Spacing.none) {
             panelHeader
 
-            ScrollView {
-                LazyVStack(alignment: .leading, spacing: GranaTheme.Spacing.lg) {
-                    ForEach(groupedRows, id: \.key) { section in
-                        ImportHistoryMonthSection(
-                            title: section.key,
-                            rows: section.rows,
-                            selectedBatchId: selectedBatchId,
-                            onSelect: onSelect
-                        )
+            GranaTable(rows, selection: $selectedBatchId) {
+                TableColumn("Instituição") { row in
+                    HStack(spacing: GranaTheme.Spacing.sm) {
+                        InstitutionIcon(kind: row.institutionKind, size: 24)
+                        Text(row.institutionName)
+                            .font(GranaTheme.Typography.subheadlineEmphasis)
+                            .foregroundStyle(GranaTheme.Palette.ink)
+                            .lineLimit(1)
                     }
+                    .help(row.institutionName)
                 }
-                .padding(GranaTheme.Spacing.md)
+                .width(min: 180, ideal: 220, max: 260)
+
+                TableColumn("Arquivo") { row in
+                    VStack(alignment: .leading, spacing: GranaTheme.Spacing.xxs) {
+                        Text(row.batch.sourceFilename)
+                            .font(GranaTheme.Typography.subheadlineEmphasis)
+                            .foregroundStyle(GranaTheme.Palette.ink)
+                            .lineLimit(1)
+                            .truncationMode(.middle)
+                        Text(row.formatName)
+                            .font(GranaTheme.Typography.caption2Emphasis)
+                            .foregroundStyle(GranaTheme.Palette.tealDeep)
+                    }
+                    .help(row.batch.sourceFilename)
+                }
+                .width(min: 220, ideal: 320)
+
+                TableColumn("Conta") { row in
+                    Text(row.accountName)
+                        .font(GranaTheme.Typography.subheadline)
+                        .foregroundStyle(GranaTheme.Palette.muted)
+                        .lineLimit(1)
+                        .help(row.accountName)
+                }
+                .width(min: 180, ideal: 220)
+
+                TableColumn("Linhas") { row in
+                    Text("\(row.batch.rowCount)")
+                        .font(GranaTheme.Typography.subheadlineEmphasis)
+                        .foregroundStyle(GranaTheme.Palette.ink)
+                        .frame(maxWidth: .infinity, alignment: .trailing)
+                }
+                .width(min: 72, ideal: 86, max: 96)
+
+                TableColumn("Importado") { row in
+                    Text(row.importedAtText)
+                        .font(GranaTheme.Typography.footnote)
+                        .foregroundStyle(GranaTheme.Palette.muted)
+                        .frame(maxWidth: .infinity, alignment: .trailing)
+                }
+                .width(min: 170, ideal: 190, max: 220)
             }
+            .padding(GranaTheme.Spacing.md)
         }
-        .granaSurface(.solid, cornerRadius: GranaTheme.Radius.card)
-        .clipShape(RoundedRectangle(cornerRadius: GranaTheme.Radius.card, style: .continuous))
     }
 
     private var panelHeader: some View {
@@ -328,106 +357,6 @@ private struct ImportHistoryMainPanel: View {
                 .fill(GranaTheme.Palette.line)
                 .frame(height: 1)
         }
-    }
-}
-
-private struct ImportHistoryMonthSection: View {
-    let title: String
-    let rows: [ImportHistoryBatchPresentation]
-    let selectedBatchId: UUID?
-    let onSelect: (UUID) -> Void
-
-    var body: some View {
-        VStack(alignment: .leading, spacing: GranaTheme.Spacing.sm) {
-            HStack {
-                Text(title.capitalized)
-                    .font(GranaTheme.Typography.subheadlineEmphasis)
-                    .foregroundStyle(GranaTheme.Palette.ink)
-                Spacer(minLength: GranaTheme.Spacing.none)
-                Text("\(rows.count) lote\(rows.count == 1 ? "" : "s")")
-                    .font(GranaTheme.Typography.caption2Emphasis)
-                    .foregroundStyle(GranaTheme.Palette.muted)
-            }
-
-            VStack(spacing: GranaTheme.Spacing.sm) {
-                ForEach(rows) { row in
-                    ImportHistoryBatchCard(
-                        row: row,
-                        isSelected: selectedBatchId == row.id,
-                        onSelect: { onSelect(row.id) }
-                    )
-                }
-            }
-        }
-    }
-}
-
-private struct ImportHistoryBatchCard: View {
-    let row: ImportHistoryBatchPresentation
-    let isSelected: Bool
-    let onSelect: () -> Void
-
-    var body: some View {
-        Button(action: onSelect) {
-            VStack(alignment: .leading, spacing: GranaTheme.Spacing.md) {
-                HStack(alignment: .top, spacing: GranaTheme.Spacing.sm) {
-                    InstitutionIcon(kind: row.institutionKind, size: 42)
-
-                    VStack(alignment: .leading, spacing: GranaTheme.Spacing.xxs) {
-                        HStack(alignment: .firstTextBaseline, spacing: GranaTheme.Spacing.xs) {
-                            Text(row.institutionName)
-                                .font(GranaTheme.Typography.bodyEmphasis)
-                                .foregroundStyle(GranaTheme.Palette.ink)
-                                .lineLimit(1)
-
-                            Text(row.formatName)
-                                .font(GranaTheme.Typography.caption2Emphasis)
-                                .foregroundStyle(GranaTheme.Palette.tealDeep)
-                                .padding(.horizontal, GranaTheme.Spacing.xs)
-                                .padding(.vertical, GranaTheme.Spacing.xxs)
-                                .background(GranaTheme.Palette.teal.opacity(0.10), in: Capsule())
-                        }
-
-                        Text(row.batch.sourceFilename)
-                            .font(GranaTheme.Typography.subheadlineEmphasis)
-                            .foregroundStyle(GranaTheme.Palette.muted)
-                            .lineLimit(1)
-                            .truncationMode(.middle)
-                    }
-
-                    Spacer(minLength: GranaTheme.Spacing.none)
-
-                    if isSelected {
-                        Image(systemName: AppIcon.completedSeal.systemImage)
-                            .font(.system(size: GranaTheme.IconSize.medium, weight: .semibold))
-                            .foregroundStyle(GranaTheme.Palette.teal)
-                    }
-                }
-
-                HStack(spacing: GranaTheme.Spacing.sm) {
-                    ImportBatchMetaPill(title: "Conta", value: row.accountName, tint: GranaTheme.Palette.ink)
-                    ImportBatchMetaPill(title: "Linhas", value: "\(row.batch.rowCount)", tint: GranaTheme.Palette.amber)
-                    ImportBatchMetaPill(title: "Data", value: row.importedAtShortText, tint: GranaTheme.Palette.teal)
-                }
-            }
-            .padding(GranaTheme.Spacing.md)
-            .frame(maxWidth: .infinity, alignment: .leading)
-            .background(backgroundShape)
-            .overlay {
-                RoundedRectangle(cornerRadius: GranaTheme.Radius.card, style: .continuous)
-                    .strokeBorder(borderColor, lineWidth: isSelected ? 1.4 : 1)
-            }
-        }
-        .buttonStyle(.plain)
-    }
-
-    private var backgroundShape: some View {
-        RoundedRectangle(cornerRadius: GranaTheme.Radius.card, style: .continuous)
-            .fill(isSelected ? GranaTheme.Palette.paper : GranaTheme.Palette.paper.opacity(0.48))
-    }
-
-    private var borderColor: Color {
-        isSelected ? GranaTheme.Palette.teal.opacity(0.34) : GranaTheme.Palette.line
     }
 }
 
@@ -608,28 +537,6 @@ private struct ImportSummaryBadge: View {
         .padding(GranaTheme.Spacing.md)
         .frame(maxWidth: .infinity, alignment: .leading)
         .granaSurface(.solid, cornerRadius: GranaTheme.Radius.control)
-    }
-}
-
-private struct ImportBatchMetaPill: View {
-    let title: String
-    let value: String
-    let tint: Color
-
-    var body: some View {
-        VStack(alignment: .leading, spacing: GranaTheme.Spacing.xxs) {
-            Text(title)
-                .font(GranaTheme.Typography.caption2Emphasis)
-                .foregroundStyle(GranaTheme.Palette.muted)
-            Text(value)
-                .font(GranaTheme.Typography.caption1Emphasis)
-                .foregroundStyle(GranaTheme.Palette.ink)
-                .lineLimit(1)
-        }
-        .padding(.horizontal, GranaTheme.Spacing.sm)
-        .padding(.vertical, GranaTheme.Spacing.xs)
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .background(tint.opacity(0.08), in: RoundedRectangle(cornerRadius: 14, style: .continuous))
     }
 }
 

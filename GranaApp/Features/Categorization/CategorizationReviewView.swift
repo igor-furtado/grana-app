@@ -51,10 +51,42 @@ struct CategorizationReviewView: View {
             .toolbar(.hidden, for: .windowToolbar)
             .frame(minWidth: 700, minHeight: 600)
         case let .wizard(onImport, onBack, onClose):
-            VStack(spacing: GranaTheme.Spacing.none) {
-                content
-                    .navigationSubtitle(statusSubtitle)
-                wizardBottomBar(onImport: onImport, onBack: onBack, onClose: onClose)
+            ImportWizardStageScaffold(
+                eyebrow: "Revisão final",
+                title: "Confirme as categorias antes de importar",
+                subtitle: "As sugestões abaixo ainda não foram persistidas. Ajuste o que for necessário e só então confirme a importação.",
+                icon: .completedSeal,
+                badges: heroBadges
+            ) {
+                VStack(spacing: GranaTheme.Spacing.md) {
+                    content
+                    wizardBottomBar(onImport: onImport, onBack: onBack, onClose: onClose)
+                }
+                .navigationSubtitle(statusSubtitle)
+            } sidebar: {
+                VStack(spacing: GranaTheme.Spacing.md) {
+                    ImportWizardSidebarCard(
+                        title: "Resumo da revisão",
+                        subtitle: "Pré-commit"
+                    ) {
+                        ImportWizardMetricRow(label: "Sugestões", value: "\(store.suggestions.count)")
+                        ImportWizardMetricRow(label: "Revisadas", value: "\(reviewedCount)")
+                        if fallbackCount > 0 {
+                            ImportWizardMetricRow(label: "Fallback", value: "\(fallbackCount)")
+                        }
+                    }
+
+                    ImportWizardSidebarCard(
+                        title: "Próximo passo",
+                        subtitle: "Importação atômica"
+                    ) {
+                        Text(
+                            "Ao confirmar, o wizard aplica a revisão e envia os lotes de forma transacional para o backend."
+                        )
+                        .font(GranaTheme.Typography.callout)
+                        .foregroundStyle(GranaTheme.Palette.muted)
+                    }
+                }
             }
         }
     }
@@ -163,13 +195,15 @@ struct CategorizationReviewView: View {
         // Caption omitida — stats de revisão vivem no `summaryRow` da lista.
         BottomActionBar {
             Button("Fechar") { onClose() }
+                .buttonStyle(GranaSecondaryButtonStyle())
             Button("Voltar") { onBack() }
+                .buttonStyle(GranaSecondaryButtonStyle())
             Button {
                 Task { await onImport() }
             } label: {
                 Text("Importar \(store.suggestions.count) \(store.suggestions.count == 1 ? "transação" : "transações")")
             }
-            .buttonStyle(.borderedProminent)
+            .buttonStyle(GranaPrimaryButtonStyle())
             .disabled(store.suggestions.isEmpty || isClassifying)
         }
     }
@@ -177,5 +211,32 @@ struct CategorizationReviewView: View {
     private var isClassifying: Bool {
         if case .classifying = store.status { return true }
         return false
+    }
+
+    private var reviewedCount: Int {
+        store.suggestions.filter(\.isReviewed).count
+    }
+
+    private var fallbackCount: Int {
+        if case let .ready(_, fallback) = store.status {
+            return fallback
+        }
+        return store.suggestions.filter { suggestion in
+            categoryName(for: suggestion.categoryId).caseInsensitiveCompare("Não Classificado") == .orderedSame
+        }.count
+    }
+
+    private var heroBadges: [ImportWizardBadge] {
+        var badges: [ImportWizardBadge] = [
+            .init(label: "\(reviewedCount)/\(store.suggestions.count) revisadas", tint: .green),
+        ]
+        if fallbackCount > 0 {
+            badges.append(.init(label: "\(fallbackCount) fallback", tint: .warning))
+        }
+        return badges
+    }
+
+    private func categoryName(for id: UUID) -> String {
+        store.category(for: id)?.name ?? ""
     }
 }

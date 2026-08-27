@@ -1,8 +1,5 @@
 import SwiftUI
 
-/// Tela de preview da fatura CSV importada. Diferença principal pro OFX:
-/// uma única conta, picker manual (só contas-cartão), e info de quantas
-/// linhas com valor negativo foram puladas (pagamentos + estornos).
 struct CSVReviewStepView: View {
     @Bindable var store: ImportStore
     let dismiss: DismissAction
@@ -26,6 +23,10 @@ struct CSVReviewStepView: View {
         resolution?.selectedCount ?? 0
     }
 
+    private var duplicateCount: Int {
+        resolution?.duplicateCount ?? 0
+    }
+
     private var canConfirm: Bool {
         guard let resolution else { return false }
         guard totalSelected > 0 else { return false }
@@ -33,42 +34,90 @@ struct CSVReviewStepView: View {
     }
 
     var body: some View {
-        VStack(spacing: GranaTheme.Spacing.none) {
-            // Card "Conta de destino" + skipped negatives info.
-            VStack(alignment: .leading, spacing: GranaTheme.Spacing.none) {
+        ImportWizardStageScaffold(
+            eyebrow: "Importação CSV",
+            title: "Revise a fatura consolidada antes de importar",
+            subtitle: "O arquivo já foi convertido em uma prévia da fatura. Escolha a conta-cartão, trate estornos e confirme a seleção final.",
+            icon: .sidebarCreditCards,
+            badges: heroBadges
+        ) {
+            VStack(spacing: GranaTheme.Spacing.md) {
                 CSVAccountInfoCard(
                     store: store,
                     accounts: creditCardAccounts
                 )
+
+                if let resolutionBinding = Binding($store.csvResolution) {
+                    CSVTransactionsListCard(
+                        resolution: resolutionBinding,
+                        institutionKind: bankKind(for: resolutionBinding.wrappedValue.accountId)
+                    )
+                    .frame(maxHeight: .infinity)
+                }
+
+                BottomActionBar(caption: selectionCaption) {
+                    Button("Fechar") { dismiss() }
+                        .buttonStyle(GranaSecondaryButtonStyle())
+
+                    Button("Avançar com \(totalSelected) \(totalSelected == 1 ? "transação" : "transações")") {
+                        Task { await store.confirmCSVImport() }
+                    }
+                    .buttonStyle(GranaPrimaryButtonStyle())
+                    .disabled(!canConfirm)
+                }
+            }
+        } sidebar: {
+            VStack(spacing: GranaTheme.Spacing.md) {
+                ImportWizardSidebarCard(
+                    title: "Resumo da fatura",
+                    subtitle: resolution?.sourceFilename
+                ) {
+                    ImportWizardMetricRow(
+                        label: "Conta-cartão",
+                        value: resolution?.accountId == nil ? "Pendente" : "Definida"
+                    )
+                    ImportWizardMetricRow(label: "Compras válidas", value: "\(resolution?.rows.count ?? 0)")
+                    ImportWizardMetricRow(label: "Selecionadas", value: "\(totalSelected)")
+                    if duplicateCount > 0 {
+                        ImportWizardMetricRow(label: "Duplicadas", value: "\(duplicateCount)")
+                    }
+                    if let negativeCount = resolution?.negativeRows.count, negativeCount > 0 {
+                        ImportWizardMetricRow(label: "Negativos", value: "\(negativeCount)")
+                    }
+                }
+
                 if let negatives = resolution?.negativeRows, !negatives.isEmpty {
                     negativeRowsSection(rows: negatives)
                 }
-            }
 
-            // Bind direto pela projeção do @Bindable. `Binding($optional)`
-            // devolve `Binding<T>?` quando o subjacente é não-nil; sem isso
-            // o getter capturava o snapshot local do `if let` e mutações em
-            // loop liam dados velhos (só a última escrita ficava).
-            if let resolutionBinding = Binding($store.csvResolution) {
-                CSVTransactionsListCard(
-                    resolution: resolutionBinding,
-                    institutionKind: bankKind(for: resolutionBinding.wrappedValue.accountId)
-                )
-            }
-
-            BottomActionBar(caption: selectionCaption) {
-                Button("Fechar") { dismiss() }
-                Button("Avançar com \(totalSelected) \(totalSelected == 1 ? "transação" : "transações")") {
-                    Task { await store.confirmCSVImport() }
+                if resolution?.accountId == nil {
+                    ImportWizardSidebarCard(
+                        title: "Ação pendente",
+                        subtitle: "CSV de fatura sempre precisa de uma conta-cartão explícita."
+                    ) {
+                        Text(
+                            "Selecione a conta de destino para habilitar a confirmação. O fluxo não cria conta nova a partir do CSV."
+                        )
+                        .font(GranaTheme.Typography.callout)
+                        .foregroundStyle(GranaTheme.Palette.muted)
+                    }
                 }
-                .buttonStyle(.borderedProminent)
-                .disabled(!canConfirm)
             }
         }
         .navigationSubtitle(resolution?.sourceFilename ?? "")
     }
 
-    /// Caption só pra bloqueios — stats vivem no header da lista agora.
+    private var heroBadges: [ImportWizardBadge] {
+        var badges: [ImportWizardBadge] = [
+            .init(label: "CSV de fatura", tint: .teal),
+            .init(label: "\(totalSelected) selecionadas", tint: .green),
+        ]
+        if duplicateCount > 0 {
+            badges.append(.init(label: "\(duplicateCount) duplicadas", tint: .warning))
+        }
+        return badges
+    }
+
     private var selectionCaption: String? {
         guard let resolution else { return nil }
         return resolution.accountId == nil ? "Escolha a conta-cartão de destino" : nil
@@ -76,63 +125,64 @@ struct CSVReviewStepView: View {
 
     private func negativeRowsSection(rows: [CSVNegativePreviewRow]) -> some View {
         let count = rows.count
-        return Form {
-            Section {
-                DisclosureGroup {
+        return ImportWizardSidebarCard(
+            title: "Negativos para revisão",
+            subtitle: "\(count) \(count == 1 ? "linha exige ajuste" : "linhas exigem ajuste")"
+        ) {
+            VStack(alignment: .leading, spacing: GranaTheme.Spacing.sm) {
+                Text(
+                    "Pagamentos são ignorados. Estornos selecionados aqui serão vinculados à compra original antes do commit."
+                )
+                .font(GranaTheme.Typography.callout)
+                .foregroundStyle(GranaTheme.Palette.muted)
+
+                ForEach(rows) { row in
                     VStack(alignment: .leading, spacing: GranaTheme.Spacing.xs) {
-                        ForEach(rows) { row in
-                            HStack(alignment: .center) {
-                                Text(row.raw.date, format: .dateTime.day().month().year())
-                                    .font(GranaTheme.Typography.caption1)
-                                    .foregroundStyle(.secondary)
-                                    .frame(width: 90, alignment: .leading)
-                                Text(row.raw.description)
-                                    .font(GranaTheme.Typography.callout)
-                                    .lineLimit(1)
-                                    .truncationMode(.tail)
-                                Spacer()
-                                Text(row.raw.amount, format: .currency(code: "BRL"))
-                                    .font(GranaTheme.Typography.moneySubheadline)
-                                    .foregroundStyle(.secondary)
-                            }
-                            if row.raw.kind == .refund {
-                                Picker("Compra original", selection: Binding(
-                                    get: { row.purchaseId },
-                                    set: { store.setCSVRefundPurchase(rowId: row.id, purchaseId: $0) }
-                                )) {
-                                    Text("Não importar este estorno").tag(UUID?.none)
-                                    ForEach(store.eligibleCSVRefundPurchases(for: row)) { purchase in
-                                        Text(
-                                            "\(purchase.description) · \(purchase.amount.formatted(.currency(code: "BRL")))"
-                                        )
-                                        .tag(UUID?.some(purchase.id))
-                                    }
+                        HStack(alignment: .center, spacing: GranaTheme.Spacing.sm) {
+                            Text(row.raw.date, format: .dateTime.day().month().year())
+                                .font(GranaTheme.Typography.caption1)
+                                .foregroundStyle(GranaTheme.Palette.muted)
+                                .frame(width: 90, alignment: .leading)
+
+                            Text(row.raw.description)
+                                .font(GranaTheme.Typography.calloutEmphasis)
+                                .foregroundStyle(GranaTheme.Palette.ink)
+                                .lineLimit(1)
+
+                            Spacer(minLength: GranaTheme.Spacing.none)
+
+                            Text(row.raw.amount, format: .currency(code: "BRL"))
+                                .font(GranaTheme.Typography.moneyFootnote)
+                                .foregroundStyle(GranaTheme.Palette.muted)
+                        }
+
+                        if row.raw.kind == .refund {
+                            Picker("Compra original", selection: Binding(
+                                get: { row.purchaseId },
+                                set: { store.setCSVRefundPurchase(rowId: row.id, purchaseId: $0) }
+                            )) {
+                                Text("Não importar este estorno").tag(UUID?.none)
+                                ForEach(store.eligibleCSVRefundPurchases(for: row)) { purchase in
+                                    Text(
+                                        "\(purchase.description) · \(purchase.amount.formatted(.currency(code: "BRL")))"
+                                    )
+                                    .tag(UUID?.some(purchase.id))
                                 }
-                            } else {
-                                Text("Pagamento ignorado; importe a transferência pelo extrato da conta.")
-                                    .font(GranaTheme.Typography.caption1)
-                                    .foregroundStyle(.secondary)
                             }
+                            .pickerStyle(.menu)
+                        } else {
+                            Text("Pagamento ignorado; importe a transferência pelo extrato da conta.")
+                                .font(GranaTheme.Typography.caption1)
+                                .foregroundStyle(GranaTheme.Palette.muted)
                         }
                     }
-                    .padding(.top, GranaTheme.Spacing.xs)
-                } label: {
-                    Label {
-                        Text(
-                            "\(count) \(count == 1 ? "valor negativo" : "valores negativos") para revisão. Pagamentos são ignorados; estornos selecionados serão vinculados à compra original."
-                        )
-                        .font(GranaTheme.Typography.callout)
-                        .foregroundStyle(.secondary)
-                    } icon: {
-                        Image(systemName: "info.circle")
-                            .foregroundStyle(.secondary)
+
+                    if row.id != rows.last?.id {
+                        Divider()
                     }
                 }
             }
         }
-        .formStyle(.grouped)
-        .scrollDisabled(true)
-        .fixedSize(horizontal: false, vertical: true)
     }
 
     private func bankKind(for accountId: UUID?) -> InstitutionKind? {
@@ -145,11 +195,6 @@ struct CSVReviewStepView: View {
     }
 }
 
-// MARK: - Account info card
-
-/// Card "Conta de destino" do fluxo CSV. Picker simples — só lista contas
-/// do tipo "Cartão de Crédito" existentes. Quando não há nenhuma, o
-/// `loadCSV` já bloqueia o import com `ImportError.noCreditCardAccount`.
 private struct CSVAccountInfoCard: View {
     @Bindable var store: ImportStore
     let accounts: [Account]
@@ -159,53 +204,72 @@ private struct CSVAccountInfoCard: View {
     }
 
     var body: some View {
-        Form {
-            Section {
-                Picker("Conta-cartão", selection: Binding(
-                    get: { store.csvResolution?.accountId },
-                    set: { newValue in
-                        Task { await store.setCSVAccount(newValue) }
-                    }
-                )) {
-                    Text("Selecione…").tag(UUID?.none)
-                    ForEach(accounts) { account in
-                        Text(Account.displayName(
-                            for: account,
-                            institutions: store.institutions,
-                            bankAccounts: store.bankDetails,
-                            creditCards: store.creditCards
-                        ))
-                        .tag(UUID?.some(account.id))
+        ImportWizardSectionCard(
+            title: "Conta de destino",
+            subtitle: "Selecione a conta-cartão que receberá as compras desta fatura.",
+            trailing: AnyView(
+                Group {
+                    if resolution?.accountId == nil {
+                        ImportWizardBadgeView(badge: .init(label: "Escolha", tint: .warning))
+                    } else {
+                        ImportWizardBadgeView(badge: .init(label: "Definida", tint: .green))
                     }
                 }
-            } header: {
-                HStack {
-                    Text("Conta de destino")
-                    Spacer()
-                    if resolution?.accountId == nil {
-                        Text("Escolha")
+            )
+        ) {
+            VStack(alignment: .leading, spacing: GranaTheme.Spacing.md) {
+                if let resolution {
+                    if let accountName = selectedAccountName(for: resolution.accountId) {
+                        ImportWizardInfoRow(label: "Conta atual") {
+                            Text(accountName)
+                        }
+                    }
+
+                    VStack(alignment: .leading, spacing: GranaTheme.Spacing.xxs) {
+                        Text("Conta-cartão")
                             .font(GranaTheme.Typography.caption1)
-                            .padding(.horizontal, GranaTheme.Spacing.xs)
-                            .padding(.vertical, GranaTheme.Spacing.xxs)
-                            .background(Color.warning.opacity(0.18))
-                            .foregroundStyle(.secondary)
-                            .clipShape(Capsule())
-                            .textCase(nil)
+                            .foregroundStyle(GranaTheme.Palette.muted)
+
+                        Picker("Conta-cartão", selection: Binding(
+                            get: { store.csvResolution?.accountId },
+                            set: { newValue in
+                                Task { await store.setCSVAccount(newValue) }
+                            }
+                        )) {
+                            Text("Selecione…").tag(UUID?.none)
+                            ForEach(accounts) { account in
+                                Text(Account.displayName(
+                                    for: account,
+                                    institutions: store.institutions,
+                                    bankAccounts: store.bankDetails,
+                                    creditCards: store.creditCards
+                                ))
+                                .tag(UUID?.some(account.id))
+                            }
+                        }
+                        .labelsHidden()
+                        .pickerStyle(.menu)
+                        .frame(maxWidth: .infinity, alignment: .leading)
                     }
                 }
             }
+            .padding(GranaTheme.Spacing.md)
         }
-        .formStyle(.grouped)
-        .scrollDisabled(true)
-        .fixedSize(horizontal: false, vertical: true)
+    }
+
+    private func selectedAccountName(for accountId: UUID?) -> String? {
+        guard let accountId,
+              let account = store.accounts.first(where: { $0.id == accountId })
+        else { return nil }
+        return Account.displayName(
+            for: account,
+            institutions: store.institutions,
+            bankAccounts: store.bankDetails,
+            creditCards: store.creditCards
+        )
     }
 }
 
-// MARK: - Transactions list card
-
-/// Lista de transações do preview CSV — virtualizada via LazyVStack dentro
-/// de uma Section. Mesma estrutura usada pelo OFX (`OFXTransactionsListCard`),
-/// mas com row própria.
 private struct CSVTransactionsListCard: View {
     @Binding var resolution: CSVStatementResolution
     let institutionKind: InstitutionKind?
@@ -215,36 +279,39 @@ private struct CSVTransactionsListCard: View {
     }
 
     var body: some View {
-        Form {
-            Section {
+        ImportWizardSectionCard(
+            title: "Compras detectadas",
+            subtitle: "Revise a seleção final que seguirá para a classificação.",
+            trailing: AnyView(ImportWizardBadgeView(badge: .init(
+                label: "\(resolution.selectedCount)/\(resolution.rows.count)",
+                tint: .neutral
+            )))
+        ) {
+            VStack(spacing: GranaTheme.Spacing.none) {
+                TransactionsSelectionRow(
+                    summary: selectionSummary,
+                    allSelected: allSelected,
+                    onToggleAll: { value in
+                        for idx in resolution.rows.indices {
+                            resolution.rows[idx].selected = value
+                        }
+                    }
+                )
+                Divider()
+
                 ScrollView {
                     LazyVStack(spacing: GranaTheme.Spacing.none) {
-                        TransactionsSelectionRow(
-                            summary: selectionSummary,
-                            allSelected: allSelected,
-                            onToggleAll: { value in
-                                for idx in resolution.rows.indices {
-                                    resolution.rows[idx].selected = value
-                                }
-                            }
-                        )
-                        Divider()
                         ForEach($resolution.rows) { $row in
                             CSVRowView(row: $row, institutionKind: institutionKind)
                                 .padding(.horizontal, GranaTheme.Spacing.md)
-                                .padding(.vertical, GranaTheme.Spacing.xs)
+                                .padding(.vertical, GranaTheme.Spacing.sm)
                             Divider()
                         }
                     }
                 }
-                .listRowInsets(EdgeInsets())
-            } header: {
-                Text("Transações")
+                .frame(maxHeight: .infinity)
             }
         }
-        .formStyle(.grouped)
-        .contentMargins(.horizontal, GranaTheme.Spacing.none, for: .scrollContent)
-        .frame(maxHeight: .infinity)
     }
 
     private var selectionSummary: String {
@@ -258,18 +325,11 @@ private struct CSVTransactionsListCard: View {
     }
 }
 
-// MARK: - Row
-
-/// Wrapper fino que mapeia `CSVPreviewRow` → `TransactionRow.importPreview`.
-/// O `tipo` da fatura ("Parcelamento", "Internacional"...) vai como memo
-/// quando difere do default "Compra à vista".
 private struct CSVRowView: View {
     @Binding var row: CSVPreviewRow
     let institutionKind: InstitutionKind?
 
     var body: some View {
-        // CSV de fatura: parser já filtra estornos/pagamentos como negativos
-        // pra outra esteira (transfer). O que sobra é 100% despesa.
         TransactionRow(
             selection: $row.selected,
             institutionKind: institutionKind,

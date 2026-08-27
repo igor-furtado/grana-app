@@ -51,7 +51,7 @@ struct ImportView: View {
                         .task { initialize() }
                 }
             }
-            .navigationTitle("Importar extrato")
+            .navigationTitle("")
             .fileImporter(
                 isPresented: $fileImporterShown,
                 allowedContentTypes: [.data],
@@ -84,12 +84,14 @@ struct ImportView: View {
                 }
             }
         }
+        .toolbar(.hidden, for: .windowToolbar)
         // Sheet sem cap de altura crescia além da janela em telas pequenas.
         // Limita o tamanho mantendo um ideal confortável.
         .frame(
-            minWidth: 700, idealWidth: 760, maxWidth: 900,
-            minHeight: 540, idealHeight: 660, maxHeight: 760
+            minWidth: 880, idealWidth: 980, maxWidth: 1160,
+            minHeight: 620, idealHeight: 720, maxHeight: 840
         )
+        .background(GranaBackground())
     }
 
     private func initialize() {
@@ -117,16 +119,19 @@ struct ImportView: View {
     }
 
     private func wizard(store: ImportStore) -> some View {
-        VStack(spacing: GranaTheme.Spacing.none) {
+        VStack(spacing: GranaTheme.Spacing.lg) {
             if let stepperIndex = Self.stepperIndex(for: store.phase) {
                 WizardStepper(
                     steps: ["Revisar", "Classificar", "Concluir"],
                     currentIndex: stepperIndex
                 )
+                .padding(.horizontal, GranaTheme.Spacing.xl)
+                .padding(.top, GranaTheme.Spacing.xl)
             }
             phaseContent(store: store)
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
         }
+        .background(GranaBackground())
         // `.done` fecha a sheet — toast verde com undo cobre o feedback.
         // `.failed` NÃO fecha: se o usuário já estava no meio da revisão e
         // perdeu o trabalho, ele precisa ver a tela de erro com opção
@@ -291,7 +296,11 @@ private struct ImportWizardStatusView<Actions: View>: View {
                 ZStack {
                     Circle()
                         .fill(tint.opacity(0.14))
-                        .frame(width: 88, height: 88)
+                        .frame(width: 92, height: 92)
+
+                    Circle()
+                        .strokeBorder(tint.opacity(0.18), lineWidth: 1)
+                        .frame(width: 92, height: 92)
 
                     Image(systemName: icon.systemImage)
                         .font(.system(size: GranaTheme.IconSize.hero, weight: .regular))
@@ -326,6 +335,7 @@ private struct ImportWizardStatusView<Actions: View>: View {
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
         .padding(GranaTheme.Spacing.xl)
+        .background(GranaBackground())
     }
 
     private var tint: Color {

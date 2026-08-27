@@ -1,14 +1,23 @@
 import SwiftUI
 
-/// Step de revisão do OFX: cards de "Conta de destino" (um por `STMTRS`) +
-/// lista de transações com checkboxes. Botão primário avança pra
-/// categorização pré-commit.
 struct OFXReviewStepView: View {
     @Bindable var store: ImportStore
     let dismiss: DismissAction
 
+    private var totalRows: Int {
+        store.ofxResolutions.reduce(0) { $0 + $1.rows.count }
+    }
+
     private var totalSelected: Int {
         store.ofxResolutions.reduce(0) { $0 + $1.rows.filter(\.selected).count }
+    }
+
+    private var duplicateCount: Int {
+        store.ofxResolutions.reduce(0) { $0 + $1.rows.filter(\.isDuplicate).count }
+    }
+
+    private var resolvedAccountsCount: Int {
+        store.ofxResolutions.filter { $0.accountId != nil }.count
     }
 
     private var allAccountsSelected: Bool {
@@ -16,45 +25,120 @@ struct OFXReviewStepView: View {
     }
 
     var body: some View {
-        VStack(spacing: GranaTheme.Spacing.none) {
-            // Conta de destino: renderizada FORA do List como `Form { Section }`
-            // nativo, pra ter o visual exato das telas Nova conta / Nova
-            // transação. Pode ser uma ou múltiplas (multi-statement OFX);
-            // empilhadas verticalmente. Sem padding horizontal externo — o
-            // Form `.grouped` já entrega seu próprio recuo lateral.
-            VStack(alignment: .leading, spacing: GranaTheme.Spacing.none) {
-                ForEach(store.ofxResolutions.indices, id: \.self) { idx in
-                    OFXAccountInfoCard(store: store, statementIndex: idx)
+        ImportWizardStageScaffold(
+            eyebrow: "Importação OFX",
+            title: "Revise contas e transações antes do commit",
+            subtitle: heroSubtitle,
+            icon: .sidebarAccounts,
+            badges: heroBadges
+        ) {
+            VStack(spacing: GranaTheme.Spacing.md) {
+                accountAssignmentsPanel
+                OFXTransactionsListCard(
+                    resolutions: $store.ofxResolutions,
+                    showsBankInHeader: store.ofxResolutions.count > 1,
+                    bankKind: { accountId in bankKind(for: accountId) }
+                )
+                .frame(maxHeight: .infinity)
+
+                BottomActionBar(caption: selectionCaption) {
+                    Button("Fechar") { dismiss() }
+                        .buttonStyle(GranaSecondaryButtonStyle())
+
+                    Button("Avançar com \(totalSelected) \(totalSelected == 1 ? "transação" : "transações")") {
+                        Task { await store.confirmOFXImport() }
+                    }
+                    .buttonStyle(GranaPrimaryButtonStyle())
+                    .disabled(totalSelected == 0 || !allAccountsSelected)
                 }
             }
-
-            OFXTransactionsListCard(
-                resolutions: $store.ofxResolutions,
-                showsBankInHeader: store.ofxResolutions.count > 1,
-                bankKind: { accountId in bankKind(for: accountId) }
-            )
-
-            BottomActionBar(caption: selectionCaption) {
-                Button("Fechar") { dismiss() }
-                Button("Avançar com \(totalSelected) \(totalSelected == 1 ? "transação" : "transações")") {
-                    Task { await store.confirmOFXImport() }
+        } sidebar: {
+            VStack(spacing: GranaTheme.Spacing.md) {
+                ImportWizardSidebarCard(
+                    title: "Resumo do arquivo",
+                    subtitle: store.sourceURL?.lastPathComponent
+                ) {
+                    ImportWizardMetricRow(label: "Extratos", value: "\(store.ofxResolutions.count)")
+                    ImportWizardMetricRow(
+                        label: "Contas resolvidas",
+                        value: "\(resolvedAccountsCount)/\(store.ofxResolutions.count)"
+                    )
+                    ImportWizardMetricRow(label: "Transações válidas", value: "\(totalRows)")
+                    ImportWizardMetricRow(label: "Selecionadas", value: "\(totalSelected)")
+                    if duplicateCount > 0 {
+                        ImportWizardMetricRow(label: "Duplicadas", value: "\(duplicateCount)")
+                    }
                 }
-                .buttonStyle(.borderedProminent)
-                .disabled(totalSelected == 0 || !allAccountsSelected)
+
+                if !allAccountsSelected {
+                    ImportWizardSidebarCard(
+                        title: "Ação pendente",
+                        subtitle: "Cada extrato precisa apontar para uma conta existente."
+                    ) {
+                        Text(
+                            "Escolha a conta de destino em todos os blocos antes de seguir para a revisão de categorização."
+                        )
+                        .font(GranaTheme.Typography.callout)
+                        .foregroundStyle(GranaTheme.Palette.muted)
+                    }
+                }
+
+                if duplicateCount > 0 {
+                    ImportWizardSidebarCard(
+                        title: "Duplicatas detectadas",
+                        subtitle: "O backend continua responsável pela garantia final."
+                    ) {
+                        Text(
+                            "As linhas marcadas como já importadas começam desmarcadas para reduzir ruído. Você ainda pode reativá-las manualmente."
+                        )
+                        .font(GranaTheme.Typography.callout)
+                        .foregroundStyle(GranaTheme.Palette.muted)
+                    }
+                }
             }
         }
         .navigationSubtitle(store.sourceURL?.lastPathComponent ?? "")
     }
 
-    /// Caption só pra bloqueios. Stats de seleção viraram redundância com o
-    /// header da lista + o label do botão primário ("Avançar com N").
+    private var accountAssignmentsPanel: some View {
+        ImportWizardSectionCard(
+            title: "Mapeamento das contas",
+            subtitle: "Confirme a conta de destino de cada `STMTRS` antes de revisar a seleção."
+        ) {
+            VStack(alignment: .leading, spacing: GranaTheme.Spacing.md) {
+                ForEach(store.ofxResolutions.indices, id: \.self) { idx in
+                    OFXAccountInfoCard(store: store, statementIndex: idx)
+                }
+            }
+            .padding(GranaTheme.Spacing.md)
+        }
+    }
+
+    private var heroSubtitle: String {
+        if store.ofxResolutions.count == 1 {
+            return "O arquivo já foi analisado. Agora confirme a conta de destino e revise a seleção das transações."
+        }
+        return "O arquivo contém \(store.ofxResolutions.count) extratos. Revise cada vínculo de conta e só então avance para a categorização."
+    }
+
+    private var heroBadges: [ImportWizardBadge] {
+        var badges: [ImportWizardBadge] = [
+            .init(
+                label: "\(store.ofxResolutions.count) \(store.ofxResolutions.count == 1 ? "extrato" : "extratos")",
+                tint: .teal
+            ),
+            .init(label: "\(totalSelected) selecionadas", tint: .green),
+        ]
+        if duplicateCount > 0 {
+            badges.append(.init(label: "\(duplicateCount) duplicadas", tint: .warning))
+        }
+        return badges
+    }
+
     private var selectionCaption: String? {
         allAccountsSelected ? nil : "Escolha a conta de destino de cada extrato"
     }
 
-    /// Resolve o `InstitutionKind` da conta selecionada pra exibir o logo na
-    /// row. Devolve `nil` se a conta ainda não foi escolhida ou a instituição
-    /// não tem `kind` mapeado.
     private func bankKind(for accountId: UUID?) -> InstitutionKind? {
         guard let accountId,
               let account = store.accounts.first(where: { $0.id == accountId }),
@@ -65,17 +149,6 @@ struct OFXReviewStepView: View {
     }
 }
 
-// MARK: - Account info card
-
-/// Card de "Conta de destino" renderizado FORA do `List` — usa `Form { Section }`
-/// nativo do macOS pra ter o visual grouped exato das telas Nova conta / Nova
-/// transação.
-///
-/// A partir da Fase 4.5 o import **não cria contas** — só seleciona uma
-/// existente. Banco/Conta exibidos no card vêm do OFX (apenas leitura, ajudam
-/// o usuário a identificar qual das contas cadastradas é). O picker é
-/// obrigatório quando o auto-detect não acha; quando acha, vem pré-preenchido
-/// com badge "Detectada".
 private struct OFXAccountInfoCard: View {
     @Bindable var store: ImportStore
     let statementIndex: Int
@@ -87,15 +160,38 @@ private struct OFXAccountInfoCard: View {
     }
 
     var body: some View {
-        Form {
-            Section {
+        VStack(alignment: .leading, spacing: GranaTheme.Spacing.md) {
+            HStack(alignment: .center, spacing: GranaTheme.Spacing.sm) {
+                VStack(alignment: .leading, spacing: GranaTheme.Spacing.xxs) {
+                    Text("Extrato \(statementIndex + 1)")
+                        .font(GranaTheme.Typography.headline)
+                        .foregroundStyle(GranaTheme.Palette.ink)
+                    Text("Banco e conta lidos do OFX")
+                        .font(GranaTheme.Typography.caption1)
+                        .foregroundStyle(GranaTheme.Palette.muted)
+                }
+
+                Spacer(minLength: GranaTheme.Spacing.none)
+
                 if let resolution {
-                    LabeledContent("Banco (do extrato)") {
-                        Text(resolution.ofxBankLabel)
-                    }
-                    LabeledContent("Conta (do extrato)") {
-                        Text(resolution.ofxAccountLabel)
-                    }
+                    statusBadge(for: resolution)
+                }
+            }
+
+            if let resolution {
+                ImportWizardInfoRow(label: "Banco do extrato") {
+                    Text(resolution.ofxBankLabel)
+                }
+
+                ImportWizardInfoRow(label: "Conta do extrato") {
+                    Text(resolution.ofxAccountLabel)
+                }
+
+                VStack(alignment: .leading, spacing: GranaTheme.Spacing.xxs) {
+                    Text("Conta de destino")
+                        .font(GranaTheme.Typography.caption1)
+                        .foregroundStyle(GranaTheme.Palette.muted)
+
                     Picker(
                         "Conta de destino",
                         selection: Binding(
@@ -110,29 +206,20 @@ private struct OFXAccountInfoCard: View {
                             Text(label(for: account)).tag(UUID?.some(account.id))
                         }
                     }
-                }
-            } header: {
-                HStack {
-                    Text("Conta de destino")
-                    Spacer()
-                    if let resolution {
-                        statusBadge(for: resolution)
-                    }
+                    .labelsHidden()
+                    .pickerStyle(.menu)
+                    .frame(maxWidth: .infinity, alignment: .leading)
                 }
             }
         }
-        .formStyle(.grouped)
-        // Form grouped scrolla por dentro; aqui o conteúdo é fixo, então
-        // desabilita o scroll pra integrar com o `ScrollView`/layout pai.
-        .scrollDisabled(true)
-        // Altura do card é ditada pelo conteúdo (4–5 rows). `fixedSize` no
-        // eixo vertical evita o Form esticar pra preencher espaço sobrando.
-        .fixedSize(horizontal: false, vertical: true)
+        .padding(GranaTheme.Spacing.md)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(
+            GranaTheme.Palette.paper.opacity(0.64),
+            in: RoundedRectangle(cornerRadius: GranaTheme.Radius.control, style: .continuous)
+        )
     }
 
-    /// Contas elegíveis como destino do import. Arquivadas ficam fora de
-    /// propósito — o usuário tirou do dia-a-dia e importar pra elas seria
-    /// inesperado. Quem precisa importar tem que desarquivar primeiro.
     private var availableAccounts: [Account] {
         store.accounts
             .filter { account in
@@ -157,42 +244,15 @@ private struct OFXAccountInfoCard: View {
     @ViewBuilder
     private func statusBadge(for resolution: OFXStatementResolution) -> some View {
         if resolution.accountId == nil {
-            Text("Escolha")
-                .font(GranaTheme.Typography.caption1)
-                .padding(.horizontal, GranaTheme.Spacing.xs)
-                .padding(.vertical, GranaTheme.Spacing.xxs)
-                .background(Color.warning.opacity(0.18))
-                .foregroundStyle(.secondary)
-                .clipShape(Capsule())
-                .textCase(nil)
+            ImportWizardBadgeView(badge: .init(label: "Escolha", tint: .warning))
         } else if resolution.wasAutoDetected {
-            Text("Detectada")
-                .font(GranaTheme.Typography.caption1)
-                .padding(.horizontal, GranaTheme.Spacing.xs)
-                .padding(.vertical, GranaTheme.Spacing.xxs)
-                .background(Color.success.opacity(0.15))
-                .foregroundStyle(.success)
-                .clipShape(Capsule())
-                .textCase(nil)
+            ImportWizardBadgeView(badge: .init(label: "Detectada", tint: .green))
+        } else {
+            ImportWizardBadgeView(badge: .init(label: "Confirmada", tint: .teal))
         }
     }
 }
 
-// MARK: - Transactions list card
-
-/// Section de transações dentro do `List` (virtualizado). Sem pickers de
-/// categoria — Fase 4 moveu categorização pro step seguinte.
-///
-/// `showsBankInHeader` adiciona o nome do banco no título quando há múltiplos
-/// statements no mesmo arquivo, pra usuário saber a qual conta o bloco pertence.
-/// Card de transações que usa `Form { Section }` com **uma única row**
-/// contendo um `ScrollView { LazyVStack }`. O Form entrega o visual nativo de
-/// card grouped (igual à `OFXAccountInfoCard`); a LazyVStack interna mantém a
-/// virtualização real das transações (só renderiza o viewport).
-///
-/// Sutileza: Form normalmente não virtualiza rows de uma Section, mas como
-/// **temos uma única row** (o ScrollView), Form materializa só ela e a
-/// laziness fica por conta da LazyVStack dentro do ScrollView.
 private struct OFXTransactionsListCard: View {
     @Binding var resolutions: [OFXStatementResolution]
     let showsBankInHeader: Bool
@@ -216,52 +276,54 @@ private struct OFXTransactionsListCard: View {
     }
 
     var body: some View {
-        Form {
-            Section {
+        ImportWizardSectionCard(
+            title: "Transações detectadas",
+            subtitle: "Ajuste a seleção das linhas que devem seguir para a classificação.",
+            trailing: AnyView(ImportWizardBadgeView(badge: .init(
+                label: "\(selectedCount)/\(totalRows)",
+                tint: .neutral
+            )))
+        ) {
+            VStack(spacing: GranaTheme.Spacing.none) {
+                TransactionsSelectionRow(
+                    summary: selectionSummary,
+                    allSelected: allSelected,
+                    onToggleAll: toggleAll(to:)
+                )
+                Divider()
+
                 ScrollView {
                     LazyVStack(spacing: GranaTheme.Spacing.none) {
-                        TransactionsSelectionRow(
-                            summary: selectionSummary,
-                            allSelected: allSelected,
-                            onToggleAll: toggleAll(to:)
-                        )
-                        Divider()
                         ForEach($resolutions) { $resolution in
                             if showsBankInHeader {
                                 bankSubheader(for: resolution)
                             }
+
                             let kind = bankKind(resolution.accountId)
                             ForEach($resolution.rows) { $row in
                                 OFXRowView(row: $row, institutionKind: kind)
                                     .padding(.horizontal, GranaTheme.Spacing.md)
-                                    .padding(.vertical, GranaTheme.Spacing.xs)
+                                    .padding(.vertical, GranaTheme.Spacing.sm)
                                 Divider()
                             }
                         }
                     }
                 }
-                // Remove o padding default que o Form coloca em torno da row
-                // — assim a LazyVStack encosta nas bordas do card.
-                .listRowInsets(EdgeInsets())
-            } header: {
-                Text("Transações")
+                .frame(maxHeight: .infinity)
             }
         }
-        .formStyle(.grouped)
-        .contentMargins(.horizontal, GranaTheme.Spacing.none, for: .scrollContent)
-        .frame(maxHeight: .infinity)
     }
 
     private func bankSubheader(for resolution: OFXStatementResolution) -> some View {
         HStack {
             Text(bankName(for: resolution))
-                .font(GranaTheme.Typography.caption1)
-                .foregroundStyle(.secondary)
+                .font(GranaTheme.Typography.caption1Emphasis)
+                .foregroundStyle(GranaTheme.Palette.tealDeep)
             Spacer()
         }
         .padding(.horizontal, GranaTheme.Spacing.md)
         .padding(.vertical, GranaTheme.Spacing.xs)
-        .background(Color.primary.opacity(0.04))
+        .background(GranaTheme.Palette.teal.opacity(0.08))
     }
 
     private func bankName(for resolution: OFXStatementResolution) -> String {
@@ -285,17 +347,11 @@ private struct OFXTransactionsListCard: View {
     }
 }
 
-// MARK: - Row
-
-/// Wrapper fino que mapeia `OFXPreviewRow` → `TransactionRow.importPreview`.
 private struct OFXRowView: View {
     @Binding var row: OFXPreviewRow
     let institutionKind: InstitutionKind?
 
     var body: some View {
-        // OFX mistura entradas e saídas no mesmo statement (PIX recebido +
-        // débito da fatura, p.ex.); colorir por direção ajuda a ler. Sinal
-        // do `derived.amount` vem direto do TRNTYPE do OFX.
         TransactionRow(
             selection: $row.selected,
             institutionKind: institutionKind,
@@ -309,9 +365,6 @@ private struct OFXRowView: View {
     }
 
     private var primaryDescription: String {
-        // NAME geralmente é a contraparte ("Igor Talisson..."); MEMO traz
-        // detalhe técnico ("Pix recebido: Cp :..."). Mostrar NAME — MEMO
-        // some pra minimizar ruído visual.
         if let name = row.raw.name?.trimmingCharacters(in: .whitespacesAndNewlines),
            !name.isEmpty
         {

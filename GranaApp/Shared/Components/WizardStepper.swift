@@ -23,14 +23,9 @@ struct WizardStepper: View {
             }
         }
         .padding(.horizontal, GranaTheme.Spacing.lg)
-        .padding(.vertical, GranaTheme.Spacing.sm)
+        .padding(.vertical, GranaTheme.Spacing.md)
         .frame(maxWidth: .infinity)
-        .background(GranaTheme.Palette.paper.opacity(0.62))
-        .overlay(alignment: .bottom) {
-            Rectangle()
-                .fill(GranaTheme.Palette.line)
-                .frame(height: 1)
-        }
+        .granaSurface(.solid, cornerRadius: GranaTheme.Radius.card)
     }
 
     @ViewBuilder

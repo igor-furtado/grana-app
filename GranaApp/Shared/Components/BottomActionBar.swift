@@ -44,9 +44,12 @@ struct BottomActionBar<Trailing: View>: View {
                 }
                 Spacer()
                 trailing()
+                    .controlSize(.large)
             }
             .padding(.horizontal, GranaTheme.Spacing.lg)
             .padding(.vertical, GranaTheme.Spacing.md)
+            .background(GranaTheme.Palette.paper.opacity(0.82))
         }
+        .background(GranaTheme.Palette.paper.opacity(0.46))
     }
 }

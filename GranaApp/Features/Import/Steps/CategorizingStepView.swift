@@ -1,7 +1,5 @@
 import SwiftUI
 
-/// Step intermediário: classificação local antes do commit.
-///
 struct CategorizingStepView: View {
     @Bindable var store: ImportStore
 
@@ -11,25 +9,90 @@ struct CategorizingStepView: View {
     }
 
     var body: some View {
-        VStack(spacing: GranaTheme.Spacing.lg) {
-            loadingCard
-            Button("Cancelar") { store.backToPreviewFromReview() }
+        ImportWizardStageScaffold(
+            eyebrow: "Classificação local",
+            title: "Organizando a revisão final",
+            subtitle: "As transações já selecionadas estão sendo preparadas para a revisão de categoria antes do commit definitivo.",
+            icon: .completedSeal,
+            badges: heroBadges
+        ) {
+            VStack(spacing: GranaTheme.Spacing.md) {
+                loadingCard
+
+                BottomActionBar(caption: "Cancelar descarta os rascunhos desta importação.") {
+                    Button("Cancelar") { store.backToPreviewFromReview() }
+                        .buttonStyle(GranaSecondaryButtonStyle())
+                }
+            }
+        } sidebar: {
+            VStack(spacing: GranaTheme.Spacing.md) {
+                ImportWizardSidebarCard(
+                    title: "Progresso",
+                    subtitle: "Pré-commit local"
+                ) {
+                    ImportWizardMetricRow(label: "Processadas", value: processedValue)
+                    if let totalValue {
+                        ImportWizardMetricRow(label: "Total previsto", value: totalValue)
+                    }
+                    ImportWizardMetricRow(label: "Fase", value: stageLabel)
+                }
+
+                ImportWizardSidebarCard(
+                    title: "O que acontece agora",
+                    subtitle: "Sem escrita financeira local"
+                ) {
+                    Text(
+                        "O app monta sugestões em memória para a próxima tela. A importação só é confirmada depois da revisão explícita."
+                    )
+                    .font(GranaTheme.Typography.callout)
+                    .foregroundStyle(GranaTheme.Palette.muted)
+                }
+            }
         }
-        .frame(maxWidth: .infinity, maxHeight: .infinity)
-        .padding(.horizontal, GranaTheme.Spacing.xxxl)
+    }
+
+    private var heroBadges: [ImportWizardBadge] {
+        switch store.categorization.status {
+        case .idle:
+            [.init(label: "Preparando", tint: .teal)]
+        case let .classifying(processed, total, _):
+            [.init(label: "\(processed)/\(max(total, 1))", tint: .green)]
+        case .ready:
+            [.init(label: "Pronto para revisar", tint: .green)]
+        case .failed:
+            [.init(label: "Falha", tint: .warning)]
+        }
     }
 
     private var loadingCard: some View {
-        VStack(spacing: GranaTheme.Spacing.md) {
+        VStack(spacing: GranaTheme.Spacing.lg) {
+            ZStack {
+                Circle()
+                    .fill(GranaTheme.Palette.teal.opacity(0.10))
+                    .frame(width: 112, height: 112)
+                Circle()
+                    .strokeBorder(GranaTheme.Palette.teal.opacity(0.18), lineWidth: 1)
+                    .frame(width: 112, height: 112)
+
+                Image(systemName: AppIcon.completedSeal.systemImage)
+                    .font(.system(size: GranaTheme.IconSize.hero, weight: .regular))
+                    .foregroundStyle(GranaTheme.Palette.tealDeep)
+            }
+
             progressIndicator
-            statusText
+
+            VStack(spacing: GranaTheme.Spacing.xs) {
+                Text(headlineText)
+                    .font(GranaTheme.Typography.title3)
+                    .foregroundStyle(GranaTheme.Palette.ink)
+
+                statusText
+            }
         }
-        // Padding interno generoso pra que o halo interno do glow tenha
-        // espaço pra "invadir" sem cobrir o conteúdo.
-        .padding(.horizontal, GranaTheme.Spacing.xxl)
-        .padding(.vertical, GranaTheme.Spacing.xl)
-        .frame(maxWidth: 360)
-        .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 8))
+        .padding(.horizontal, GranaTheme.Spacing.xxxl)
+        .padding(.vertical, GranaTheme.Spacing.xxl)
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .granaSurface(.subtle, cornerRadius: GranaTheme.Radius.hero)
     }
 
     @ViewBuilder
@@ -38,36 +101,110 @@ struct CategorizingStepView: View {
         case let .classifying(processed, total, _) where total > 0:
             ProgressView(value: Double(processed), total: Double(total))
                 .progressViewStyle(.linear)
+                .tint(GranaTheme.Palette.teal)
+                .frame(maxWidth: 360)
                 .animation(.easeOut(duration: 0.25), value: processed)
         default:
             ProgressView()
                 .progressViewStyle(.linear)
+                .tint(GranaTheme.Palette.teal)
+                .frame(maxWidth: 360)
         }
     }
 
-    /// Só renderiza os sub-estados que o usuário consegue ler antes de o
-    /// `awaitCategorizationCompletion` trocar a `phase` — `.ready` e `.failed`
-    /// transicionam direto pra `.reviewingCategorization`, então nunca aparecem
-    /// aqui.
+    private var headlineText: String {
+        switch store.categorization.status {
+        case .idle:
+            "Preparando classificação"
+        case .classifying:
+            "Classificando transações"
+        case .ready:
+            "Revisão pronta"
+        case .failed:
+            "Falha na classificação"
+        }
+    }
+
     @ViewBuilder
     private var statusText: some View {
         switch store.categorization.status {
         case .idle:
-            Text("Preparando classificação…").foregroundStyle(.secondary)
+            Text("Carregando categorias e contexto necessário para a próxima etapa.")
+                .font(GranaTheme.Typography.callout)
+                .foregroundStyle(GranaTheme.Palette.muted)
+                .multilineTextAlignment(.center)
         case let .classifying(processed, total, message):
-            TimelineView(.periodic(from: .now, by: 1.8)) { context in
-                Text(rotatingMessage(
-                    for: loadingStage(
-                        processed: processed,
-                        total: total,
-                        message: message
-                    ),
-                    date: context.date
-                ))
-                .foregroundStyle(.secondary)
+            VStack(spacing: GranaTheme.Spacing.xs) {
+                Text("\(processed) de \(total) processadas")
+                    .font(GranaTheme.Typography.calloutEmphasis)
+                    .foregroundStyle(GranaTheme.Palette.ink)
+
+                TimelineView(.periodic(from: .now, by: 1.8)) { context in
+                    Text(rotatingMessage(
+                        for: loadingStage(
+                            processed: processed,
+                            total: total,
+                            message: message
+                        ),
+                        date: context.date
+                    ))
+                    .font(GranaTheme.Typography.callout)
+                    .foregroundStyle(GranaTheme.Palette.muted)
+                }
             }
-        case .ready, .failed:
+        case .ready:
             EmptyView()
+        case let .failed(message):
+            Text(message)
+                .font(GranaTheme.Typography.callout)
+                .foregroundStyle(GranaTheme.Palette.muted)
+                .multilineTextAlignment(.center)
+        }
+    }
+
+    private var processedValue: String {
+        switch store.categorization.status {
+        case .idle:
+            return "0"
+        case let .classifying(processed, _, _):
+            return "\(processed)"
+        case let .ready(total, _):
+            return "\(total)"
+        case .failed:
+            return "Erro"
+        }
+    }
+
+    private var totalValue: String? {
+        switch store.categorization.status {
+        case let .classifying(_, total, _):
+            return "\(total)"
+        case let .ready(total, _):
+            return "\(total)"
+        case .idle, .failed:
+            return nil
+        }
+    }
+
+    private var stageLabel: String {
+        switch store.categorization.status {
+        case .idle:
+            return "Preparando"
+        case .classifying:
+            return stageLabel(for: .preparing)
+        case .ready:
+            return "Finalizado"
+        case .failed:
+            return "Falhou"
+        }
+    }
+
+    private func stageLabel(for stage: LoadingStage) -> String {
+        switch stage {
+        case .preparing:
+            return "Classificando"
+        case .finishing:
+            return "Finalizando"
         }
     }
 
@@ -83,15 +220,15 @@ struct CategorizingStepView: View {
         switch stage {
         case .preparing:
             messages = [
-                "Preparando classificação…",
-                "Organizando transações…",
-                "Separando descrições…",
+                "Separando descrições e padrões locais…",
+                "Organizando transações para revisão…",
+                "Aplicando heurísticas antes do commit…",
             ]
         case .finishing:
             messages = [
-                "Finalizando…",
-                "Montando revisão…",
-                "Aplicando padrões locais…",
+                "Montando a tela de revisão…",
+                "Consolidando sugestões finais…",
+                "Preparando a etapa de conferência…",
             ]
         }
 
