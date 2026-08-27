@@ -61,9 +61,7 @@ Nao desenhe controles falsos de janela macOS dentro do conteudo do app real.
 Feature screens podem ocultar a window toolbar nativa quando tiverem header
 visual proprio integrado ao tema. Nesses casos, o header inline substitui o
 titulo e as acoes primarias da tela, e o primeiro bloco util passa a ser esse
-header. Modais e sheets tambem podem ocultar a toolbar nativa quando usarem
-titulo inline e barra de acoes no rodape. O rail lateral continua alinhado ao
-topo da area util, sem margem superior externa, mantendo respiro interno proprio.
+header. Modais e sheets tambem podem ocultar a toolbar nativa. O rail lateral continua alinhado ao topo da area util, sem margem superior externa, mantendo respiro interno proprio.
 
 ## Tipografia
 

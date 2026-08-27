@@ -51,7 +51,6 @@ struct CategoriesView: View {
                 }
             }
         }
-        .granaPagePadding()
         .inspector(isPresented: $inspectorPresented) {
             inspector
                 .inspectorColumnWidth(min: 220, ideal: 280, max: 360)
@@ -69,21 +68,23 @@ struct CategoriesView: View {
             title: "Categorias",
             subtitle: "\(rootIds.count) categorias raiz no catálogo global"
         ) {
-            Button {
-                Task { await refresh() }
-            } label: {
-                Label("Atualizar", systemImage: "arrow.clockwise")
-            }
-            .buttonStyle(GranaPrimaryButtonStyle())
-            .disabled(isLoading)
+            HStack(spacing: GranaTheme.Spacing.sm) {
+                Button {
+                    Task { await refresh() }
+                } label: {
+                    Label("Atualizar", systemImage: "arrow.clockwise")
+                }
+                .buttonStyle(GranaPrimaryButtonStyle())
+                .disabled(isLoading)
 
-            Button {
-                inspectorPresented.toggle()
-            } label: {
-                Label("Detalhes", systemImage: AppIcon.inspectorToggle.systemImage)
+                Button {
+                    inspectorPresented.toggle()
+                } label: {
+                    Label("Detalhes", systemImage: AppIcon.inspectorToggle.systemImage)
+                }
+                .buttonStyle(GranaSecondaryButtonStyle())
+                .help(inspectorPresented ? "Ocultar painel de detalhes" : "Mostrar painel de detalhes")
             }
-            .buttonStyle(GranaSecondaryButtonStyle())
-            .help(inspectorPresented ? "Ocultar painel de detalhes" : "Mostrar painel de detalhes")
         }
     }
 

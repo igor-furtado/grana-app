@@ -27,7 +27,6 @@ struct ProfileView: View {
                 )
             }
         }
-        .granaPagePadding()
         .navigationTitle("")
         .toolbar(.hidden, for: .windowToolbar)
     }
@@ -153,7 +152,7 @@ struct ProfileView: View {
             }
         }
         .padding(GranaTheme.Spacing.md)
-        .granaSurface(.subtle, cornerRadius: GranaTheme.Radius.panel)
+        .granaSurface(.subtle, cornerRadius: GranaTheme.Radius.card)
     }
 
     private func infoRow(_ row: ProfileRow) -> some View {

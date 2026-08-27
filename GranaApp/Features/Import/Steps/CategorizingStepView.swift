@@ -9,13 +9,7 @@ struct CategorizingStepView: View {
     }
 
     var body: some View {
-        ImportWizardStageScaffold(
-            eyebrow: "Classificação local",
-            title: "Organizando a revisão final",
-            subtitle: "As transações já selecionadas estão sendo preparadas para a revisão de categoria antes do commit definitivo.",
-            icon: .completedSeal,
-            badges: heroBadges
-        ) {
+        ImportWizardStageScaffold() {
             VStack(spacing: GranaTheme.Spacing.md) {
                 loadingCard
 
@@ -24,44 +18,7 @@ struct CategorizingStepView: View {
                         .buttonStyle(GranaSecondaryButtonStyle())
                 }
             }
-        } sidebar: {
-            VStack(spacing: GranaTheme.Spacing.md) {
-                ImportWizardSidebarCard(
-                    title: "Progresso",
-                    subtitle: "Pré-commit local"
-                ) {
-                    ImportWizardMetricRow(label: "Processadas", value: processedValue)
-                    if let totalValue {
-                        ImportWizardMetricRow(label: "Total previsto", value: totalValue)
-                    }
-                    ImportWizardMetricRow(label: "Fase", value: stageLabel)
-                }
-
-                ImportWizardSidebarCard(
-                    title: "O que acontece agora",
-                    subtitle: "Sem escrita financeira local"
-                ) {
-                    Text(
-                        "O app monta sugestões em memória para a próxima tela. A importação só é confirmada depois da revisão explícita."
-                    )
-                    .font(GranaTheme.Typography.callout)
-                    .foregroundStyle(GranaTheme.Palette.muted)
-                }
-            }
-        }
-    }
-
-    private var heroBadges: [ImportWizardBadge] {
-        switch store.categorization.status {
-        case .idle:
-            [.init(label: "Preparando", tint: .teal)]
-        case let .classifying(processed, total, _):
-            [.init(label: "\(processed)/\(max(total, 1))", tint: .green)]
-        case .ready:
-            [.init(label: "Pronto para revisar", tint: .green)]
-        case .failed:
-            [.init(label: "Falha", tint: .warning)]
-        }
+        } 
     }
 
     private var loadingCard: some View {

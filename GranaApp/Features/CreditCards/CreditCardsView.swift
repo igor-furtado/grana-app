@@ -48,7 +48,6 @@ struct CreditCardsView: View {
                 }
             }
         }
-        .granaPagePadding()
         .sheet(item: $formMode) { mode in
             AccountFormView(
                 existing: editingAccount(from: mode),
@@ -92,20 +91,22 @@ struct CreditCardsView: View {
             title: "Cartões de crédito",
             subtitle: cardsSubtitle(store: store, visibleCount: visibleCount)
         ) {
-            Button {
-                formMode = .create
-            } label: {
-                Label("Novo cartão", systemImage: AppIcon.add.systemImage)
-            }
-            .buttonStyle(GranaPrimaryButtonStyle())
-
-            if hasArchivedCard {
-                Menu {
-                    Toggle("Mostrar arquivados", isOn: $showArchived)
+            HStack(spacing: GranaTheme.Spacing.sm) {
+                Button {
+                    formMode = .create
                 } label: {
-                    Label("Mais", systemImage: AppIcon.more.systemImage)
+                    Label("Novo cartão", systemImage: AppIcon.add.systemImage)
                 }
-                .buttonStyle(GranaSecondaryButtonStyle())
+                .buttonStyle(GranaPrimaryButtonStyle())
+
+                if hasArchivedCard {
+                    Menu {
+                        Toggle("Mostrar arquivados", isOn: $showArchived)
+                    } label: {
+                        Label("Mais", systemImage: AppIcon.more.systemImage)
+                    }
+                    .buttonStyle(GranaSecondaryButtonStyle())
+                }
             }
         }
     }

@@ -7,7 +7,6 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
-		282D1F3F303DDC20005ECB68 /* Inject in Frameworks */ = {isa = PBXBuildFile; productRef = 282D1F40303DDC20005ECB68 /* Inject */; };
 		28AC0A0C2FB3CA67008BAD35 /* Auth in Frameworks */ = {isa = PBXBuildFile; productRef = 28AC0A0B2FB3CA67008BAD35 /* Auth */; };
 		28AC0A0E2FB3CA67008BAD35 /* Functions in Frameworks */ = {isa = PBXBuildFile; productRef = 28AC0A0D2FB3CA67008BAD35 /* Functions */; };
 		28AC0A102FB3CA67008BAD35 /* PostgREST in Frameworks */ = {isa = PBXBuildFile; productRef = 28AC0A0F2FB3CA67008BAD35 /* PostgREST */; };
@@ -50,7 +49,6 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				282D1F3F303DDC20005ECB68 /* Inject in Frameworks */,
 				28ECA003303F000000000001 /* ComposableArchitecture in Frameworks */,
 				28AC0A122FB3CA67008BAD35 /* Realtime in Frameworks */,
 				28AC0A102FB3CA67008BAD35 /* PostgREST in Frameworks */,
@@ -110,7 +108,6 @@
 			);
 			name = GranaApp;
 			packageProductDependencies = (
-				282D1F40303DDC20005ECB68 /* Inject */,
 				28ECA002303F000000000001 /* ComposableArchitecture */,
 				28AC0A0B2FB3CA67008BAD35 /* Auth */,
 				28AC0A0D2FB3CA67008BAD35 /* Functions */,
@@ -176,7 +173,6 @@
 			minimizedProjectReferenceProxies = 1;
 			packageReferences = (
 				28AC0A0A2FB3CA67008BAD35 /* XCRemoteSwiftPackageReference "supabase-swift" */,
-				282D1F3E303DDC20005ECB68 /* XCRemoteSwiftPackageReference "Inject" */,
 				28ECA001303F000000000001 /* XCRemoteSwiftPackageReference "swift-composable-architecture" */,
 			);
 			preferredProjectObjectVersion = 77;
@@ -562,14 +558,6 @@
 /* End XCConfigurationList section */
 
 /* Begin XCRemoteSwiftPackageReference section */
-		282D1F3E303DDC20005ECB68 /* XCRemoteSwiftPackageReference "Inject" */ = {
-			isa = XCRemoteSwiftPackageReference;
-			repositoryURL = "https://github.com/krzysztofzablocki/Inject.git";
-			requirement = {
-				kind = upToNextMajorVersion;
-				minimumVersion = 1.6.0;
-			};
-		};
 		28AC0A0A2FB3CA67008BAD35 /* XCRemoteSwiftPackageReference "supabase-swift" */ = {
 			isa = XCRemoteSwiftPackageReference;
 			repositoryURL = "https://github.com/supabase/supabase-swift";
@@ -589,11 +577,6 @@
 /* End XCRemoteSwiftPackageReference section */
 
 /* Begin XCSwiftPackageProductDependency section */
-		282D1F40303DDC20005ECB68 /* Inject */ = {
-			isa = XCSwiftPackageProductDependency;
-			package = 282D1F3E303DDC20005ECB68 /* XCRemoteSwiftPackageReference "Inject" */;
-			productName = Inject;
-		};
 		28AC0A0B2FB3CA67008BAD35 /* Auth */ = {
 			isa = XCSwiftPackageProductDependency;
 			package = 28AC0A0A2FB3CA67008BAD35 /* XCRemoteSwiftPackageReference "supabase-swift" */;

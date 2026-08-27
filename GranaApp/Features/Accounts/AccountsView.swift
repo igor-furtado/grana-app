@@ -57,7 +57,6 @@ struct AccountsView: View {
                 }
             }
         }
-        .granaPagePadding()
         .sheet(item: $formMode) { mode in
             AccountFormView(
                 existing: editingAccount(from: mode),

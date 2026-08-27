@@ -77,7 +77,6 @@ struct ImportHistoryView: View {
                     .frame(maxWidth: .infinity, maxHeight: .infinity)
             }
         }
-        .granaPagePadding()
         .confirmationDialog(
             "Desfazer importação?",
             isPresented: Binding(

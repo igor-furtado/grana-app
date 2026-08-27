@@ -25,11 +25,6 @@ Leia `docs/design-system.md` antes de alterar UI SwiftUI no GranaApp.
 - Feature screens podem ocultar a window toolbar nativa quando tiverem header
   proprio alinhado ao tema. Nesses casos, o header inline assume titulo e acoes
   primarias da tela.
-- Modais e sheets podem ocultar a toolbar nativa quando o conteudo introduzir
-  titulo inline e barra de acoes no rodape.
-- Em telas padrao, use o padding de pagina do tema: topo 0, laterais e base com
-  respiro. O rail autenticado acompanha o topo da area util, sem margem
-  superior externa.
 - Use o rail icon-only como shell autenticado. Todos os itens precisam de
   tooltip e label de acessibilidade.
 - Reserve glass para o shell estrutural. Cards de conteudo usam `subtle` sem

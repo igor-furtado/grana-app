@@ -32,7 +32,6 @@ enum GranaTheme {
     enum Radius {
         static let control: CGFloat = 15
         static let card: CGFloat = 22
-        static let panel: CGFloat = 22
         static let hero: CGFloat = 32
         static let rail: CGFloat = 27
     }
@@ -593,7 +592,7 @@ struct GranaSecondaryButtonStyle: ButtonStyle {
 extension View {
     func granaSurface(
         _ prominence: GranaSurfaceProminence = .subtle,
-        cornerRadius: CGFloat = GranaTheme.Radius.panel
+        cornerRadius: CGFloat = GranaTheme.Radius.card
     ) -> some View {
         modifier(GranaSurfaceModifier(prominence: prominence, cornerRadius: cornerRadius))
     }

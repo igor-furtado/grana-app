@@ -6,8 +6,6 @@ struct TransactionFormView: View {
 
     var body: some View {
         VStack(spacing: GranaTheme.Spacing.none) {
-            SheetHeaderView(title: store.existing == nil ? "Nova transação" : "Editar transação")
-
             Form {
                 TextField(
                     "Descrição",

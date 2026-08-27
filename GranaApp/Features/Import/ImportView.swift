@@ -51,7 +51,6 @@ struct ImportView: View {
                         .task { initialize() }
                 }
             }
-            .navigationTitle("")
             .fileImporter(
                 isPresented: $fileImporterShown,
                 allowedContentTypes: [.data],

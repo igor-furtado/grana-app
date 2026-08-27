@@ -1,108 +1,19 @@
 import SwiftUI
 
-struct ImportWizardStageScaffold<Content: View, Sidebar: View>: View {
-    let eyebrow: String
-    let title: String
-    let subtitle: String
-    let icon: AppIcon
-    let badges: [ImportWizardBadge]
+struct ImportWizardStageScaffold<Content: View>: View {
     @ViewBuilder var content: () -> Content
-    @ViewBuilder var sidebar: () -> Sidebar
 
     var body: some View {
         VStack(spacing: GranaTheme.Spacing.lg) {
-            hero
-
             HStack(alignment: .top, spacing: GranaTheme.Spacing.md) {
                 content()
                     .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
-
-                sidebar()
-                    .frame(width: 280, alignment: .top)
             }
         }
         .padding(.horizontal, GranaTheme.Spacing.xl)
         .padding(.bottom, GranaTheme.Spacing.xl)
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
         .background(GranaBackground())
-    }
-
-    private var hero: some View {
-        HStack(alignment: .top, spacing: GranaTheme.Spacing.lg) {
-            ZStack {
-                Circle()
-                    .fill(GranaTheme.Palette.teal.opacity(0.14))
-                    .frame(width: 72, height: 72)
-
-                Image(systemName: icon.systemImage)
-                    .font(.system(size: GranaTheme.IconSize.large, weight: .regular))
-                    .foregroundStyle(GranaTheme.Palette.tealDeep)
-            }
-
-            VStack(alignment: .leading, spacing: GranaTheme.Spacing.sm) {
-                Text(eyebrow.uppercased())
-                    .font(GranaTheme.Typography.caption1Emphasis)
-                    .foregroundStyle(GranaTheme.Palette.tealDeep)
-
-                Text(title)
-                    .font(GranaTheme.Typography.title2)
-                    .foregroundStyle(GranaTheme.Palette.ink)
-
-                Text(subtitle)
-                    .font(GranaTheme.Typography.callout)
-                    .foregroundStyle(GranaTheme.Palette.muted)
-                    .fixedSize(horizontal: false, vertical: true)
-
-                if !badges.isEmpty {
-                    HStack(spacing: GranaTheme.Spacing.xs) {
-                        ForEach(badges) { badge in
-                            ImportWizardBadgeView(badge: badge)
-                        }
-                    }
-                }
-            }
-
-            Spacer(minLength: GranaTheme.Spacing.none)
-        }
-        .padding(GranaTheme.Spacing.xl)
-        .granaSurface(.subtle, cornerRadius: GranaTheme.Radius.hero)
-    }
-}
-
-struct ImportWizardSidebarCard<Content: View>: View {
-    let title: String
-    let subtitle: String?
-    @ViewBuilder var content: () -> Content
-
-    init(
-        title: String,
-        subtitle: String? = nil,
-        @ViewBuilder content: @escaping () -> Content
-    ) {
-        self.title = title
-        self.subtitle = subtitle
-        self.content = content
-    }
-
-    var body: some View {
-        VStack(alignment: .leading, spacing: GranaTheme.Spacing.md) {
-            VStack(alignment: .leading, spacing: GranaTheme.Spacing.xxs) {
-                Text(title)
-                    .font(GranaTheme.Typography.headline)
-                    .foregroundStyle(GranaTheme.Palette.ink)
-
-                if let subtitle, !subtitle.isEmpty {
-                    Text(subtitle)
-                        .font(GranaTheme.Typography.caption1)
-                        .foregroundStyle(GranaTheme.Palette.muted)
-                }
-            }
-
-            content()
-        }
-        .padding(GranaTheme.Spacing.md)
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .granaSurface(.solid, cornerRadius: GranaTheme.Radius.card)
     }
 }
 
@@ -143,8 +54,6 @@ struct ImportWizardSectionCard<Content: View>: View {
                 trailing
             }
             .padding(GranaTheme.Spacing.md)
-
-            Divider()
 
             content()
         }

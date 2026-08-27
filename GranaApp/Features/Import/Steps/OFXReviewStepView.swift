@@ -25,13 +25,7 @@ struct OFXReviewStepView: View {
     }
 
     var body: some View {
-        ImportWizardStageScaffold(
-            eyebrow: "Importação OFX",
-            title: "Revise contas e transações antes do commit",
-            subtitle: heroSubtitle,
-            icon: .sidebarAccounts,
-            badges: heroBadges
-        ) {
+        ImportWizardStageScaffold() {
             VStack(spacing: GranaTheme.Spacing.md) {
                 accountAssignmentsPanel
                 OFXTransactionsListCard(
@@ -52,58 +46,12 @@ struct OFXReviewStepView: View {
                     .disabled(totalSelected == 0 || !allAccountsSelected)
                 }
             }
-        } sidebar: {
-            VStack(spacing: GranaTheme.Spacing.md) {
-                ImportWizardSidebarCard(
-                    title: "Resumo do arquivo",
-                    subtitle: store.sourceURL?.lastPathComponent
-                ) {
-                    ImportWizardMetricRow(label: "Extratos", value: "\(store.ofxResolutions.count)")
-                    ImportWizardMetricRow(
-                        label: "Contas resolvidas",
-                        value: "\(resolvedAccountsCount)/\(store.ofxResolutions.count)"
-                    )
-                    ImportWizardMetricRow(label: "Transações válidas", value: "\(totalRows)")
-                    ImportWizardMetricRow(label: "Selecionadas", value: "\(totalSelected)")
-                    if duplicateCount > 0 {
-                        ImportWizardMetricRow(label: "Duplicadas", value: "\(duplicateCount)")
-                    }
-                }
-
-                if !allAccountsSelected {
-                    ImportWizardSidebarCard(
-                        title: "Ação pendente",
-                        subtitle: "Cada extrato precisa apontar para uma conta existente."
-                    ) {
-                        Text(
-                            "Escolha a conta de destino em todos os blocos antes de seguir para a revisão de categorização."
-                        )
-                        .font(GranaTheme.Typography.callout)
-                        .foregroundStyle(GranaTheme.Palette.muted)
-                    }
-                }
-
-                if duplicateCount > 0 {
-                    ImportWizardSidebarCard(
-                        title: "Duplicatas detectadas",
-                        subtitle: "O backend continua responsável pela garantia final."
-                    ) {
-                        Text(
-                            "As linhas marcadas como já importadas começam desmarcadas para reduzir ruído. Você ainda pode reativá-las manualmente."
-                        )
-                        .font(GranaTheme.Typography.callout)
-                        .foregroundStyle(GranaTheme.Palette.muted)
-                    }
-                }
-            }
-        }
-        .navigationSubtitle(store.sourceURL?.lastPathComponent ?? "")
+        } 
     }
 
     private var accountAssignmentsPanel: some View {
         ImportWizardSectionCard(
             title: "Mapeamento das contas",
-            subtitle: "Confirme a conta de destino de cada `STMTRS` antes de revisar a seleção."
         ) {
             VStack(alignment: .leading, spacing: GranaTheme.Spacing.md) {
                 ForEach(store.ofxResolutions.indices, id: \.self) { idx in
@@ -119,20 +67,6 @@ struct OFXReviewStepView: View {
             return "O arquivo já foi analisado. Agora confirme a conta de destino e revise a seleção das transações."
         }
         return "O arquivo contém \(store.ofxResolutions.count) extratos. Revise cada vínculo de conta e só então avance para a categorização."
-    }
-
-    private var heroBadges: [ImportWizardBadge] {
-        var badges: [ImportWizardBadge] = [
-            .init(
-                label: "\(store.ofxResolutions.count) \(store.ofxResolutions.count == 1 ? "extrato" : "extratos")",
-                tint: .teal
-            ),
-            .init(label: "\(totalSelected) selecionadas", tint: .green),
-        ]
-        if duplicateCount > 0 {
-            badges.append(.init(label: "\(duplicateCount) duplicadas", tint: .warning))
-        }
-        return badges
     }
 
     private var selectionCaption: String? {
@@ -278,11 +212,6 @@ private struct OFXTransactionsListCard: View {
     var body: some View {
         ImportWizardSectionCard(
             title: "Transações detectadas",
-            subtitle: "Ajuste a seleção das linhas que devem seguir para a classificação.",
-            trailing: AnyView(ImportWizardBadgeView(badge: .init(
-                label: "\(selectedCount)/\(totalRows)",
-                tint: .neutral
-            )))
         ) {
             VStack(spacing: GranaTheme.Spacing.none) {
                 TransactionsSelectionRow(

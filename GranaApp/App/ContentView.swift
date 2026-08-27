@@ -81,7 +81,9 @@ struct ContentView: View {
                     selectedSectionView
                 }
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
-            }
+            }    
+            .padding(GranaTheme.Layout.pageInsets)
+
         }
         .onReceive(NotificationCenter.default.publisher(for: .appSectionNavigationRequested)) { notification in
             guard let rawValue = notification.object as? String,

@@ -72,8 +72,6 @@ struct AccountFormView: View {
 
     var body: some View {
         VStack(spacing: GranaTheme.Spacing.none) {
-            SheetHeaderView(title: navigationTitle)
-
             Form {
                 identitySection
                 if type == .creditCard {
@@ -92,7 +90,7 @@ struct AccountFormView: View {
             }
             .formStyle(.grouped)
 
-            BottomActionBar {
+            VStack(spacing: GranaTheme.Spacing.none) {
                 Button("Cancelar", action: onCancel)
                 Button(existing == nil ? "Cadastrar" : "Salvar") {
                     if cycleConfigurationChanged, cycleChangeScope == .current {

@@ -34,13 +34,7 @@ struct CSVReviewStepView: View {
     }
 
     var body: some View {
-        ImportWizardStageScaffold(
-            eyebrow: "Importação CSV",
-            title: "Revise a fatura consolidada antes de importar",
-            subtitle: "O arquivo já foi convertido em uma prévia da fatura. Escolha a conta-cartão, trate estornos e confirme a seleção final.",
-            icon: .sidebarCreditCards,
-            badges: heroBadges
-        ) {
+        ImportWizardStageScaffold() {
             VStack(spacing: GranaTheme.Spacing.md) {
                 CSVAccountInfoCard(
                     store: store,
@@ -55,6 +49,11 @@ struct CSVReviewStepView: View {
                     .frame(maxHeight: .infinity)
                 }
 
+                 if let negatives = resolution?.negativeRows, !negatives.isEmpty {
+                    negativeRowsSection(rows: negatives)
+                }
+
+
                 BottomActionBar(caption: selectionCaption) {
                     Button("Fechar") { dismiss() }
                         .buttonStyle(GranaSecondaryButtonStyle())
@@ -66,56 +65,7 @@ struct CSVReviewStepView: View {
                     .disabled(!canConfirm)
                 }
             }
-        } sidebar: {
-            VStack(spacing: GranaTheme.Spacing.md) {
-                ImportWizardSidebarCard(
-                    title: "Resumo da fatura",
-                    subtitle: resolution?.sourceFilename
-                ) {
-                    ImportWizardMetricRow(
-                        label: "Conta-cartão",
-                        value: resolution?.accountId == nil ? "Pendente" : "Definida"
-                    )
-                    ImportWizardMetricRow(label: "Compras válidas", value: "\(resolution?.rows.count ?? 0)")
-                    ImportWizardMetricRow(label: "Selecionadas", value: "\(totalSelected)")
-                    if duplicateCount > 0 {
-                        ImportWizardMetricRow(label: "Duplicadas", value: "\(duplicateCount)")
-                    }
-                    if let negativeCount = resolution?.negativeRows.count, negativeCount > 0 {
-                        ImportWizardMetricRow(label: "Negativos", value: "\(negativeCount)")
-                    }
-                }
-
-                if let negatives = resolution?.negativeRows, !negatives.isEmpty {
-                    negativeRowsSection(rows: negatives)
-                }
-
-                if resolution?.accountId == nil {
-                    ImportWizardSidebarCard(
-                        title: "Ação pendente",
-                        subtitle: "CSV de fatura sempre precisa de uma conta-cartão explícita."
-                    ) {
-                        Text(
-                            "Selecione a conta de destino para habilitar a confirmação. O fluxo não cria conta nova a partir do CSV."
-                        )
-                        .font(GranaTheme.Typography.callout)
-                        .foregroundStyle(GranaTheme.Palette.muted)
-                    }
-                }
-            }
         }
-        .navigationSubtitle(resolution?.sourceFilename ?? "")
-    }
-
-    private var heroBadges: [ImportWizardBadge] {
-        var badges: [ImportWizardBadge] = [
-            .init(label: "CSV de fatura", tint: .teal),
-            .init(label: "\(totalSelected) selecionadas", tint: .green),
-        ]
-        if duplicateCount > 0 {
-            badges.append(.init(label: "\(duplicateCount) duplicadas", tint: .warning))
-        }
-        return badges
     }
 
     private var selectionCaption: String? {
@@ -125,17 +75,10 @@ struct CSVReviewStepView: View {
 
     private func negativeRowsSection(rows: [CSVNegativePreviewRow]) -> some View {
         let count = rows.count
-        return ImportWizardSidebarCard(
+        return ImportWizardSectionCard(
             title: "Negativos para revisão",
-            subtitle: "\(count) \(count == 1 ? "linha exige ajuste" : "linhas exigem ajuste")"
         ) {
             VStack(alignment: .leading, spacing: GranaTheme.Spacing.sm) {
-                Text(
-                    "Pagamentos são ignorados. Estornos selecionados aqui serão vinculados à compra original antes do commit."
-                )
-                .font(GranaTheme.Typography.callout)
-                .foregroundStyle(GranaTheme.Palette.muted)
-
                 ForEach(rows) { row in
                     VStack(alignment: .leading, spacing: GranaTheme.Spacing.xs) {
                         HStack(alignment: .center, spacing: GranaTheme.Spacing.sm) {
@@ -206,31 +149,9 @@ private struct CSVAccountInfoCard: View {
     var body: some View {
         ImportWizardSectionCard(
             title: "Conta de destino",
-            subtitle: "Selecione a conta-cartão que receberá as compras desta fatura.",
+            subtitle: "Selecione",
             trailing: AnyView(
-                Group {
-                    if resolution?.accountId == nil {
-                        ImportWizardBadgeView(badge: .init(label: "Escolha", tint: .warning))
-                    } else {
-                        ImportWizardBadgeView(badge: .init(label: "Definida", tint: .green))
-                    }
-                }
-            )
-        ) {
-            VStack(alignment: .leading, spacing: GranaTheme.Spacing.md) {
-                if let resolution {
-                    if let accountName = selectedAccountName(for: resolution.accountId) {
-                        ImportWizardInfoRow(label: "Conta atual") {
-                            Text(accountName)
-                        }
-                    }
-
-                    VStack(alignment: .leading, spacing: GranaTheme.Spacing.xxs) {
-                        Text("Conta-cartão")
-                            .font(GranaTheme.Typography.caption1)
-                            .foregroundStyle(GranaTheme.Palette.muted)
-
-                        Picker("Conta-cartão", selection: Binding(
+                 Picker("Conta-cartão", selection: Binding(
                             get: { store.csvResolution?.accountId },
                             set: { newValue in
                                 Task { await store.setCSVAccount(newValue) }
@@ -250,10 +171,8 @@ private struct CSVAccountInfoCard: View {
                         .labelsHidden()
                         .pickerStyle(.menu)
                         .frame(maxWidth: .infinity, alignment: .leading)
-                    }
-                }
-            }
-            .padding(GranaTheme.Spacing.md)
+            )
+        ) {
         }
     }
 
@@ -281,11 +200,6 @@ private struct CSVTransactionsListCard: View {
     var body: some View {
         ImportWizardSectionCard(
             title: "Compras detectadas",
-            subtitle: "Revise a seleção final que seguirá para a classificação.",
-            trailing: AnyView(ImportWizardBadgeView(badge: .init(
-                label: "\(resolution.selectedCount)/\(resolution.rows.count)",
-                tint: .neutral
-            )))
         ) {
             VStack(spacing: GranaTheme.Spacing.none) {
                 TransactionsSelectionRow(

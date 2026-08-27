@@ -35,7 +35,6 @@ struct BottomActionBar<Trailing: View>: View {
 
     var body: some View {
         VStack(spacing: GranaTheme.Spacing.none) {
-            Divider()
             HStack(spacing: GranaTheme.Spacing.sm) {
                 if let caption {
                     Text(caption)
@@ -46,10 +45,7 @@ struct BottomActionBar<Trailing: View>: View {
                 trailing()
                     .controlSize(.large)
             }
-            .padding(.horizontal, GranaTheme.Spacing.lg)
             .padding(.vertical, GranaTheme.Spacing.md)
-            .background(GranaTheme.Palette.paper.opacity(0.82))
         }
-        .background(GranaTheme.Palette.paper.opacity(0.46))
     }
 }

@@ -54,7 +54,6 @@ struct SupportedInstitutionsView: View {
                 }
             }
         }
-        .granaPagePadding()
         .navigationTitle("")
         .toolbar(.hidden, for: .windowToolbar)
         .task { await load() }
