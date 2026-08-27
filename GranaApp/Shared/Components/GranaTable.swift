@@ -3,12 +3,11 @@ import SwiftUI
 /// Wrapper fino sobre `SwiftUI.Table` para concentrar o shell visual padrão do
 /// tema nas tabelas densas do app.
 struct GranaTable<RowValue: Identifiable, Sort: SortComparator, FilterBar: View, Columns: TableColumnContent>: View
-    where
-    Columns.TableRowValue == RowValue,
+    where Columns.TableRowValue == RowValue,
     Columns.TableColumnSortComparator == Sort,
-    Sort.Compared == RowValue
-{
+    Sort.Compared == RowValue {
     private enum Selection {
+        case none
         case single(Binding<RowValue.ID?>)
         case multiple(Binding<Set<RowValue.ID>>)
     }
@@ -19,6 +18,20 @@ struct GranaTable<RowValue: Identifiable, Sort: SortComparator, FilterBar: View,
     private let columns: Columns
     private let hasFilterBar: Bool
     private let filterBar: FilterBar
+
+    init(
+        _ rows: [RowValue],
+        sortOrder: Binding<[Sort]>? = nil,
+        @TableColumnBuilder<RowValue, Sort> columns: () -> Columns,
+        @ViewBuilder filterBar: () -> FilterBar
+    ) {
+        self.rows = rows
+        self.selection = .none
+        self.sortOrder = sortOrder
+        self.columns = columns()
+        self.hasFilterBar = true
+        self.filterBar = filterBar()
+    }
 
     init(
         _ rows: [RowValue],
@@ -75,6 +88,13 @@ struct GranaTable<RowValue: Identifiable, Sort: SortComparator, FilterBar: View,
     @ViewBuilder
     private var table: some View {
         switch selection {
+        case .none:
+            Table(rows, sortOrder: resolvedSortOrder) {
+                columns
+            }
+            .tableStyle(.inset(alternatesRowBackgrounds: false))
+            .scrollContentBackground(.hidden)
+
         case let .single(selection):
             Table(rows, selection: selection, sortOrder: resolvedSortOrder) {
                 columns
@@ -97,6 +117,20 @@ struct GranaTable<RowValue: Identifiable, Sort: SortComparator, FilterBar: View,
 }
 
 extension GranaTable where FilterBar == EmptyView {
+    init(
+        _ rows: [RowValue],
+        sortOrder: Binding<[Sort]>? = nil,
+        @TableColumnBuilder<RowValue, Sort> columns: () -> Columns
+    ) {
+        self.init(
+            rows,
+            sortOrder: sortOrder,
+            columns: columns
+        ) {
+            EmptyView()
+        }
+    }
+
     init(
         _ rows: [RowValue],
         selection: Binding<RowValue.ID?>,
@@ -133,6 +167,13 @@ extension GranaTable where FilterBar == EmptyView {
 extension GranaTable where Sort == Never, FilterBar == EmptyView {
     init(
         _ rows: [RowValue],
+        @TableColumnBuilder<RowValue, Never> columns: () -> Columns
+    ) {
+        self.init(rows, sortOrder: nil, columns: columns)
+    }
+
+    init(
+        _ rows: [RowValue],
         selection: Binding<RowValue.ID?>,
         @TableColumnBuilder<RowValue, Never> columns: () -> Columns
     ) {
@@ -149,6 +190,14 @@ extension GranaTable where Sort == Never, FilterBar == EmptyView {
 }
 
 extension GranaTable where Sort == Never {
+    init(
+        _ rows: [RowValue],
+        @TableColumnBuilder<RowValue, Never> columns: () -> Columns,
+        @ViewBuilder filterBar: () -> FilterBar
+    ) {
+        self.init(rows, sortOrder: nil, columns: columns, filterBar: filterBar)
+    }
+
     init(
         _ rows: [RowValue],
         selection: Binding<RowValue.ID?>,
