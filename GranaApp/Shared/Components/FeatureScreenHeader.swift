@@ -2,58 +2,44 @@ import SwiftUI
 
 /// Header inline para telas principais que ocultam a window toolbar nativa.
 ///
-/// A estrutura segue a direção consolidada no protótipo validado: prateleira
-/// lateral com título/ações e, opcionalmente, uma coluna operacional à direita
-/// para busca, filtros ou outros controles da tela.
-struct FeatureScreenHeader<Operations: View, Actions: View>: View {
+/// A estrutura segue a direção consolidada no protótipo validado: título e
+/// subtítulo à esquerda, com ações primárias alinhadas à direita.
+struct FeatureScreenHeader<Actions: View>: View {
     let title: String
     let subtitle: String?
-    private let hasOperations: Bool
-    @ViewBuilder var operations: () -> Operations
     @ViewBuilder var actions: () -> Actions
 
     init(
         title: String,
         subtitle: String? = nil,
-        @ViewBuilder operations: @escaping () -> Operations,
         @ViewBuilder actions: @escaping () -> Actions
     ) {
         self.title = title
         self.subtitle = subtitle
-        self.hasOperations = true
-        self.operations = operations
         self.actions = actions
     }
 
     init(
         title: String,
-        subtitle: String? = nil,
-        @ViewBuilder actions: @escaping () -> Actions
-    ) where Operations == EmptyView {
+        subtitle: String? = nil
+    ) where Actions == EmptyView {
         self.title = title
         self.subtitle = subtitle
-        self.hasOperations = false
-        self.operations = { EmptyView() }
-        self.actions = actions
+        self.actions = { EmptyView() }
     }
 
     var body: some View {
         HStack(alignment: .top, spacing: GranaTheme.Spacing.lg) {
-            VStack(alignment: .leading, spacing: GranaTheme.Spacing.sm) {
-                titleBlock
+            titleBlock
+                .frame(maxWidth: .infinity, alignment: .leading)
+
+            HStack(spacing: GranaTheme.Spacing.sm) {
                 actions()
             }
-            .frame(maxWidth: hasOperations ? 360 : .infinity, alignment: .leading)
-
-            if hasOperations {
-                VStack(alignment: .leading, spacing: GranaTheme.Spacing.sm) {
-                    operations()
-                }
-                .frame(maxWidth: .infinity, alignment: .leading)
-            }
+            .frame(alignment: .trailing)
         }
         .padding(GranaTheme.Spacing.md)
-        .frame(maxWidth: .infinity, minHeight: 104, alignment: .leading)
+        .frame(maxWidth: .infinity, minHeight: 88, alignment: .leading)
         .granaSurface(.subtle, cornerRadius: GranaTheme.Radius.card)
     }
 

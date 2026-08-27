@@ -65,6 +65,7 @@ struct ImportHistoryView: View {
     private func content(store: ImportStore) -> some View {
         VStack(spacing: GranaTheme.Spacing.sm) {
             header(store: store)
+            summaryRow(store: store)
 
             if store.batches.isEmpty {
                 EmptyStateDropZone(
@@ -105,24 +106,6 @@ struct ImportHistoryView: View {
             subtitle: store.summarySubtitle
         ) {
             HStack(spacing: GranaTheme.Spacing.sm) {
-                ImportSummaryBadge(
-                    title: "Lotes",
-                    value: "\(store.batches.count)",
-                    detail: "histórico ativo"
-                )
-                ImportSummaryBadge(
-                    title: "Linhas",
-                    value: "\(store.totalImportedRows)",
-                    detail: "já consolidadas"
-                )
-                ImportSummaryBadge(
-                    title: "Última",
-                    value: store.latestImportShortText,
-                    detail: "importação concluída"
-                )
-            }
-        } actions: {
-            HStack(spacing: GranaTheme.Spacing.sm) {
                 Button {
                     presentImportSheet(file: nil)
                 } label: {
@@ -138,6 +121,26 @@ struct ImportHistoryView: View {
                 .buttonStyle(GranaPrimaryButtonStyle())
                 .help("Importar extrato bancário (OFX ou CSV)")
             }
+        }
+    }
+
+    private func summaryRow(store: ImportStore) -> some View {
+        HStack(spacing: GranaTheme.Spacing.sm) {
+            ImportSummaryBadge(
+                title: "Lotes",
+                value: "\(store.batches.count)",
+                detail: "histórico ativo"
+            )
+            ImportSummaryBadge(
+                title: "Linhas",
+                value: "\(store.totalImportedRows)",
+                detail: "já consolidadas"
+            )
+            ImportSummaryBadge(
+                title: "Última",
+                value: store.latestImportShortText,
+                detail: "importação concluída"
+            )
         }
     }
 
