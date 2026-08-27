@@ -9,6 +9,10 @@ import SwiftUI
 /// nome + ícone da categoria de cada row sem segundo round-trip.
 struct StatementListView: View {
     @Bindable var store: StoreOf<StatementListFeature>
+    let currency: String
+    @State private var sortOrder = [
+        KeyPathComparator(\StatementTransactionTableRow.occurredAt, order: .reverse),
+    ]
 
     var body: some View {
         VStack(spacing: GranaTheme.Spacing.none) {
@@ -18,7 +22,7 @@ struct StatementListView: View {
             } else if store.rows.isEmpty {
                 emptyView
             } else {
-                rows
+                table
             }
         }
         .granaSurface(.solid, cornerRadius: GranaTheme.Radius.card)
@@ -40,47 +44,68 @@ struct StatementListView: View {
         .frame(maxWidth: .infinity)
     }
 
-    private var rows: some View {
-        VStack(spacing: GranaTheme.Spacing.none) {
-            ForEach(Array(store.rows.enumerated()), id: \.element.id) { idx, row in
-                if idx > 0 { Divider() }
-                rowView(for: row)
+    private var table: some View {
+        GranaTable(sortedRows, sortOrder: $sortOrder) {
+            TableColumn("Data", value: \.occurredAt) { row in
+                Text(Self.dayMonthFormatter.string(from: row.occurredAt))
+                    .font(GranaTheme.Typography.caption1)
+                    .foregroundStyle(GranaTheme.Palette.muted)
             }
+            .width(min: 92, ideal: 108, max: 124)
+
+            TableColumn("Categoria", value: \.categorySortLabel) { row in
+                Group {
+                    if let category = row.category {
+                        CategoryBadge(
+                            category: category,
+                            icon: row.categoryIcon,
+                            iconOnly: true
+                        )
+                    } else {
+                        placeholderIcon
+                    }
+                }
+                .accessibilityLabel(row.categoryName ?? "Sem categoria")
+            }
+            .width(min: 58, ideal: 64, max: 72)
+
+            TableColumn("Subcategoria", value: \.subcategorySortLabel) { row in
+                Text(row.subcategoryDisplayName)
+                    .font(GranaTheme.Typography.caption1)
+                    .foregroundStyle(
+                        row.subcategoryName == nil
+                            ? GranaTheme.Palette.muted
+                            : GranaTheme.Palette.ink
+                    )
+                    .lineLimit(1)
+            }
+            .width(min: 148, ideal: 180, max: 220)
+
+            TableColumn("Descrição", value: \.description) { row in
+                Text(row.description)
+                    .font(GranaTheme.Typography.subheadlineEmphasis)
+                    .foregroundStyle(GranaTheme.Palette.ink)
+                    .lineLimit(1)
+            }
+            .width(min: 220, ideal: 360)
+
+            TableColumn("Valor", value: \.signedAmount) { row in
+                Text(row.signedAmount.formatted(.currency(code: currency)))
+                    .font(GranaTheme.Typography.moneySubheadline)
+                    .foregroundStyle(
+                        row.signedAmount < 0
+                            ? GranaTheme.Palette.ink
+                            : GranaTheme.Palette.green
+                    )
+                    .frame(maxWidth: .infinity, alignment: .trailing)
+            }
+            .width(min: 132, ideal: 148, max: 180)
         }
+        .frame(minHeight: 260, idealHeight: min(CGFloat(sortedRows.count) * 44 + 44, 520), maxHeight: 520)
     }
 
-    private func rowView(for row: StatementTransactionRow) -> some View {
-        return HStack(spacing: GranaTheme.Spacing.sm) {
-            Text(Self.dayMonthFormatter.string(from: row.transaction.occurredAt))
-                .font(GranaTheme.Typography.footnote)
-                .foregroundStyle(GranaTheme.Palette.muted)
-                .frame(width: 56, alignment: .leading)
-
-            if let icon = row.category?.icon {
-                CategoryIconBubble(icon: icon, size: 28)
-            } else {
-                placeholderIcon
-            }
-
-            VStack(alignment: .leading, spacing: GranaTheme.Spacing.xxs) {
-                Text(row.transaction.description)
-                    .font(GranaTheme.Typography.callout)
-                    .lineLimit(1)
-                if let category = row.category {
-                    Text(category.name)
-                        .font(GranaTheme.Typography.caption2)
-                        .foregroundStyle(GranaTheme.Palette.muted)
-                }
-            }
-
-            Spacer()
-
-            Text("-\(row.transaction.amount.magnitude.formatted(.currency(code: "BRL")))")
-                .font(GranaTheme.Typography.moneySubheadline)
-                .foregroundStyle(GranaTheme.Palette.ink)
-        }
-        .padding(.horizontal, GranaTheme.Spacing.md)
-        .padding(.vertical, GranaTheme.Spacing.sm)
+    private var sortedRows: [StatementTransactionTableRow] {
+        store.tableRows.sorted(using: sortOrder)
     }
 
     private var placeholderIcon: some View {
@@ -100,6 +125,57 @@ struct StatementListView: View {
         f.locale = Locale(identifier: "pt_BR")
         return f
     }()
+}
+
+struct StatementTransactionTableRow: Identifiable, Equatable {
+    let source: StatementTransactionRow
+
+    var id: UUID {
+        source.id
+    }
+
+    var occurredAt: Date {
+        source.transaction.occurredAt
+    }
+
+    var category: Category? {
+        source.category
+    }
+
+    var categoryName: String? {
+        source.category?.name
+    }
+
+    var categorySortLabel: String {
+        categoryName ?? ""
+    }
+
+    var categoryIcon: CategoryIcon? {
+        source.category?.icon
+    }
+
+    var subcategoryName: String? {
+        source.subcategory?.name
+    }
+
+    var subcategoryDisplayName: String {
+        subcategoryName ?? "—"
+    }
+
+    var subcategorySortLabel: String {
+        subcategoryName ?? ""
+    }
+
+    var description: String {
+        source.transaction.description
+    }
+
+    var signedAmount: Decimal {
+        if source.transaction.refundOfTransactionId != nil {
+            return source.transaction.amount.magnitude
+        }
+        return -source.transaction.amount.magnitude
+    }
 }
 
 /// Bolha redonda com o ícone da categoria + cor associada. Match visual

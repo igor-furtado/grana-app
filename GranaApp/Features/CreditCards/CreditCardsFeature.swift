@@ -92,6 +92,10 @@ struct StatementListFeature {
         var rows: [StatementTransactionRow] = []
         var isLoading = false
         var hasLoaded = false
+
+        var tableRows: [StatementTransactionTableRow] {
+            rows.map(StatementTransactionTableRow.init(source:))
+        }
     }
 
     enum Action: Equatable {

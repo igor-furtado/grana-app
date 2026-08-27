@@ -74,7 +74,10 @@ struct CreditCardStatementsView: View {
             if let statement = store.selectedStatement {
                 statementSummary(statement)
                 if let statementListStore = store.scope(state: \.statementList, action: \.statementList) {
-                    StatementListView(store: statementListStore)
+                    StatementListView(
+                        store: statementListStore,
+                        currency: store.card.account.currency
+                    )
                 }
             } else {
                 // Fatura projetada (não persistida) ou nenhuma seleção:

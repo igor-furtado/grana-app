@@ -28,6 +28,7 @@ struct CreditCardStatementsSnapshot: Equatable {
 struct StatementTransactionRow: Equatable, Identifiable {
     let transaction: Transaction
     let category: Category?
+    let subcategory: Category?
 
     var id: UUID {
         transaction.id
@@ -114,7 +115,8 @@ struct CreditCardsClient {
                     rows: loadedTransactions.map { transaction in
                         StatementTransactionRow(
                             transaction: transaction,
-                            category: categoriesById[transaction.categoryId]
+                            category: categoriesById[transaction.categoryId],
+                            subcategory: transaction.subcategoryId.flatMap { categoriesById[$0] }
                         )
                     }
                 )
