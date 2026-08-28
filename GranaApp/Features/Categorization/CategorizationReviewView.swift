@@ -56,19 +56,59 @@ struct CategorizationReviewView: View {
         if store.suggestions.isEmpty {
             emptyState
         } else {
-            Form {
-                ForEach(CategorizationReviewOrdering.sections(from: store.suggestions)) { section in
-                    Section(section.title) {
-                        ForEach(section.indices, id: \.self) { idx in
-                            CategorizationRowView(store: store, index: idx)
-                                .padding(.horizontal, GranaTheme.Spacing.md)
-                                .padding(.vertical, GranaTheme.Spacing.xs)
-                        }
+            GranaTable(tableRows) {
+                TableColumn("Status") { row in
+                    if row.needsAttention {
+                        ImportWizardTableStatusBadge(
+                            status: .init(label: "Não Classificado", tint: .warning)
+                        )
+                    } else {
+                        Text("Classificada")
+                            .font(GranaTheme.Typography.caption1Emphasis)
+                            .foregroundStyle(GranaTheme.Palette.tealDeep)
                     }
                 }
+                .width(min: 132, ideal: 156, max: 180)
+
+                TableColumn("Data") { row in
+                    Text(row.occurredAt.formatted(date: .numeric, time: .omitted))
+                        .font(GranaTheme.Typography.caption1)
+                        .foregroundStyle(GranaTheme.Palette.muted)
+                }
+                .width(min: 92, ideal: 104, max: 118)
+
+                TableColumn("Descrição") { row in
+                    HStack(spacing: GranaTheme.Spacing.sm) {
+                        if let kind = row.institutionKind {
+                            InstitutionIcon(kind: kind, size: 22)
+                        }
+
+                        Text(row.description)
+                            .font(GranaTheme.Typography.subheadlineEmphasis)
+                            .foregroundStyle(GranaTheme.Palette.ink)
+                            .lineLimit(1)
+                            .help(row.description)
+                    }
+                }
+
+                TableColumn("Categoria") { row in
+                    categoryMenu(for: row)
+                }
+                .width(min: 170, ideal: 220, max: 260)
+
+                TableColumn("Subcategoria") { row in
+                    subcategoryMenu(for: row)
+                }
+                .width(min: 170, ideal: 220, max: 260)
+
+                TableColumn("Valor") { row in
+                    Text(row.amount.formatted(.currency(code: "BRL")))
+                        .font(GranaTheme.Typography.moneySubheadline)
+                        .foregroundStyle(amountColor(for: row.categoryId))
+                        .frame(maxWidth: .infinity, alignment: .trailing)
+                }
+                .width(min: 120, ideal: 140, max: 160)
             }
-            .formStyle(.grouped)
-            .contentMargins(.horizontal, GranaTheme.Spacing.none, for: .scrollContent)
             .frame(maxHeight: .infinity)
         }
     }
@@ -96,6 +136,108 @@ struct CategorizationReviewView: View {
         }
         return false
     }
+
+    private var tableRows: [CategorizationReviewTableRow] {
+        CategorizationReviewOrdering.orderedIndices(from: store.suggestions).map { index in
+            let suggestion = store.suggestions[index]
+            return CategorizationReviewTableRow(
+                id: suggestion.id,
+                index: index,
+                occurredAt: suggestion.transactionOccurredAt,
+                description: suggestion.transactionDescription,
+                amount: suggestion.transactionAmount,
+                categoryId: suggestion.categoryId,
+                subcategoryId: suggestion.subcategoryId,
+                needsAttention: CategorizationReviewOrdering.needsAttention(suggestion),
+                institutionKind: store.state.institutionKind(forAccountId: suggestion.transactionAccountId)
+            )
+        }
+    }
+
+    private func categoryMenu(for row: CategorizationReviewTableRow) -> some View {
+        Menu {
+            ForEach(store.rootCategories) { category in
+                Button(category.name) {
+                    store.send(
+                        .applyCorrection(
+                            index: row.index,
+                            categoryId: category.id,
+                            subcategoryId: nil
+                        )
+                    )
+                }
+            }
+        } label: {
+            tableMenuLabel(text: rootName(for: row))
+        }
+        .menuStyle(.borderlessButton)
+        .help(rootName(for: row))
+    }
+
+    private func subcategoryMenu(for row: CategorizationReviewTableRow) -> some View {
+        Menu {
+            Button("Nenhuma") {
+                store.send(
+                    .applyCorrection(
+                        index: row.index,
+                        categoryId: row.categoryId,
+                        subcategoryId: nil
+                    )
+                )
+            }
+            ForEach(store.state.subcategories(of: row.categoryId)) { subcategory in
+                Button(subcategory.name) {
+                    store.send(
+                        .applyCorrection(
+                            index: row.index,
+                            categoryId: row.categoryId,
+                            subcategoryId: subcategory.id
+                        )
+                    )
+                }
+            }
+        } label: {
+            tableMenuLabel(text: subName(for: row) ?? "—")
+        }
+        .menuStyle(.borderlessButton)
+        .help(subName(for: row) ?? "Sem subcategoria")
+    }
+
+    private func rootName(for row: CategorizationReviewTableRow) -> String {
+        store.state.category(for: row.categoryId)?.name ?? "Categoria"
+    }
+
+    private func subName(for row: CategorizationReviewTableRow) -> String? {
+        guard let subcategoryId = row.subcategoryId else { return nil }
+        return store.state.category(for: subcategoryId)?.name
+    }
+
+    private func amountColor(for categoryId: UUID) -> Color {
+        guard let category = store.state.category(for: categoryId) else {
+            return .primary
+        }
+        switch category.kind {
+        case .income: return .income
+        case .transfer: return .transfer
+        case .expense: return .primary
+        }
+    }
+
+    private func tableMenuLabel(text: String) -> some View {
+        HStack(spacing: GranaTheme.Spacing.xxs) {
+            Text(text)
+                .font(GranaTheme.Typography.caption1)
+                .lineLimit(1)
+                .frame(maxWidth: .infinity, alignment: .leading)
+            Image(systemName: AppIcon.sort.systemImage)
+                .font(.system(size: GranaTheme.IconSize.micro))
+                .foregroundStyle(.secondary)
+        }
+        .padding(.horizontal, GranaTheme.Spacing.xs)
+        .padding(.vertical, GranaTheme.Spacing.xxs)
+        .background(Color(nsColor: .controlBackgroundColor))
+        .clipShape(RoundedRectangle(cornerRadius: 6, style: .continuous))
+    }
 }
 
 enum CategorizationReviewOrdering {
@@ -107,18 +249,7 @@ enum CategorizationReviewOrdering {
     }
 
     static func sections(from suggestions: [CategorizationSuggestion]) -> [Section] {
-        let indexed: [(index: Int, suggestion: CategorizationSuggestion)] = suggestions.enumerated().map {
-            (index: $0.offset, suggestion: $0.element)
-        }
-        let ordered = indexed.sorted { lhs, rhs in
-            if needsAttention(lhs.suggestion) != needsAttention(rhs.suggestion) {
-                return needsAttention(lhs.suggestion) && !needsAttention(rhs.suggestion)
-            }
-            if lhs.suggestion.transactionOccurredAt == rhs.suggestion.transactionOccurredAt {
-                return lhs.index < rhs.index
-            }
-            return lhs.suggestion.transactionOccurredAt < rhs.suggestion.transactionOccurredAt
-        }
+        let ordered = orderedSuggestions(from: suggestions)
 
         let attention = ordered.filter { needsAttention($0.suggestion) }.map(\.index)
         let remaining = ordered.filter { !needsAttention($0.suggestion) }.map(\.index)
@@ -130,7 +261,40 @@ enum CategorizationReviewOrdering {
         .filter { !$0.indices.isEmpty }
     }
 
-    private static func needsAttention(_ suggestion: CategorizationSuggestion) -> Bool {
+    static func orderedIndices(from suggestions: [CategorizationSuggestion]) -> [Int] {
+        orderedSuggestions(from: suggestions).map(\.index)
+    }
+
+    static func needsAttention(_ suggestion: CategorizationSuggestion) -> Bool {
         suggestion.source == .fallback || suggestion.originalCategorySlug == "nao-classificado"
     }
+
+    private static func orderedSuggestions(
+        from suggestions: [CategorizationSuggestion]
+    ) -> [(index: Int, suggestion: CategorizationSuggestion)] {
+        let indexed: [(index: Int, suggestion: CategorizationSuggestion)] = suggestions.enumerated().map {
+            (index: $0.offset, suggestion: $0.element)
+        }
+        return indexed.sorted { lhs, rhs in
+            if needsAttention(lhs.suggestion) != needsAttention(rhs.suggestion) {
+                return needsAttention(lhs.suggestion) && !needsAttention(rhs.suggestion)
+            }
+            if lhs.suggestion.transactionOccurredAt == rhs.suggestion.transactionOccurredAt {
+                return lhs.index < rhs.index
+            }
+            return lhs.suggestion.transactionOccurredAt < rhs.suggestion.transactionOccurredAt
+        }
+    }
+}
+
+private struct CategorizationReviewTableRow: Identifiable {
+    let id: UUID
+    let index: Int
+    let occurredAt: Date
+    let description: String
+    let amount: Decimal
+    let categoryId: UUID
+    let subcategoryId: UUID?
+    let needsAttention: Bool
+    let institutionKind: InstitutionKind?
 }

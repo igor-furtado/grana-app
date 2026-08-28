@@ -84,7 +84,7 @@ private struct ImportWizardSidebar<Actions: View>: View {
 
             Spacer(minLength: GranaTheme.Spacing.none)
 
-            VStack(spacing: GranaTheme.Spacing.sm) {
+            HStack(spacing: GranaTheme.Spacing.sm) {
                 actions
                     .controlSize(.large)
             }
@@ -272,6 +272,10 @@ struct ImportWizardInfoRow<Content: View>: View {
 }
 
 struct ImportWizardBadge: Identifiable {
+    let id = UUID()
+    let label: String
+    let tint: Tint
+
     enum Tint {
         case teal
         case gold
@@ -309,10 +313,38 @@ struct ImportWizardBadge: Identifiable {
             }
         }
     }
+}
 
-    let id = UUID()
-    let label: String
-    let tint: Tint
+struct ImportWizardTableStatusBadge: View {
+    let status: TransactionRow.Status
+
+    var body: some View {
+        Text(status.label)
+            .font(GranaTheme.Typography.caption1)
+            .padding(.horizontal, GranaTheme.Spacing.xs)
+            .padding(.vertical, GranaTheme.Spacing.xxs)
+            .background(backgroundColor)
+            .foregroundStyle(foregroundColor)
+            .clipShape(Capsule())
+    }
+
+    private var backgroundColor: Color {
+        switch status.tint {
+        case .warning: .warning.opacity(0.18)
+        case .success: .success.opacity(0.15)
+        case .info: .accentColor.opacity(0.15)
+        case .neutral: .secondary.opacity(0.15)
+        }
+    }
+
+    private var foregroundColor: Color {
+        switch status.tint {
+        case .warning: .secondary
+        case .success: .success
+        case .info: .accentColor
+        case .neutral: .secondary
+        }
+    }
 }
 
 struct ImportWizardBadgeView: View {

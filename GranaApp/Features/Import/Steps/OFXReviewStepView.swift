@@ -131,15 +131,23 @@ private struct OFXTransactionsListCard: View {
         resolutions.indices.contains(selectedIndex) ? resolutions[selectedIndex] : nil
     }
 
-    private var orderedRowIndices: [Int] {
+    private var tableRows: [OFXTransactionTableRow] {
         guard let currentResolution else { return [] }
-        return currentResolution.rows.indices.sorted { lhs, rhs in
-            let leftDate = currentResolution.rows[lhs].derived.occurredAt
-            let rightDate = currentResolution.rows[rhs].derived.occurredAt
-            if leftDate == rightDate {
-                return lhs < rhs
+        return currentResolution.rows.map {
+            OFXTransactionTableRow(
+                id: $0.id,
+                date: $0.derived.occurredAt,
+                description: $0.derived.description,
+                amount: $0.derived.amount.magnitude,
+                amountKind: $0.derived.amount < 0 ? .outgoing : .incoming,
+                status: $0.isDuplicate ? .duplicate : nil
+            )
+        }
+        .sorted { lhs, rhs in
+            if lhs.date == rhs.date {
+                return lhs.id.uuidString < rhs.id.uuidString
             }
-            return leftDate < rightDate
+            return lhs.date < rhs.date
         }
     }
 
@@ -160,41 +168,76 @@ private struct OFXTransactionsListCard: View {
 
     var body: some View {
         ImportWizardSectionCard(title: "Transações") {
-            VStack(spacing: GranaTheme.Spacing.none) {
-                if resolutions.count > 1 {
-                    Picker("Extrato", selection: selectedBinding) {
-                        ForEach(Array(resolutions.enumerated()), id: \.element.id) { index, resolution in
-                            Text(tabLabel(for: index)).tag(Optional.some(resolution.id))
-                        }
+            GranaTable(tableRows) {
+                TableColumn("") { row in
+                    if let selection = selectionBinding(for: row.id) {
+                        Toggle("", isOn: selection)
+                            .toggleStyle(.checkbox)
+                            .labelsHidden()
+                    } else {
+                        Color.clear
+                            .frame(width: 16, height: 16)
                     }
-                    .pickerStyle(.segmented)
-                    .padding(.horizontal, GranaTheme.Spacing.md)
-                    .padding(.vertical, GranaTheme.Spacing.sm)
+                }
+                .width(min: 38, ideal: 44, max: 48)
+
+                TableColumn("Data") { row in
+                    Text(row.date.formatted(date: .numeric, time: .omitted))
+                        .font(GranaTheme.Typography.caption1)
+                        .foregroundStyle(GranaTheme.Palette.muted)
+                }
+                .width(min: 92, ideal: 104, max: 118)
+
+                TableColumn("Descrição") { row in
+                    HStack(spacing: GranaTheme.Spacing.sm) {
+                        if let currentResolution {
+                            InstitutionIcon(
+                                kind: bankKind(currentResolution.accountId) ?? .other,
+                                size: 22
+                            )
+                        }
+                        Text(row.description)
+                            .font(GranaTheme.Typography.subheadlineEmphasis)
+                            .foregroundStyle(GranaTheme.Palette.ink)
+                            .lineLimit(1)
+                    }
                 }
 
-                TransactionsSelectionRow(
-                    summary: "\(currentSelectedCount) de \(currentEligibleCount) selecionadas",
-                    allSelected: allSelected,
-                    onToggleAll: toggleAll(to:)
-                )
-                Divider()
+                TableColumn("Situação") { row in
+                    if let status = row.status {
+                        ImportWizardTableStatusBadge(status: status)
+                    } else {
+                        Text("Importar")
+                            .font(GranaTheme.Typography.caption1Emphasis)
+                            .foregroundStyle(GranaTheme.Palette.tealDeep)
+                    }
+                }
+                .width(min: 120, ideal: 146, max: 180)
 
-                ScrollView {
-                    LazyVStack(spacing: GranaTheme.Spacing.none) {
-                        ForEach(orderedRowIndices, id: \.self) { rowIndex in
-                            if let currentResolution {
-                                OFXRowView(
-                                    row: binding(for: rowIndex),
-                                    institutionKind: bankKind(currentResolution.accountId)
-                                )
-                                .padding(.horizontal, GranaTheme.Spacing.md)
-                                .padding(.vertical, GranaTheme.Spacing.sm)
-                                Divider()
+                TableColumn("Valor") { row in
+                    Text(row.amount.formatted(.currency(code: "BRL")))
+                        .font(GranaTheme.Typography.moneySubheadline)
+                        .foregroundStyle(amountColor(for: row.amountKind))
+                        .frame(maxWidth: .infinity, alignment: .trailing)
+                }
+                .width(min: 120, ideal: 140, max: 160)
+            } filterBar: {
+                VStack(alignment: .leading, spacing: GranaTheme.Spacing.sm) {
+                    if resolutions.count > 1 {
+                        Picker("Extrato", selection: selectedBinding) {
+                            ForEach(Array(resolutions.enumerated()), id: \.element.id) { index, statement in
+                                Text(tabLabel(for: index)).tag(Optional.some(statement.id))
                             }
                         }
+                        .pickerStyle(.segmented)
                     }
+
+                    TransactionsSelectionRow(
+                        summary: "\(currentSelectedCount) de \(currentEligibleCount) selecionadas",
+                        allSelected: allSelected,
+                        onToggleAll: toggleAll(to:)
+                    )
                 }
-                .frame(maxHeight: .infinity)
             }
         }
     }
@@ -206,10 +249,15 @@ private struct OFXTransactionsListCard: View {
         )
     }
 
-    private func binding(for rowIndex: Int) -> Binding<OFXPreviewRow> {
-        Binding(
-            get: { resolutions[selectedIndex].rows[rowIndex] },
-            set: { resolutions[selectedIndex].rows[rowIndex] = $0 }
+    private func selectionBinding(for rowID: UUID) -> Binding<Bool>? {
+        guard resolutions.indices.contains(selectedIndex),
+              let rowIndex = resolutions[selectedIndex].rows.firstIndex(where: { $0.id == rowID }),
+              !resolutions[selectedIndex].rows[rowIndex].isDuplicate else {
+            return nil
+        }
+        return Binding(
+            get: { resolutions[selectedIndex].rows[rowIndex].selected },
+            set: { resolutions[selectedIndex].rows[rowIndex].selected = $0 }
         )
     }
 
@@ -223,26 +271,24 @@ private struct OFXTransactionsListCard: View {
     private func tabLabel(for index: Int) -> String {
         "Extrato \(index + 1)"
     }
+
+    private func amountColor(for kind: TransactionRow.AmountKind) -> Color {
+        switch kind {
+        case .incoming:
+            .income
+        case .transfer:
+            .transfer
+        case .outgoing:
+            GranaTheme.Palette.ink
+        }
+    }
 }
 
-private struct OFXRowView: View {
-    @Binding var row: OFXPreviewRow
-    let institutionKind: InstitutionKind?
-
-    var body: some View {
-        TransactionRow(
-            selection: row.isDuplicate ? nil : $row.selected,
-            institutionKind: institutionKind,
-            description: primaryDescription,
-            memo: nil,
-            date: row.derived.occurredAt,
-            amount: row.derived.amount.magnitude,
-            amountKind: row.derived.amount < 0 ? .outgoing : .incoming,
-            status: row.isDuplicate ? .duplicate : nil
-        )
-    }
-
-    private var primaryDescription: String {
-        row.derived.description
-    }
+private struct OFXTransactionTableRow: Identifiable {
+    let id: UUID
+    let date: Date
+    let description: String
+    let amount: Decimal
+    let amountKind: TransactionRow.AmountKind
+    let status: TransactionRow.Status?
 }
