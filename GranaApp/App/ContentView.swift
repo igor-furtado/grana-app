@@ -152,21 +152,25 @@ private struct AuthenticatedShellView: View {
     @State private var isImportDropTargeted = false
     @State private var shellStore: AppShellStore
     @State private var accountStore: AccountStore
-    @State private var categoryCatalogStore: CategoryCatalogStore
-    @State private var institutionCatalogStore: InstitutionCatalogStore
     @State private var transactionsFeatureStore: StoreOf<TransactionsFeature>
+    @State private var supportedInstitutionsFeatureStore: StoreOf<SupportedInstitutionsFeature>
 
     init(selectionRaw: Binding<String>, container: AppContainer) {
         _selectionRaw = selectionRaw
         _shellStore = State(initialValue: AppShellStore())
         _accountStore = State(initialValue: AccountStore(container: container))
-        _categoryCatalogStore = State(initialValue: CategoryCatalogStore(container: container))
-        _institutionCatalogStore = State(initialValue: InstitutionCatalogStore(container: container))
         _transactionsFeatureStore = State(initialValue: Store(initialState: TransactionsFeature.State()) {
             TransactionsFeature()
         } withDependencies: {
             $0.transactionsClient = .live(container: container)
         })
+        _supportedInstitutionsFeatureStore = State(
+            initialValue: Store(initialState: SupportedInstitutionsFeature.State()) {
+                SupportedInstitutionsFeature()
+            } withDependencies: {
+                $0.supportedInstitutionsClient = .live(container: container)
+            }
+        )
     }
 
     private var selection: AppSection {
@@ -254,9 +258,9 @@ private struct AuthenticatedShellView: View {
         case .import:
             ImportHistoryView(store: environment.importFeatureStore)
         case .categories:
-            CategoriesView(store: categoryCatalogStore)
+            CategoriesView()
         case .institutions:
-            SupportedInstitutionsView(store: institutionCatalogStore)
+            SupportedInstitutionsView(store: supportedInstitutionsFeatureStore)
         case .designSystem:
             DesignSystemView()
         case .profile:

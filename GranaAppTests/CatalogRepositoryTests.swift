@@ -207,7 +207,7 @@ struct CatalogLoadingTests {
                     accounts: [account],
                     bankDetails: [],
                     creditCards: []
-                ),
+                )
             ),
             remoteImports: StaticImportRemoteRepository(batches: [batch])
         )
@@ -252,7 +252,7 @@ struct CatalogLoadingTests {
                     accounts: [account],
                     bankDetails: [],
                     creditCards: []
-                ),
+                )
             )
         )
         let client = CategorizationClient.live(container: container)
@@ -279,23 +279,6 @@ struct CatalogLoadingTests {
         #expect(!store.isLoading)
         #expect(store.loadError == nil)
         #expect(store.categories.isEmpty)
-    }
-
-    @MainActor
-    @Test("InstitutionCatalogStore expõe erro remoto")
-    func institutionCatalogStoreExposesErrorState() async {
-        let container = AppContainer.inMemoryForTesting(
-            categoryCatalog: StaticCategoryCatalogRepository(categories: []),
-            institutionCatalog: FailingInstitutionCatalogRepository()
-        )
-        let store = InstitutionCatalogStore(container: container)
-
-        await store.load()
-
-        #expect(!store.hasLoaded)
-        #expect(!store.isLoading)
-        #expect(store.loadError is TestCatalogFailure)
-        #expect(store.institutions.isEmpty)
     }
 }
 
@@ -384,12 +367,6 @@ private func makeCategory(
         slug: slug,
         createdAt: Date()
     )
-}
-
-private struct FailingInstitutionCatalogRepository: InstitutionCatalogRepositoryProtocol {
-    func load() async throws -> [Institution] {
-        throw TestCatalogFailure.unauthorized
-    }
 }
 
 private enum TestCatalogFailure: Error {

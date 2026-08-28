@@ -1,4 +1,4 @@
-import Foundation
+import ComposableArchitecture
 import SwiftUI
 
 /// Catálogo read-only das instituições com suporte nativo no app — auto-detect
@@ -8,31 +8,68 @@ import SwiftUI
 /// o GranaApp reconhece?" sem ter que abrir o form de conta.
 struct SupportedInstitutionsView: View {
     @Environment(AppEnvironment.self) private var environment
-
     private let columns = [
         GridItem(.adaptive(minimum: 240, maximum: 360), spacing: GranaTheme.Spacing.md),
     ]
-    @State private var store: InstitutionCatalogStore?
+    @State private var store: StoreOf<SupportedInstitutionsFeature>?
 
-    init(store: InstitutionCatalogStore? = nil) {
+    init(store: StoreOf<SupportedInstitutionsFeature>? = nil) {
         _store = State(initialValue: store)
     }
 
     var body: some View {
+        Group {
+            if let store {
+                SupportedInstitutionsLoadedView(store: store, columns: columns)
+            } else {
+                ProgressView()
+                    .frame(maxWidth: .infinity, maxHeight: .infinity)
+            }
+        }
+        .navigationTitle("")
+        .toolbar(.hidden, for: .windowToolbar)
+        .onAppear {
+            if store == nil {
+                store = Store(initialState: SupportedInstitutionsFeature.State()) {
+                    SupportedInstitutionsFeature()
+                } withDependencies: {
+                    $0.supportedInstitutionsClient = .live(container: environment.container)
+                }
+            }
+        }
+    }
+}
+
+private struct SupportedInstitutionsLoadedView: View {
+    @Bindable var store: StoreOf<SupportedInstitutionsFeature>
+    let columns: [GridItem]
+
+    var body: some View {
         VStack(spacing: GranaTheme.Spacing.sm) {
-            header
+            FeatureScreenHeader(
+                title: "Bancos suportados",
+                subtitle: store.subtitle
+            ) {
+                Button {
+                    store.send(.refresh)
+                } label: {
+                    Label("Atualizar", systemImage: "arrow.clockwise")
+                }
+                .buttonStyle(GranaPrimaryButtonStyle())
+                .disabled(store.isLoading)
+            }
 
             Group {
-                if let loadError {
+                if let loadErrorMessage = store.loadErrorMessage {
                     EmptyStateView(
                         "Não foi possível carregar",
                         icon: .warning,
-                        description: loadError.localizedDescription
+                        description: loadErrorMessage
                     )
-                } else if isLoading, !hasLoaded {
+                } else if store.isLoading, !store.hasLoaded {
                     ProgressView()
                         .frame(maxWidth: .infinity, maxHeight: .infinity)
-                } else if institutions.isEmpty {
+                } else if store.institutions.isEmpty {
                     EmptyStateView(
                         "Nenhuma instituição disponível",
                         icon: .sidebarInstitutions,
@@ -42,14 +79,17 @@ struct SupportedInstitutionsView: View {
                     ScrollView {
                         VStack(alignment: .leading, spacing: GranaTheme.Spacing.md) {
                             Text(
-                                "Catálogo global das instituições suportadas pelo produto. Tipos de conta e formatos de importação vêm do backend e definem o que a UI pode oferecer."
+                                """
+                                Catálogo global das instituições suportadas pelo produto. Tipos de conta
+                                e formatos de importação vêm do backend e definem o que a UI pode oferecer.
+                                """
                             )
                             .font(GranaTheme.Typography.callout)
                             .foregroundStyle(.secondary)
                             .fixedSize(horizontal: false, vertical: true)
 
                             LazyVGrid(columns: columns, spacing: GranaTheme.Spacing.md) {
-                                ForEach(institutions) { institution in
+                                ForEach(store.institutions) { institution in
                                     InstitutionCatalogCard(institution: institution)
                                 }
                             }
@@ -58,54 +98,9 @@ struct SupportedInstitutionsView: View {
                 }
             }
         }
-        .navigationTitle("")
-        .toolbar(.hidden, for: .windowToolbar)
-        .task { await load() }
-    }
-
-    private var header: some View {
-        FeatureScreenHeader(
-            title: "Bancos suportados",
-            subtitle: "\(institutions.count) instituições no catálogo global"
-        ) {
-            Button {
-                Task { await refresh() }
-            } label: {
-                Label("Atualizar", systemImage: "arrow.clockwise")
-            }
-            .buttonStyle(GranaPrimaryButtonStyle())
-            .disabled(isLoading)
+        .task {
+            await store.send(.task).finish()
         }
-    }
-
-    private var institutions: [Institution] {
-        store?.institutions ?? []
-    }
-
-    private var loadError: Error? {
-        store?.loadError
-    }
-
-    private var isLoading: Bool {
-        store?.isLoading ?? false
-    }
-
-    private var hasLoaded: Bool {
-        store?.hasLoaded ?? false
-    }
-
-    private func load() async {
-        if store == nil {
-            store = InstitutionCatalogStore(container: environment.container)
-        }
-        await store?.load()
-    }
-
-    private func refresh() async {
-        if store == nil {
-            store = InstitutionCatalogStore(container: environment.container)
-        }
-        await store?.refresh()
     }
 }
 
