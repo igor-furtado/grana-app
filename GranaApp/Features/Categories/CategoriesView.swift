@@ -1,5 +1,5 @@
+import ComposableArchitecture
 import Foundation
-import OSLog
 import SwiftUI
 
 /// Inspeção read-only da taxonomia de categorias (raízes + subcategorias).
@@ -20,31 +20,58 @@ import SwiftUI
 /// como representá-la entra em outra iteração.
 struct CategoriesView: View {
     @Environment(AppEnvironment.self) private var environment
-    @State private var store: CategoryCatalogStore?
-    @State private var selectedId: UUID?
+    @State private var store: StoreOf<CategoriesFeature>?
     /// Persiste entre sessões — usuário que ocultou o inspector não quer
     /// vê-lo aparecer de novo na próxima vez que abre o app.
     @SceneStorage("CategoriesView.inspector") private var inspectorPresented: Bool = true
 
-    init(store: CategoryCatalogStore? = nil) {
+    init(store: StoreOf<CategoriesFeature>? = nil) {
         _store = State(initialValue: store)
     }
+
+    var body: some View {
+        Group {
+            if let store {
+                CategoriesLoadedView(
+                    store: store,
+                    inspectorPresented: $inspectorPresented
+                )
+            } else {
+                ProgressView()
+                    .frame(maxWidth: .infinity, maxHeight: .infinity)
+            }
+        }
+        .onAppear {
+            if store == nil {
+                self.store = Store(initialState: CategoriesFeature.State()) {
+                    CategoriesFeature()
+                } withDependencies: {
+                    $0.categoriesClient = .live(container: environment.container)
+                }
+            }
+        }
+    }
+}
+
+private struct CategoriesLoadedView: View {
+    @Bindable var store: StoreOf<CategoriesFeature>
+    @Binding var inspectorPresented: Bool
 
     var body: some View {
         VStack(spacing: GranaTheme.Spacing.sm) {
             header
 
             Group {
-                if let loadError {
+                if let loadErrorMessage = store.loadErrorMessage, store.categories.isEmpty {
                     EmptyStateView(
                         "Não foi possível carregar",
                         icon: .warning,
-                        description: loadError.localizedDescription
+                        description: loadErrorMessage
                     )
-                } else if isLoading, !hasLoaded {
+                } else if store.isLoading, !store.hasLoaded {
                     ProgressView()
                         .frame(maxWidth: .infinity, maxHeight: .infinity)
-                } else if categories.isEmpty {
+                } else if store.categories.isEmpty {
                     EmptyStateView(
                         "Nenhuma categoria disponível",
                         icon: .sidebarCategories,
@@ -61,25 +88,26 @@ struct CategoriesView: View {
         }
         .navigationTitle("")
         .toolbar(.hidden, for: .windowToolbar)
-        .task { await load() }
-        .onChange(of: rootIds) { _, ids in
-            reconcileSelection(rootIds: ids)
+        .task {
+            await store.send(.task).finish()
         }
     }
 
     private var header: some View {
         FeatureScreenHeader(
             title: "Categorias",
-            subtitle: "\(rootIds.count) categorias raiz no catálogo global"
+            subtitle: "\(store.sortedRootCategories.count) categorias raiz no catálogo global"
         ) {
             HStack(spacing: GranaTheme.Spacing.sm) {
                 Button {
-                    Task { await refresh() }
+                    Task {
+                        await store.send(.refresh).finish()
+                    }
                 } label: {
                     Label("Atualizar", systemImage: "arrow.clockwise")
                 }
                 .buttonStyle(GranaPrimaryButtonStyle())
-                .disabled(isLoading)
+                .disabled(store.isLoading)
 
                 Button {
                     inspectorPresented.toggle()
@@ -92,33 +120,10 @@ struct CategoriesView: View {
         }
     }
 
-    private var categories: [Category] {
-        store?.categories ?? []
-    }
-
-    private var loadError: Error? {
-        store?.loadError
-    }
-
-    private var isLoading: Bool {
-        store?.isLoading ?? false
-    }
-
-    private var hasLoaded: Bool {
-        store?.hasLoaded ?? false
-    }
-
-    /// IDs estáveis das raízes pra reconciliação de seleção (`onChange`).
-    /// Mapear `category.id` em vez de `category` evita recomputar quando
-    /// só um campo muda — só o conjunto de raízes importa pra seleção.
-    private var rootIds: [UUID] {
-        categories.filter { $0.parentId == nil }.map(\.id)
-    }
-
     @ViewBuilder
     private var grid: some View {
         // Um único pass agrupando por kind, em vez de três `filter` separados.
-        let byKind = Dictionary(grouping: categories, by: \.kind)
+        let byKind = Dictionary(grouping: store.categories, by: \.kind)
         let sections: [(CategoryKind, String, Color)] = [
             (.income, "Receitas", .income),
             (.expense, "Despesas", .expense),
@@ -157,8 +162,8 @@ struct CategoriesView: View {
                 ForEach(groups) { group in
                     CategoryCard(
                         group: group,
-                        isSelected: selectedId == group.id,
-                        onTap: { selectedId = group.id }
+                        isSelected: store.selectedId == group.id,
+                        onTap: { store.send(.select(group.id)) }
                     )
                 }
             }
@@ -195,8 +200,8 @@ struct CategoriesView: View {
     /// (filtragem de raiz + ordenação das subs). Recomputa quando categorias
     /// ou seleção mudam — barato, lista pequena.
     private var selectedGroup: CategoryGroup? {
-        guard let selectedId else { return nil }
-        return makeGroups(from: categories).first { $0.id == selectedId }
+        guard let selectedId = store.selectedId else { return nil }
+        return makeGroups(from: store.categories).first { $0.id == selectedId }
     }
 
     /// Achata a hierarquia raiz→subs (já filtradas por kind pelo caller) numa
@@ -207,38 +212,19 @@ struct CategoriesView: View {
             .sorted { $0.name.localizedCompare($1.name) == .orderedAscending }
 
         let subsByParent = Dictionary(
-            grouping: inKind.filter { $0.parentId != nil },
-            by: { $0.parentId! }
+            grouping: inKind.compactMap { category in
+                guard let parentId = category.parentId else { return nil }
+                return (parentId, category)
+            },
+            by: \.0
         )
 
         return roots.map { root in
             let subs = (subsByParent[root.id] ?? [])
+                .map(\.1)
                 .sorted { $0.name.localizedCompare($1.name) == .orderedAscending }
             return CategoryGroup(root: root, subs: subs)
         }
-    }
-
-    /// Mantém uma seleção válida: se nada está selecionado (primeiro load) ou
-    /// se a categoria selecionada saiu do conjunto, escolhe a primeira raiz.
-    private func reconcileSelection(rootIds: [UUID]) {
-        if let selectedId, rootIds.contains(selectedId) {
-            return
-        }
-        selectedId = rootIds.first
-    }
-
-    private func load() async {
-        if store == nil {
-            store = CategoryCatalogStore(container: environment.container)
-        }
-        await store?.load()
-    }
-
-    private func refresh() async {
-        if store == nil {
-            store = CategoryCatalogStore(container: environment.container)
-        }
-        await store?.refresh()
     }
 }
 

@@ -263,23 +263,6 @@ struct CatalogLoadingTests {
         #expect(context.institutions.institution(code: "341")?.kind == .itau)
         #expect(context.accounts.map(\.id) == [account.id])
     }
-
-    @MainActor
-    @Test("CategoryCatalogStore mantém estado vazio após load bem-sucedido")
-    func categoryCatalogStoreSupportsEmptyState() async {
-        let container = AppContainer.inMemoryForTesting(
-            categoryCatalog: StaticCategoryCatalogRepository(categories: []),
-            institutionCatalog: StaticInstitutionCatalogRepository(institutions: [])
-        )
-        let store = CategoryCatalogStore(container: container)
-
-        await store.load()
-
-        #expect(store.hasLoaded)
-        #expect(!store.isLoading)
-        #expect(store.loadError == nil)
-        #expect(store.categories.isEmpty)
-    }
 }
 
 private actor FakeCategoryCatalogRemoteStore: CategoryCatalogRemoteStore {
