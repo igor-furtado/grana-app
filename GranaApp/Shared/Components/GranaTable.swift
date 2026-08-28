@@ -4,63 +4,19 @@ import SwiftUI
 /// tema nas tabelas densas do app.
 struct GranaTable<RowValue: Identifiable, Sort: SortComparator, FilterBar: View, Columns: TableColumnContent>: View
     where Columns.TableRowValue == RowValue,
-    Columns.TableColumnSortComparator == Sort,
-    Sort.Compared == RowValue {
-    private enum Selection {
-        case none
-        case single(Binding<RowValue.ID?>)
-        case multiple(Binding<Set<RowValue.ID>>)
-    }
-
-    private let rows: [RowValue]
-    private let selection: Selection
-    private let sortOrder: Binding<[Sort]>?
-    private let columns: Columns
+    Columns.TableColumnSortComparator == Sort {
     private let hasFilterBar: Bool
     private let filterBar: FilterBar
+    private let tableView: AnyView
 
-    init(
-        _ rows: [RowValue],
-        sortOrder: Binding<[Sort]>? = nil,
-        @TableColumnBuilder<RowValue, Sort> columns: () -> Columns,
-        @ViewBuilder filterBar: () -> FilterBar
+    private init(
+        tableView: AnyView,
+        hasFilterBar: Bool,
+        filterBar: FilterBar
     ) {
-        self.rows = rows
-        self.selection = .none
-        self.sortOrder = sortOrder
-        self.columns = columns()
-        self.hasFilterBar = true
-        self.filterBar = filterBar()
-    }
-
-    init(
-        _ rows: [RowValue],
-        selection: Binding<RowValue.ID?>,
-        sortOrder: Binding<[Sort]>? = nil,
-        @TableColumnBuilder<RowValue, Sort> columns: () -> Columns,
-        @ViewBuilder filterBar: () -> FilterBar
-    ) {
-        self.rows = rows
-        self.selection = .single(selection)
-        self.sortOrder = sortOrder
-        self.columns = columns()
-        self.hasFilterBar = true
-        self.filterBar = filterBar()
-    }
-
-    init(
-        _ rows: [RowValue],
-        selection: Binding<Set<RowValue.ID>>,
-        sortOrder: Binding<[Sort]>? = nil,
-        @TableColumnBuilder<RowValue, Sort> columns: () -> Columns,
-        @ViewBuilder filterBar: () -> FilterBar
-    ) {
-        self.rows = rows
-        self.selection = .multiple(selection)
-        self.sortOrder = sortOrder
-        self.columns = columns()
-        self.hasFilterBar = true
-        self.filterBar = filterBar()
+        self.tableView = tableView
+        self.hasFilterBar = hasFilterBar
+        self.filterBar = filterBar
     }
 
     var body: some View {
@@ -77,56 +33,159 @@ struct GranaTable<RowValue: Identifiable, Sort: SortComparator, FilterBar: View,
                     }
             }
 
-            table
+            tableView
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
         .background(GranaTheme.Palette.paper.opacity(0.42))
         .granaSurface(.solid, cornerRadius: GranaTheme.Radius.card)
         .clipShape(RoundedRectangle(cornerRadius: GranaTheme.Radius.card, style: .continuous))
     }
+}
 
-    @ViewBuilder
-    private var table: some View {
-        switch selection {
-        case .none:
-            Table(rows, sortOrder: resolvedSortOrder) {
-                columns
-            }
-            .tableStyle(.inset(alternatesRowBackgrounds: false))
-            .scrollContentBackground(.hidden)
-
-        case let .single(selection):
-            Table(rows, selection: selection, sortOrder: resolvedSortOrder) {
-                columns
-            }
-            .tableStyle(.inset(alternatesRowBackgrounds: false))
-            .scrollContentBackground(.hidden)
-
-        case let .multiple(selection):
-            Table(rows, selection: selection, sortOrder: resolvedSortOrder) {
-                columns
-            }
-            .tableStyle(.inset(alternatesRowBackgrounds: false))
-            .scrollContentBackground(.hidden)
-        }
-    }
-
-    private var resolvedSortOrder: Binding<[Sort]> {
-        sortOrder ?? .constant([])
+private extension GranaTable {
+    enum TableSelection {
+        case none
+        case single(Binding<RowValue.ID?>)
+        case multiple(Binding<Set<RowValue.ID>>)
     }
 }
 
-extension GranaTable where FilterBar == EmptyView {
+private extension GranaTable where Sort.Compared == RowValue {
+    static func makeSortableTable(
+        rows: [RowValue],
+        selection: TableSelection,
+        sortOrder: Binding<[Sort]>,
+        columns: Columns
+    ) -> AnyView {
+        AnyView(
+            Group {
+                switch selection {
+                case .none:
+                    Table(rows, sortOrder: sortOrder) {
+                        columns
+                    }
+                case let .single(selection):
+                    Table(rows, selection: selection, sortOrder: sortOrder) {
+                        columns
+                    }
+                case let .multiple(selection):
+                    Table(rows, selection: selection, sortOrder: sortOrder) {
+                        columns
+                    }
+                }
+            }
+            .tableStyle(.inset(alternatesRowBackgrounds: false))
+            .scrollContentBackground(.hidden)
+        )
+    }
+}
+
+private extension GranaTable where Sort == Never {
+    static func makePlainTable(
+        rows: [RowValue],
+        selection: TableSelection,
+        columns: Columns
+    ) -> AnyView {
+        AnyView(
+            Group {
+                switch selection {
+                case .none:
+                    Table(of: RowValue.self) {
+                        columns
+                    } rows: {
+                        ForEach(rows) { row in
+                            TableRow(row)
+                        }
+                    }
+                case let .single(selection):
+                    Table(of: RowValue.self, selection: selection) {
+                        columns
+                    } rows: {
+                        ForEach(rows) { row in
+                            TableRow(row)
+                        }
+                    }
+                case let .multiple(selection):
+                    Table(of: RowValue.self, selection: selection) {
+                        columns
+                    } rows: {
+                        ForEach(rows) { row in
+                            TableRow(row)
+                        }
+                    }
+                }
+            }
+            .tableStyle(.inset(alternatesRowBackgrounds: false))
+            .scrollContentBackground(.hidden)
+        )
+    }
+}
+
+extension GranaTable where Sort.Compared == RowValue {
     init(
         _ rows: [RowValue],
-        sortOrder: Binding<[Sort]>? = nil,
-        @TableColumnBuilder<RowValue, Sort> columns: () -> Columns
+        sortOrder: Binding<[Sort]>,
+        @TableColumnBuilder<RowValue, Sort> columns: () -> Columns,
+        @ViewBuilder filterBar: () -> FilterBar
     ) {
         self.init(
-            rows,
-            sortOrder: sortOrder,
-            columns: columns
-        ) {
+            tableView: Self.makeSortableTable(
+                rows: rows,
+                selection: .none,
+                sortOrder: sortOrder,
+                columns: columns()
+            ),
+            hasFilterBar: true,
+            filterBar: filterBar()
+        )
+    }
+
+    init(
+        _ rows: [RowValue],
+        selection: Binding<RowValue.ID?>,
+        sortOrder: Binding<[Sort]>,
+        @TableColumnBuilder<RowValue, Sort> columns: () -> Columns,
+        @ViewBuilder filterBar: () -> FilterBar
+    ) {
+        self.init(
+            tableView: Self.makeSortableTable(
+                rows: rows,
+                selection: .single(selection),
+                sortOrder: sortOrder,
+                columns: columns()
+            ),
+            hasFilterBar: true,
+            filterBar: filterBar()
+        )
+    }
+
+    init(
+        _ rows: [RowValue],
+        selection: Binding<Set<RowValue.ID>>,
+        sortOrder: Binding<[Sort]>,
+        @TableColumnBuilder<RowValue, Sort> columns: () -> Columns,
+        @ViewBuilder filterBar: () -> FilterBar
+    ) {
+        self.init(
+            tableView: Self.makeSortableTable(
+                rows: rows,
+                selection: .multiple(selection),
+                sortOrder: sortOrder,
+                columns: columns()
+            ),
+            hasFilterBar: true,
+            filterBar: filterBar()
+        )
+    }
+}
+
+extension GranaTable where Sort.Compared == RowValue, FilterBar == EmptyView {
+    init(
+        _ rows: [RowValue],
+        sortOrder: Binding<[Sort]>,
+        @TableColumnBuilder<RowValue, Sort> columns: () -> Columns
+    ) {
+        self.init(rows, sortOrder: sortOrder, columns: columns) {
             EmptyView()
         }
     }
@@ -134,15 +193,10 @@ extension GranaTable where FilterBar == EmptyView {
     init(
         _ rows: [RowValue],
         selection: Binding<RowValue.ID?>,
-        sortOrder: Binding<[Sort]>? = nil,
+        sortOrder: Binding<[Sort]>,
         @TableColumnBuilder<RowValue, Sort> columns: () -> Columns
     ) {
-        self.init(
-            rows,
-            selection: selection,
-            sortOrder: sortOrder,
-            columns: columns
-        ) {
+        self.init(rows, selection: selection, sortOrder: sortOrder, columns: columns) {
             EmptyView()
         }
     }
@@ -150,42 +204,12 @@ extension GranaTable where FilterBar == EmptyView {
     init(
         _ rows: [RowValue],
         selection: Binding<Set<RowValue.ID>>,
-        sortOrder: Binding<[Sort]>? = nil,
+        sortOrder: Binding<[Sort]>,
         @TableColumnBuilder<RowValue, Sort> columns: () -> Columns
     ) {
-        self.init(
-            rows,
-            selection: selection,
-            sortOrder: sortOrder,
-            columns: columns
-        ) {
+        self.init(rows, selection: selection, sortOrder: sortOrder, columns: columns) {
             EmptyView()
         }
-    }
-}
-
-extension GranaTable where Sort == Never, FilterBar == EmptyView {
-    init(
-        _ rows: [RowValue],
-        @TableColumnBuilder<RowValue, Never> columns: () -> Columns
-    ) {
-        self.init(rows, sortOrder: nil, columns: columns)
-    }
-
-    init(
-        _ rows: [RowValue],
-        selection: Binding<RowValue.ID?>,
-        @TableColumnBuilder<RowValue, Never> columns: () -> Columns
-    ) {
-        self.init(rows, selection: selection, sortOrder: nil, columns: columns)
-    }
-
-    init(
-        _ rows: [RowValue],
-        selection: Binding<Set<RowValue.ID>>,
-        @TableColumnBuilder<RowValue, Never> columns: () -> Columns
-    ) {
-        self.init(rows, selection: selection, sortOrder: nil, columns: columns)
     }
 }
 
@@ -195,7 +219,15 @@ extension GranaTable where Sort == Never {
         @TableColumnBuilder<RowValue, Never> columns: () -> Columns,
         @ViewBuilder filterBar: () -> FilterBar
     ) {
-        self.init(rows, sortOrder: nil, columns: columns, filterBar: filterBar)
+        self.init(
+            tableView: Self.makePlainTable(
+                rows: rows,
+                selection: .none,
+                columns: columns()
+            ),
+            hasFilterBar: true,
+            filterBar: filterBar()
+        )
     }
 
     init(
@@ -204,7 +236,15 @@ extension GranaTable where Sort == Never {
         @TableColumnBuilder<RowValue, Never> columns: () -> Columns,
         @ViewBuilder filterBar: () -> FilterBar
     ) {
-        self.init(rows, selection: selection, sortOrder: nil, columns: columns, filterBar: filterBar)
+        self.init(
+            tableView: Self.makePlainTable(
+                rows: rows,
+                selection: .single(selection),
+                columns: columns()
+            ),
+            hasFilterBar: true,
+            filterBar: filterBar()
+        )
     }
 
     init(
@@ -213,6 +253,45 @@ extension GranaTable where Sort == Never {
         @TableColumnBuilder<RowValue, Never> columns: () -> Columns,
         @ViewBuilder filterBar: () -> FilterBar
     ) {
-        self.init(rows, selection: selection, sortOrder: nil, columns: columns, filterBar: filterBar)
+        self.init(
+            tableView: Self.makePlainTable(
+                rows: rows,
+                selection: .multiple(selection),
+                columns: columns()
+            ),
+            hasFilterBar: true,
+            filterBar: filterBar()
+        )
+    }
+}
+
+extension GranaTable where Sort == Never, FilterBar == EmptyView {
+    init(
+        _ rows: [RowValue],
+        @TableColumnBuilder<RowValue, Never> columns: () -> Columns
+    ) {
+        self.init(rows, columns: columns) {
+            EmptyView()
+        }
+    }
+
+    init(
+        _ rows: [RowValue],
+        selection: Binding<RowValue.ID?>,
+        @TableColumnBuilder<RowValue, Never> columns: () -> Columns
+    ) {
+        self.init(rows, selection: selection, columns: columns) {
+            EmptyView()
+        }
+    }
+
+    init(
+        _ rows: [RowValue],
+        selection: Binding<Set<RowValue.ID>>,
+        @TableColumnBuilder<RowValue, Never> columns: () -> Columns
+    ) {
+        self.init(rows, selection: selection, columns: columns) {
+            EmptyView()
+        }
     }
 }

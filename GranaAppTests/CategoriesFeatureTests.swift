@@ -98,8 +98,8 @@ private func makeCategory(
     name: String,
     slug: String,
     kind: CategoryKind
-) -> Category {
-    Category(
+) -> GranaApp.Category {
+    GranaApp.Category(
         id: UUID(),
         parentId: nil,
         name: name,
@@ -113,8 +113,8 @@ private func makeSubcategory(
     name: String,
     parentId: UUID,
     kind: CategoryKind
-) -> Category {
-    Category(
+) -> GranaApp.Category {
+    GranaApp.Category(
         id: UUID(),
         parentId: parentId,
         name: name,

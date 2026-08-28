@@ -212,16 +212,16 @@ private struct CategoriesLoadedView: View {
             .sorted { $0.name.localizedCompare($1.name) == .orderedAscending }
 
         let subsByParent = Dictionary(
-            grouping: inKind.compactMap { category in
+            grouping: inKind.compactMap { category -> (UUID, Category)? in
                 guard let parentId = category.parentId else { return nil }
                 return (parentId, category)
             },
-            by: \.0
+            by: { pair in pair.0 }
         )
 
         return roots.map { root in
             let subs = (subsByParent[root.id] ?? [])
-                .map(\.1)
+                .map { $0.1 }
                 .sorted { $0.name.localizedCompare($1.name) == .orderedAscending }
             return CategoryGroup(root: root, subs: subs)
         }

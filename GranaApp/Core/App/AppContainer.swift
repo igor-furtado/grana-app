@@ -7,7 +7,6 @@ final class AppContainer {
     let categoryCatalog: any CategoryCatalogRepositoryProtocol
     let institutionCatalog: any InstitutionCatalogRepositoryProtocol
     let remoteAccounts: any AccountRemoteRepositoryProtocol
-    let remoteDashboard: any DashboardRemoteRepositoryProtocol
     let remoteStatements: any StatementRemoteRepositoryProtocol
     let remoteTransactions: any TransactionRemoteRepositoryProtocol
     let remoteImports: any ImportRemoteRepositoryProtocol
@@ -25,7 +24,6 @@ final class AppContainer {
         categoryCatalog: (any CategoryCatalogRepositoryProtocol)? = nil,
         institutionCatalog: (any InstitutionCatalogRepositoryProtocol)? = nil,
         remoteAccounts: (any AccountRemoteRepositoryProtocol)? = nil,
-        remoteDashboard: (any DashboardRemoteRepositoryProtocol)? = nil,
         remoteStatements: (any StatementRemoteRepositoryProtocol)? = nil,
         remoteTransactions: (any TransactionRemoteRepositoryProtocol)? = nil,
         remoteImports: (any ImportRemoteRepositoryProtocol)? = nil,
@@ -61,16 +59,6 @@ final class AppContainer {
             )
         } else {
             self.remoteAccounts = AuthRequiredAccountRemoteRepository()
-        }
-
-        if let remoteDashboard {
-            self.remoteDashboard = remoteDashboard
-        } else if let authClient {
-            self.remoteDashboard = DashboardRemoteRepository(
-                remoteStore: SupabaseDashboardRemoteStore(authClient: authClient)
-            )
-        } else {
-            self.remoteDashboard = AuthRequiredDashboardRemoteRepository()
         }
 
         if let remoteStatements {
@@ -117,7 +105,6 @@ final class AppContainer {
             categoryCatalog: StaticCategoryCatalogRepository(categories: []),
             institutionCatalog: StaticInstitutionCatalogRepository(institutions: []),
             remoteAccounts: StaticAccountRemoteRepository(snapshot: .empty),
-            remoteDashboard: StaticDashboardRemoteRepository(snapshot: .empty),
             remoteStatements: StaticStatementRemoteRepository(snapshot: .empty),
             remoteTransactions: StaticTransactionRemoteRepository(page: .empty),
             remoteImports: StaticImportRemoteRepository(batches: []),
@@ -129,7 +116,6 @@ final class AppContainer {
         categoryCatalog: any CategoryCatalogRepositoryProtocol,
         institutionCatalog: any InstitutionCatalogRepositoryProtocol,
         remoteAccounts: (any AccountRemoteRepositoryProtocol)? = nil,
-        remoteDashboard: (any DashboardRemoteRepositoryProtocol)? = nil,
         remoteStatements: (any StatementRemoteRepositoryProtocol)? = nil,
         remoteTransactions: (any TransactionRemoteRepositoryProtocol)? = nil,
         remoteImports: (any ImportRemoteRepositoryProtocol)? = nil,
@@ -139,7 +125,6 @@ final class AppContainer {
             categoryCatalog: categoryCatalog,
             institutionCatalog: institutionCatalog,
             remoteAccounts: remoteAccounts ?? StaticAccountRemoteRepository(snapshot: .empty),
-            remoteDashboard: remoteDashboard ?? StaticDashboardRemoteRepository(snapshot: .empty),
             remoteStatements: remoteStatements ?? StaticStatementRemoteRepository(snapshot: .empty),
             remoteTransactions: remoteTransactions ?? StaticTransactionRemoteRepository(page: .empty),
             remoteImports: remoteImports ?? StaticImportRemoteRepository(batches: []),
