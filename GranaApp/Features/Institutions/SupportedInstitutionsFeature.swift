@@ -44,7 +44,7 @@ struct SupportedInstitutionsFeature {
             case let .snapshotLoaded(.failure(error)):
                 state.institutions = []
                 state.isLoading = false
-                state.hasLoaded = false
+                state.hasLoaded = true
                 state.loadErrorMessage = error.localizedDescription
                 return .run { _ in
                     await noticeClient.report(error, nil)

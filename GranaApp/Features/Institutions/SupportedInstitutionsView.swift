@@ -7,36 +7,15 @@ import SwiftUI
 /// referencia uma instituição). Esta tela existe pra responder "que bancos
 /// o GranaApp reconhece?" sem ter que abrir o form de conta.
 struct SupportedInstitutionsView: View {
-    @Environment(AppEnvironment.self) private var environment
+    @Bindable var store: StoreOf<SupportedInstitutionsFeature>
     private let columns = [
         GridItem(.adaptive(minimum: 240, maximum: 360), spacing: GranaTheme.Spacing.md),
     ]
-    @State private var store: StoreOf<SupportedInstitutionsFeature>?
-
-    init(store: StoreOf<SupportedInstitutionsFeature>? = nil) {
-        _store = State(initialValue: store)
-    }
 
     var body: some View {
-        Group {
-            if let store {
-                SupportedInstitutionsLoadedView(store: store, columns: columns)
-            } else {
-                ProgressView()
-                    .frame(maxWidth: .infinity, maxHeight: .infinity)
-            }
-        }
-        .navigationTitle("")
-        .toolbar(.hidden, for: .windowToolbar)
-        .onAppear {
-            if store == nil {
-                store = Store(initialState: SupportedInstitutionsFeature.State()) {
-                    SupportedInstitutionsFeature()
-                } withDependencies: {
-                    $0.supportedInstitutionsClient = .live(container: environment.container)
-                }
-            }
-        }
+        SupportedInstitutionsLoadedView(store: store, columns: columns)
+            .navigationTitle("")
+            .toolbar(.hidden, for: .windowToolbar)
     }
 }
 

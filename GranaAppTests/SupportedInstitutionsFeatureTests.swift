@@ -52,7 +52,7 @@ struct SupportedInstitutionsFeatureTests {
         await store.receive(.snapshotLoaded(.failure(error))) {
             $0.institutions = []
             $0.isLoading = false
-            $0.hasLoaded = false
+            $0.hasLoaded = true
             $0.loadErrorMessage = error.localizedDescription
         }
     }
