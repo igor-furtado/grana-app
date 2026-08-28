@@ -41,7 +41,7 @@ struct AccountsSnapshot: Equatable {
     var items: [AccountListItem]
     var institutions: [Institution]
 
-    static let empty = AccountsSnapshot(items: [], institutions: [])
+    nonisolated static let empty = AccountsSnapshot(items: [], institutions: [])
 }
 
 struct CheckingAccountMutationInput: Equatable {
