@@ -168,4 +168,60 @@ struct CategorizationFeatureTests {
             $0.suggestions[1].isReviewed = true
         }
     }
+
+    @Test("Revisão mantém Não Classificado no topo mesmo após correção")
+    func reviewOrderingKeepsFallbackRowsAtTop() {
+        let earlier = Date(timeIntervalSince1970: 10)
+        let later = Date(timeIntervalSince1970: 20)
+        let fallback = CategorizationSuggestion(
+            id: UUID(),
+            transactionId: UUID(),
+            descriptionHash: "fallback",
+            normalizedDescription: "padaria",
+            categoryId: UUID(),
+            subcategoryId: UUID(),
+            source: .fallback,
+            originalCategoryId: nil,
+            originalSubcategoryId: nil,
+            originalCategorySlug: nil,
+            originalSubcategoryName: nil,
+            transactionDescription: "Padaria",
+            transactionAmount: 10,
+            transactionOccurredAt: later,
+            transactionAccountId: UUID(),
+            transactionNotes: nil,
+            transactionDestinationAccountId: nil,
+            transactionRefundOfTransactionId: nil,
+            isReviewed: true
+        )
+        let regular = CategorizationSuggestion(
+            id: UUID(),
+            transactionId: UUID(),
+            descriptionHash: "regular",
+            normalizedDescription: "uber",
+            categoryId: UUID(),
+            subcategoryId: nil,
+            source: .granaAI,
+            originalCategoryId: UUID(),
+            originalSubcategoryId: nil,
+            originalCategorySlug: "mobilidade",
+            originalSubcategoryName: nil,
+            transactionDescription: "Uber",
+            transactionAmount: 20,
+            transactionOccurredAt: earlier,
+            transactionAccountId: UUID(),
+            transactionNotes: nil,
+            transactionDestinationAccountId: nil,
+            transactionRefundOfTransactionId: nil,
+            isReviewed: false
+        )
+
+        let sections = CategorizationReviewOrdering.sections(from: [regular, fallback])
+
+        #expect(sections.count == 2)
+        #expect(sections[0].title == "Não Classificado")
+        #expect(sections[0].indices == [1])
+        #expect(sections[1].title == "Demais")
+        #expect(sections[1].indices == [0])
+    }
 }

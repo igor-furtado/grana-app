@@ -34,11 +34,18 @@ struct CategorizationReviewView: View {
             }
             .toolbar(.hidden, for: .windowToolbar)
             .frame(minWidth: 700, minHeight: 600)
-        case let .wizard(onImport, onBack, onClose):
+        case let .wizard(onImport, onBack, _):
             ImportWizardStageScaffold {
-                VStack(spacing: GranaTheme.Spacing.md) {
+                ImportWizardSplitLayout(currentStage: .review) {
                     content
-                    wizardBottomBar(onImport: onImport, onBack: onBack, onClose: onClose)
+                } sidebarActions: {
+                    Button("Voltar") { onBack() }
+                        .buttonStyle(GranaSecondaryButtonStyle())
+                        .frame(maxWidth: .infinity)
+                    Button("Importar") { onImport() }
+                        .buttonStyle(GranaPrimaryButtonStyle())
+                        .disabled(store.suggestions.isEmpty || isClassifying)
+                        .frame(maxWidth: .infinity)
                 }
             }
         }
@@ -50,46 +57,20 @@ struct CategorizationReviewView: View {
             emptyState
         } else {
             Form {
-                Section {
-                    ScrollView {
-                        LazyVStack(spacing: GranaTheme.Spacing.none) {
-                            summaryRow
-                            Divider()
-                            ForEach(store.suggestions.indices, id: \.self) { idx in
-                                CategorizationRowView(store: store, index: idx)
-                                    .padding(.horizontal, GranaTheme.Spacing.md)
-                                    .padding(.vertical, GranaTheme.Spacing.xs)
-                                Divider()
-                            }
+                ForEach(CategorizationReviewOrdering.sections(from: store.suggestions)) { section in
+                    Section(section.title) {
+                        ForEach(section.indices, id: \.self) { idx in
+                            CategorizationRowView(store: store, index: idx)
+                                .padding(.horizontal, GranaTheme.Spacing.md)
+                                .padding(.vertical, GranaTheme.Spacing.xs)
                         }
                     }
-                    .listRowInsets(EdgeInsets())
-                } header: {
-                    Text("Pendentes de revisão")
                 }
             }
             .formStyle(.grouped)
             .contentMargins(.horizontal, GranaTheme.Spacing.none, for: .scrollContent)
             .frame(maxHeight: .infinity)
         }
-    }
-
-    private var summaryRow: some View {
-        HStack(spacing: GranaTheme.Spacing.sm) {
-            Text(summaryText)
-                .font(GranaTheme.Typography.caption1)
-                .foregroundStyle(.secondary)
-            Spacer()
-        }
-        .padding(.horizontal, GranaTheme.Spacing.md)
-        .padding(.vertical, GranaTheme.Spacing.xs)
-        .background(Color.primary.opacity(0.03))
-    }
-
-    private var summaryText: String {
-        let total = store.suggestions.count
-        let reviewed = store.suggestions.filter(\.isReviewed).count
-        return "\(reviewed) de \(total) revisadas"
     }
 
     @ViewBuilder
@@ -109,30 +90,47 @@ struct CategorizationReviewView: View {
         }
     }
 
-    private func wizardBottomBar(
-        onImport: @escaping @MainActor () -> Void,
-        onBack: @escaping @MainActor () -> Void,
-        onClose: @escaping @MainActor () -> Void
-    ) -> some View {
-        BottomActionBar {
-            Button("Fechar") { onClose() }
-                .buttonStyle(GranaSecondaryButtonStyle())
-            Button("Voltar") { onBack() }
-                .buttonStyle(GranaSecondaryButtonStyle())
-            Button {
-                onImport()
-            } label: {
-                Text("Importar \(store.suggestions.count) \(store.suggestions.count == 1 ? "transação" : "transações")")
-            }
-            .buttonStyle(GranaPrimaryButtonStyle())
-            .disabled(store.suggestions.isEmpty || isClassifying)
-        }
-    }
-
     private var isClassifying: Bool {
         if case .classifying = store.status {
             return true
         }
         return false
+    }
+}
+
+enum CategorizationReviewOrdering {
+    struct Section: Identifiable, Equatable {
+        let title: String
+        let indices: [Int]
+
+        var id: String { title }
+    }
+
+    static func sections(from suggestions: [CategorizationSuggestion]) -> [Section] {
+        let indexed: [(index: Int, suggestion: CategorizationSuggestion)] = suggestions.enumerated().map {
+            (index: $0.offset, suggestion: $0.element)
+        }
+        let ordered = indexed.sorted { lhs, rhs in
+            if needsAttention(lhs.suggestion) != needsAttention(rhs.suggestion) {
+                return needsAttention(lhs.suggestion) && !needsAttention(rhs.suggestion)
+            }
+            if lhs.suggestion.transactionOccurredAt == rhs.suggestion.transactionOccurredAt {
+                return lhs.index < rhs.index
+            }
+            return lhs.suggestion.transactionOccurredAt < rhs.suggestion.transactionOccurredAt
+        }
+
+        let attention = ordered.filter { needsAttention($0.suggestion) }.map(\.index)
+        let remaining = ordered.filter { !needsAttention($0.suggestion) }.map(\.index)
+
+        return [
+            Section(title: "Não Classificado", indices: attention),
+            Section(title: "Demais", indices: remaining),
+        ]
+        .filter { !$0.indices.isEmpty }
+    }
+
+    private static func needsAttention(_ suggestion: CategorizationSuggestion) -> Bool {
+        suggestion.source == .fallback || suggestion.originalCategorySlug == "nao-classificado"
     }
 }

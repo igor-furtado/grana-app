@@ -305,7 +305,7 @@ private extension ImportClient {
                 )
             },
             negativeRows: statement.skippedNegatives.map {
-                CSVNegativePreviewRow(raw: $0, purchaseId: nil)
+                CSVNegativePreviewRow(raw: $0, purchaseId: nil, selected: false)
             }
         )
 
@@ -372,6 +372,10 @@ private extension ImportClient {
                 resolution.rows[index].isDuplicate = false
                 resolution.rows[index].selected = true
             }
+            for index in resolution.negativeRows.indices {
+                resolution.negativeRows[index].purchaseId = nil
+                resolution.negativeRows[index].selected = false
+            }
             return (resolution, [])
         }
 
@@ -384,6 +388,17 @@ private extension ImportClient {
 
         let allTransactions = (try? await remoteTransactions.loadAll()) ?? []
         let refundPurchases = allTransactions.filter { $0.accountId == accountId }
+        let validPurchaseIds = Set(refundPurchases.map(\.id))
+        for index in resolution.negativeRows.indices {
+            guard resolution.negativeRows[index].raw.kind == .refund else { continue }
+            if let purchaseId = resolution.negativeRows[index].purchaseId,
+               validPurchaseIds.contains(purchaseId)
+            {
+                continue
+            }
+            resolution.negativeRows[index].purchaseId = nil
+            resolution.negativeRows[index].selected = false
+        }
         return (resolution, refundPurchases)
     }
 

@@ -141,4 +141,25 @@ struct ImportFeatureTests {
         #expect(input.rows.first?.categorySlug == "nao-classificado")
         #expect(input.rows.first?.amount == Decimal(string: "12.34"))
     }
+
+    @Test("CSV conta reembolso vinculado apenas quando estiver selecionado")
+    func csvResolutionCountsOnlySelectedRefunds() {
+        let skipped = InterCreditCardCSVReader.SkippedRow(
+            date: Date(),
+            description: "ESTORNO",
+            amount: -10,
+            kind: .refund
+        )
+        let resolution = CSVStatementResolution(
+            sourceFilename: "fatura.csv",
+            accountId: UUID(),
+            rows: [],
+            negativeRows: [
+                CSVNegativePreviewRow(raw: skipped, purchaseId: UUID(), selected: true),
+                CSVNegativePreviewRow(raw: skipped, purchaseId: UUID(), selected: false),
+            ]
+        )
+
+        #expect(resolution.selectedCount == 1)
+    }
 }

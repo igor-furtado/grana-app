@@ -323,7 +323,7 @@ struct ImportWizardFeature {
 
                 let purchasesToImport = csv.resolution.rows.filter(\.selected)
                 let refundsToImport = csv.resolution.negativeRows.filter {
-                    $0.raw.kind == .refund && $0.purchaseId != nil
+                    $0.raw.kind == .refund && $0.purchaseId != nil && $0.selected
                 }
                 guard !purchasesToImport.isEmpty || !refundsToImport.isEmpty else {
                     return fail(&state, error: ImportError.noValidRows)

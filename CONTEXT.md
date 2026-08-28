@@ -165,6 +165,18 @@ _Evite_: Fatura, histórico do produto
 Entrada de transações provenientes de um arquivo financeiro para revisão e incorporação ao histórico.
 _Evite_: Sincronização, integração bancária
 
+**Triagem**:
+Primeira etapa do wizard de importação, imediatamente após a leitura do arquivo, em que o usuário distingue transações já importadas, transações que não serão importadas e transações prontas para importação, podendo selecionar ou desmarcar apenas as elegíveis.
+_Evite_: Revisão, quando estiver falando da etapa final pós-classificação
+
+**Classificação**:
+Etapa intermediária do wizard de importação em que o classificador local produz classificações iniciais para as transações elegíveis antes da revisão final do usuário.
+_Evite_: Triagem, revisão manual
+
+**Revisão**:
+Etapa final do wizard de importação em que o usuário revisa as classificações propostas, com foco primeiro nas transações não classificadas automaticamente e nas demais que exigem mais atenção.
+_Evite_: Triagem, quando estiver falando da conferência inicial do arquivo
+
 **Lote de importação**:
 Conjunto de transações incorporadas a partir de um mesmo extrato de conta, tratado como uma unidade reversível.
 _Evite_: Arquivo, upload

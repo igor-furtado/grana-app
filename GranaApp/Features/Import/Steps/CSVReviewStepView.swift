@@ -6,100 +6,41 @@ struct CSVReviewStepView: View {
     let onClose: () -> Void
     let onConfirm: () -> Void
 
-    private var totalSelected: Int {
-        store.state.resolution.selectedCount
-    }
-
     private var canConfirm: Bool {
-        totalSelected > 0 && store.state.resolution.accountId != nil
+        store.state.resolution.selectedCount > 0 && store.state.resolution.accountId != nil
     }
 
     var body: some View {
         ImportWizardStageScaffold {
-            VStack(spacing: GranaTheme.Spacing.md) {
-                CSVAccountInfoCard(store: store)
+            ImportWizardSplitLayout(currentStage: .triage) {
+                VStack(spacing: GranaTheme.Spacing.md) {
+                    CSVTransactionsListCard(
+                        resolution: Binding(
+                            get: { store.state.resolution },
+                            set: { store.send(.resolutionUpdated($0)) }
+                        ),
+                        refundPurchases: { store.state.eligibleRefundPurchases(for: $0) },
+                        institutionKind: store.state.bankKind(for: store.state.resolution.accountId),
+                        onRefundPurchaseSelected: { rowId, purchaseId in
+                            store.send(.refundPurchaseSelected(rowId: rowId, purchaseId: purchaseId))
+                        },
+                        onRefundSelectionChanged: { rowId, isSelected in
+                            store.send(.refundSelectionChanged(rowId: rowId, isSelected: isSelected))
+                        }
+                    )
+                    .frame(maxHeight: .infinity)
 
-                CSVTransactionsListCard(
-                    resolution: Binding(
-                        get: { store.state.resolution },
-                        set: { store.send(.resolutionUpdated($0)) }
-                    ),
-                    institutionKind: store.state.bankKind(for: store.state.resolution.accountId)
-                )
-                .frame(maxHeight: .infinity)
-
-                if !store.state.resolution.negativeRows.isEmpty {
-                    negativeRowsSection(rows: store.state.resolution.negativeRows)
+                    CSVAccountInfoCard(store: store)
                 }
+            } sidebarActions: {
+                Button("Fechar") { onClose() }
+                    .buttonStyle(GranaSecondaryButtonStyle())
+                    .frame(maxWidth: .infinity)
 
-                BottomActionBar(caption: selectionCaption) {
-                    Button("Fechar") { onClose() }
-                        .buttonStyle(GranaSecondaryButtonStyle())
-
-                    Button("Avançar com \(totalSelected) \(totalSelected == 1 ? "transação" : "transações")") {
-                        onConfirm()
-                    }
+                Button("Avançar") { onConfirm() }
                     .buttonStyle(GranaPrimaryButtonStyle())
                     .disabled(!canConfirm)
-                }
-            }
-        }
-    }
-
-    private var selectionCaption: String? {
-        store.state.resolution.accountId == nil ? "Escolha a conta-cartão de destino" : nil
-    }
-
-    private func negativeRowsSection(rows: [CSVNegativePreviewRow]) -> some View {
-        ImportWizardSectionCard(title: "Negativos para revisão") {
-            VStack(alignment: .leading, spacing: GranaTheme.Spacing.sm) {
-                ForEach(rows) { row in
-                    VStack(alignment: .leading, spacing: GranaTheme.Spacing.xs) {
-                        HStack(alignment: .center, spacing: GranaTheme.Spacing.sm) {
-                            Text(row.raw.date, format: .dateTime.day().month().year())
-                                .font(GranaTheme.Typography.caption1)
-                                .foregroundStyle(GranaTheme.Palette.muted)
-                                .frame(width: 90, alignment: .leading)
-
-                            Text(row.raw.description)
-                                .font(GranaTheme.Typography.calloutEmphasis)
-                                .foregroundStyle(GranaTheme.Palette.ink)
-                                .lineLimit(1)
-
-                            Spacer(minLength: GranaTheme.Spacing.none)
-
-                            Text(row.raw.amount, format: .currency(code: "BRL"))
-                                .font(GranaTheme.Typography.moneyFootnote)
-                                .foregroundStyle(GranaTheme.Palette.muted)
-                        }
-
-                        if row.raw.kind == .refund {
-                            Picker(
-                                "Compra original",
-                                selection: Binding(
-                                    get: { row.purchaseId },
-                                    set: { store.send(.refundPurchaseSelected(rowId: row.id, purchaseId: $0)) }
-                                )
-                            ) {
-                                Text("Não importar este estorno").tag(UUID?.none)
-                                ForEach(store.state.eligibleRefundPurchases(for: row)) { purchase in
-                                    Text("\(purchase.description) · \(purchase.amount.formatted(.currency(code: "BRL")))").tag(
-                                        UUID?.some(purchase.id)
-                                    )
-                                }
-                            }
-                            .pickerStyle(.menu)
-                        } else {
-                            Text("Pagamento ignorado; importe a transferência pelo extrato da conta.")
-                                .font(GranaTheme.Typography.caption1)
-                                .foregroundStyle(GranaTheme.Palette.muted)
-                        }
-                    }
-
-                    if row.id != rows.last?.id {
-                        Divider()
-                    }
-                }
+                    .frame(maxWidth: .infinity)
             }
         }
     }
@@ -111,7 +52,6 @@ private struct CSVAccountInfoCard: View {
     var body: some View {
         ImportWizardSectionCard(
             title: "Conta de destino",
-            subtitle: "Selecione",
             trailing: AnyView(
                 Picker(
                     "Conta-cartão",
@@ -135,32 +75,67 @@ private struct CSVAccountInfoCard: View {
 
 private struct CSVTransactionsListCard: View {
     @Binding var resolution: CSVStatementResolution
+    let refundPurchases: (CSVNegativePreviewRow) -> [Transaction]
     let institutionKind: InstitutionKind?
+    let onRefundPurchaseSelected: (UUID, UUID?) -> Void
+    let onRefundSelectionChanged: (UUID, Bool) -> Void
+
+    private enum Item: Identifiable {
+        case purchase(Int)
+        case negative(Int)
+
+        var id: String {
+            switch self {
+            case let .purchase(index):
+                "purchase-\(index)"
+            case let .negative(index):
+                "negative-\(index)"
+            }
+        }
+    }
+
+    private var orderedItems: [Item] {
+        var items = resolution.rows.indices.map(Item.purchase)
+        items.append(contentsOf: resolution.negativeRows.indices.map(Item.negative))
+
+        return items.sorted { lhs, rhs in
+            let leftDate = occurredAt(for: lhs)
+            let rightDate = occurredAt(for: rhs)
+            if leftDate == rightDate {
+                return lhs.id < rhs.id
+            }
+            return leftDate < rightDate
+        }
+    }
+
+    private var eligibleSelectionCount: Int {
+        resolution.rows.filter { !$0.isDuplicate }.count
+            + resolution.negativeRows.filter { $0.raw.kind == .refund && $0.purchaseId != nil }.count
+    }
 
     private var allSelected: Bool {
-        !resolution.rows.isEmpty && resolution.rows.allSatisfy(\.selected)
+        guard eligibleSelectionCount > 0 else { return false }
+        let purchasesSelected = resolution.rows.filter { !$0.isDuplicate && $0.selected }.count
+        let refundsSelected = resolution.negativeRows.filter {
+            $0.raw.kind == .refund && $0.purchaseId != nil && $0.selected
+        }.count
+        return purchasesSelected + refundsSelected == eligibleSelectionCount
     }
 
     var body: some View {
-        ImportWizardSectionCard(title: "Compras detectadas") {
+        ImportWizardSectionCard(title: "Transações") {
             VStack(spacing: GranaTheme.Spacing.none) {
                 TransactionsSelectionRow(
                     summary: selectionSummary,
                     allSelected: allSelected,
-                    onToggleAll: { value in
-                        for index in resolution.rows.indices {
-                            resolution.rows[index].selected = value
-                        }
-                    }
+                    onToggleAll: toggleAll(to:)
                 )
                 Divider()
 
                 ScrollView {
                     LazyVStack(spacing: GranaTheme.Spacing.none) {
-                        ForEach($resolution.rows) { $row in
-                            CSVRowView(row: $row, institutionKind: institutionKind)
-                                .padding(.horizontal, GranaTheme.Spacing.md)
-                                .padding(.vertical, GranaTheme.Spacing.sm)
+                        ForEach(orderedItems) { item in
+                            row(for: item)
                             Divider()
                         }
                     }
@@ -170,24 +145,67 @@ private struct CSVTransactionsListCard: View {
         }
     }
 
-    private var selectionSummary: String {
-        let selected = resolution.selectedCount
-        let total = resolution.rows.count
-        var parts = ["\(selected) de \(total) selecionadas"]
-        if resolution.duplicateCount > 0 {
-            parts.append("\(resolution.duplicateCount) \(resolution.duplicateCount == 1 ? "duplicada" : "duplicadas")")
+    @ViewBuilder
+    private func row(for item: Item) -> some View {
+        switch item {
+        case let .purchase(index):
+            CSVPurchaseRowView(
+                row: $resolution.rows[index],
+                institutionKind: institutionKind
+            )
+            .padding(.horizontal, GranaTheme.Spacing.md)
+            .padding(.vertical, GranaTheme.Spacing.sm)
+
+        case let .negative(index):
+            CSVNegativeRowView(
+                row: resolution.negativeRows[index],
+                selection: Binding(
+                    get: { resolution.negativeRows[index].selected },
+                    set: { onRefundSelectionChanged(resolution.negativeRows[index].id, $0) }
+                ),
+                refundPurchases: refundPurchases(resolution.negativeRows[index]),
+                institutionKind: institutionKind,
+                onPurchaseSelected: { purchaseId in
+                    onRefundPurchaseSelected(resolution.negativeRows[index].id, purchaseId)
+                }
+            )
+            .padding(.horizontal, GranaTheme.Spacing.md)
+            .padding(.vertical, GranaTheme.Spacing.sm)
         }
-        return parts.joined(separator: " · ")
+    }
+
+    private func occurredAt(for item: Item) -> Date {
+        switch item {
+        case let .purchase(index):
+            resolution.rows[index].raw.date
+        case let .negative(index):
+            resolution.negativeRows[index].raw.date
+        }
+    }
+
+    private func toggleAll(to value: Bool) {
+        for index in resolution.rows.indices where !resolution.rows[index].isDuplicate {
+            resolution.rows[index].selected = value
+        }
+
+        for index in resolution.negativeRows.indices
+            where resolution.negativeRows[index].raw.kind == .refund && resolution.negativeRows[index].purchaseId != nil {
+            onRefundSelectionChanged(resolution.negativeRows[index].id, value)
+        }
+    }
+
+    private var selectionSummary: String {
+        "\(resolution.selectedCount) de \(eligibleSelectionCount) selecionadas"
     }
 }
 
-private struct CSVRowView: View {
+private struct CSVPurchaseRowView: View {
     @Binding var row: CSVPreviewRow
     let institutionKind: InstitutionKind?
 
     var body: some View {
         TransactionRow(
-            selection: $row.selected,
+            selection: row.isDuplicate ? nil : $row.selected,
             institutionKind: institutionKind,
             description: row.raw.description,
             memo: memo,
@@ -202,5 +220,74 @@ private struct CSVRowView: View {
         let tipo = row.raw.tipo
         guard !tipo.isEmpty, tipo != "Compra à vista" else { return nil }
         return tipo
+    }
+}
+
+private struct CSVNegativeRowView: View {
+    let row: CSVNegativePreviewRow
+    let selection: Binding<Bool>
+    let refundPurchases: [Transaction]
+    let institutionKind: InstitutionKind?
+    let onPurchaseSelected: (UUID?) -> Void
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: GranaTheme.Spacing.xs) {
+            TransactionRow(
+                selection: allowsSelection ? selection : nil,
+                institutionKind: institutionKind,
+                description: row.raw.description,
+                memo: rowMemo,
+                date: row.raw.date,
+                amount: abs(row.raw.amount),
+                amountKind: .outgoing,
+                status: status
+            )
+
+            if row.raw.kind == .refund {
+                Picker(
+                    "Compra original",
+                    selection: Binding(
+                        get: { row.purchaseId },
+                        set: onPurchaseSelected
+                    )
+                ) {
+                    Text("Escolher compra").tag(UUID?.none)
+                    ForEach(refundPurchases, id: \.id) { purchase in
+                        Text("\(purchase.description) · \(purchase.amount.formatted(.currency(code: "BRL")))").tag(
+                            UUID?.some(purchase.id)
+                        )
+                    }
+                }
+                .pickerStyle(.menu)
+            }
+        }
+    }
+
+    private var allowsSelection: Bool {
+        row.raw.kind == .refund && row.purchaseId != nil
+    }
+
+    private var rowMemo: String? {
+        switch row.raw.kind {
+        case .payment:
+            "Pagamento"
+        case .refund:
+            row.purchaseId == nil ? "Escolha a compra original" : "Reembolso"
+        }
+    }
+
+    private var status: TransactionRow.Status {
+        switch row.raw.kind {
+        case .payment:
+            .init(label: "Pagamento ignorado", tint: .neutral)
+        case .refund:
+            if row.purchaseId == nil {
+                .init(label: "Reembolso", tint: .info)
+            } else if row.selected {
+                .init(label: "Reembolso", tint: .info)
+            } else {
+                .init(label: "Desmarcada", tint: .neutral)
+            }
+        }
     }
 }

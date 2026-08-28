@@ -145,6 +145,7 @@ struct CSVImportFeature {
         case accountSelected(UUID?)
         case accountReloaded(resolution: CSVStatementResolution, refundPurchases: [Transaction])
         case refundPurchaseSelected(rowId: UUID, purchaseId: UUID?)
+        case refundSelectionChanged(rowId: UUID, isSelected: Bool)
         case resolutionUpdated(CSVStatementResolution)
     }
 
@@ -174,6 +175,12 @@ struct CSVImportFeature {
             case let .refundPurchaseSelected(rowId, purchaseId):
                 guard let index = state.resolution.negativeRows.firstIndex(where: { $0.id == rowId }) else { return .none }
                 state.resolution.negativeRows[index].purchaseId = purchaseId
+                state.resolution.negativeRows[index].selected = purchaseId != nil
+                return .none
+
+            case let .refundSelectionChanged(rowId, isSelected):
+                guard let index = state.resolution.negativeRows.firstIndex(where: { $0.id == rowId }) else { return .none }
+                state.resolution.negativeRows[index].selected = isSelected
                 return .none
 
             case let .resolutionUpdated(resolution):

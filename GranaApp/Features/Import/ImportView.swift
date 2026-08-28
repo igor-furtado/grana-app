@@ -58,43 +58,17 @@ struct ImportView: View {
         }
         .toolbar(.hidden, for: .windowToolbar)
         .frame(
-            minWidth: 880, idealWidth: 980, maxWidth: 1160,
-            minHeight: 620, idealHeight: 720, maxHeight: 840
+            minWidth: 1080, idealWidth: 1240, maxWidth: 1440,
+            minHeight: 620, idealHeight: 760, maxHeight: 920
         )
         .background(GranaBackground())
     }
 
     @ViewBuilder
     private var wizard: some View {
-        VStack(spacing: GranaTheme.Spacing.lg) {
-            if let stepperIndex = stepperIndex(for: store.phase) {
-                WizardStepper(
-                    steps: ["Revisar", "Classificar", "Concluir"],
-                    currentIndex: stepperIndex
-                )
-                .padding(.horizontal, GranaTheme.Spacing.xl)
-                .padding(.top, GranaTheme.Spacing.xl)
-            }
-
-            phaseContent
-                .frame(maxWidth: .infinity, maxHeight: .infinity)
-        }
+        phaseContent
+            .frame(maxWidth: .infinity, maxHeight: .infinity)
         .background(GranaBackground())
-    }
-
-    private func stepperIndex(for phase: ImportWizardFeature.Phase) -> Int? {
-        switch phase {
-        case .idle, .loading, .failed:
-            return nil
-        case .ofxReview, .csvReview:
-            return 0
-        case .categorizing, .reviewingCategorization:
-            return 1
-        case .confirming:
-            return 2
-        case .done:
-            return 3
-        }
     }
 
     @ViewBuilder
@@ -216,7 +190,7 @@ private struct ImportWizardStatusView<Actions: View>: View {
 
     var body: some View {
         ImportWizardStageScaffold {
-            VStack(spacing: GranaTheme.Spacing.lg) {
+            VStack(spacing: GranaTheme.Spacing.md) {
                 Image(systemName: icon.systemImage)
                     .font(.system(size: GranaTheme.IconSize.hero, weight: .regular))
                     .foregroundStyle(GranaTheme.Palette.tealDeep)
@@ -243,7 +217,6 @@ private struct ImportWizardStatusView<Actions: View>: View {
             .padding(.horizontal, GranaTheme.Spacing.xxxl)
             .padding(.vertical, GranaTheme.Spacing.xxl)
             .frame(maxWidth: .infinity, maxHeight: .infinity)
-            .granaSurface(.subtle, cornerRadius: GranaTheme.Radius.hero)
         }
     }
 }

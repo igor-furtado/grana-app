@@ -12,13 +12,12 @@ struct CategorizingStepView: View {
 
     var body: some View {
         ImportWizardStageScaffold {
-            VStack(spacing: GranaTheme.Spacing.md) {
+            ImportWizardSplitLayout(currentStage: .classification) {
                 loadingCard
-
-                BottomActionBar(caption: "Cancelar descarta os rascunhos desta importação.") {
-                    Button("Cancelar") { onCancel() }
-                        .buttonStyle(GranaSecondaryButtonStyle())
-                }
+            } sidebarActions: {
+                Button("Cancelar") { onCancel() }
+                    .buttonStyle(GranaSecondaryButtonStyle())
+                    .frame(maxWidth: .infinity)
             }
         }
     }
