@@ -152,6 +152,7 @@ private struct AuthenticatedShellView: View {
     @State private var isImportDropTargeted = false
     @State private var shellStore: AppShellStore
     @State private var accountsFeatureStore: StoreOf<AccountsFeature>
+    @State private var categoriesFeatureStore: StoreOf<CategoriesFeature>
     @State private var transactionsFeatureStore: StoreOf<TransactionsFeature>
     @State private var supportedInstitutionsFeatureStore: StoreOf<SupportedInstitutionsFeature>
 
@@ -162,6 +163,11 @@ private struct AuthenticatedShellView: View {
             AccountsFeature()
         } withDependencies: {
             $0.accountsClient = .live(container: container)
+        })
+        _categoriesFeatureStore = State(initialValue: Store(initialState: CategoriesFeature.State()) {
+            CategoriesFeature()
+        } withDependencies: {
+            $0.categoriesClient = .live(container: container)
         })
         _transactionsFeatureStore = State(initialValue: Store(initialState: TransactionsFeature.State()) {
             TransactionsFeature()
@@ -262,7 +268,7 @@ private struct AuthenticatedShellView: View {
         case .import:
             ImportHistoryView(store: environment.importFeatureStore)
         case .categories:
-            CategoriesView()
+            CategoriesView(store: categoriesFeatureStore)
         case .institutions:
             SupportedInstitutionsView(store: supportedInstitutionsFeatureStore)
         case .designSystem:

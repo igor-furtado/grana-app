@@ -133,8 +133,8 @@ struct InstitutionCatalogRepositoryTests {
 @Suite("Catalog load and refresh")
 struct CatalogLoadingTests {
     @MainActor
-    @Test("AccountStore recarrega o catálogo remoto explicitamente")
-    func accountStoreRefreshesCatalog() async {
+    @Test("AccountsClient carrega instituições remotas junto da listagem")
+    func accountsClientLoadsInstitutionsWithList() async throws {
         let repository = SequencedInstitutionCatalogRepository(snapshots: [
             [makeInstitution(
                 code: "077",
@@ -156,15 +156,13 @@ struct CatalogLoadingTests {
             institutionCatalog: repository,
             remoteStatements: StaticStatementRemoteRepository(snapshot: .empty)
         )
-        let store = AccountStore(container: container)
+        let client = AccountsClient.live(container: container)
 
-        await store.refreshInstitutions()
-        #expect(store.institutions.map(\.code) == ["077"])
-        #expect(store.supportedInstitutions(for: .creditCard).map(\.code) == ["077"])
+        let firstSnapshot = try await client.loadList()
+        let secondSnapshot = try await client.loadList()
 
-        await store.refreshInstitutions()
-        #expect(store.institutions.map(\.code) == ["341"])
-        #expect(store.supportedInstitutions(for: .creditCard).isEmpty)
+        #expect(firstSnapshot.institutions.map(\.code) == ["077"])
+        #expect(secondSnapshot.institutions.map(\.code) == ["341"])
     }
 
     @MainActor

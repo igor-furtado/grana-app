@@ -19,37 +19,16 @@ import SwiftUI
 /// Cor da categoria foi propositalmente omitida — decisão pendente sobre
 /// como representá-la entra em outra iteração.
 struct CategoriesView: View {
-    @Environment(AppEnvironment.self) private var environment
-    @State private var store: StoreOf<CategoriesFeature>?
+    @Bindable var store: StoreOf<CategoriesFeature>
     /// Persiste entre sessões — usuário que ocultou o inspector não quer
     /// vê-lo aparecer de novo na próxima vez que abre o app.
     @SceneStorage("CategoriesView.inspector") private var inspectorPresented: Bool = true
 
-    init(store: StoreOf<CategoriesFeature>? = nil) {
-        _store = State(initialValue: store)
-    }
-
     var body: some View {
-        Group {
-            if let store {
-                CategoriesLoadedView(
-                    store: store,
-                    inspectorPresented: $inspectorPresented
-                )
-            } else {
-                ProgressView()
-                    .frame(maxWidth: .infinity, maxHeight: .infinity)
-            }
-        }
-        .onAppear {
-            if store == nil {
-                self.store = Store(initialState: CategoriesFeature.State()) {
-                    CategoriesFeature()
-                } withDependencies: {
-                    $0.categoriesClient = .live(container: environment.container)
-                }
-            }
-        }
+        CategoriesLoadedView(
+            store: store,
+            inspectorPresented: $inspectorPresented
+        )
     }
 }
 

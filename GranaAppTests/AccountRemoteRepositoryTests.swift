@@ -16,7 +16,7 @@ struct AccountRemoteRepositoryTests {
                 AccountRecordRow(
                     id: checkingId,
                     type: .checking,
-                    initialBalanceCents: 12_345,
+                    initialBalanceCents: 12345,
                     archived: false,
                     institutionId: institutionId,
                     currency: "BRL",
@@ -47,7 +47,7 @@ struct AccountRemoteRepositoryTests {
                     bankCreatedAt: nil,
                     bankUpdatedAt: nil,
                     cardLastFour: "1234",
-                    creditLimitCents: 50_000,
+                    creditLimitCents: 50000,
                     statementClosingDay: 8,
                     paymentDueDay: 15,
                     cardCreatedAt: now,
@@ -101,10 +101,10 @@ struct AccountRemoteRepositoryTests {
 }
 
 @MainActor
-@Suite("AccountStore remote load and refresh")
-struct AccountStoreRemoteTests {
-    @Test("Carrega contas remotas explicitamente")
-    func loadsRemoteAccounts() async {
+@Suite("AccountsClient")
+struct AccountsClientTests {
+    @Test("Carrega apenas contas correntes com instituições e saldo atual")
+    func loadsCheckingAccountsWithInstitutionsAndCurrentBalance() async throws {
         let institution = makeInstitution(
             id: UUID(),
             code: "077",
@@ -112,30 +112,61 @@ struct AccountStoreRemoteTests {
             kind: .inter,
             accountTypes: [.checking, .creditCard]
         )
-        let repository = SequencedAccountRemoteRepository(snapshots: [
-            makeSnapshot(accounts: [
-                makeCheckingAccount(id: UUID(), institutionId: institution.id, balance: 300),
+        let checkingId = UUID()
+        let repository = SequencedAccountRemoteRepository(
+            snapshots: [makeSnapshot(accounts: [
+                makeCheckingAccount(id: checkingId, institutionId: institution.id, balance: 300),
                 makeCreditCardAccount(id: UUID(), institutionId: institution.id),
-            ]),
-        ])
+            ])]
+        )
+        let salaryCategory = makeRemoteCategory(
+            id: UUID(),
+            name: "Salário",
+            kind: .income,
+            slug: "salario"
+        )
+        let groceryCategory = makeRemoteCategory(
+            id: UUID(),
+            name: "Mercado",
+            kind: .expense,
+            slug: "mercado"
+        )
         let container = AppContainer.inMemoryForTesting(
-            categoryCatalog: StaticCategoryCatalogRepository(categories: []),
+            categoryCatalog: StaticCategoryCatalogRepository(categories: [salaryCategory, groceryCategory]),
             institutionCatalog: StaticInstitutionCatalogRepository(institutions: [institution]),
             remoteAccounts: repository,
-            remoteStatements: StaticStatementRemoteRepository(snapshot: .empty)
+            remoteStatements: StaticStatementRemoteRepository(snapshot: .empty),
+            remoteTransactions: StaticTransactionRemoteRepository(page: .init(
+                transactions: [
+                    makeTransaction(
+                        id: UUID(),
+                        accountId: checkingId,
+                        categoryId: salaryCategory.id,
+                        amount: 200
+                    ),
+                    makeTransaction(
+                        id: UUID(),
+                        accountId: checkingId,
+                        categoryId: groceryCategory.id,
+                        amount: 50
+                    ),
+                ],
+                nextCursor: nil
+            ))
         )
-        let store = AccountStore(container: container)
+        let client = AccountsClient.live(container: container)
 
-        await store.load()
+        let snapshot = try await client.loadList()
 
-        #expect(store.accounts.count == 2)
-        #expect(store.bankDetails.count == 1)
-        #expect(store.creditCards.count == 1)
-        #expect(store.institutions.map(\.code) == ["077"])
+        #expect(snapshot.items.count == 1)
+        #expect(snapshot.items.first?.id == checkingId)
+        #expect(snapshot.items.first?.institution?.code == "077")
+        #expect(snapshot.items.first?.currentBalance == 450)
+        #expect(snapshot.institutions.map(\.code) == ["077"])
     }
 
-    @Test("Recarrega após criar conta com id final do backend")
-    func refreshesAfterCreate() async throws {
+    @Test("Encaminha criação de conta corrente")
+    func createsCheckingAccount() async throws {
         let institution = makeInstitution(
             id: UUID(),
             code: "341",
@@ -143,40 +174,35 @@ struct AccountStoreRemoteTests {
             kind: .itau,
             accountTypes: [.checking]
         )
-        let finalId = UUID()
-        let repository = SequencedAccountRemoteRepository(snapshots: [
-            .empty,
-            makeSnapshot(accounts: [
-                makeCheckingAccount(id: finalId, institutionId: institution.id, balance: 150),
-            ]),
-        ])
+        let repository = SequencedAccountRemoteRepository(snapshots: [.empty])
         let container = AppContainer.inMemoryForTesting(
             categoryCatalog: StaticCategoryCatalogRepository(categories: []),
             institutionCatalog: StaticInstitutionCatalogRepository(institutions: [institution]),
             remoteAccounts: repository,
             remoteStatements: StaticStatementRemoteRepository(snapshot: .empty)
         )
-        let store = AccountStore(container: container)
+        let client = AccountsClient.live(container: container)
 
-        await store.load()
-        try await store.create(
-            type: .checking,
-            initialBalance: 150,
-            institutionId: institution.id,
-            currency: "BRL",
-            bankDetails: .init(branchId: "0001", accountNumber: "1234"),
-            creditCardDetails: nil
+        try await client.create(
+            CheckingAccountMutationInput(
+                institutionId: institution.id,
+                currency: "BRL",
+                branchId: "0001",
+                accountNumber: "1234",
+                initialBalance: 150
+            )
         )
 
-        #expect(store.accounts.map(\.id) == [finalId])
-        #expect(await repository.loadCallCount() == 2)
         let operations = await repository.operations()
         #expect(operations.count == 1)
         #expect(operations.first?.kind == .create)
+        #expect(operations.first?.input?.type == .checking)
+        #expect(operations.first?.input?.institutionId == institution.id)
+        #expect(operations.first?.input?.bankDetails?.accountNumber == "1234")
     }
 
-    @Test("Recarrega após editar conta")
-    func refreshesAfterUpdate() async throws {
+    @Test("Encaminha edição preservando flag de arquivamento")
+    func updatesCheckingAccount() async throws {
         let institution = makeInstitution(
             id: UUID(),
             code: "001",
@@ -185,41 +211,37 @@ struct AccountStoreRemoteTests {
             accountTypes: [.checking]
         )
         let accountId = UUID()
-        let repository = SequencedAccountRemoteRepository(snapshots: [
-            makeSnapshot(accounts: [
-                makeCheckingAccount(id: accountId, institutionId: institution.id, balance: 100),
-            ]),
-            makeSnapshot(accounts: [
-                makeCheckingAccount(id: accountId, institutionId: institution.id, balance: 250, archived: true),
-            ]),
-        ])
+        let repository = SequencedAccountRemoteRepository(snapshots: [.empty])
         let container = AppContainer.inMemoryForTesting(
             categoryCatalog: StaticCategoryCatalogRepository(categories: []),
             institutionCatalog: StaticInstitutionCatalogRepository(institutions: [institution]),
             remoteAccounts: repository,
             remoteStatements: StaticStatementRemoteRepository(snapshot: .empty)
         )
-        let store = AccountStore(container: container)
+        let client = AccountsClient.live(container: container)
 
-        await store.load()
-        var account = try #require(store.accounts.first)
-        account.initialBalance = 250
-        account.archived = true
-
-        try await store.update(
-            account,
-            bankDetails: .init(branchId: "0001", accountNumber: "9999"),
-            creditCardDetails: nil
+        try await client.update(
+            accountId,
+            true,
+            CheckingAccountMutationInput(
+                institutionId: institution.id,
+                currency: "BRL",
+                branchId: "0001",
+                accountNumber: "9999",
+                initialBalance: 250
+            )
         )
 
-        #expect(store.accounts.first?.initialBalance == 250)
-        #expect(store.accounts.first?.archived == true)
         let operations = await repository.operations()
         #expect(operations.first?.kind == .update)
+        #expect(operations.first?.accountId == accountId)
+        #expect(operations.first?.input?.archived == true)
+        #expect(operations.first?.input?.bankDetails?.accountNumber == "9999")
+        #expect(operations.first?.input?.initialBalance == 250)
     }
 
-    @Test("Recarrega após apagar conta")
-    func refreshesAfterDelete() async throws {
+    @Test("Arquivar recarrega snapshot e preserva dados bancários")
+    func setArchivedReloadsAndPreservesBankDetails() async throws {
         let institution = makeInstitution(
             id: UUID(),
             code: "104",
@@ -232,7 +254,6 @@ struct AccountStoreRemoteTests {
             makeSnapshot(accounts: [
                 makeCheckingAccount(id: accountId, institutionId: institution.id, balance: 10),
             ]),
-            .empty,
         ])
         let container = AppContainer.inMemoryForTesting(
             categoryCatalog: StaticCategoryCatalogRepository(categories: []),
@@ -240,62 +261,36 @@ struct AccountStoreRemoteTests {
             remoteAccounts: repository,
             remoteStatements: StaticStatementRemoteRepository(snapshot: .empty)
         )
-        let store = AccountStore(container: container)
+        let client = AccountsClient.live(container: container)
 
-        await store.load()
-        try await store.delete(id: accountId)
+        try await client.setArchived(accountId, true)
 
-        #expect(store.accounts.isEmpty)
         let operations = await repository.operations()
-        #expect(operations.first?.kind == .delete)
+        #expect(await repository.loadCallCount() == 1)
+        #expect(operations.first?.kind == .update)
+        #expect(operations.first?.accountId == accountId)
+        #expect(operations.first?.input?.archived == true)
+        #expect(operations.first?.input?.bankDetails?.branchId == "0001")
+        #expect(operations.first?.input?.bankDetails?.accountNumber == "1234")
     }
 
-    @Test("Refresh carrega faturas remotas do cartão")
-    func refreshLoadsRemoteStatements() async throws {
-        let institution = makeInstitution(
-            id: UUID(),
-            code: "077",
-            name: "Banco Inter",
-            kind: .inter,
-            accountTypes: [.checking, .creditCard]
-        )
-        let accountId = UUID()
-        let now = Date()
-        let repository = SequencedAccountRemoteRepository(snapshots: [
-            makeSnapshot(accounts: [
-                makeCreditCardAccount(id: accountId, institutionId: institution.id),
-            ]),
-        ])
-        let statement = Statement(
-            id: UUID(),
-            accountId: accountId,
-            closingDate: now,
-            dueDate: now.addingTimeInterval(86_400 * 10),
-            netAmount: 250,
-            creditReceived: 0,
-            paymentApplied: 0,
-            settledAt: nil,
-            createdAt: now,
-            updatedAt: now
-        )
+    @Test("Encaminha exclusão")
+    func deletesAccount() async throws {
+        let repository = SequencedAccountRemoteRepository(snapshots: [.empty])
         let container = AppContainer.inMemoryForTesting(
             categoryCatalog: StaticCategoryCatalogRepository(categories: []),
-            institutionCatalog: StaticInstitutionCatalogRepository(institutions: [institution]),
+            institutionCatalog: StaticInstitutionCatalogRepository(institutions: []),
             remoteAccounts: repository,
-            remoteStatements: StaticStatementRemoteRepository(
-                snapshot: StatementRemoteSnapshot(
-                    statements: [statement],
-                    payments: []
-                )
-            )
+            remoteStatements: StaticStatementRemoteRepository(snapshot: .empty)
         )
+        let client = AccountsClient.live(container: container)
+        let accountId = UUID()
 
-        let store = AccountStore(container: container)
+        try await client.delete(accountId)
 
-        await store.load()
-
-        #expect(store.statements.map(\.id) == [statement.id])
-        #expect(store.nextStatement(for: accountId)?.id == statement.id)
+        let operations = await repository.operations()
+        #expect(operations.first?.kind == .delete)
+        #expect(operations.first?.accountId == accountId)
     }
 
     @Test("Propaga erro estável de instituição não suportada")
@@ -306,16 +301,17 @@ struct AccountStoreRemoteTests {
             remoteAccounts: FailingAccountRemoteRepository(error: AccountRemoteRepositoryError.unsupportedInstitution),
             remoteStatements: StaticStatementRemoteRepository(snapshot: .empty)
         )
-        let store = AccountStore(container: container)
+        let client = AccountsClient.live(container: container)
 
         await #expect(throws: AccountRemoteRepositoryError.unsupportedInstitution) {
-            try await store.create(
-                type: .checking,
-                initialBalance: 10,
-                institutionId: UUID(),
-                currency: "BRL",
-                bankDetails: .init(branchId: "0001", accountNumber: "123"),
-                creditCardDetails: nil
+            try await client.create(
+                CheckingAccountMutationInput(
+                    institutionId: UUID(),
+                    currency: "BRL",
+                    branchId: "0001",
+                    accountNumber: "123",
+                    initialBalance: 10
+                )
             )
         }
     }
@@ -325,13 +321,14 @@ struct AccountStoreRemoteTests {
         let container = AppContainer.inMemoryForTesting(
             categoryCatalog: StaticCategoryCatalogRepository(categories: []),
             institutionCatalog: StaticInstitutionCatalogRepository(institutions: []),
-            remoteAccounts: FailingAccountRemoteRepository(error: AccountRemoteRepositoryError.accountHasFinancialHistory),
+            remoteAccounts: FailingAccountRemoteRepository(error: AccountRemoteRepositoryError
+                .accountHasFinancialHistory),
             remoteStatements: StaticStatementRemoteRepository(snapshot: .empty)
         )
-        let store = AccountStore(container: container)
+        let client = AccountsClient.live(container: container)
 
         await #expect(throws: AccountRemoteRepositoryError.accountHasFinancialHistory) {
-            try await store.delete(id: UUID())
+            try await client.delete(UUID())
         }
     }
 }
@@ -461,7 +458,11 @@ private func makeMutationInput() -> AccountMutationInput {
     )
 }
 
-private func makeSnapshot(accounts: [Account], bankDetails: [BankAccountDetails] = [], creditCards: [CreditCardDetails] = []) -> AccountRemoteSnapshot {
+private func makeSnapshot(
+    accounts: [Account],
+    bankDetails: [BankAccountDetails] = [],
+    creditCards: [CreditCardDetails] = []
+) -> AccountRemoteSnapshot {
     AccountRemoteSnapshot(
         accounts: accounts,
         bankDetails: bankDetails.isEmpty
@@ -484,7 +485,7 @@ private func makeSnapshot(accounts: [Account], bankDetails: [BankAccountDetails]
                     return CreditCardDetails(
                         accountId: account.id,
                         cardLastFour: "1234",
-                        creditLimit: 1_000,
+                        creditLimit: 1000,
                         statementClosingDay: 8,
                         paymentDueDay: 15,
                         createdAt: account.createdAt,

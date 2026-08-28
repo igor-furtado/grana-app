@@ -2,39 +2,23 @@ import ComposableArchitecture
 import SwiftUI
 
 struct TransactionsView: View {
-    @Environment(AppEnvironment.self) private var environment
-    @State private var store: StoreOf<TransactionsFeature>?
+    @Bindable var store: StoreOf<TransactionsFeature>
     private let showsDrawerOverlay: Bool
 
-    init(store: StoreOf<TransactionsFeature>? = nil, showsDrawerOverlay: Bool = true) {
-        _store = State(initialValue: store)
+    init(store: StoreOf<TransactionsFeature>, showsDrawerOverlay: Bool = true) {
+        self.store = store
         self.showsDrawerOverlay = showsDrawerOverlay
     }
 
     var body: some View {
         ZStack {
-            if let store {
-                TransactionsLoadedView(store: store)
-                    .environment(environment)
-            } else {
-                ProgressView()
-                    .frame(maxWidth: .infinity, maxHeight: .infinity)
-            }
+            TransactionsLoadedView(store: store)
 
-            if showsDrawerOverlay, let store {
+            if showsDrawerOverlay {
                 TransactionFormDrawerOverlay(store: store)
             }
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
-        .onAppear {
-            if store == nil {
-                store = Store(initialState: TransactionsFeature.State()) {
-                    TransactionsFeature()
-                } withDependencies: {
-                    $0.transactionsClient = .live(container: environment.container)
-                }
-            }
-        }
     }
 }
 
