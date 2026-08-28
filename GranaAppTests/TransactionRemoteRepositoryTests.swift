@@ -129,6 +129,33 @@ struct TransactionRemoteRepositoryTests {
         #expect(createRequest.pAmountCents == 12345)
         #expect(updateRequest.pAmountCents == 12345)
     }
+
+    @Test("Payload de create preserva parâmetros opcionais nulos para RPC")
+    func createPayloadKeepsNullOptionalRPCParameters() throws {
+        let request = CreateTransactionRequest(input: makeTransactionMutationInput())
+
+        let payload = try rpcPayload(from: request)
+
+        #expect(payload["p_subcategory_id"] is NSNull)
+        #expect(payload["p_notes"] is NSNull)
+        #expect(payload["p_destination_account_id"] is NSNull)
+        #expect(payload["p_refund_of_transaction_id"] is NSNull)
+    }
+
+    @Test("Payload de update preserva parâmetros opcionais nulos para RPC")
+    func updatePayloadKeepsNullOptionalRPCParameters() throws {
+        let request = UpdateTransactionRequest(
+            transactionId: UUID(),
+            input: makeTransactionMutationInput()
+        )
+
+        let payload = try rpcPayload(from: request)
+
+        #expect(payload["p_subcategory_id"] is NSNull)
+        #expect(payload["p_notes"] is NSNull)
+        #expect(payload["p_destination_account_id"] is NSNull)
+        #expect(payload["p_refund_of_transaction_id"] is NSNull)
+    }
 }
 
 @MainActor
@@ -676,7 +703,10 @@ private func makeTransactionRecordRow(
     )
 }
 
-private func makeTransactionMutationInput() -> TransactionMutationInput {
+private func makeTransactionMutationInput(
+    destinationAccountId: UUID? = nil,
+    refundOfTransactionId: UUID? = nil
+) -> TransactionMutationInput {
     TransactionMutationInput(
         accountId: UUID(),
         categoryId: UUID(),
@@ -685,9 +715,14 @@ private func makeTransactionMutationInput() -> TransactionMutationInput {
         occurredAt: Date(),
         description: "Almoço",
         notes: nil,
-        destinationAccountId: nil,
-        refundOfTransactionId: nil
+        destinationAccountId: destinationAccountId,
+        refundOfTransactionId: refundOfTransactionId
     )
+}
+
+private func rpcPayload<Request: Encodable>(from request: Request) throws -> [String: Any] {
+    let data = try JSONEncoder().encode(request)
+    return try #require(JSONSerialization.jsonObject(with: data) as? [String: Any])
 }
 
 private func makeTransaction(

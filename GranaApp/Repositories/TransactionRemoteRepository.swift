@@ -11,7 +11,7 @@ nonisolated struct TransactionRemotePage: @unchecked Sendable {
     )
 }
 
-nonisolated struct TransactionRemotePageCursor: Codable, Hashable, Sendable {
+nonisolated struct TransactionRemotePageCursor: Codable, Hashable {
     let occurredAt: Date
     let createdAt: Date
     let id: UUID
@@ -39,8 +39,8 @@ extension TransactionRemoteRepositoryProtocol {
     }
 
     func externalIds(forAccount accountId: UUID, pageSize: Int = 200) async throws -> Set<String> {
-        Set(
-            try await loadAll(pageSize: pageSize)
+        try Set(
+            await loadAll(pageSize: pageSize)
                 .lazy
                 .filter { $0.accountId == accountId }
                 .compactMap(\.externalId)
@@ -133,7 +133,7 @@ nonisolated enum TransactionRemoteRepositoryError: UserFacingError, Equatable {
     }
 }
 
-nonisolated struct TransactionMutationInput: Hashable, Sendable {
+nonisolated struct TransactionMutationInput: Hashable {
     var accountId: UUID
     var categoryId: UUID
     var subcategoryId: UUID?
@@ -145,7 +145,7 @@ nonisolated struct TransactionMutationInput: Hashable, Sendable {
     var refundOfTransactionId: UUID?
 }
 
-nonisolated struct TransactionRecordRow: Decodable, Sendable {
+nonisolated struct TransactionRecordRow: Decodable {
     let id: UUID
     let accountId: UUID
     let categoryId: UUID
@@ -181,7 +181,7 @@ nonisolated struct TransactionRecordRow: Decodable, Sendable {
     }
 }
 
-nonisolated struct TransactionMutationResponse: Decodable, Sendable {
+nonisolated struct TransactionMutationResponse: Decodable {
     let ok: Bool
     let code: String?
     let transactionId: UUID?
@@ -380,17 +380,17 @@ struct AuthRequiredTransactionRemoteRepository: TransactionRemoteRepositoryProto
     }
 }
 
-nonisolated struct ListTransactionsRequest: Encodable, Sendable {
+nonisolated struct ListTransactionsRequest: Encodable {
     let pLimit: Int
     let pAfterOccurredAt: Date?
     let pAfterCreatedAt: Date?
     let pAfterId: UUID?
 
     init(cursor: TransactionRemotePageCursor?, limit: Int) {
-        pLimit = limit
-        pAfterOccurredAt = cursor?.occurredAt
-        pAfterCreatedAt = cursor?.createdAt
-        pAfterId = cursor?.id
+        self.pLimit = limit
+        self.pAfterOccurredAt = cursor?.occurredAt
+        self.pAfterCreatedAt = cursor?.createdAt
+        self.pAfterId = cursor?.id
     }
 
     enum CodingKeys: String, CodingKey {
@@ -401,7 +401,7 @@ nonisolated struct ListTransactionsRequest: Encodable, Sendable {
     }
 }
 
-nonisolated struct CreateTransactionRequest: Encodable, Sendable {
+nonisolated struct CreateTransactionRequest: Encodable {
     let pAccountId: UUID
     let pCategoryId: UUID
     let pSubcategoryId: UUID?
@@ -413,15 +413,15 @@ nonisolated struct CreateTransactionRequest: Encodable, Sendable {
     let pRefundOfTransactionId: UUID?
 
     init(input: TransactionMutationInput) {
-        pAccountId = input.accountId
-        pCategoryId = input.categoryId
-        pSubcategoryId = input.subcategoryId
-        pAmountCents = Converters.decimalToCents(input.amount)
-        pOccurredAt = input.occurredAt
-        pDescription = input.description
-        pNotes = input.notes
-        pDestinationAccountId = input.destinationAccountId
-        pRefundOfTransactionId = input.refundOfTransactionId
+        self.pAccountId = input.accountId
+        self.pCategoryId = input.categoryId
+        self.pSubcategoryId = input.subcategoryId
+        self.pAmountCents = Converters.decimalToCents(input.amount)
+        self.pOccurredAt = input.occurredAt
+        self.pDescription = input.description
+        self.pNotes = input.notes
+        self.pDestinationAccountId = input.destinationAccountId
+        self.pRefundOfTransactionId = input.refundOfTransactionId
     }
 
     enum CodingKeys: String, CodingKey {
@@ -435,9 +435,22 @@ nonisolated struct CreateTransactionRequest: Encodable, Sendable {
         case pDestinationAccountId = "p_destination_account_id"
         case pRefundOfTransactionId = "p_refund_of_transaction_id"
     }
+
+    func encode(to encoder: any Encoder) throws {
+        var container = encoder.container(keyedBy: CodingKeys.self)
+        try container.encode(pAccountId, forKey: .pAccountId)
+        try container.encode(pCategoryId, forKey: .pCategoryId)
+        try container.encode(pSubcategoryId, forKey: .pSubcategoryId)
+        try container.encode(pAmountCents, forKey: .pAmountCents)
+        try container.encode(pOccurredAt, forKey: .pOccurredAt)
+        try container.encode(pDescription, forKey: .pDescription)
+        try container.encode(pNotes, forKey: .pNotes)
+        try container.encode(pDestinationAccountId, forKey: .pDestinationAccountId)
+        try container.encode(pRefundOfTransactionId, forKey: .pRefundOfTransactionId)
+    }
 }
 
-nonisolated struct UpdateTransactionRequest: Encodable, Sendable {
+nonisolated struct UpdateTransactionRequest: Encodable {
     let pTransactionId: UUID
     let pAccountId: UUID
     let pCategoryId: UUID
@@ -450,16 +463,16 @@ nonisolated struct UpdateTransactionRequest: Encodable, Sendable {
     let pRefundOfTransactionId: UUID?
 
     init(transactionId: UUID, input: TransactionMutationInput) {
-        pTransactionId = transactionId
-        pAccountId = input.accountId
-        pCategoryId = input.categoryId
-        pSubcategoryId = input.subcategoryId
-        pAmountCents = Converters.decimalToCents(input.amount)
-        pOccurredAt = input.occurredAt
-        pDescription = input.description
-        pNotes = input.notes
-        pDestinationAccountId = input.destinationAccountId
-        pRefundOfTransactionId = input.refundOfTransactionId
+        self.pTransactionId = transactionId
+        self.pAccountId = input.accountId
+        self.pCategoryId = input.categoryId
+        self.pSubcategoryId = input.subcategoryId
+        self.pAmountCents = Converters.decimalToCents(input.amount)
+        self.pOccurredAt = input.occurredAt
+        self.pDescription = input.description
+        self.pNotes = input.notes
+        self.pDestinationAccountId = input.destinationAccountId
+        self.pRefundOfTransactionId = input.refundOfTransactionId
     }
 
     enum CodingKeys: String, CodingKey {
@@ -474,13 +487,27 @@ nonisolated struct UpdateTransactionRequest: Encodable, Sendable {
         case pDestinationAccountId = "p_destination_account_id"
         case pRefundOfTransactionId = "p_refund_of_transaction_id"
     }
+
+    func encode(to encoder: any Encoder) throws {
+        var container = encoder.container(keyedBy: CodingKeys.self)
+        try container.encode(pTransactionId, forKey: .pTransactionId)
+        try container.encode(pAccountId, forKey: .pAccountId)
+        try container.encode(pCategoryId, forKey: .pCategoryId)
+        try container.encode(pSubcategoryId, forKey: .pSubcategoryId)
+        try container.encode(pAmountCents, forKey: .pAmountCents)
+        try container.encode(pOccurredAt, forKey: .pOccurredAt)
+        try container.encode(pDescription, forKey: .pDescription)
+        try container.encode(pNotes, forKey: .pNotes)
+        try container.encode(pDestinationAccountId, forKey: .pDestinationAccountId)
+        try container.encode(pRefundOfTransactionId, forKey: .pRefundOfTransactionId)
+    }
 }
 
-nonisolated struct DeleteTransactionRequest: Encodable, Sendable {
+nonisolated struct DeleteTransactionRequest: Encodable {
     let pTransactionId: UUID
 
     init(transactionId: UUID) {
-        pTransactionId = transactionId
+        self.pTransactionId = transactionId
     }
 
     enum CodingKeys: String, CodingKey {

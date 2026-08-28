@@ -1,22 +1,19 @@
 import ComposableArchitecture
 import SwiftUI
+#if DEBUG && canImport(AppKit)
+    import AppKit
+#endif
 
 struct TransactionFormView: View {
     @Bindable var store: StoreOf<TransactionFormFeature>
     @FocusState private var focusedField: Field?
+    #if DEBUG
+        @State private var prototypeVariant: TransactionFormPrototypeVariant = .summary
+    #endif
 
     var body: some View {
-        ZStack {
-            VStack(spacing: GranaTheme.Spacing.none) {
-                header
-                Divider()
-                    .overlay(GranaTheme.Palette.line)
-                formContent
-                Divider()
-                    .overlay(GranaTheme.Palette.line)
-                actions
-            }
-            .frame(maxWidth: .infinity, maxHeight: .infinity)
+        ZStack(alignment: .bottom) {
+            mainLayout
 
             if store.showsDiscardConfirmation {
                 TransactionFormConfirmationOverlay(
@@ -43,6 +40,20 @@ struct TransactionFormView: View {
                     onConfirm: { store.send(.retroactivePreviewConfirmTapped) }
                 )
             }
+
+            #if DEBUG
+                if !store.showsDiscardConfirmation, !store.showsRetroactivePreview {
+                    TransactionFormPrototypeSwitcher(
+                        variant: $prototypeVariant,
+                        snapshot: prototypeSnapshot,
+                        onPrevious: showPreviousPrototypeVariant,
+                        onNext: showNextPrototypeVariant
+                    )
+                    .padding(.horizontal, GranaTheme.Spacing.lg)
+                    .padding(.bottom, GranaTheme.Spacing.lg)
+                    .transition(.opacity)
+                }
+            #endif
         }
         .toolbar(.hidden, for: .windowToolbar)
         .onAppear {
@@ -53,6 +64,22 @@ struct TransactionFormView: View {
         .onExitCommand {
             store.send(.cancelButtonTapped)
         }
+    }
+
+    private var mainLayout: some View {
+        VStack(spacing: GranaTheme.Spacing.none) {
+            header
+            Divider()
+                .overlay(GranaTheme.Palette.line)
+            activeFormContent
+            Divider()
+                .overlay(GranaTheme.Palette.line)
+            actions
+        }
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+        #if DEBUG
+            .padding(.bottom, 88)
+        #endif
     }
 
     private var header: some View {
@@ -89,7 +116,23 @@ struct TransactionFormView: View {
         .padding(GranaTheme.Spacing.lg)
     }
 
-    private var formContent: some View {
+    @ViewBuilder
+    private var activeFormContent: some View {
+        #if DEBUG
+            switch prototypeVariant {
+            case .summary:
+                prototypeSummaryContent
+            case .ledger:
+                prototypeLedgerContent
+            case .workflow:
+                prototypeWorkflowContent
+            }
+        #else
+            defaultFormContent
+        #endif
+    }
+
+    private var defaultFormContent: some View {
         ScrollView {
             LazyVStack(alignment: .leading, spacing: GranaTheme.Spacing.lg) {
                 essentialSection
@@ -114,24 +157,167 @@ struct TransactionFormView: View {
         .scrollIndicators(.visible)
     }
 
+    private var prototypeSummaryContent: some View {
+        ScrollView {
+            LazyVStack(alignment: .leading, spacing: GranaTheme.Spacing.lg) {
+                prototypeAssumptionBanner
+                prototypeHeroCard
+                essentialSection
+                classificationSection
+
+                if showsRefundSection {
+                    refundSection
+                }
+
+                if showsStatementPaymentSection {
+                    statementPaymentSection
+                }
+
+                timingSection
+                notesSection
+            }
+            .padding(GranaTheme.Spacing.lg)
+        }
+        .scrollIndicators(.visible)
+    }
+
+    private var prototypeLedgerContent: some View {
+        ScrollView {
+            LazyVStack(alignment: .leading, spacing: GranaTheme.Spacing.lg) {
+                prototypeAssumptionBanner
+
+                TransactionFormSection(
+                    title: "Lançamento",
+                    footer: prototypeVariant.name
+                ) {
+                    TransactionFormFieldGroup {
+                        descriptionRow
+                        TransactionFormDivider()
+                        amountRow
+                        TransactionFormDivider()
+                        accountRow
+                        TransactionFormDivider()
+                        categoryRow
+
+                        if showsSubcategoryRow {
+                            TransactionFormDivider()
+                            subcategoryRow
+                        }
+
+                        if showsDestinationAccountRow {
+                            TransactionFormDivider()
+                            destinationAccountRow
+                        }
+
+                        TransactionFormDivider()
+                        dateRow
+                        TransactionFormDivider()
+                        timeRow
+                    }
+                }
+
+                if showsRefundSection {
+                    refundSection
+                }
+
+                if showsStatementPaymentSection {
+                    statementPaymentSection
+                }
+
+                TransactionFormSection(title: "Notas e contexto") {
+                    VStack(alignment: .leading, spacing: GranaTheme.Spacing.sm) {
+                        prototypeLiveSummaryCard
+                        notesSection
+                    }
+                }
+            }
+            .padding(GranaTheme.Spacing.lg)
+        }
+        .scrollIndicators(.visible)
+    }
+
+    private var prototypeWorkflowContent: some View {
+        ScrollView {
+            HStack(alignment: .top, spacing: GranaTheme.Spacing.lg) {
+                LazyVStack(alignment: .leading, spacing: GranaTheme.Spacing.lg) {
+                    prototypeAssumptionBanner
+
+                    TransactionFormSection(title: "1. O que aconteceu?") {
+                        VStack(alignment: .leading, spacing: GranaTheme.Spacing.sm) {
+                            prototypeStepHighlight(
+                                title: "Resumo rápido",
+                                message: "Descrição e valor aparecem primeiro para ancorar a decisão."
+                            )
+
+                            TransactionFormFieldGroup {
+                                descriptionRow
+                                TransactionFormDivider()
+                                amountRow
+                            }
+                        }
+                    }
+
+                    TransactionFormSection(title: "2. Como classificar?") {
+                        VStack(alignment: .leading, spacing: GranaTheme.Spacing.sm) {
+                            TransactionFormFieldGroup {
+                                accountRow
+                                TransactionFormDivider()
+                                categoryRow
+
+                                if showsSubcategoryRow {
+                                    TransactionFormDivider()
+                                    subcategoryRow
+                                }
+
+                                if showsDestinationAccountRow {
+                                    TransactionFormDivider()
+                                    destinationAccountRow
+                                }
+                            }
+
+                            if showsRefundSection {
+                                refundSection
+                            }
+
+                            if showsStatementPaymentSection {
+                                statementPaymentSection
+                            }
+                        }
+                    }
+
+                    TransactionFormSection(title: "3. Quando e por quê?") {
+                        VStack(alignment: .leading, spacing: GranaTheme.Spacing.sm) {
+                            TransactionFormFieldGroup {
+                                dateRow
+                                TransactionFormDivider()
+                                timeRow
+                            }
+
+                            notesSection
+                        }
+                    }
+                }
+                .frame(maxWidth: .infinity, alignment: .leading)
+
+                VStack(alignment: .leading, spacing: GranaTheme.Spacing.md) {
+                    prototypeLiveSummaryCard
+                    prototypeDecisionRail
+                }
+                .frame(width: 180, alignment: .topLeading)
+            }
+            .padding(GranaTheme.Spacing.lg)
+        }
+        .scrollIndicators(.visible)
+    }
+
     private var essentialSection: some View {
         TransactionFormSection(title: "Essencial") {
             TransactionFormFieldGroup {
-                TransactionFormRow(title: "Descrição") {
-                    TextField("Descrição", text: $store.description, prompt: Text("Ex: Almoço no restaurante"))
-                        .textFieldStyle(.plain)
-                        .font(GranaTheme.Typography.bodyEmphasis)
-                        .multilineTextAlignment(.trailing)
-                        .focused($focusedField, equals: .description)
-                }
+                descriptionRow
 
                 TransactionFormDivider()
 
-                TransactionFormRow(title: "Valor") {
-                    CurrencyField(cents: $store.amountCents)
-                        .font(GranaTheme.Typography.moneyTitle3)
-                        .frame(maxWidth: 180, alignment: .trailing)
-                }
+                amountRow
             }
         }
     }
@@ -139,63 +325,20 @@ struct TransactionFormView: View {
     private var classificationSection: some View {
         TransactionFormSection(title: "Classificação") {
             TransactionFormFieldGroup {
-                TransactionFormRow(title: "Conta") {
-                    Picker("", selection: $store.accountId) {
-                        ForEach(store.state.sourceAccountOptions) { account in
-                            Text(store.state.displayName(for: account)).tag(UUID?.some(account.id))
-                        }
-                    }
-                    .labelsHidden()
-                    .pickerStyle(.menu)
-                    .frame(maxWidth: 250, alignment: .trailing)
-                }
+                accountRow
 
                 TransactionFormDivider()
 
-                TransactionFormRow(title: "Categoria") {
-                    Picker("", selection: $store.categoryId) {
-                        ForEach(store.state.rootCategories) { category in
-                            Text(category.name).tag(UUID?.some(category.id))
-                        }
-                    }
-                    .labelsHidden()
-                    .pickerStyle(.menu)
-                    .frame(maxWidth: 250, alignment: .trailing)
-                }
+                categoryRow
 
-                if let categoryId = store.categoryId {
-                    let subcategories = store.state.subcategories(of: categoryId)
-                    if !subcategories.isEmpty {
-                        TransactionFormDivider()
-
-                        TransactionFormRow(title: "Subcategoria") {
-                            Picker("", selection: $store.subcategoryId) {
-                                Text("(nenhuma)").tag(UUID?.none)
-                                ForEach(subcategories) { subcategory in
-                                    Text(subcategory.name).tag(UUID?.some(subcategory.id))
-                                }
-                            }
-                            .labelsHidden()
-                            .pickerStyle(.menu)
-                            .frame(maxWidth: 250, alignment: .trailing)
-                        }
-                    }
-                }
-
-                if store.selectedCategoryKind == .transfer {
+                if showsSubcategoryRow {
                     TransactionFormDivider()
+                    subcategoryRow
+                }
 
-                    TransactionFormRow(title: "Conta de destino") {
-                        Picker("", selection: $store.destinationAccountId) {
-                            Text("(nenhuma)").tag(UUID?.none)
-                            ForEach(store.state.destinationAccountOptions) { account in
-                                Text(store.state.displayName(for: account)).tag(UUID?.some(account.id))
-                            }
-                        }
-                        .labelsHidden()
-                        .pickerStyle(.menu)
-                        .frame(maxWidth: 250, alignment: .trailing)
-                    }
+                if showsDestinationAccountRow {
+                    TransactionFormDivider()
+                    destinationAccountRow
                 }
             }
         }
@@ -255,19 +398,11 @@ struct TransactionFormView: View {
     private var timingSection: some View {
         TransactionFormSection(title: "Quando") {
             TransactionFormFieldGroup {
-                TransactionFormRow(title: "Data") {
-                    DatePicker("", selection: $store.occurredAt, displayedComponents: [.date])
-                        .labelsHidden()
-                        .frame(maxWidth: 180, alignment: .trailing)
-                }
+                dateRow
 
                 TransactionFormDivider()
 
-                TransactionFormRow(title: "Hora") {
-                    DatePicker("", selection: $store.occurredAt, displayedComponents: [.hourAndMinute])
-                        .labelsHidden()
-                        .frame(maxWidth: 180, alignment: .trailing)
-                }
+                timeRow
             }
         }
     }
@@ -319,6 +454,117 @@ struct TransactionFormView: View {
         .padding(.horizontal, GranaTheme.Spacing.lg)
     }
 
+    private var descriptionRow: some View {
+        TransactionFormRow(title: "Descrição") {
+            TextField("Descrição", text: $store.description, prompt: Text("Ex: Almoço no restaurante"))
+                .textFieldStyle(.plain)
+                .font(GranaTheme.Typography.bodyEmphasis)
+                .multilineTextAlignment(.trailing)
+                .focused($focusedField, equals: .description)
+        }
+    }
+
+    private var amountRow: some View {
+        TransactionFormRow(title: "Valor") {
+            CurrencyField(cents: $store.amountCents)
+                .font(GranaTheme.Typography.moneyTitle3)
+                .frame(maxWidth: 180, alignment: .trailing)
+        }
+    }
+
+    private var accountRow: some View {
+        TransactionFormRow(title: "Conta") {
+            Picker("", selection: $store.accountId) {
+                ForEach(store.state.sourceAccountOptions) { account in
+                    Text(store.state.displayName(for: account)).tag(UUID?.some(account.id))
+                }
+            }
+            .labelsHidden()
+            .pickerStyle(.menu)
+            .frame(maxWidth: 250, alignment: .trailing)
+        }
+    }
+
+    private var categoryRow: some View {
+        TransactionFormRow(title: "Categoria") {
+            Picker("", selection: $store.categoryId) {
+                ForEach(store.state.rootCategories) { category in
+                    Text(category.name).tag(UUID?.some(category.id))
+                }
+            }
+            .labelsHidden()
+            .pickerStyle(.menu)
+            .frame(maxWidth: 250, alignment: .trailing)
+        }
+    }
+
+    private var subcategoryRow: some View {
+        TransactionFormRow(title: "Subcategoria") {
+            Picker("", selection: $store.subcategoryId) {
+                Text("(nenhuma)").tag(UUID?.none)
+                ForEach(selectedSubcategories) { subcategory in
+                    Text(subcategory.name).tag(UUID?.some(subcategory.id))
+                }
+            }
+            .labelsHidden()
+            .pickerStyle(.menu)
+            .frame(maxWidth: 250, alignment: .trailing)
+        }
+    }
+
+    private var destinationAccountRow: some View {
+        TransactionFormRow(title: "Conta de destino") {
+            Picker("", selection: $store.destinationAccountId) {
+                Text("(nenhuma)").tag(UUID?.none)
+                ForEach(store.state.destinationAccountOptions) { account in
+                    Text(store.state.displayName(for: account)).tag(UUID?.some(account.id))
+                }
+            }
+            .labelsHidden()
+            .pickerStyle(.menu)
+            .frame(maxWidth: 250, alignment: .trailing)
+        }
+    }
+
+    private var dateRow: some View {
+        TransactionFormRow(title: "Data") {
+            DatePicker("", selection: $store.occurredAt, displayedComponents: [.date])
+                .labelsHidden()
+                .frame(maxWidth: 180, alignment: .trailing)
+        }
+    }
+
+    private var timeRow: some View {
+        TransactionFormRow(title: "Hora") {
+            DatePicker("", selection: $store.occurredAt, displayedComponents: [.hourAndMinute])
+                .labelsHidden()
+                .frame(maxWidth: 180, alignment: .trailing)
+        }
+    }
+
+    private var selectedSubcategories: [Category] {
+        guard let categoryId = store.categoryId else { return [] }
+        return store.state.subcategories(of: categoryId)
+    }
+
+    private var showsSubcategoryRow: Bool {
+        !selectedSubcategories.isEmpty
+    }
+
+    private var showsDestinationAccountRow: Bool {
+        store.selectedCategoryKind == .transfer
+    }
+
+    private var showsRefundSection: Bool {
+        store.supportsAdvancedCardRules
+            && store.selectedAccountIsCreditCard
+            && store.selectedCategoryKind != .transfer
+    }
+
+    private var showsStatementPaymentSection: Bool {
+        store.supportsAdvancedCardRules && store.isPayingCreditCard
+    }
+
     private func statementPickerLabel(_ statement: Statement) -> String {
         let monthYear = Self.statementMonthFormatter.string(from: statement.dueDate)
         let remaining = store.state.remainingAmount(of: statement)
@@ -339,6 +585,206 @@ struct TransactionFormView: View {
         formatter.timeZone = TimeZone(secondsFromGMT: 0)
         return formatter
     }()
+
+    #if DEBUG
+        private var prototypeAssumptionBanner: some View {
+            Text(
+                "Protótipo descartável: três variantes da TransactionFormView dentro do drawer, no mesmo ponto de uso."
+            )
+            .font(GranaTheme.Typography.caption1)
+            .foregroundStyle(GranaTheme.Palette.muted)
+            .padding(.horizontal, GranaTheme.Spacing.md)
+            .padding(.vertical, GranaTheme.Spacing.sm)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .granaSurface(.subtle, cornerRadius: GranaTheme.Radius.control)
+        }
+
+        private var prototypeHeroCard: some View {
+            VStack(alignment: .leading, spacing: GranaTheme.Spacing.md) {
+                HStack(alignment: .top, spacing: GranaTheme.Spacing.md) {
+                    VStack(alignment: .leading, spacing: GranaTheme.Spacing.xs) {
+                        Text(store.description.trimmingCharacters(in: .whitespacesAndNewlines)
+                            .isEmpty ? "Nova transação" : store.description)
+                            .font(GranaTheme.Typography.title3)
+                            .foregroundStyle(GranaTheme.Palette.ink)
+                            .lineLimit(2)
+
+                        Text(prototypeKindLabel)
+                            .font(GranaTheme.Typography.caption1Emphasis)
+                            .foregroundStyle(prototypeKindColor)
+                    }
+
+                    Spacer(minLength: GranaTheme.Spacing.none)
+
+                    Text(store.amount.formatted(.currency(code: "BRL")))
+                        .font(GranaTheme.Typography.moneyTitle2)
+                        .foregroundStyle(GranaTheme.Palette.ink)
+                }
+
+                HStack(spacing: GranaTheme.Spacing.xs) {
+                    prototypePill(title: prototypeAccountName)
+                    prototypePill(title: prototypeCategoryName)
+                    prototypePill(title: store.occurredAt.formatted(date: .abbreviated, time: .omitted))
+                }
+            }
+            .padding(GranaTheme.Spacing.md)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .granaSurface(.subtle, cornerRadius: GranaTheme.Radius.card)
+        }
+
+        private var prototypeLiveSummaryCard: some View {
+            VStack(alignment: .leading, spacing: GranaTheme.Spacing.sm) {
+                Text("Estado ao vivo")
+                    .font(GranaTheme.Typography.headline)
+                    .foregroundStyle(GranaTheme.Palette.ink)
+
+                VStack(alignment: .leading, spacing: GranaTheme.Spacing.xs) {
+                    prototypeSnapshotRow(label: "Modo", value: store.isEditing ? "Edição" : "Nova")
+                    prototypeSnapshotRow(label: "Tipo", value: prototypeKindLabel)
+                    prototypeSnapshotRow(label: "Conta", value: prototypeAccountName)
+                    prototypeSnapshotRow(label: "Categoria", value: prototypeCategoryName)
+                    prototypeSnapshotRow(label: "Valor", value: store.amount.formatted(.currency(code: "BRL")))
+                    prototypeSnapshotRow(
+                        label: "Salvar",
+                        value: store.canSave ? "Pronto" : "Incompleto"
+                    )
+                }
+            }
+            .padding(GranaTheme.Spacing.md)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .granaSurface(.solid, cornerRadius: GranaTheme.Radius.card)
+        }
+
+        private var prototypeDecisionRail: some View {
+            VStack(alignment: .leading, spacing: GranaTheme.Spacing.sm) {
+                Text("Leitura")
+                    .font(GranaTheme.Typography.headline)
+                    .foregroundStyle(GranaTheme.Palette.ink)
+
+                prototypeStepHighlight(
+                    title: "Primeiro",
+                    message: "Valor e descrição antes da mecânica de classificação."
+                )
+                prototypeStepHighlight(
+                    title: "Depois",
+                    message: "Conta, categoria e regras de cartão em um único bloco."
+                )
+                prototypeStepHighlight(
+                    title: "Por fim",
+                    message: "Data, hora e notas como confirmação."
+                )
+            }
+            .padding(GranaTheme.Spacing.md)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .granaSurface(.subtle, cornerRadius: GranaTheme.Radius.card)
+        }
+
+        private var prototypeSnapshot: TransactionFormPrototypeSnapshot {
+            TransactionFormPrototypeSnapshot(
+                title: prototypeVariant.displayTitle,
+                summary: "\(store.isEditing ? "Edição" : "Nova") · \(prototypeKindLabel) · \(store.amount.formatted(.currency(code: "BRL")))",
+                details: "\(prototypeAccountName) · \(prototypeCategoryName) · \(store.canSave ? "pronto para salvar" : "faltam campos")"
+            )
+        }
+
+        private var prototypeAccountName: String {
+            guard let accountId = store.accountId,
+                  let account = store.state.account(for: accountId)
+            else { return "Sem conta" }
+            return store.state.displayName(for: account)
+        }
+
+        private var prototypeCategoryName: String {
+            guard let categoryId = store.categoryId,
+                  let category = store.state.category(for: categoryId)
+            else { return "Sem categoria" }
+
+            if let subcategoryId = store.subcategoryId,
+               let subcategory = store.state.category(for: subcategoryId)
+            {
+                return "\(category.name) / \(subcategory.name)"
+            }
+            return category.name
+        }
+
+        private var prototypeKindLabel: String {
+            switch store.selectedCategoryKind {
+            case .income:
+                "Receita"
+            case .expense:
+                "Despesa"
+            case .transfer:
+                "Transferência"
+            case .none:
+                "Sem tipo"
+            }
+        }
+
+        private var prototypeKindColor: Color {
+            switch store.selectedCategoryKind {
+            case .income:
+                .income
+            case .expense:
+                .expense
+            case .transfer:
+                .transfer
+            case .none:
+                GranaTheme.Palette.muted
+            }
+        }
+
+        private func showPreviousPrototypeVariant() {
+            prototypeVariant = prototypeVariant.previous
+        }
+
+        private func showNextPrototypeVariant() {
+            prototypeVariant = prototypeVariant.next
+        }
+
+        private func prototypePill(title: String) -> some View {
+            Text(title)
+                .font(GranaTheme.Typography.caption1)
+                .foregroundStyle(GranaTheme.Palette.ink)
+                .lineLimit(1)
+                .padding(.horizontal, GranaTheme.Spacing.sm)
+                .padding(.vertical, GranaTheme.Spacing.xs)
+                .background(
+                    Capsule()
+                        .fill(GranaTheme.Palette.paper)
+                )
+        }
+
+        private func prototypeStepHighlight(title: String, message: String) -> some View {
+            VStack(alignment: .leading, spacing: GranaTheme.Spacing.xxs) {
+                Text(title)
+                    .font(GranaTheme.Typography.caption1Emphasis)
+                    .foregroundStyle(GranaTheme.Palette.tealDeep)
+                Text(message)
+                    .font(GranaTheme.Typography.footnote)
+                    .foregroundStyle(GranaTheme.Palette.muted)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+            .padding(GranaTheme.Spacing.sm)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .background(
+                RoundedRectangle(cornerRadius: GranaTheme.Radius.control, style: .continuous)
+                    .fill(GranaTheme.Palette.paper)
+            )
+        }
+
+        private func prototypeSnapshotRow(label: String, value: String) -> some View {
+            HStack(alignment: .top, spacing: GranaTheme.Spacing.sm) {
+                Text(label)
+                    .font(GranaTheme.Typography.caption1)
+                    .foregroundStyle(GranaTheme.Palette.muted)
+                    .frame(width: 58, alignment: .leading)
+                Text(value)
+                    .font(GranaTheme.Typography.subheadlineEmphasis)
+                    .foregroundStyle(GranaTheme.Palette.ink)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+        }
+    #endif
 }
 
 private struct TransactionFormSection<Content: View>: View {
@@ -499,3 +945,215 @@ private struct TransactionFormConfirmationOverlay: View {
         }
     }
 }
+
+#if DEBUG
+    private enum TransactionFormPrototypeVariant: String, CaseIterable, Identifiable {
+        case summary = "A"
+        case ledger = "B"
+        case workflow = "C"
+
+        var id: String {
+            rawValue
+        }
+
+        var name: String {
+            switch self {
+            case .summary:
+                "Resumo guiado"
+            case .ledger:
+                "Ficha contínua"
+            case .workflow:
+                "Fluxo com rail"
+            }
+        }
+
+        var displayTitle: String {
+            "\(rawValue) — \(name)"
+        }
+
+        var next: TransactionFormPrototypeVariant {
+            let variants = Self.allCases
+            guard let index = variants.firstIndex(of: self) else { return self }
+            return variants[(index + 1) % variants.count]
+        }
+
+        var previous: TransactionFormPrototypeVariant {
+            let variants = Self.allCases
+            guard let index = variants.firstIndex(of: self) else { return self }
+            return variants[(index - 1 + variants.count) % variants.count]
+        }
+    }
+
+    private struct TransactionFormPrototypeSnapshot {
+        let title: String
+        let summary: String
+        let details: String
+    }
+
+    private struct TransactionFormPrototypeSwitcher: View {
+        @Binding var variant: TransactionFormPrototypeVariant
+        let snapshot: TransactionFormPrototypeSnapshot
+        let onPrevious: () -> Void
+        let onNext: () -> Void
+
+        var body: some View {
+            HStack(spacing: GranaTheme.Spacing.sm) {
+                prototypeButton(
+                    systemImage: "arrow.left",
+                    title: "Variante anterior",
+                    action: onPrevious
+                )
+
+                VStack(alignment: .leading, spacing: GranaTheme.Spacing.xxs) {
+                    Text(snapshot.title)
+                        .font(GranaTheme.Typography.subheadlineEmphasis)
+                        .foregroundStyle(GranaTheme.Palette.ink)
+
+                    Text(snapshot.summary)
+                        .font(GranaTheme.Typography.caption1)
+                        .foregroundStyle(GranaTheme.Palette.muted)
+                        .lineLimit(1)
+
+                    Text(snapshot.details)
+                        .font(GranaTheme.Typography.caption2)
+                        .foregroundStyle(GranaTheme.Palette.muted)
+                        .lineLimit(1)
+                }
+                .frame(maxWidth: .infinity, alignment: .leading)
+
+                prototypeButton(
+                    systemImage: "arrow.right",
+                    title: "Próxima variante",
+                    action: onNext
+                )
+            }
+            .padding(.horizontal, GranaTheme.Spacing.md)
+            .padding(.vertical, GranaTheme.Spacing.sm)
+            .frame(maxWidth: 460, alignment: .leading)
+            .background(
+                Capsule(style: .continuous)
+                    .fill(GranaTheme.Palette.paperSolid.opacity(0.98))
+            )
+            .overlay(
+                Capsule(style: .continuous)
+                    .stroke(GranaTheme.Palette.line, lineWidth: 1)
+            )
+            .shadow(color: GranaTheme.Shadow.cardColor, radius: 18, x: 0, y: 8)
+            .background(
+                TransactionFormPrototypeKeyboardMonitor(
+                    onPrevious: onPrevious,
+                    onNext: onNext
+                )
+                .frame(width: 0, height: 0)
+            )
+            .accessibilityElement(children: .contain)
+            .accessibilityLabel("Seletor de variantes do protótipo")
+            .accessibilityValue(variant.displayTitle)
+        }
+
+        private func prototypeButton(
+            systemImage: String,
+            title: String,
+            action: @escaping () -> Void
+        ) -> some View {
+            Button(action: action) {
+                Image(systemName: systemImage)
+                    .font(.system(size: GranaTheme.IconSize.small, weight: .semibold))
+                    .foregroundStyle(GranaTheme.Palette.ink)
+                    .frame(width: 32, height: 32)
+                    .background(
+                        Circle()
+                            .fill(GranaTheme.Palette.background)
+                    )
+            }
+            .buttonStyle(.plain)
+            .help(title)
+            .accessibilityLabel(title)
+        }
+    }
+
+    #if canImport(AppKit)
+        private struct TransactionFormPrototypeKeyboardMonitor: NSViewRepresentable {
+            let onPrevious: () -> Void
+            let onNext: () -> Void
+
+            func makeCoordinator() -> Coordinator {
+                Coordinator(onPrevious: onPrevious, onNext: onNext)
+            }
+
+            func makeNSView(context: Context) -> NSView {
+                let view = NSView(frame: .zero)
+                context.coordinator.installMonitor()
+                return view
+            }
+
+            func updateNSView(_ nsView: NSView, context: Context) {
+                context.coordinator.onPrevious = onPrevious
+                context.coordinator.onNext = onNext
+            }
+
+            static func dismantleNSView(_ nsView: NSView, coordinator: Coordinator) {
+                coordinator.removeMonitor()
+            }
+
+            final class Coordinator {
+                var onPrevious: () -> Void
+                var onNext: () -> Void
+                private var monitor: Any?
+
+                init(
+                    onPrevious: @escaping () -> Void,
+                    onNext: @escaping () -> Void
+                ) {
+                    self.onPrevious = onPrevious
+                    self.onNext = onNext
+                }
+
+                func installMonitor() {
+                    guard monitor == nil else { return }
+
+                    monitor = NSEvent.addLocalMonitorForEvents(matching: .keyDown) { [weak self] event in
+                        guard let self else { return event }
+                        guard self.shouldHandle(event: event) else { return event }
+
+                        switch event.keyCode {
+                        case 123:
+                            onPrevious()
+                            return nil
+                        case 124:
+                            onNext()
+                            return nil
+                        default:
+                            return event
+                        }
+                    }
+                }
+
+                func removeMonitor() {
+                    guard let monitor else { return }
+                    NSEvent.removeMonitor(monitor)
+                    self.monitor = nil
+                }
+
+                private func shouldHandle(event: NSEvent) -> Bool {
+                    guard event.modifierFlags.intersection(.deviceIndependentFlagsMask).isEmpty else {
+                        return false
+                    }
+                    guard let responder = NSApp.keyWindow?.firstResponder else { return true }
+
+                    if let textView = responder as? NSTextView,
+                       textView.isEditable || textView.isFieldEditor
+                    {
+                        return false
+                    }
+
+                    if responder is NSTextField {
+                        return false
+                    }
+
+                    return true
+                }
+            }
+        }
+    #endif
+#endif

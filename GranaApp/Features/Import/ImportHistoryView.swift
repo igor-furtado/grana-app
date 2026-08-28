@@ -35,7 +35,6 @@ private struct ImportHistoryContentView: View {
     var body: some View {
         VStack(spacing: GranaTheme.Spacing.sm) {
             header
-            summaryRow
 
             if historyStore.snapshot.batches.isEmpty {
                 EmptyStateDropZone(
@@ -100,26 +99,6 @@ private struct ImportHistoryContentView: View {
                 .buttonStyle(GranaPrimaryButtonStyle())
                 .help("Importar extrato bancário (OFX ou CSV)")
             }
-        }
-    }
-
-    private var summaryRow: some View {
-        HStack(spacing: GranaTheme.Spacing.sm) {
-            ImportSummaryBadge(
-                title: "Lotes",
-                value: "\(historyStore.snapshot.batches.count)",
-                detail: "histórico ativo"
-            )
-            ImportSummaryBadge(
-                title: "Linhas",
-                value: "\(historyStore.totalImportedRows)",
-                detail: "já consolidadas"
-            )
-            ImportSummaryBadge(
-                title: "Última",
-                value: historyStore.latestImportShortText,
-                detail: "importação concluída"
-            )
         }
     }
 
@@ -283,7 +262,6 @@ private struct ImportHistoryMainPanel: View {
                     accountFilter: $accountFilter
                 )
             }
-            .padding(GranaTheme.Spacing.md)
         }
     }
 
@@ -399,29 +377,6 @@ private struct ImportHistoryFilterBar: View {
             RoundedRectangle(cornerRadius: 14, style: .continuous)
                 .stroke(GranaTheme.Palette.line, lineWidth: 1)
         }
-    }
-}
-
-private struct ImportSummaryBadge: View {
-    let title: String
-    let value: String
-    let detail: String
-
-    var body: some View {
-        VStack(alignment: .leading, spacing: GranaTheme.Spacing.xxs) {
-            Text(title)
-                .font(GranaTheme.Typography.caption2Emphasis)
-                .foregroundStyle(GranaTheme.Palette.muted)
-            Text(value)
-                .font(GranaTheme.Typography.title3)
-                .foregroundStyle(GranaTheme.Palette.ink)
-            Text(detail)
-                .font(GranaTheme.Typography.caption1)
-                .foregroundStyle(GranaTheme.Palette.muted)
-        }
-        .padding(GranaTheme.Spacing.md)
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .granaSurface(.solid, cornerRadius: GranaTheme.Radius.control)
     }
 }
 

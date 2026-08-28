@@ -4,13 +4,15 @@ import SwiftUI
 struct TransactionsView: View {
     @Environment(AppEnvironment.self) private var environment
     @State private var store: StoreOf<TransactionsFeature>?
+    private let showsDrawerOverlay: Bool
 
-    init(store: StoreOf<TransactionsFeature>? = nil) {
+    init(store: StoreOf<TransactionsFeature>? = nil, showsDrawerOverlay: Bool = true) {
         _store = State(initialValue: store)
+        self.showsDrawerOverlay = showsDrawerOverlay
     }
 
     var body: some View {
-        Group {
+        ZStack {
             if let store {
                 TransactionsContentView(store: store)
                     .environment(environment)
@@ -18,7 +20,12 @@ struct TransactionsView: View {
                 ProgressView()
                     .frame(maxWidth: .infinity, maxHeight: .infinity)
             }
+
+            if showsDrawerOverlay, let store {
+                TransactionFormDrawerOverlay(store: store)
+            }
         }
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
         .onAppear {
             if store == nil {
                 store = Store(initialState: TransactionsFeature.State()) {
@@ -36,7 +43,6 @@ private struct TransactionsContentView: View {
 
     @Bindable var store: StoreOf<TransactionsFeature>
     @Environment(\.calendar) private var calendar
-    @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @State private var sortOrder = [
         KeyPathComparator(\TransactionTableRow.occurredAt, order: .reverse),
     ]
@@ -56,10 +62,6 @@ private struct TransactionsContentView: View {
         }
         .navigationTitle("")
         .toolbar(.hidden, for: .windowToolbar)
-        .overlay {
-            transactionFormDrawer
-        }
-        .animation(drawerAnimation, value: store.destination != nil)
         .sheet(isPresented: deleteConfirmationIsPresented) {
             if let transaction = store.pendingDelete {
                 DeleteTransactionConfirmationView(
@@ -183,29 +185,6 @@ private struct TransactionsContentView: View {
         }
     }
 
-    @ViewBuilder
-    private var transactionFormDrawer: some View {
-        if let formStore = $store.scope(\.destination, action: \.destination).editForm.wrappedValue {
-            SideDrawer(
-                onDismiss: {
-                    formStore.send(.cancelButtonTapped)
-                },
-                content: {
-                    TransactionFormView(store: formStore)
-                }
-            )
-            .transition(drawerTransition)
-        }
-    }
-
-    private var drawerTransition: AnyTransition {
-        reduceMotion ? .opacity : .move(edge: .trailing).combined(with: .opacity)
-    }
-
-    private var drawerAnimation: Animation? {
-        reduceMotion ? .easeOut(duration: 0.12) : .spring(duration: 0.35, bounce: 0.12)
-    }
-
     private var tableRows: [TransactionTableRow] {
         store.state.filtered(calendar: calendar).map { transaction in
             TransactionTableRow(
@@ -280,6 +259,38 @@ private struct TransactionsContentView: View {
         case .expense: return .expense
         case .none: return .primary
         }
+    }
+}
+
+struct TransactionFormDrawerOverlay: View {
+    @Bindable var store: StoreOf<TransactionsFeature>
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+
+    var body: some View {
+        Group {
+            if let formStore = $store.scope(\.destination, action: \.destination).editForm.wrappedValue {
+                SideDrawer(
+                    onDismiss: {
+                        formStore.send(.cancelButtonTapped)
+                    },
+                    content: {
+                        TransactionFormView(store: formStore)
+                    }
+                )
+                .transition(drawerTransition)
+            }
+        }
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .ignoresSafeArea()
+        .animation(drawerAnimation, value: store.destination != nil)
+    }
+
+    private var drawerTransition: AnyTransition {
+        reduceMotion ? .opacity : .move(edge: .trailing).combined(with: .opacity)
+    }
+
+    private var drawerAnimation: Animation? {
+        reduceMotion ? .easeOut(duration: 0.12) : .spring(duration: 0.35, bounce: 0.12)
     }
 }
 

@@ -25,7 +25,7 @@ struct SideDrawer<Content: View>: View {
                 content()
                     .frame(width: min(width, max(320, proxy.size.width - GranaTheme.Spacing.xl)))
                     .frame(maxHeight: .infinity)
-                    .granaSurface(.subtle, cornerRadius: GranaTheme.Radius.hero)
+                    .granaSurface(.glass, cornerRadius: GranaTheme.Radius.hero)
                     .padding(.vertical, GranaTheme.Spacing.md)
                     .padding(.trailing, GranaTheme.Spacing.md)
                     .transition(drawerTransition)
@@ -34,11 +34,13 @@ struct SideDrawer<Content: View>: View {
             .frame(width: proxy.size.width, height: proxy.size.height)
             .animation(drawerAnimation, value: reduceMotion)
         }
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .ignoresSafeArea()
     }
 
     private var scrim: some View {
         Rectangle()
-            .fill(GranaTheme.Palette.ink.opacity(0.28))
+            .fill(GranaTheme.Palette.ink.opacity(0.0))
             .ignoresSafeArea()
             .contentShape(Rectangle())
             .onTapGesture(perform: onDismiss)
@@ -49,6 +51,6 @@ struct SideDrawer<Content: View>: View {
     }
 
     private var drawerAnimation: Animation? {
-        reduceMotion ? .easeOut(duration: 0.12) : .spring(duration: 0.35, bounce: 0.12)
+        reduceMotion ? .easeOut(duration: 0.05) : .spring(duration: 0.25, bounce: 0.12)
     }
 }
