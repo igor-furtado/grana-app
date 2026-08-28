@@ -21,17 +21,14 @@ struct ImportSnapshot: Equatable {
 
 enum ImportLoadedFile: Equatable {
     case ofx(sourceURL: URL, resolutions: [OFXStatementResolution])
-    case csv(sourceURL: URL, resolution: CSVStatementResolution, refundPurchases: [Transaction])
+    case csv(sourceURL: URL, resolution: CSVStatementResolution)
 }
 
 struct ImportClient {
     var loadSnapshot: @Sendable () async throws -> ImportSnapshot
     var loadFile: @Sendable (_ url: URL, _ snapshot: ImportSnapshot) async throws -> ImportLoadedFile
     var reloadOFXResolution: @Sendable (_ resolution: OFXStatementResolution, _ accountId: UUID?) async -> OFXStatementResolution
-    var reloadCSVResolution: @Sendable (_ resolution: CSVStatementResolution, _ accountId: UUID?) async -> (
-        resolution: CSVStatementResolution,
-        refundPurchases: [Transaction]
-    )
+    var reloadCSVResolution: @Sendable (_ resolution: CSVStatementResolution, _ accountId: UUID?) async -> CSVStatementResolution
     var commit: @Sendable (_ input: ImportCommitInput, _ learnRequest: GranaAIClassificationLearningRequest?) async throws
         -> ImportCommitResult
     var undo: @Sendable (_ batchId: UUID) async throws -> Void
@@ -114,7 +111,7 @@ extension ImportClient: DependencyKey {
             .ofx(sourceURL: URL(filePath: "/dev/null"), resolutions: [])
         },
         reloadOFXResolution: { resolution, _ in resolution },
-        reloadCSVResolution: { resolution, _ in (resolution, []) },
+        reloadCSVResolution: { resolution, _ in resolution },
         commit: { _, _ in
             ImportCommitResult(batchIds: [], importedRowCount: 0, duplicateRows: [])
         },
@@ -305,25 +302,21 @@ private extension ImportClient {
                 )
             },
             negativeRows: statement.skippedNegatives.map {
-                CSVNegativePreviewRow(raw: $0, purchaseId: nil, selected: false)
+                CSVNegativePreviewRow(raw: $0, selected: false)
             }
         )
 
-        var refundPurchases: [Transaction] = []
         if let initialAccountId {
-            let refreshed = await reloadCSVResolution(
+            resolution = await reloadCSVResolution(
                 resolution,
                 accountId: initialAccountId,
                 remoteTransactions: remoteTransactions
             )
-            resolution = refreshed.resolution
-            refundPurchases = refreshed.refundPurchases
         }
 
         return .csv(
             sourceURL: url,
-            resolution: resolution,
-            refundPurchases: refundPurchases
+            resolution: resolution
         )
     }
 
@@ -360,10 +353,7 @@ private extension ImportClient {
         _ resolution: CSVStatementResolution,
         accountId: UUID?,
         remoteTransactions: any TransactionRemoteRepositoryProtocol
-    ) async -> (
-        resolution: CSVStatementResolution,
-        refundPurchases: [Transaction]
-    ) {
+    ) async -> CSVStatementResolution {
         var resolution = resolution
         resolution.accountId = accountId
 
@@ -373,10 +363,9 @@ private extension ImportClient {
                 resolution.rows[index].selected = true
             }
             for index in resolution.negativeRows.indices {
-                resolution.negativeRows[index].purchaseId = nil
                 resolution.negativeRows[index].selected = false
             }
-            return (resolution, [])
+            return resolution
         }
 
         let existing = (try? await remoteTransactions.externalIds(forAccount: accountId)) ?? []
@@ -386,20 +375,10 @@ private extension ImportClient {
             resolution.rows[index].selected = !isDuplicate
         }
 
-        let allTransactions = (try? await remoteTransactions.loadAll()) ?? []
-        let refundPurchases = allTransactions.filter { $0.accountId == accountId }
-        let validPurchaseIds = Set(refundPurchases.map(\.id))
         for index in resolution.negativeRows.indices {
-            guard resolution.negativeRows[index].raw.kind == .refund else { continue }
-            if let purchaseId = resolution.negativeRows[index].purchaseId,
-               validPurchaseIds.contains(purchaseId)
-            {
-                continue
-            }
-            resolution.negativeRows[index].purchaseId = nil
             resolution.negativeRows[index].selected = false
         }
-        return (resolution, refundPurchases)
+        return resolution
     }
 
     static func buildOFXRows(

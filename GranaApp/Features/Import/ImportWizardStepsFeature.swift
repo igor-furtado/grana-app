@@ -96,7 +96,6 @@ struct CSVImportFeature {
         var institutions: [Institution]
         var bankDetails: [BankAccountDetails]
         var creditCards: [CreditCardDetails]
-        var refundPurchases: [Transaction]
 
         var creditCardAccounts: [Account] {
             accounts.filter { account in
@@ -126,26 +125,13 @@ struct CSVImportFeature {
                 creditCards: creditCards
             )
         }
-
-        func eligibleRefundPurchases(for row: CSVNegativePreviewRow) -> [Transaction] {
-            refundPurchases.filter { purchase in
-                guard purchase.refundOfTransactionId == nil,
-                      purchase.occurredAt <= row.raw.date
-                else { return false }
-                let alreadyRefunded = refundPurchases
-                    .filter { $0.refundOfTransactionId == purchase.id }
-                    .reduce(Decimal(0)) { $0 + $1.amount }
-                return purchase.amount - alreadyRefunded >= abs(row.raw.amount)
-            }
-        }
     }
 
     enum Action: Equatable, BindableAction {
         case binding(BindingAction<State>)
         case accountSelected(UUID?)
-        case accountReloaded(resolution: CSVStatementResolution, refundPurchases: [Transaction])
-        case refundPurchaseSelected(rowId: UUID, purchaseId: UUID?)
-        case refundSelectionChanged(rowId: UUID, isSelected: Bool)
+        case accountReloaded(CSVStatementResolution)
+        case negativeSelectionChanged(rowId: UUID, isSelected: Bool)
         case resolutionUpdated(CSVStatementResolution)
     }
 
@@ -159,26 +145,14 @@ struct CSVImportFeature {
                 let resolution = state.resolution
                 return .run { send in
                     let refreshed = await importClient.reloadCSVResolution(resolution, accountId)
-                    await send(
-                        .accountReloaded(
-                            resolution: refreshed.resolution,
-                            refundPurchases: refreshed.refundPurchases
-                        )
-                    )
+                    await send(.accountReloaded(refreshed))
                 }
 
-            case let .accountReloaded(resolution, refundPurchases):
+            case let .accountReloaded(resolution):
                 state.resolution = resolution
-                state.refundPurchases = refundPurchases
                 return .none
 
-            case let .refundPurchaseSelected(rowId, purchaseId):
-                guard let index = state.resolution.negativeRows.firstIndex(where: { $0.id == rowId }) else { return .none }
-                state.resolution.negativeRows[index].purchaseId = purchaseId
-                state.resolution.negativeRows[index].selected = purchaseId != nil
-                return .none
-
-            case let .refundSelectionChanged(rowId, isSelected):
+            case let .negativeSelectionChanged(rowId, isSelected):
                 guard let index = state.resolution.negativeRows.firstIndex(where: { $0.id == rowId }) else { return .none }
                 state.resolution.negativeRows[index].selected = isSelected
                 return .none

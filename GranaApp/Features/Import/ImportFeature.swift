@@ -243,7 +243,7 @@ struct ImportWizardFeature {
                     )
                     state.phase = .ofxReview
 
-                case let .csv(sourceURL, resolution, refundPurchases):
+                case let .csv(sourceURL, resolution):
                     state.sourceURL = sourceURL
                     state.ofx = nil
                     state.csv = CSVImportFeature.State(
@@ -251,8 +251,7 @@ struct ImportWizardFeature {
                         accounts: state.snapshot.accounts,
                         institutions: state.snapshot.institutions,
                         bankDetails: state.snapshot.bankDetails,
-                        creditCards: state.snapshot.creditCards,
-                        refundPurchases: refundPurchases
+                        creditCards: state.snapshot.creditCards
                     )
                     state.phase = .csvReview
                 }
@@ -322,10 +321,10 @@ struct ImportWizardFeature {
                 }
 
                 let purchasesToImport = csv.resolution.rows.filter(\.selected)
-                let refundsToImport = csv.resolution.negativeRows.filter {
-                    $0.raw.kind == .refund && $0.purchaseId != nil && $0.selected
+                let balancesToImport = csv.resolution.negativeRows.filter {
+                    $0.raw.kind == .balance && $0.selected
                 }
-                guard !purchasesToImport.isEmpty || !refundsToImport.isEmpty else {
+                guard !purchasesToImport.isEmpty || !balancesToImport.isEmpty else {
                     return fail(&state, error: ImportError.noValidRows)
                 }
 
@@ -335,7 +334,7 @@ struct ImportWizardFeature {
                     id: batchId,
                     sourceFilename: csv.resolution.sourceFilename,
                     accountId: accountId,
-                    rowCount: purchasesToImport.count + refundsToImport.count,
+                    rowCount: purchasesToImport.count + balancesToImport.count,
                     importedAt: now,
                     createdAt: now,
                     updatedAt: now
@@ -354,25 +353,21 @@ struct ImportWizardFeature {
                         sourceCategoryHint: row.raw.interCategory
                     )
                 }
-                drafts.append(contentsOf: refundsToImport.compactMap { row in
-                    guard let purchaseId = row.purchaseId,
-                          let purchase = csv.refundPurchases.first(where: { $0.id == purchaseId })
-                    else { return nil }
-                    return TransactionDraft(
+                drafts.append(contentsOf: balancesToImport.map { row in
+                    TransactionDraft(
                         id: UUID(),
                         accountId: accountId,
                         importBatchId: batchId,
                         signedAmount: abs(row.raw.amount),
                         occurredAt: row.raw.date,
                         description: row.raw.description,
-                        notes: "Estorno importado do CSV Inter",
+                        notes: "Saldo importado do CSV Inter",
                         externalId: InterCreditCardCSVReader.makeExternalId(
                             date: row.raw.date,
                             description: row.raw.description,
                             amount: abs(row.raw.amount),
-                            tipo: "Estorno"
-                        ),
-                        refundOfTransactionId: purchase.id
+                            tipo: "Saldo"
+                        )
                     )
                 })
 

@@ -142,24 +142,40 @@ struct ImportFeatureTests {
         #expect(input.rows.first?.amount == Decimal(string: "12.34"))
     }
 
-    @Test("CSV conta reembolso vinculado apenas quando estiver selecionado")
-    func csvResolutionCountsOnlySelectedRefunds() {
+    @Test("CSV conta saldos selecionados na triagem")
+    func csvResolutionCountsSelectedBalances() {
         let skipped = InterCreditCardCSVReader.SkippedRow(
             date: Date(),
-            description: "ESTORNO",
+            description: "CREDITO FATURA",
             amount: -10,
-            kind: .refund
+            kind: .balance
         )
         let resolution = CSVStatementResolution(
             sourceFilename: "fatura.csv",
             accountId: UUID(),
             rows: [],
             negativeRows: [
-                CSVNegativePreviewRow(raw: skipped, purchaseId: UUID(), selected: true),
-                CSVNegativePreviewRow(raw: skipped, purchaseId: UUID(), selected: false),
+                CSVNegativePreviewRow(raw: skipped, selected: true),
+                CSVNegativePreviewRow(raw: skipped, selected: false),
             ]
         )
 
         #expect(resolution.selectedCount == 1)
+    }
+
+    @Test("CSV classifica negativo não pagamento como saldo")
+    func csvReaderClassifiesNonPaymentNegativeAsBalance() throws {
+        let csv = """
+        Data,Lançamento,Categoria,Tipo,Valor
+        29/05/2025,BONUS INTER,OUTROS,Crédito,"-R$ 18,02"
+        30/05/2025,PAGAMENTO FATURA,PAGAMENTOS,Pagamento,"-R$ 120,00"
+        """
+        let data = csv.data(using: .utf8) ?? Data()
+
+        let statement = try InterCreditCardCSVReader().read(data: data)
+
+        #expect(statement.skippedNegatives.count == 2)
+        #expect(statement.skippedNegatives.first?.kind == .balance)
+        #expect(statement.skippedNegatives.last?.kind == .payment)
     }
 }

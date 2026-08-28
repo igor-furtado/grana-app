@@ -19,13 +19,9 @@ struct CSVReviewStepView: View {
                             get: { store.state.resolution },
                             set: { store.send(.resolutionUpdated($0)) }
                         ),
-                        refundPurchases: { store.state.eligibleRefundPurchases(for: $0) },
                         institutionKind: store.state.bankKind(for: store.state.resolution.accountId),
-                        onRefundPurchaseSelected: { rowId, purchaseId in
-                            store.send(.refundPurchaseSelected(rowId: rowId, purchaseId: purchaseId))
-                        },
-                        onRefundSelectionChanged: { rowId, isSelected in
-                            store.send(.refundSelectionChanged(rowId: rowId, isSelected: isSelected))
+                        onNegativeSelectionChanged: { rowId, isSelected in
+                            store.send(.negativeSelectionChanged(rowId: rowId, isSelected: isSelected))
                         }
                     )
                     .frame(maxHeight: .infinity)
@@ -75,10 +71,8 @@ private struct CSVAccountInfoCard: View {
 
 private struct CSVTransactionsListCard: View {
     @Binding var resolution: CSVStatementResolution
-    let refundPurchases: (CSVNegativePreviewRow) -> [Transaction]
     let institutionKind: InstitutionKind?
-    let onRefundPurchaseSelected: (UUID, UUID?) -> Void
-    let onRefundSelectionChanged: (UUID, Bool) -> Void
+    let onNegativeSelectionChanged: (UUID, Bool) -> Void
 
     private var tableRows: [CSVTransactionTableRow] {
         let purchaseRows = resolution.rows.map {
@@ -90,8 +84,6 @@ private struct CSVTransactionsListCard: View {
                 memo: purchaseMemo(for: $0),
                 amount: $0.raw.amount,
                 status: $0.isDuplicate ? .duplicate : nil,
-                purchaseSelectorTitle: nil,
-                selectedPurchaseDescription: nil,
                 kind: .purchase
             )
         }
@@ -104,9 +96,7 @@ private struct CSVTransactionsListCard: View {
                 memo: negativeMemo(for: $0),
                 amount: abs($0.raw.amount),
                 status: negativeStatus(for: $0),
-                purchaseSelectorTitle: $0.raw.kind == .refund ? "Escolher compra" : nil,
-                selectedPurchaseDescription: selectedPurchaseDescription(for: $0),
-                kind: $0.raw.kind == .payment ? .payment : .refund
+                kind: $0.raw.kind == .payment ? .payment : .balance
             )
         }
 
@@ -120,16 +110,14 @@ private struct CSVTransactionsListCard: View {
 
     private var eligibleSelectionCount: Int {
         resolution.rows.filter { !$0.isDuplicate }.count
-            + resolution.negativeRows.filter { $0.raw.kind == .refund && $0.purchaseId != nil }.count
+            + resolution.negativeRows.filter { $0.raw.kind == .balance }.count
     }
 
     private var allSelected: Bool {
         guard eligibleSelectionCount > 0 else { return false }
         let purchasesSelected = resolution.rows.filter { !$0.isDuplicate && $0.selected }.count
-        let refundsSelected = resolution.negativeRows.filter {
-            $0.raw.kind == .refund && $0.purchaseId != nil && $0.selected
-        }.count
-        return purchasesSelected + refundsSelected == eligibleSelectionCount
+        let balancesSelected = resolution.negativeRows.filter { $0.raw.kind == .balance && $0.selected }.count
+        return purchasesSelected + balancesSelected == eligibleSelectionCount
     }
 
     var body: some View {
@@ -171,11 +159,6 @@ private struct CSVTransactionsListCard: View {
                 TableColumn("Situação") { row in
                     statusCell(for: row)
                 }
-                .width(min: 130, ideal: 156, max: 190)
-
-                TableColumn("Vincular") { row in
-                    purchaseLinkCell(for: row)
-                }
                 .width(min: 180, ideal: 240, max: 320)
 
                 TableColumn("Valor") { row in
@@ -209,41 +192,13 @@ private struct CSVTransactionsListCard: View {
 
     @ViewBuilder
     private func statusCell(for row: CSVTransactionTableRow) -> some View {
-        if let status = row.status {
-            ImportWizardTableStatusBadge(status: status)
-        } else {
-            Text("Importar")
-                .font(GranaTheme.Typography.caption1Emphasis)
-                .foregroundStyle(GranaTheme.Palette.tealDeep)
-        }
-    }
-
-    @ViewBuilder
-    private func purchaseLinkCell(for row: CSVTransactionTableRow) -> some View {
-        switch row.kind {
-        case .purchase, .payment:
-            Text("—")
-                .font(GranaTheme.Typography.caption1)
-                .foregroundStyle(GranaTheme.Palette.muted)
-        case .refund:
-            if let negativeRow = negativeRow(for: row) {
-                Picker(
-                    "Compra original",
-                    selection: Binding(
-                        get: { negativeRow.purchaseId },
-                        set: { onRefundPurchaseSelected(negativeRow.id, $0) }
-                    )
-                ) {
-                    Text(row.purchaseSelectorTitle ?? "Escolher compra").tag(UUID?.none)
-                    ForEach(refundPurchases(negativeRow), id: \.id) { purchase in
-                        Text("\(purchase.description) · \(purchase.amount.formatted(.currency(code: "BRL")))").tag(
-                            UUID?.some(purchase.id)
-                        )
-                    }
-                }
-                .labelsHidden()
-                .pickerStyle(.menu)
-                .help(row.selectedPurchaseDescription ?? "Escolher compra")
+        VStack(alignment: .leading, spacing: GranaTheme.Spacing.xxs) {
+            if let status = row.status {
+                ImportWizardTableStatusBadge(status: status)
+            } else {
+                Text("Importar")
+                    .font(GranaTheme.Typography.caption1Emphasis)
+                    .foregroundStyle(GranaTheme.Palette.tealDeep)
             }
         }
     }
@@ -254,8 +209,8 @@ private struct CSVTransactionsListCard: View {
         }
 
         for index in resolution.negativeRows.indices
-            where resolution.negativeRows[index].raw.kind == .refund && resolution.negativeRows[index].purchaseId != nil {
-            onRefundSelectionChanged(resolution.negativeRows[index].id, value)
+            where resolution.negativeRows[index].raw.kind == .balance {
+            onNegativeSelectionChanged(resolution.negativeRows[index].id, value)
         }
     }
 
@@ -273,14 +228,13 @@ private struct CSVTransactionsListCard: View {
             return $resolution.rows[index].selected
         case .payment:
             return nil
-        case .refund:
-            guard let index = resolution.negativeRows.firstIndex(where: { $0.id == row.rowID }),
-                  resolution.negativeRows[index].purchaseId != nil else {
+        case .balance:
+            guard let index = resolution.negativeRows.firstIndex(where: { $0.id == row.rowID }) else {
                 return nil
             }
             return Binding(
                 get: { resolution.negativeRows[index].selected },
-                set: { onRefundSelectionChanged(resolution.negativeRows[index].id, $0) }
+                set: { onNegativeSelectionChanged(resolution.negativeRows[index].id, $0) }
             )
         }
     }
@@ -295,32 +249,22 @@ private struct CSVTransactionsListCard: View {
         switch row.raw.kind {
         case .payment:
             "Pagamento"
-        case .refund:
-            row.purchaseId == nil ? "Escolha a compra original" : "Reembolso"
+        case .balance:
+            "Saldo"
         }
     }
 
     private func negativeStatus(for row: CSVNegativePreviewRow) -> TransactionRow.Status {
         switch row.raw.kind {
         case .payment:
-            .init(label: "Pagamento ignorado", tint: .neutral)
-        case .refund:
-            if row.purchaseId == nil {
-                .init(label: "Reembolso", tint: .info)
-            } else if row.selected {
-                .init(label: "Reembolso", tint: .info)
+            .init(label: "Pagamento", tint: .neutral)
+        case .balance:
+            if row.selected {
+                .init(label: "Saldo", tint: .info)
             } else {
-                .init(label: "Desmarcada", tint: .neutral)
+                .init(label: "Saldo", tint: .neutral)
             }
         }
-    }
-
-    private func selectedPurchaseDescription(for row: CSVNegativePreviewRow) -> String? {
-        guard let purchaseId = row.purchaseId,
-              let purchase = refundPurchases(row).first(where: { $0.id == purchaseId }) else {
-            return nil
-        }
-        return purchase.description
     }
 
     private func negativeRow(for row: CSVTransactionTableRow) -> CSVNegativePreviewRow? {
@@ -332,7 +276,7 @@ private struct CSVTransactionTableRow: Identifiable {
     enum Kind {
         case purchase
         case payment
-        case refund
+        case balance
     }
 
     let id: String
@@ -342,7 +286,5 @@ private struct CSVTransactionTableRow: Identifiable {
     let memo: String?
     let amount: Decimal
     let status: TransactionRow.Status?
-    let purchaseSelectorTitle: String?
-    let selectedPurchaseDescription: String?
     let kind: Kind
 }

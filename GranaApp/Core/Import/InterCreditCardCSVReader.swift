@@ -15,7 +15,7 @@ import Foundation
 /// decodifica esses bytes como UTF-8.
 ///
 /// Valores negativos são classificados para revisão individual: pagamentos
-/// são ignorados e estornos exigem vínculo com a compra original.
+/// são ignorados e demais créditos podem ser importados como transação comum.
 struct InterCreditCardCSVReader {
     /// Resultado da leitura: linhas válidas (todas positivas) + linhas
     /// negativas puladas (preservadas pra auditoria na UI) + ano/mês inferido
@@ -39,14 +39,14 @@ struct InterCreditCardCSVReader {
         let amount: Decimal
     }
 
-    /// Linha negativa pulada na importação. Guarda só o suficiente pro
+    /// Linha negativa preservada na triagem. Guarda só o suficiente pro
     /// usuário identificar a linha no CSV original (pagamento da fatura
-    /// anterior, estorno etc.). `amount` mantém o sinal negativo original
-    /// pra exibição.
+    /// anterior, saldo/crédito etc.). `amount` mantém o sinal negativo
+    /// original pra exibição.
     struct SkippedRow: Hashable, Identifiable {
         enum Kind: Hashable {
             case payment
-            case refund
+            case balance
         }
 
         let id = UUID()
@@ -120,7 +120,7 @@ struct InterCreditCardCSVReader {
             ))
         }
 
-        if parsed.isEmpty, !skippedNegatives.contains(where: { $0.kind == .refund }) {
+        if parsed.isEmpty, !skippedNegatives.contains(where: { $0.kind == .balance }) {
             throw ImportError.noValidRows
         }
 
@@ -133,7 +133,7 @@ struct InterCreditCardCSVReader {
             .uppercased()
         return normalized.contains("PAGAMENTO") || normalized.contains("PAGTO")
             ? .payment
-            : .refund
+            : .balance
     }
 
     // MARK: - Encoding (mojibake double-decode)

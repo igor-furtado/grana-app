@@ -38,7 +38,7 @@ struct CSVStatementResolution: Equatable {
 
     var selectedCount: Int {
         rows.filter(\.selected).count
-            + negativeRows.filter { $0.raw.kind == .refund && $0.purchaseId != nil && $0.selected }.count
+            + negativeRows.filter(\.selected).count
     }
 
     var duplicateCount: Int {
@@ -48,7 +48,6 @@ struct CSVStatementResolution: Equatable {
 
 struct CSVNegativePreviewRow: Identifiable, Equatable {
     let raw: InterCreditCardCSVReader.SkippedRow
-    var purchaseId: UUID?
     var selected: Bool
 
     var id: UUID {
