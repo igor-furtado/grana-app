@@ -36,6 +36,7 @@ private struct TransactionsContentView: View {
 
     @Bindable var store: StoreOf<TransactionsFeature>
     @Environment(\.calendar) private var calendar
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @State private var sortOrder = [
         KeyPathComparator(\TransactionTableRow.occurredAt, order: .reverse),
     ]
@@ -55,11 +56,10 @@ private struct TransactionsContentView: View {
         }
         .navigationTitle("")
         .toolbar(.hidden, for: .windowToolbar)
-        .sheet(
-            item: $store.scope(\.$destination, action: \.destination).editForm
-        ) { formStore in
-            TransactionFormView(store: formStore)
+        .overlay {
+            transactionFormDrawer
         }
+        .animation(drawerAnimation, value: store.destination != nil)
         .sheet(isPresented: deleteConfirmationIsPresented) {
             if let transaction = store.pendingDelete {
                 DeleteTransactionConfirmationView(
@@ -99,7 +99,7 @@ private struct TransactionsContentView: View {
             ) {
                 HStack(spacing: GranaTheme.Spacing.sm) {
                     Button {
-                        Task {}
+                        store.send(.addButtonTapped)
                     } label: {
                         Label("Adicionar", systemImage: AppIcon.add.systemImage)
                     }
@@ -181,6 +181,29 @@ private struct TransactionsContentView: View {
                 )
             }
         }
+    }
+
+    @ViewBuilder
+    private var transactionFormDrawer: some View {
+        if let formStore = $store.scope(\.destination, action: \.destination).editForm.wrappedValue {
+            SideDrawer(
+                onDismiss: {
+                    formStore.send(.cancelButtonTapped)
+                },
+                content: {
+                    TransactionFormView(store: formStore)
+                }
+            )
+            .transition(drawerTransition)
+        }
+    }
+
+    private var drawerTransition: AnyTransition {
+        reduceMotion ? .opacity : .move(edge: .trailing).combined(with: .opacity)
+    }
+
+    private var drawerAnimation: Animation? {
+        reduceMotion ? .easeOut(duration: 0.12) : .spring(duration: 0.35, bounce: 0.12)
     }
 
     private var tableRows: [TransactionTableRow] {

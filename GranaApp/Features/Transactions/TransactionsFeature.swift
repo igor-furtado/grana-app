@@ -286,6 +286,11 @@ struct TransactionsFeature {
         case editForm(TransactionFormFeature)
     }
 
+    enum FormPresentation: Equatable {
+        case new
+        case edit(Transaction)
+    }
+
     @ObservableState
     struct State: Equatable {
         var transactions: [Transaction] = []
@@ -308,6 +313,7 @@ struct TransactionsFeature {
         var tableSort: TransactionsTableSort = .occurredAtDescending
         var presentedHeaderFilter: TransactionsHeaderPresentedFilter?
         var pendingDelete: Transaction?
+        var pendingFormPresentation: FormPresentation?
 
         @Presents var destination: Destination.State?
 
@@ -504,6 +510,33 @@ struct TransactionsFeature {
             )
         }
 
+        mutating func requestFormPresentation(_ presentation: FormPresentation) {
+            guard case var .editForm(formState) = destination else {
+                presentForm(presentation)
+                return
+            }
+
+            guard !formState.isSaving else { return }
+
+            if formState.hasUnsavedChanges {
+                pendingFormPresentation = presentation
+                formState.showsDiscardConfirmation = true
+                destination = .editForm(formState)
+            } else {
+                presentForm(presentation)
+            }
+        }
+
+        mutating func presentForm(_ presentation: FormPresentation) {
+            pendingFormPresentation = nil
+            switch presentation {
+            case .new:
+                destination = .editForm(formState())
+            case let .edit(transaction):
+                destination = .editForm(formState(existing: transaction))
+            }
+        }
+
         mutating func apply(_ snapshot: TransactionsSnapshot) {
             transactions = snapshot.page.transactions
             accounts = snapshot.accounts
@@ -528,6 +561,7 @@ struct TransactionsFeature {
         case bankFilterSelected(TransactionBankFilter)
         case categoryFilterSelected(TransactionCategoryFilter)
         case tableSortSelected(TransactionsTableSort)
+        case addButtonTapped
         case editButtonTapped(Transaction)
         case deleteButtonTapped(Transaction)
         case deleteConfirmationDismissed
@@ -596,8 +630,12 @@ struct TransactionsFeature {
                 state.tableSort = sort
                 return .send(.refresh)
 
+            case .addButtonTapped:
+                state.requestFormPresentation(.new)
+                return .none
+
             case let .editButtonTapped(transaction):
-                state.destination = .editForm(state.formState(existing: transaction))
+                state.requestFormPresentation(.edit(transaction))
                 return .none
 
             case let .deleteButtonTapped(transaction):
@@ -609,7 +647,16 @@ struct TransactionsFeature {
                 return .none
 
             case .destination(.presented(.editForm(.delegate(.cancel)))):
+                state.pendingFormPresentation = nil
                 state.destination = nil
+                return .none
+
+            case .destination(.presented(.editForm(.delegate(.discarded)))):
+                if let pendingFormPresentation = state.pendingFormPresentation {
+                    state.presentForm(pendingFormPresentation)
+                } else {
+                    state.destination = nil
+                }
                 return .none
 
             case .destination(.presented(.editForm(.delegate(.saved)))):

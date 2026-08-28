@@ -29,6 +29,7 @@ enum AppIcon {
     case inspectorToggle
     case more
     case copy
+    case close
     case signOut
 
     // MARK: - Métricas / dashboard
@@ -87,6 +88,7 @@ enum AppIcon {
         case .inspectorToggle: "sidebar.right"
         case .more: "ellipsis"
         case .copy: "doc.on.doc"
+        case .close: "xmark"
         case .signOut: "rectangle.portrait.and.arrow.right"
         // Métricas
         case .balance: "wallet.pass.fill"

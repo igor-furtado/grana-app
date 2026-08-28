@@ -28,6 +28,8 @@ struct TransactionFormFeature {
         var saveError: String?
         var isSaving = false
         var showsRetroactivePreview = false
+        var showsDiscardConfirmation = false
+        var initialValues = EditableValues()
 
         init(
             existing: Transaction? = nil,
@@ -66,6 +68,32 @@ struct TransactionFormFeature {
                 self.accountId = accounts.first?.id
                 self.categoryId = rootCategories.first?.id
             }
+            self.initialValues = EditableValues(state: self)
+        }
+
+        var isEditing: Bool {
+            existing != nil
+        }
+
+        var title: String {
+            isEditing ? "Editar transação" : "Nova transação"
+        }
+
+        var subtitle: String? {
+            guard isEditing else { return nil }
+            return "\(description) · \(amount.formatted(.currency(code: "BRL")))"
+        }
+
+        var saveButtonTitle: String {
+            isEditing ? "Salvar" : "Adicionar"
+        }
+
+        var successNoticeTitle: String {
+            isEditing ? "Transação salva" : "Transação adicionada"
+        }
+
+        var hasUnsavedChanges: Bool {
+            EditableValues(state: self) != initialValues
         }
 
         var rootCategories: [Category] {
@@ -79,18 +107,16 @@ struct TransactionFormFeature {
                   categoryId != nil
             else { return false }
 
-            if selectedCategoryKind == .transfer,
-               let destinationAccountId,
-               destinationAccountId == accountId
-            {
+            let invalidTransfer = selectedCategoryKind == .transfer && destinationAccountId == accountId
+            if invalidTransfer {
                 return false
             }
 
-            if let refundOfTransactionId,
-               let purchase = refundablePurchases.first(where: { $0.id == refundOfTransactionId }),
-               amount > remainingRefundableAmount(for: purchase)
-            {
-                return false
+            if let refundOfTransactionId {
+                let purchase = refundablePurchases.first { $0.id == refundOfTransactionId }
+                if let purchase, amount > remainingRefundableAmount(for: purchase) {
+                    return false
+                }
             }
 
             return true
@@ -107,10 +133,10 @@ struct TransactionFormFeature {
 
         var sourceAccountOptions: [Account] {
             accounts.filter { account in
-                if !supportsAdvancedCardRules,
-                   account.type == .creditCard,
-                   existing?.accountId != account.id
-                {
+                let blockedCard = !supportsAdvancedCardRules
+                    && account.type == .creditCard
+                    && existing?.accountId != account.id
+                if blockedCard {
                     return false
                 }
                 if account.archived {
@@ -123,10 +149,10 @@ struct TransactionFormFeature {
         var destinationAccountOptions: [Account] {
             accounts.filter { account in
                 guard account.id != accountId else { return false }
-                if !supportsAdvancedCardRules,
-                   account.type == .creditCard,
-                   existing?.destinationAccountId != account.id
-                {
+                let blockedCard = !supportsAdvancedCardRules
+                    && account.type == .creditCard
+                    && existing?.destinationAccountId != account.id
+                if blockedCard {
                     return false
                 }
                 if account.archived {
@@ -320,12 +346,41 @@ struct TransactionFormFeature {
                 .filter { $0.accountId == accountId && $0.remainingAmount > 0 }
                 .sorted { $0.closingDate < $1.closingDate }
         }
+
+        struct EditableValues: Equatable {
+            var description = ""
+            var amountCents = 0
+            var occurredAt = Date(timeIntervalSince1970: 0)
+            var accountId: UUID?
+            var categoryId: UUID?
+            var subcategoryId: UUID?
+            var destinationAccountId: UUID?
+            var refundOfTransactionId: UUID?
+            var notes = ""
+
+            init() {}
+
+            init(state: State) {
+                self.description = state.description
+                self.amountCents = state.amountCents
+                self.occurredAt = state.occurredAt
+                self.accountId = state.accountId
+                self.categoryId = state.categoryId
+                self.subcategoryId = state.subcategoryId
+                self.destinationAccountId = state.destinationAccountId
+                self.refundOfTransactionId = state.refundOfTransactionId
+                self.notes = state.notes.trimmingCharacters(in: .whitespacesAndNewlines)
+            }
+        }
     }
 
-    enum Action: BindableAction {
+    enum Action: BindableAction, Equatable {
         case binding(BindingAction<State>)
         case cancelButtonTapped
+        case discardChangesConfirmed
+        case discardChangesDismissed
         case saveButtonTapped
+        case retroactivePreviewCancelTapped
         case retroactivePreviewConfirmTapped
         case saveSucceeded
         case saveFailed(String)
@@ -333,6 +388,7 @@ struct TransactionFormFeature {
 
         enum Delegate: Equatable {
             case cancel
+            case discarded
             case saved
         }
     }
@@ -361,7 +417,21 @@ struct TransactionFormFeature {
                 return .none
 
             case .cancelButtonTapped:
+                guard !state.isSaving else { return .none }
+                if state.hasUnsavedChanges {
+                    state.showsDiscardConfirmation = true
+                    return .none
+                }
                 return .send(.delegate(.cancel))
+
+            case .discardChangesConfirmed:
+                guard !state.isSaving else { return .none }
+                state.showsDiscardConfirmation = false
+                return .send(.delegate(.discarded))
+
+            case .discardChangesDismissed:
+                state.showsDiscardConfirmation = false
+                return .none
 
             case .saveButtonTapped:
                 guard state.canSave else { return .none }
@@ -370,6 +440,10 @@ struct TransactionFormFeature {
                     return .none
                 }
                 return save(&state)
+
+            case .retroactivePreviewCancelTapped:
+                state.showsRetroactivePreview = false
+                return .none
 
             case .retroactivePreviewConfirmTapped:
                 state.showsRetroactivePreview = false
@@ -394,6 +468,7 @@ struct TransactionFormFeature {
     private func save(_ state: inout State) -> Effect<Action> {
         guard let input = state.mutationInput() else { return .none }
         let existingId = state.existing?.id
+        let successTitle = state.successNoticeTitle
         state.isSaving = true
         state.saveError = nil
 
@@ -404,6 +479,7 @@ struct TransactionFormFeature {
                 } else {
                     try await transactionsClient.create(input)
                 }
+                await noticeClient.success(successTitle, nil)
                 await send(.saveSucceeded)
             } catch {
                 await noticeClient.report(error, "Falha ao salvar transação")
