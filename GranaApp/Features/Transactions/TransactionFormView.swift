@@ -1,14 +1,11 @@
 import ComposableArchitecture
 import SwiftUI
-#if DEBUG && canImport(AppKit)
-    import AppKit
-#endif
 
 struct TransactionFormView: View {
     @Bindable var store: StoreOf<TransactionFormFeature>
     @FocusState private var focusedField: Field?
     #if DEBUG
-        @State private var prototypeVariant: TransactionFormPrototypeVariant = .summary
+        @State private var prototypeVariant: TransactionFormPrototypeVariant = .cards
     #endif
 
     var body: some View {
@@ -120,12 +117,12 @@ struct TransactionFormView: View {
     private var activeFormContent: some View {
         #if DEBUG
             switch prototypeVariant {
-            case .summary:
-                prototypeSummaryContent
-            case .ledger:
-                prototypeLedgerContent
-            case .workflow:
-                prototypeWorkflowContent
+            case .cards:
+                prototypeCardsContent
+            case .unified:
+                prototypeUnifiedContent
+            case .compact:
+                prototypeCompactContent
             }
         #else
             defaultFormContent
@@ -157,153 +154,84 @@ struct TransactionFormView: View {
         .scrollIndicators(.visible)
     }
 
-    private var prototypeSummaryContent: some View {
+    private var prototypeCardsContent: some View {
         ScrollView {
             LazyVStack(alignment: .leading, spacing: GranaTheme.Spacing.lg) {
                 prototypeAssumptionBanner
-                prototypeHeroCard
-                essentialSection
-                classificationSection
+                TransactionFormPrototypePromptCard(
+                    title: "Variante A",
+                    message: "Cards independentes por decisão: o preenchimento começa pelo essencial e cada escolha seguinte vive em seu próprio bloco."
+                )
+                prototypeDescriptionAmountCard
+                prototypeAccountSelectorCard
+                prototypeCategorySelectorCard
 
                 if showsRefundSection {
-                    refundSection
+                    prototypeRefundCard
                 }
 
                 if showsStatementPaymentSection {
-                    statementPaymentSection
+                    prototypeStatementPaymentCard
                 }
 
-                timingSection
-                notesSection
+                prototypeDateTimeCard
+                prototypeNotesCard
+                prototypeLiveSummaryCard
             }
             .padding(GranaTheme.Spacing.lg)
         }
         .scrollIndicators(.visible)
     }
 
-    private var prototypeLedgerContent: some View {
+    private var prototypeUnifiedContent: some View {
         ScrollView {
             LazyVStack(alignment: .leading, spacing: GranaTheme.Spacing.lg) {
                 prototypeAssumptionBanner
+                TransactionFormPrototypePromptCard(
+                    title: "Variante B",
+                    message: "Tudo junto em uma única superfície, sem seções formais, para testar se o fluxo contínuo reduz fricção."
+                )
 
-                TransactionFormSection(
-                    title: "Lançamento",
-                    footer: prototypeVariant.name
-                ) {
-                    TransactionFormFieldGroup {
-                        descriptionRow
-                        TransactionFormDivider()
-                        amountRow
-                        TransactionFormDivider()
-                        accountRow
-                        TransactionFormDivider()
-                        categoryRow
-
-                        if showsSubcategoryRow {
-                            TransactionFormDivider()
-                            subcategoryRow
-                        }
-
-                        if showsDestinationAccountRow {
-                            TransactionFormDivider()
-                            destinationAccountRow
-                        }
-
-                        TransactionFormDivider()
-                        dateRow
-                        TransactionFormDivider()
-                        timeRow
-                    }
-                }
+                prototypeUnifiedCanvas
 
                 if showsRefundSection {
-                    refundSection
+                    prototypeRefundCard
                 }
 
                 if showsStatementPaymentSection {
-                    statementPaymentSection
+                    prototypeStatementPaymentCard
                 }
 
-                TransactionFormSection(title: "Notas e contexto") {
-                    VStack(alignment: .leading, spacing: GranaTheme.Spacing.sm) {
-                        prototypeLiveSummaryCard
-                        notesSection
-                    }
-                }
+                prototypeLiveSummaryCard
             }
             .padding(GranaTheme.Spacing.lg)
         }
         .scrollIndicators(.visible)
     }
 
-    private var prototypeWorkflowContent: some View {
+    private var prototypeCompactContent: some View {
         ScrollView {
-            HStack(alignment: .top, spacing: GranaTheme.Spacing.lg) {
-                LazyVStack(alignment: .leading, spacing: GranaTheme.Spacing.lg) {
-                    prototypeAssumptionBanner
+            LazyVStack(alignment: .leading, spacing: GranaTheme.Spacing.lg) {
+                prototypeAssumptionBanner
+                TransactionFormPrototypePromptCard(
+                    title: "Variante C",
+                    message: "Blocos compactos em grade, com menos altura e mais campos visíveis ao mesmo tempo dentro do drawer."
+                )
 
-                    TransactionFormSection(title: "1. O que aconteceu?") {
-                        VStack(alignment: .leading, spacing: GranaTheme.Spacing.sm) {
-                            prototypeStepHighlight(
-                                title: "Resumo rápido",
-                                message: "Descrição e valor aparecem primeiro para ancorar a decisão."
-                            )
+                prototypeCompactTopGrid
+                prototypeCompactSelectorGrid
 
-                            TransactionFormFieldGroup {
-                                descriptionRow
-                                TransactionFormDivider()
-                                amountRow
-                            }
-                        }
-                    }
-
-                    TransactionFormSection(title: "2. Como classificar?") {
-                        VStack(alignment: .leading, spacing: GranaTheme.Spacing.sm) {
-                            TransactionFormFieldGroup {
-                                accountRow
-                                TransactionFormDivider()
-                                categoryRow
-
-                                if showsSubcategoryRow {
-                                    TransactionFormDivider()
-                                    subcategoryRow
-                                }
-
-                                if showsDestinationAccountRow {
-                                    TransactionFormDivider()
-                                    destinationAccountRow
-                                }
-                            }
-
-                            if showsRefundSection {
-                                refundSection
-                            }
-
-                            if showsStatementPaymentSection {
-                                statementPaymentSection
-                            }
-                        }
-                    }
-
-                    TransactionFormSection(title: "3. Quando e por quê?") {
-                        VStack(alignment: .leading, spacing: GranaTheme.Spacing.sm) {
-                            TransactionFormFieldGroup {
-                                dateRow
-                                TransactionFormDivider()
-                                timeRow
-                            }
-
-                            notesSection
-                        }
-                    }
+                if showsRefundSection {
+                    prototypeRefundCard
                 }
-                .frame(maxWidth: .infinity, alignment: .leading)
 
-                VStack(alignment: .leading, spacing: GranaTheme.Spacing.md) {
-                    prototypeLiveSummaryCard
-                    prototypeDecisionRail
+                if showsStatementPaymentSection {
+                    prototypeStatementPaymentCard
                 }
-                .frame(width: 180, alignment: .topLeading)
+
+                prototypeCompactDateGrid
+                prototypeNotesCard
+                prototypeLiveSummaryCard
             }
             .padding(GranaTheme.Spacing.lg)
         }
@@ -588,95 +516,318 @@ struct TransactionFormView: View {
 
     #if DEBUG
         private var prototypeAssumptionBanner: some View {
-            Text(
-                "Protótipo descartável: três variantes da TransactionFormView dentro do drawer, no mesmo ponto de uso."
-            )
-            .font(GranaTheme.Typography.caption1)
-            .foregroundStyle(GranaTheme.Palette.muted)
-            .padding(.horizontal, GranaTheme.Spacing.md)
-            .padding(.vertical, GranaTheme.Spacing.sm)
-            .frame(maxWidth: .infinity, alignment: .leading)
-            .granaSurface(.subtle, cornerRadius: GranaTheme.Radius.control)
-        }
-
-        private var prototypeHeroCard: some View {
-            VStack(alignment: .leading, spacing: GranaTheme.Spacing.md) {
-                HStack(alignment: .top, spacing: GranaTheme.Spacing.md) {
-                    VStack(alignment: .leading, spacing: GranaTheme.Spacing.xs) {
-                        Text(store.description.trimmingCharacters(in: .whitespacesAndNewlines)
-                            .isEmpty ? "Nova transação" : store.description)
-                            .font(GranaTheme.Typography.title3)
-                            .foregroundStyle(GranaTheme.Palette.ink)
-                            .lineLimit(2)
-
-                        Text(prototypeKindLabel)
-                            .font(GranaTheme.Typography.caption1Emphasis)
-                            .foregroundStyle(prototypeKindColor)
-                    }
-
-                    Spacer(minLength: GranaTheme.Spacing.none)
-
-                    Text(store.amount.formatted(.currency(code: "BRL")))
-                        .font(GranaTheme.Typography.moneyTitle2)
-                        .foregroundStyle(GranaTheme.Palette.ink)
-                }
-
-                HStack(spacing: GranaTheme.Spacing.xs) {
-                    prototypePill(title: prototypeAccountName)
-                    prototypePill(title: prototypeCategoryName)
-                    prototypePill(title: store.occurredAt.formatted(date: .abbreviated, time: .omitted))
-                }
-            }
-            .padding(GranaTheme.Spacing.md)
-            .frame(maxWidth: .infinity, alignment: .leading)
-            .granaSurface(.subtle, cornerRadius: GranaTheme.Radius.card)
+            TransactionFormPrototypeAssumptionBanner()
         }
 
         private var prototypeLiveSummaryCard: some View {
-            VStack(alignment: .leading, spacing: GranaTheme.Spacing.sm) {
-                Text("Estado ao vivo")
-                    .font(GranaTheme.Typography.headline)
-                    .foregroundStyle(GranaTheme.Palette.ink)
-
-                VStack(alignment: .leading, spacing: GranaTheme.Spacing.xs) {
-                    prototypeSnapshotRow(label: "Modo", value: store.isEditing ? "Edição" : "Nova")
-                    prototypeSnapshotRow(label: "Tipo", value: prototypeKindLabel)
-                    prototypeSnapshotRow(label: "Conta", value: prototypeAccountName)
-                    prototypeSnapshotRow(label: "Categoria", value: prototypeCategoryName)
-                    prototypeSnapshotRow(label: "Valor", value: store.amount.formatted(.currency(code: "BRL")))
-                    prototypeSnapshotRow(
-                        label: "Salvar",
-                        value: store.canSave ? "Pronto" : "Incompleto"
-                    )
-                }
-            }
-            .padding(GranaTheme.Spacing.md)
-            .frame(maxWidth: .infinity, alignment: .leading)
-            .granaSurface(.solid, cornerRadius: GranaTheme.Radius.card)
+            TransactionFormPrototypeLiveSummaryCard(data: prototypeDecorationData)
         }
 
-        private var prototypeDecisionRail: some View {
-            VStack(alignment: .leading, spacing: GranaTheme.Spacing.sm) {
-                Text("Leitura")
-                    .font(GranaTheme.Typography.headline)
-                    .foregroundStyle(GranaTheme.Palette.ink)
+        private var prototypeDescriptionAmountCard: some View {
+            TransactionFormPrototypeCard(title: "O que aconteceu?") {
+                VStack(alignment: .leading, spacing: GranaTheme.Spacing.md) {
+                    prototypeDescriptionField
+                    prototypeAmountField
+                }
+            }
+        }
 
-                prototypeStepHighlight(
-                    title: "Primeiro",
-                    message: "Valor e descrição antes da mecânica de classificação."
-                )
-                prototypeStepHighlight(
-                    title: "Depois",
-                    message: "Conta, categoria e regras de cartão em um único bloco."
-                )
-                prototypeStepHighlight(
-                    title: "Por fim",
-                    message: "Data, hora e notas como confirmação."
+        private var prototypeAccountSelectorCard: some View {
+            TransactionFormPrototypeCard(title: "Qual conta?") {
+                prototypeAccountSelector
+            }
+        }
+
+        private var prototypeCategorySelectorCard: some View {
+            TransactionFormPrototypeCard(title: "Como classificar?") {
+                VStack(alignment: .leading, spacing: GranaTheme.Spacing.md) {
+                    prototypeCategorySelector
+
+                    if showsSubcategoryRow {
+                        prototypeSubcategorySelector
+                    }
+
+                    if showsDestinationAccountRow {
+                        prototypeDestinationSelector
+                    }
+                }
+            }
+        }
+
+        private var prototypeDateTimeCard: some View {
+            TransactionFormPrototypeCard(title: "Quando aconteceu?") {
+                VStack(alignment: .leading, spacing: GranaTheme.Spacing.md) {
+                    prototypeDateSelector
+                    prototypeTimeSelector
+                }
+            }
+        }
+
+        private var prototypeNotesCard: some View {
+            TransactionFormPrototypeCard(title: "Notas") {
+                prototypeNotesField
+            }
+        }
+
+        private var prototypeRefundCard: some View {
+            TransactionFormPrototypeCard(
+                title: "Estorno",
+                subtitle: "Seleção visual da compra de origem."
+            ) {
+                prototypeRefundSelector
+            }
+        }
+
+        private var prototypeStatementPaymentCard: some View {
+            TransactionFormPrototypeCard(
+                title: "Pagamento de fatura",
+                subtitle: "Prévia das faturas impactadas."
+            ) {
+                prototypeStatementPaymentSummary
+            }
+        }
+
+        private var prototypeUnifiedCanvas: some View {
+            TransactionFormPrototypeCard(
+                title: "Preencher transação",
+                subtitle: "Sem seções explícitas; os controles visuais criam a hierarquia."
+            ) {
+                VStack(alignment: .leading, spacing: GranaTheme.Spacing.md) {
+                    prototypeDescriptionField
+                    prototypeAmountField
+                    prototypeAccountSelector
+                    prototypeCategorySelector
+
+                    if showsSubcategoryRow {
+                        prototypeSubcategorySelector
+                    }
+
+                    if showsDestinationAccountRow {
+                        prototypeDestinationSelector
+                    }
+
+                    prototypeDateSelector
+                    prototypeTimeSelector
+                    prototypeNotesField
+                }
+            }
+        }
+
+        private var prototypeCompactTopGrid: some View {
+            HStack(alignment: .top, spacing: GranaTheme.Spacing.md) {
+                prototypeCompactDescriptionCard
+                prototypeCompactAmountCard
+            }
+        }
+
+        private var prototypeCompactSelectorGrid: some View {
+            VStack(alignment: .leading, spacing: GranaTheme.Spacing.md) {
+                HStack(alignment: .top, spacing: GranaTheme.Spacing.md) {
+                    TransactionFormPrototypeCard(title: "Conta") {
+                        prototypeAccountSelector
+                    }
+                    TransactionFormPrototypeCard(title: "Categoria") {
+                        prototypeCategorySelector
+                    }
+                }
+
+                if showsSubcategoryRow || showsDestinationAccountRow {
+                    HStack(alignment: .top, spacing: GranaTheme.Spacing.md) {
+                        if showsSubcategoryRow {
+                            TransactionFormPrototypeCard(title: "Subcategoria") {
+                                prototypeSubcategorySelector
+                            }
+                        }
+
+                        if showsDestinationAccountRow {
+                            TransactionFormPrototypeCard(title: "Destino") {
+                                prototypeDestinationSelector
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+        private var prototypeCompactDateGrid: some View {
+            HStack(alignment: .top, spacing: GranaTheme.Spacing.md) {
+                TransactionFormPrototypeCard(title: "Data") {
+                    prototypeDateSelector
+                }
+                TransactionFormPrototypeCard(title: "Hora") {
+                    prototypeTimeSelector
+                }
+            }
+        }
+
+        private var prototypeCompactDescriptionCard: some View {
+            TransactionFormPrototypeCard(title: "Descrição") {
+                prototypeDescriptionField
+            }
+            .frame(maxWidth: .infinity)
+        }
+
+        private var prototypeCompactAmountCard: some View {
+            TransactionFormPrototypeCard(title: "Valor") {
+                prototypeAmountField
+            }
+            .frame(width: 180)
+        }
+
+        private var prototypeDescriptionField: some View {
+            TransactionFormPrototypeTextField(
+                title: "Descrição",
+                placeholder: "Ex: almoço no restaurante",
+                text: $store.description
+            )
+        }
+
+        private var prototypeAmountField: some View {
+            TransactionFormPrototypeCurrencyField(
+                title: "Valor",
+                cents: $store.amountCents
+            )
+        }
+
+        private var prototypeAccountSelector: some View {
+            TransactionFormPrototypeOptionSelector(
+                title: "Conta",
+                subtitle: "Toque uma opção",
+                options: accountOptions,
+                selection: $store.accountId
+            )
+        }
+
+        private var prototypeCategorySelector: some View {
+            TransactionFormPrototypeOptionSelector(
+                title: "Categoria",
+                subtitle: "Escolha o tipo principal",
+                options: categoryOptions,
+                selection: $store.categoryId
+            )
+        }
+
+        private var prototypeSubcategorySelector: some View {
+            TransactionFormPrototypeOptionSelector(
+                title: "Subcategoria",
+                subtitle: "Opcional",
+                options: subcategoryOptions,
+                selection: $store.subcategoryId,
+                includesNoneOption: true,
+                noneOptionTitle: "Sem subcategoria"
+            )
+        }
+
+        private var prototypeDestinationSelector: some View {
+            TransactionFormPrototypeOptionSelector(
+                title: "Conta de destino",
+                subtitle: "Obrigatório para transferência",
+                options: destinationAccountOptions,
+                selection: $store.destinationAccountId,
+                includesNoneOption: true,
+                noneOptionTitle: "Selecionar depois"
+            )
+        }
+
+        private var prototypeRefundSelector: some View {
+            TransactionFormPrototypeOptionSelector(
+                title: "Compra original",
+                subtitle: "Origem do estorno",
+                options: refundablePurchaseOptions,
+                selection: $store.refundOfTransactionId,
+                includesNoneOption: true,
+                noneOptionTitle: "Não é estorno"
+            )
+        }
+
+        private var prototypeDateSelector: some View {
+            TransactionFormPrototypeDateSelector(
+                selection: $store.occurredAt,
+                calendar: .current,
+                quickActions: [
+                    .init(title: "Hoje", action: { setPrototypeDate(dayOffset: 0) }),
+                    .init(title: "Ontem", action: { setPrototypeDate(dayOffset: -1) }),
+                    .init(title: "7 dias", action: { setPrototypeDate(dayOffset: -7) }),
+                ]
+            )
+        }
+
+        private var prototypeTimeSelector: some View {
+            TransactionFormPrototypeTimeSelector(
+                selection: $store.occurredAt,
+                quickActions: [
+                    .init(title: "08:00", action: { setPrototypeTime(hour: 8, minute: 0) }),
+                    .init(title: "12:00", action: { setPrototypeTime(hour: 12, minute: 0) }),
+                    .init(title: "19:30", action: { setPrototypeTime(hour: 19, minute: 30) }),
+                ]
+            )
+        }
+
+        private var prototypeNotesField: some View {
+            TransactionFormPrototypeNotesField(text: $store.notes)
+        }
+
+        private var prototypeStatementPaymentSummary: some View {
+            TransactionFormPrototypeStatementSummary(items: prototypeStatementItems)
+        }
+
+        private var accountOptions: [TransactionFormPrototypeOption<UUID>] {
+            store.state.sourceAccountOptions.map { account in
+                .init(
+                    id: account.id,
+                    title: store.state.displayName(for: account),
+                    badge: account.type == .creditCard ? "Cartão" : "Conta"
                 )
             }
-            .padding(GranaTheme.Spacing.md)
-            .frame(maxWidth: .infinity, alignment: .leading)
-            .granaSurface(.subtle, cornerRadius: GranaTheme.Radius.card)
+        }
+
+        private var categoryOptions: [TransactionFormPrototypeOption<UUID>] {
+            store.state.rootCategories.map { category in
+                .init(
+                    id: category.id,
+                    title: category.name,
+                    badge: category.kind.displayName
+                )
+            }
+        }
+
+        private var subcategoryOptions: [TransactionFormPrototypeOption<UUID>] {
+            selectedSubcategories.map { category in
+                .init(id: category.id, title: category.name)
+            }
+        }
+
+        private var destinationAccountOptions: [TransactionFormPrototypeOption<UUID>] {
+            store.state.destinationAccountOptions.map { account in
+                .init(
+                    id: account.id,
+                    title: store.state.displayName(for: account),
+                    badge: account.type == .creditCard ? "Cartão" : "Conta"
+                )
+            }
+        }
+
+        private var refundablePurchaseOptions: [TransactionFormPrototypeOption<UUID>] {
+            store.state.refundablePurchases.map { purchase in
+                .init(
+                    id: purchase.id,
+                    title: purchase.description,
+                    badge: store.state.remainingRefundableAmount(for: purchase).formatted(.currency(code: "BRL"))
+                )
+            }
+        }
+
+        private var prototypeStatementItems: [TransactionFormPrototypeStatementItem] {
+            if store.state.automaticPaymentPreview.isEmpty {
+                return [.empty(message: "Nenhuma dívida elegível nessa data.")]
+            }
+
+            return store.state.automaticPaymentPreview.map { item in
+                .filled(
+                    title: statementPickerLabel(item.statement),
+                    value: item.amount.formatted(.currency(code: "BRL"))
+                )
+            }
         }
 
         private var prototypeSnapshot: TransactionFormPrototypeSnapshot {
@@ -685,6 +836,48 @@ struct TransactionFormView: View {
                 summary: "\(store.isEditing ? "Edição" : "Nova") · \(prototypeKindLabel) · \(store.amount.formatted(.currency(code: "BRL")))",
                 details: "\(prototypeAccountName) · \(prototypeCategoryName) · \(store.canSave ? "pronto para salvar" : "faltam campos")"
             )
+        }
+
+        private var prototypeDecorationData: TransactionFormPrototypeDecorationData {
+            TransactionFormPrototypeDecorationData(
+                title: store.description.trimmingCharacters(in: .whitespacesAndNewlines)
+                    .isEmpty ? "Nova transação" : store.description,
+                kindLabel: prototypeKindLabel,
+                kindColor: prototypeKindColor,
+                amountText: store.amount.formatted(.currency(code: "BRL")),
+                chips: [
+                    prototypeAccountName,
+                    prototypeCategoryName,
+                    store.occurredAt.formatted(date: .abbreviated, time: .omitted),
+                ],
+                stateRows: [
+                    .init(label: "Modo", value: store.isEditing ? "Edição" : "Nova"),
+                    .init(label: "Tipo", value: prototypeKindLabel),
+                    .init(label: "Conta", value: prototypeAccountName),
+                    .init(label: "Categoria", value: prototypeCategoryName),
+                    .init(label: "Valor", value: store.amount.formatted(.currency(code: "BRL"))),
+                    .init(label: "Salvar", value: store.canSave ? "Pronto" : "Incompleto"),
+                ]
+            )
+        }
+
+        private func setPrototypeDate(dayOffset: Int) {
+            guard let date = Calendar.current.date(byAdding: .day, value: dayOffset, to: Date()) else { return }
+            let current = store.occurredAt
+            var components = Calendar.current.dateComponents([.hour, .minute], from: current)
+            let dateComponents = Calendar.current.dateComponents([.year, .month, .day], from: date)
+            components.year = dateComponents.year
+            components.month = dateComponents.month
+            components.day = dateComponents.day
+            store.occurredAt = Calendar.current.date(from: components) ?? current
+        }
+
+        private func setPrototypeTime(hour: Int, minute: Int) {
+            let current = store.occurredAt
+            var components = Calendar.current.dateComponents([.year, .month, .day], from: current)
+            components.hour = hour
+            components.minute = minute
+            store.occurredAt = Calendar.current.date(from: components) ?? current
         }
 
         private var prototypeAccountName: String {
@@ -699,9 +892,7 @@ struct TransactionFormView: View {
                   let category = store.state.category(for: categoryId)
             else { return "Sem categoria" }
 
-            if let subcategoryId = store.subcategoryId,
-               let subcategory = store.state.category(for: subcategoryId)
-            {
+            if let subcategoryId = store.subcategoryId, let subcategory = store.state.category(for: subcategoryId) {
                 return "\(category.name) / \(subcategory.name)"
             }
             return category.name
@@ -739,50 +930,6 @@ struct TransactionFormView: View {
 
         private func showNextPrototypeVariant() {
             prototypeVariant = prototypeVariant.next
-        }
-
-        private func prototypePill(title: String) -> some View {
-            Text(title)
-                .font(GranaTheme.Typography.caption1)
-                .foregroundStyle(GranaTheme.Palette.ink)
-                .lineLimit(1)
-                .padding(.horizontal, GranaTheme.Spacing.sm)
-                .padding(.vertical, GranaTheme.Spacing.xs)
-                .background(
-                    Capsule()
-                        .fill(GranaTheme.Palette.paper)
-                )
-        }
-
-        private func prototypeStepHighlight(title: String, message: String) -> some View {
-            VStack(alignment: .leading, spacing: GranaTheme.Spacing.xxs) {
-                Text(title)
-                    .font(GranaTheme.Typography.caption1Emphasis)
-                    .foregroundStyle(GranaTheme.Palette.tealDeep)
-                Text(message)
-                    .font(GranaTheme.Typography.footnote)
-                    .foregroundStyle(GranaTheme.Palette.muted)
-                    .fixedSize(horizontal: false, vertical: true)
-            }
-            .padding(GranaTheme.Spacing.sm)
-            .frame(maxWidth: .infinity, alignment: .leading)
-            .background(
-                RoundedRectangle(cornerRadius: GranaTheme.Radius.control, style: .continuous)
-                    .fill(GranaTheme.Palette.paper)
-            )
-        }
-
-        private func prototypeSnapshotRow(label: String, value: String) -> some View {
-            HStack(alignment: .top, spacing: GranaTheme.Spacing.sm) {
-                Text(label)
-                    .font(GranaTheme.Typography.caption1)
-                    .foregroundStyle(GranaTheme.Palette.muted)
-                    .frame(width: 58, alignment: .leading)
-                Text(value)
-                    .font(GranaTheme.Typography.subheadlineEmphasis)
-                    .foregroundStyle(GranaTheme.Palette.ink)
-                    .fixedSize(horizontal: false, vertical: true)
-            }
         }
     #endif
 }
@@ -945,215 +1092,3 @@ private struct TransactionFormConfirmationOverlay: View {
         }
     }
 }
-
-#if DEBUG
-    private enum TransactionFormPrototypeVariant: String, CaseIterable, Identifiable {
-        case summary = "A"
-        case ledger = "B"
-        case workflow = "C"
-
-        var id: String {
-            rawValue
-        }
-
-        var name: String {
-            switch self {
-            case .summary:
-                "Resumo guiado"
-            case .ledger:
-                "Ficha contínua"
-            case .workflow:
-                "Fluxo com rail"
-            }
-        }
-
-        var displayTitle: String {
-            "\(rawValue) — \(name)"
-        }
-
-        var next: TransactionFormPrototypeVariant {
-            let variants = Self.allCases
-            guard let index = variants.firstIndex(of: self) else { return self }
-            return variants[(index + 1) % variants.count]
-        }
-
-        var previous: TransactionFormPrototypeVariant {
-            let variants = Self.allCases
-            guard let index = variants.firstIndex(of: self) else { return self }
-            return variants[(index - 1 + variants.count) % variants.count]
-        }
-    }
-
-    private struct TransactionFormPrototypeSnapshot {
-        let title: String
-        let summary: String
-        let details: String
-    }
-
-    private struct TransactionFormPrototypeSwitcher: View {
-        @Binding var variant: TransactionFormPrototypeVariant
-        let snapshot: TransactionFormPrototypeSnapshot
-        let onPrevious: () -> Void
-        let onNext: () -> Void
-
-        var body: some View {
-            HStack(spacing: GranaTheme.Spacing.sm) {
-                prototypeButton(
-                    systemImage: "arrow.left",
-                    title: "Variante anterior",
-                    action: onPrevious
-                )
-
-                VStack(alignment: .leading, spacing: GranaTheme.Spacing.xxs) {
-                    Text(snapshot.title)
-                        .font(GranaTheme.Typography.subheadlineEmphasis)
-                        .foregroundStyle(GranaTheme.Palette.ink)
-
-                    Text(snapshot.summary)
-                        .font(GranaTheme.Typography.caption1)
-                        .foregroundStyle(GranaTheme.Palette.muted)
-                        .lineLimit(1)
-
-                    Text(snapshot.details)
-                        .font(GranaTheme.Typography.caption2)
-                        .foregroundStyle(GranaTheme.Palette.muted)
-                        .lineLimit(1)
-                }
-                .frame(maxWidth: .infinity, alignment: .leading)
-
-                prototypeButton(
-                    systemImage: "arrow.right",
-                    title: "Próxima variante",
-                    action: onNext
-                )
-            }
-            .padding(.horizontal, GranaTheme.Spacing.md)
-            .padding(.vertical, GranaTheme.Spacing.sm)
-            .frame(maxWidth: 460, alignment: .leading)
-            .background(
-                Capsule(style: .continuous)
-                    .fill(GranaTheme.Palette.paperSolid.opacity(0.98))
-            )
-            .overlay(
-                Capsule(style: .continuous)
-                    .stroke(GranaTheme.Palette.line, lineWidth: 1)
-            )
-            .shadow(color: GranaTheme.Shadow.cardColor, radius: 18, x: 0, y: 8)
-            .background(
-                TransactionFormPrototypeKeyboardMonitor(
-                    onPrevious: onPrevious,
-                    onNext: onNext
-                )
-                .frame(width: 0, height: 0)
-            )
-            .accessibilityElement(children: .contain)
-            .accessibilityLabel("Seletor de variantes do protótipo")
-            .accessibilityValue(variant.displayTitle)
-        }
-
-        private func prototypeButton(
-            systemImage: String,
-            title: String,
-            action: @escaping () -> Void
-        ) -> some View {
-            Button(action: action) {
-                Image(systemName: systemImage)
-                    .font(.system(size: GranaTheme.IconSize.small, weight: .semibold))
-                    .foregroundStyle(GranaTheme.Palette.ink)
-                    .frame(width: 32, height: 32)
-                    .background(
-                        Circle()
-                            .fill(GranaTheme.Palette.background)
-                    )
-            }
-            .buttonStyle(.plain)
-            .help(title)
-            .accessibilityLabel(title)
-        }
-    }
-
-    #if canImport(AppKit)
-        private struct TransactionFormPrototypeKeyboardMonitor: NSViewRepresentable {
-            let onPrevious: () -> Void
-            let onNext: () -> Void
-
-            func makeCoordinator() -> Coordinator {
-                Coordinator(onPrevious: onPrevious, onNext: onNext)
-            }
-
-            func makeNSView(context: Context) -> NSView {
-                let view = NSView(frame: .zero)
-                context.coordinator.installMonitor()
-                return view
-            }
-
-            func updateNSView(_ nsView: NSView, context: Context) {
-                context.coordinator.onPrevious = onPrevious
-                context.coordinator.onNext = onNext
-            }
-
-            static func dismantleNSView(_ nsView: NSView, coordinator: Coordinator) {
-                coordinator.removeMonitor()
-            }
-
-            final class Coordinator {
-                var onPrevious: () -> Void
-                var onNext: () -> Void
-                private var monitor: Any?
-
-                init(
-                    onPrevious: @escaping () -> Void,
-                    onNext: @escaping () -> Void
-                ) {
-                    self.onPrevious = onPrevious
-                    self.onNext = onNext
-                }
-
-                func installMonitor() {
-                    guard monitor == nil else { return }
-
-                    monitor = NSEvent.addLocalMonitorForEvents(matching: .keyDown) { [weak self] event in
-                        guard let self else { return event }
-                        guard self.shouldHandle(event: event) else { return event }
-
-                        switch event.keyCode {
-                        case 123:
-                            onPrevious()
-                            return nil
-                        case 124:
-                            onNext()
-                            return nil
-                        default:
-                            return event
-                        }
-                    }
-                }
-
-                func removeMonitor() {
-                    guard let monitor else { return }
-                    NSEvent.removeMonitor(monitor)
-                    self.monitor = nil
-                }
-
-                private func shouldHandle(event: NSEvent) -> Bool {
-                    guard event.modifierFlags.intersection(.deviceIndependentFlagsMask).isEmpty else {
-                        return false
-                    }
-                    guard let responder = NSApp.keyWindow?.firstResponder else { return true }
-
-                    if let textView = responder as? NSTextView,
-                       textView.isEditable || textView.isFieldEditor
-                    {
-                        return false
-                    }
-
-                    if responder is NSTextField {
-                        return false
-                    }
-
-                    return true
-                }
-            }
-        }
-    #endif
-#endif

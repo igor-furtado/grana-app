@@ -24,14 +24,14 @@ struct TransactionsSnapshot {
 }
 
 struct TransactionsClient {
-    var loadSnapshot: @Sendable (_ query: TransactionsTableQuery) async throws -> TransactionsSnapshot
+    var loadSnapshot: @Sendable () async throws -> TransactionsSnapshot
     var create: @Sendable (_ input: TransactionMutationInput) async throws -> Void
     var update: @Sendable (_ transactionId: UUID, _ input: TransactionMutationInput) async throws -> Void
     var delete: @Sendable (_ transactionId: UUID) async throws -> Void
 
     static func live(container: AppContainer) -> TransactionsClient {
         TransactionsClient(
-            loadSnapshot: { query in
+            loadSnapshot: {
                 async let allTransactions = container.remoteTransactions.loadAll()
                 async let accountSnapshot = container.remoteAccounts.load()
                 async let statementSnapshot = container.remoteStatements.load()
@@ -44,16 +44,8 @@ struct TransactionsClient {
                     categoryCatalog,
                     institutionCatalog
                 )
-                let filteredTransactions = applyQuery(
-                    query,
-                    transactions: transactions,
-                    accounts: accounts.accounts,
-                    institutions: institutions,
-                    categories: categories
-                )
-
                 return TransactionsSnapshot(
-                    page: TransactionRemotePage(transactions: filteredTransactions, nextCursor: nil),
+                    page: TransactionRemotePage(transactions: transactions, nextCursor: nil),
                     accounts: accounts.accounts,
                     institutions: institutions,
                     bankDetails: accounts.bankDetails,
@@ -74,41 +66,11 @@ struct TransactionsClient {
             }
         )
     }
-
-    private static func applyQuery(
-        _ query: TransactionsTableQuery,
-        transactions: [Transaction],
-        accounts: [Account],
-        institutions: [Institution],
-        categories: [Category]
-    ) -> [Transaction] {
-        let accountById = Dictionary(uniqueKeysWithValues: accounts.map { ($0.id, $0) })
-        let institutionById = Dictionary(uniqueKeysWithValues: institutions.map { ($0.id, $0) })
-        let categoryById = Dictionary(uniqueKeysWithValues: categories.map { ($0.id, $0) })
-
-        return transactions
-            .filter { transaction in
-                query.matches(
-                    transaction,
-                    accountsById: accountById,
-                    categoriesById: categoryById
-                )
-            }
-            .sorted { lhs, rhs in
-                query.areInIncreasingOrder(
-                    lhs,
-                    rhs,
-                    accountsById: accountById,
-                    institutionsById: institutionById,
-                    categoriesById: categoryById
-                )
-            }
-    }
 }
 
 extension TransactionsClient: DependencyKey {
     static let liveValue = TransactionsClient(
-        loadSnapshot: { _ in
+        loadSnapshot: {
             TransactionsSnapshot(
                 page: .empty,
                 accounts: [],
