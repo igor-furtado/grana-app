@@ -25,7 +25,25 @@ struct SideDrawer<Content: View>: View {
                 content()
                     .frame(width: min(width, max(320, proxy.size.width - GranaTheme.Spacing.xl)))
                     .frame(maxHeight: .infinity)
-                    .granaSurface(.glass, cornerRadius: GranaTheme.Radius.hero)
+                    .background {
+                        GranaBackground()
+                            .clipShape(
+                                RoundedRectangle(
+                                    cornerRadius: GranaTheme.Radius.hero,
+                                    style: .continuous
+                                )
+                            )
+                    }
+                    .overlay {
+                        RoundedRectangle(cornerRadius: GranaTheme.Radius.hero, style: .continuous)
+                            .strokeBorder(GranaTheme.Palette.line, lineWidth: 1)
+                    }
+                    .shadow(
+                        color: GranaTheme.Shadow.cardColor,
+                        radius: 24,
+                        x: 0,
+                        y: 14
+                    )
                     .padding(.vertical, GranaTheme.Spacing.md)
                     .padding(.trailing, GranaTheme.Spacing.md)
                     .transition(drawerTransition)
@@ -40,7 +58,7 @@ struct SideDrawer<Content: View>: View {
 
     private var scrim: some View {
         Rectangle()
-            .fill(GranaTheme.Palette.ink.opacity(0.0))
+            .fill(GranaTheme.Palette.ink.opacity(0.22))
             .ignoresSafeArea()
             .contentShape(Rectangle())
             .onTapGesture(perform: onDismiss)
