@@ -151,14 +151,18 @@ private struct AuthenticatedShellView: View {
     @Binding var selectionRaw: String
     @State private var isImportDropTargeted = false
     @State private var shellStore: AppShellStore
-    @State private var accountStore: AccountStore
+    @State private var accountsFeatureStore: StoreOf<AccountsFeature>
     @State private var transactionsFeatureStore: StoreOf<TransactionsFeature>
     @State private var supportedInstitutionsFeatureStore: StoreOf<SupportedInstitutionsFeature>
 
     init(selectionRaw: Binding<String>, container: AppContainer) {
         _selectionRaw = selectionRaw
         _shellStore = State(initialValue: AppShellStore())
-        _accountStore = State(initialValue: AccountStore(container: container))
+        _accountsFeatureStore = State(initialValue: Store(initialState: AccountsFeature.State()) {
+            AccountsFeature()
+        } withDependencies: {
+            $0.accountsClient = .live(container: container)
+        })
         _transactionsFeatureStore = State(initialValue: Store(initialState: TransactionsFeature.State()) {
             TransactionsFeature()
         } withDependencies: {
@@ -254,7 +258,7 @@ private struct AuthenticatedShellView: View {
         case .creditCards:
             CreditCardsView(store: environment.creditCardsFeatureStore)
         case .accounts:
-            AccountsView(store: accountStore)
+            AccountsView(store: accountsFeatureStore)
         case .import:
             ImportHistoryView(store: environment.importFeatureStore)
         case .categories:
