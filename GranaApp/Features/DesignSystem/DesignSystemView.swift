@@ -1,6 +1,8 @@
 import SwiftUI
 
 struct DesignSystemView: View {
+    @State private var selectedSection: AtlasSection = .overview
+
     private let paletteTokens: [TokenRowModel] = [
         TokenRowModel(name: "background", value: "#f4f0e8", swatch: GranaTheme.Palette.background),
         TokenRowModel(name: "backgroundStart", value: "#f8f3e8", swatch: GranaTheme.Palette.backgroundStart),
@@ -38,11 +40,15 @@ struct DesignSystemView: View {
     var body: some View {
         VStack(spacing: GranaTheme.Spacing.sm) {
             FeatureScreenHeader(
-                title: "Design System"
+                title: "Design System",
+                subtitle: "Mapa vivo de tokens, componentes e exemplos para consultar o sistema sem perder a visão do todo."
             )
 
-            ScrollView {
-                content
+            ScrollViewReader { proxy in
+                ScrollView {
+                    content(scrollProxy: proxy)
+                        .padding(.bottom, GranaTheme.Spacing.lg)
+                }
             }
         }
         .background(.clear)
@@ -50,18 +56,17 @@ struct DesignSystemView: View {
         .toolbar(.hidden, for: .windowToolbar)
     }
 
-    private var detailColumns: [GridItem] {
-        [
-            GridItem(.adaptive(minimum: 430), spacing: GranaTheme.Spacing.md, alignment: .top),
-        ]
-    }
+    private var detailColumns: [GridItem] { [GridItem(.adaptive(minimum: 430), spacing: GranaTheme.Spacing.md, alignment: .top)] }
 
-    private var content: some View {
+    private var atlasColumns: [GridItem] { [GridItem(.adaptive(minimum: 280, maximum: 360), spacing: GranaTheme.Spacing.md, alignment: .top)] }
+
+    private func content(scrollProxy: ScrollViewProxy) -> some View {
         VStack(alignment: .leading, spacing: GranaTheme.Spacing.xxl) {
-            heroSection
-            foundationsSection
-            componentsSection
-            examplesSection
+            DesignSystemHeroCard()
+            ViewThatFits(in: .horizontal) {
+                atlasWideLayout(scrollProxy: scrollProxy)
+                atlasCompactLayout(scrollProxy: scrollProxy)
+            }
         }
     }
 
@@ -86,51 +91,99 @@ struct DesignSystemView: View {
         ]
     }
 
-    private var heroSection: some View {
-        VStack(alignment: .leading, spacing: GranaTheme.Spacing.lg) {
-            DesignSystemHeroCard()
+    private func atlasWideLayout(scrollProxy: ScrollViewProxy) -> some View {
+        HStack(alignment: .top, spacing: GranaTheme.Spacing.md) {
+            AtlasNavigationCard(
+                selectedSection: $selectedSection,
+                sections: AtlasSection.allCases
+            ) { section in
+                scrollToSection(section, using: scrollProxy)
+            }
+            .frame(width: 280)
 
-            HStack(alignment: .top, spacing: GranaTheme.Spacing.md) {
+            atlasSections
+        }
+    }
+
+    private func atlasCompactLayout(scrollProxy: ScrollViewProxy) -> some View {
+        VStack(alignment: .leading, spacing: GranaTheme.Spacing.md) {
+            AtlasNavigationCard(
+                selectedSection: $selectedSection,
+                sections: AtlasSection.allCases
+            ) { section in
+                scrollToSection(section, using: scrollProxy)
+            }
+
+            atlasSections
+        }
+    }
+
+    private var atlasSections: some View {
+        VStack(alignment: .leading, spacing: GranaTheme.Spacing.xl) {
+            overviewSection
+                .id(AtlasSection.overview)
+            foundationsSection
+                .id(AtlasSection.foundations)
+            componentsSection
+                .id(AtlasSection.components)
+            examplesSection
+                .id(AtlasSection.examples)
+        }
+    }
+
+    private var overviewSection: some View {
+        AtlasSectionContainer(
+            eyebrow: AtlasSection.overview.eyebrow,
+            title: "Comece pelo mapa, depois aprofunde onde precisar.",
+            subtitle: """
+            A tela funciona melhor quando deixa claro como consultar o sistema:
+            primeiro visão geral, depois biblioteca de fundamentos, depois componentes
+            e por fim prova em telas reais.
+            """
+        ) {
+            LazyVGrid(columns: atlasColumns, alignment: .leading, spacing: GranaTheme.Spacing.md) {
                 DesignSystemCard(
-                    eyebrow: "Leitura",
-                    title: "Amostra tipográfica",
-                    subtitle: "Como texto, dinheiro e código convivem na mesma superfície."
+                    eyebrow: "Fluxo",
+                    title: "Como ler esta tela",
+                    subtitle: "Um nível de informação por bloco para evitar uma parede homogênea de showcases."
                 ) {
-                    TypographyComparisonSample()
+                    AtlasReadingPath()
                 }
-
                 DesignSystemCard(
                     eyebrow: "Resumo",
                     title: "Princípios visuais",
-                    subtitle: "O shell usa glass; conteúdo usa papel quente, tinta escura e acento teal."
+                    subtitle: "O shell usa glass; o conteúdo usa papel quente, hierarquia tipográfica e semântica explícita."
                 ) {
                     DesignSystemPrinciplesSummary()
                 }
-                .frame(width: 320)
+                DesignSystemCard(
+                    eyebrow: "Amostra",
+                    title: "Texto, dinheiro e código",
+                    subtitle: "Uma prévia rápida da convivência entre estilos antes de abrir as tabelas completas."
+                ) {
+                    TypographyComparisonSample()
+                }
             }
         }
     }
 
     private var foundationsSection: some View {
-        VStack(alignment: .leading, spacing: GranaTheme.Spacing.md) {
-            DesignSystemSectionHeader(
-                eyebrow: "Fundamentos",
-                title: "Tokens e superfícies",
-                subtitle: "Paleta, semântica, tipografia, spacing, raios e profundidade visual."
-            )
-
+        AtlasSectionContainer(
+            eyebrow: AtlasSection.foundations.eyebrow,
+            title: "Fundamentos como biblioteca consultável.",
+            subtitle: "Paleta, semântica, matéria visual, tipografia, spacing e raios ficam agrupados por função para consulta rápida."
+        ) {
             HStack(alignment: .top, spacing: GranaTheme.Spacing.md) {
                 DesignSystemCard(
                     eyebrow: "Cor",
                     title: "Paleta e estados",
-                    subtitle: "Marca, significado financeiro e feedback ficam separados."
+                    subtitle: "Marca, significado financeiro e feedback continuam separados."
                 ) {
                     VStack(spacing: GranaTheme.Spacing.md) {
                         TokenTable(tokens: paletteTokens)
                         SemanticStateTable(tokens: semanticTokens)
                     }
                 }
-
                 DesignSystemCard(
                     eyebrow: "Matéria",
                     title: "Camadas de profundidade",
@@ -145,11 +198,13 @@ struct DesignSystemView: View {
                 DesignSystemCard(
                     eyebrow: "Tipo",
                     title: "Escala tipográfica",
-                    subtitle: "Tokens textuais, monetários e de código."
+                    subtitle: "Tokens textuais, monetários e de código com amostra direta de uso."
                 ) {
-                    TypographyTable(tokens: GranaTheme.Typography.tokens)
+                    VStack(spacing: GranaTheme.Spacing.md) {
+                        TypographyComparisonSample()
+                        TypographyTable(tokens: GranaTheme.Typography.tokens)
+                    }
                 }
-
                 DesignSystemCard(
                     eyebrow: "Ritmo",
                     title: "Spacing",
@@ -170,50 +225,47 @@ struct DesignSystemView: View {
     }
 
     private var componentsSection: some View {
-        VStack(alignment: .leading, spacing: GranaTheme.Spacing.md) {
-            DesignSystemSectionHeader(
-                eyebrow: "Componentes",
-                title: "Controles e feedback",
-                subtitle: "Botões, estados vazios e notices no vocabulário final do app."
-            )
-
-            HStack(alignment: .top, spacing: GranaTheme.Spacing.md) {
+        AtlasSectionContainer(
+            eyebrow: AtlasSection.components.eyebrow,
+            title: "Componentes organizados por responsabilidade.",
+            subtitle: "Em vez de um inventário linear, a leitura separa estrutura, ações e feedback para mostrar o papel de cada bloco no sistema."
+        ) {
+            LazyVGrid(columns: atlasColumns, alignment: .leading, spacing: GranaTheme.Spacing.md) {
+                DesignSystemCard(
+                    eyebrow: "Estrutura",
+                    title: "Shell e leitura",
+                    subtitle: "Os componentes estruturais definem enquadramento, não disputam atenção com os showcases."
+                ) {
+                    AtlasStructureSummary()
+                }
                 DesignSystemCard(
                     eyebrow: "Ações",
-                    title: "Botões",
+                    title: "Botões e affordance",
                     subtitle: "Primário e secundário no papel do app, sem cair em visual genérico."
                 ) {
                     ButtonsShowcase()
                 }
-                .frame(width: 320)
 
                 DesignSystemCard(
                     eyebrow: "Feedback",
-                    title: "Notice overlay",
-                    subtitle: "Toasts e mensagens flutuantes com contraste suficiente."
+                    title: "Notices e estados vazios",
+                    subtitle: "Mensagens temporárias e ausência de dados precisam manter contraste e direção."
                 ) {
-                    NoticeOverlayShowcase(notices: sampleNotices)
+                    VStack(spacing: GranaTheme.Spacing.md) {
+                        NoticeOverlayShowcase(notices: sampleNotices)
+                        EmptyStatesShowcase()
+                    }
                 }
-            }
-
-            DesignSystemCard(
-                eyebrow: "Vazio",
-                title: "Empty states",
-                subtitle: "Estados amplos e positivos, com tipografia e iconografia coerentes."
-            ) {
-                EmptyStatesShowcase()
             }
         }
     }
 
     private var examplesSection: some View {
-        VStack(alignment: .leading, spacing: GranaTheme.Spacing.md) {
-            DesignSystemSectionHeader(
-                eyebrow: "Aplicação",
-                title: "Exemplos completos",
-                subtitle: "Como os fundamentos escalam para dashboard e leitura de transações."
-            )
-
+        AtlasSectionContainer(
+            eyebrow: AtlasSection.examples.eyebrow,
+            title: "Exemplos no fim como prova de escala.",
+            subtitle: "Dashboard e transações fecham a leitura mostrando como os fundamentos se comportam em telas reais e mais densas."
+        ) {
             DesignSystemCard(
                 eyebrow: "Painel",
                 title: "Dashboard",
@@ -229,6 +281,13 @@ struct DesignSystemView: View {
             ) {
                 TransactionsTableExample()
             }
+        }
+    }
+
+    private func scrollToSection(_ section: AtlasSection, using proxy: ScrollViewProxy) {
+        selectedSection = section
+        withAnimation(.easeInOut(duration: 0.22)) {
+            proxy.scrollTo(section, anchor: .top)
         }
     }
 }
@@ -322,15 +381,17 @@ private struct DesignSystemHeroCard: View {
                         .font(GranaTheme.Typography.largeTitle)
                         .foregroundStyle(GranaTheme.Palette.ink)
                     Text(
-                        "Painel quente, analítico e light-only. O objetivo aqui é validar matéria, contraste, densidade e hierarquia antes de espalhar padrões pelas features."
+                        """
+                        Mapa vivo do sistema visual. A leitura começa pelo panorama,
+                        aprofunda fundamentos e componentes em blocos consultáveis e
+                        termina com provas em telas reais.
+                        """
                     )
                     .font(GranaTheme.Typography.body)
                     .foregroundStyle(GranaTheme.Palette.muted)
                     .fixedSize(horizontal: false, vertical: true)
                 }
-
                 Spacer(minLength: GranaTheme.Spacing.lg)
-
                 VStack(alignment: .trailing, spacing: GranaTheme.Spacing.sm) {
                     Text("ink -> teal")
                         .font(GranaTheme.Typography.code)
@@ -347,12 +408,38 @@ private struct DesignSystemHeroCard: View {
                     .clipShape(Capsule(style: .continuous))
                 }
             }
-
             HStack(spacing: GranaTheme.Spacing.sm) {
                 HeroBadge(label: "Light only", tint: GranaTheme.Palette.gold)
                 HeroBadge(label: "Glass no shell", tint: GranaTheme.Palette.teal)
                 HeroBadge(label: "Paper no conteúdo", tint: GranaTheme.Palette.green)
                 HeroBadge(label: "Teal != receita", tint: GranaTheme.Palette.red)
+            }
+            LazyVGrid(
+                columns: [
+                    GridItem(.adaptive(minimum: 200), spacing: GranaTheme.Spacing.sm),
+                ],
+                spacing: GranaTheme.Spacing.sm
+            ) {
+                AtlasHighlightCard(
+                    eyebrow: "Mapa",
+                    value: "4 camadas",
+                    subtitle: "Visão geral, fundamentos, componentes e aplicação."
+                )
+                AtlasHighlightCard(
+                    eyebrow: "Meta",
+                    value: "Consulta curta",
+                    subtitle: "Cada grupo responde uma pergunta clara sobre o sistema."
+                )
+                AtlasHighlightCard(
+                    eyebrow: "Risco evitado",
+                    value: "Mesmo peso visual",
+                    subtitle: "Showcases não entram todos na mesma altura de leitura."
+                )
+                AtlasHighlightCard(
+                    eyebrow: "Decisão",
+                    value: "Atlas",
+                    subtitle: "Índice, panorama e blocos por função."
+                )
             }
         }
         .padding(GranaTheme.Spacing.xl)
@@ -372,6 +459,41 @@ private struct DesignSystemHeroCard: View {
             RoundedRectangle(cornerRadius: GranaTheme.Radius.hero, style: .continuous)
                 .stroke(GranaTheme.Palette.line, lineWidth: 1)
         }
+    }
+}
+
+private struct AtlasSectionContainer<Content: View>: View {
+    let eyebrow: String
+    let title: String
+    let subtitle: String
+    let content: () -> Content
+
+    init(
+        eyebrow: String,
+        title: String,
+        subtitle: String,
+        @ViewBuilder content: @escaping () -> Content
+    ) {
+        self.eyebrow = eyebrow
+        self.title = title
+        self.subtitle = subtitle
+        self.content = content
+    }
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: GranaTheme.Spacing.md) {
+            DesignSystemSectionHeader(
+                eyebrow: eyebrow,
+                title: title,
+                subtitle: subtitle
+            )
+            VStack(alignment: .leading, spacing: GranaTheme.Spacing.md) {
+                content()
+            }
+        }
+        .padding(GranaTheme.Spacing.lg)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .granaSurface(.subtle, cornerRadius: GranaTheme.Radius.hero)
     }
 }
 
@@ -423,6 +545,214 @@ private struct DesignSystemPrinciplesSummary: View {
         }
         .padding(GranaTheme.Spacing.md)
         .tableSurface()
+    }
+}
+
+private struct AtlasReadingPath: View {
+    private let rows = [
+        ("1", "Panorama", "Entender rapidamente o que a tela cobre e em que ordem consultar."),
+        ("2", "Fundamentos", "Localizar tokens e regras sem ter que percorrer exemplos completos."),
+        ("3", "Componentes", "Ver estrutura, ações e feedback com papéis claros."),
+        ("4", "Aplicação", "Confirmar densidade e consistência em dashboard e transações."),
+    ]
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: GranaTheme.Spacing.sm) {
+            ForEach(rows, id: \.0) { row in
+                HStack(alignment: .top, spacing: GranaTheme.Spacing.sm) {
+                    Text(row.0)
+                        .font(GranaTheme.Typography.footnoteEmphasis)
+                        .foregroundStyle(GranaTheme.Palette.creamText)
+                        .frame(width: 24, height: 24)
+                        .background(
+                            LinearGradient(
+                                colors: [GranaTheme.Palette.ink, GranaTheme.Palette.teal],
+                                startPoint: .topLeading,
+                                endPoint: .bottomTrailing
+                            ),
+                            in: Circle()
+                        )
+
+                    VStack(alignment: .leading, spacing: GranaTheme.Spacing.xxs) {
+                        Text(row.1)
+                            .font(GranaTheme.Typography.subheadlineEmphasis)
+                            .foregroundStyle(GranaTheme.Palette.ink)
+                        Text(row.2)
+                            .font(GranaTheme.Typography.caption1)
+                            .foregroundStyle(GranaTheme.Palette.muted)
+                            .fixedSize(horizontal: false, vertical: true)
+                    }
+                }
+                if row.0 != rows.last?.0 {
+                    TableDivider()
+                        .padding(.leading, GranaTheme.Spacing.none)
+                }
+            }
+        }
+        .padding(GranaTheme.Spacing.md)
+        .tableSurface()
+    }
+}
+
+private struct AtlasStructureSummary: View {
+    private let rows = [
+        ("FeatureScreenHeader", "Enquadra a tela e declara o contexto antes do catálogo."),
+        ("Mapa de leitura", "Permite consulta não linear sem perder a estrutura global."),
+        ("DesignSystemCard", "Agrupa amostras e regras sem virar uma grade homogênea."),
+        ("Section container", "Separa visão geral, fundamentos, componentes e aplicação."),
+    ]
+
+    var body: some View {
+        VStack(spacing: GranaTheme.Spacing.none) {
+            ForEach(Array(rows.enumerated()), id: \.element.0) { index, row in
+                HStack(spacing: GranaTheme.Spacing.sm) {
+                    TableText(primary: row.0, secondary: row.1)
+                }
+                .tableRowContent()
+                if index < rows.count - 1 {
+                    TableDivider()
+                }
+            }
+        }
+        .tableSurface()
+    }
+}
+
+private struct AtlasHighlightCard: View {
+    let eyebrow: String
+    let value: String
+    let subtitle: String
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: GranaTheme.Spacing.xs) {
+            Text(eyebrow)
+                .font(GranaTheme.Typography.caption1Emphasis)
+                .foregroundStyle(GranaTheme.Palette.tealDeep)
+            Text(value)
+                .font(GranaTheme.Typography.title3)
+                .foregroundStyle(GranaTheme.Palette.ink)
+            Text(subtitle)
+                .font(GranaTheme.Typography.caption1)
+                .foregroundStyle(GranaTheme.Palette.muted)
+                .fixedSize(horizontal: false, vertical: true)
+        }
+        .padding(GranaTheme.Spacing.md)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(
+            GranaTheme.Palette.paper.opacity(0.80),
+            in: RoundedRectangle(cornerRadius: GranaTheme.Radius.card, style: .continuous)
+        )
+        .overlay {
+            RoundedRectangle(cornerRadius: GranaTheme.Radius.card, style: .continuous)
+                .stroke(GranaTheme.Palette.line, lineWidth: 1)
+        }
+    }
+}
+
+private struct AtlasNavigationCard: View {
+    @Binding var selectedSection: AtlasSection
+    let sections: [AtlasSection]
+    let onSelect: (AtlasSection) -> Void
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: GranaTheme.Spacing.md) {
+            VStack(alignment: .leading, spacing: GranaTheme.Spacing.xs) {
+                Text("Mapa")
+                    .font(GranaTheme.Typography.caption1Emphasis)
+                    .foregroundStyle(GranaTheme.Palette.tealDeep)
+                Text("Atlas da tela")
+                    .font(GranaTheme.Typography.headline)
+                    .foregroundStyle(GranaTheme.Palette.ink)
+                Text("Use como índice: cada bloco responde uma pergunta diferente sobre o sistema.")
+                    .font(GranaTheme.Typography.caption1)
+                    .foregroundStyle(GranaTheme.Palette.muted)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+            VStack(alignment: .leading, spacing: GranaTheme.Spacing.xs) {
+                ForEach(sections) { section in
+                    Button {
+                        onSelect(section)
+                    } label: {
+                        AtlasNavigationRow(
+                            section: section,
+                            isSelected: selectedSection == section
+                        )
+                    }
+                    .buttonStyle(.plain)
+                }
+            }
+        }
+        .padding(GranaTheme.Spacing.md)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .granaSurface(.solid, cornerRadius: GranaTheme.Radius.card)
+    }
+}
+
+private struct AtlasNavigationRow: View {
+    let section: AtlasSection
+    let isSelected: Bool
+
+    var body: some View {
+        HStack(alignment: .top, spacing: GranaTheme.Spacing.sm) {
+            Circle()
+                .fill(isSelected ? GranaTheme.Palette.teal : GranaTheme.Palette.line)
+                .frame(width: 10, height: 10)
+                .padding(.top, GranaTheme.Spacing.xxs)
+
+            VStack(alignment: .leading, spacing: GranaTheme.Spacing.xxs) {
+                Text(section.eyebrow)
+                    .font(GranaTheme.Typography.subheadlineEmphasis)
+                    .foregroundStyle(isSelected ? GranaTheme.Palette.ink : GranaTheme.Palette.muted)
+                Text(section.summary)
+                    .font(GranaTheme.Typography.caption1)
+                    .foregroundStyle(GranaTheme.Palette.muted)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+            Spacer(minLength: GranaTheme.Spacing.none)
+        }
+        .padding(.horizontal, GranaTheme.Spacing.sm)
+        .padding(.vertical, GranaTheme.Spacing.sm)
+        .background(
+            isSelected ? GranaTheme.Palette.teal.opacity(0.10) : GranaTheme.Palette.soft,
+            in: RoundedRectangle(cornerRadius: GranaTheme.Radius.control, style: .continuous)
+        )
+    }
+}
+
+private enum AtlasSection: String, CaseIterable, Identifiable {
+    case overview
+    case foundations
+    case components
+    case examples
+
+    var id: String {
+        rawValue
+    }
+
+    var eyebrow: String {
+        switch self {
+        case .overview:
+            "Visão geral"
+        case .foundations:
+            "Fundamentos"
+        case .components:
+            "Componentes"
+        case .examples:
+            "Aplicação"
+        }
+    }
+
+    var summary: String {
+        switch self {
+        case .overview:
+            "Como usar a tela e em que ordem ler."
+        case .foundations:
+            "Tokens, superfícies, tipografia, spacing e raios."
+        case .components:
+            "Estrutura, ações, feedback e estados vazios."
+        case .examples:
+            "Dashboard e transações como prova final."
+        }
     }
 }
 
