@@ -56,8 +56,6 @@ struct CreditCardStatementsView: View {
         }
     }
 
-    // MARK: - Transactions block
-
     private var transactionsBlock: some View {
         VStack(alignment: .leading, spacing: GranaTheme.Spacing.xs) {
             HStack {
@@ -80,8 +78,6 @@ struct CreditCardStatementsView: View {
                     )
                 }
             } else {
-                // Fatura projetada (não persistida) ou nenhuma seleção:
-                // não há transações pra listar.
                 emptyTransactions
             }
         }
@@ -141,11 +137,6 @@ struct CreditCardStatementsView: View {
     }
 }
 
-// MARK: - Limit gauge block
-
-/// Bloco do tipo "Limite utilizado: R$ X de R$ Y" + barra horizontal.
-/// Reaproveita as mesmas thresholds (30/70%) usadas no resto da feature
-/// pra que verde/amarelo/vermelho tenham significado consistente.
 private struct LimitGaugeBlock: View {
     let used: Decimal
     let limit: Decimal
@@ -227,17 +218,6 @@ private struct LimitGaugeBlock: View {
     }
 }
 
-// MARK: - Timeline chart
-
-/// Barras de faturas no tempo. Cada barra é uma Statement (real ou
-/// projetada). Clicar muda `selectedId`. Cores:
-/// - Paga: cinza claro
-/// - Aberta: cor de destaque (accent)
-/// - Projetada (sem dados): cinza pontilhado simulado via opacidade reduzida
-///
-/// **Por que não usa `Chart` com series e legend:** as bandeiras semânticas
-/// (paga/aberta/projetada) viram cor por barra, não uma legenda compartilhada
-/// — fica mais limpo configurar `foregroundStyle` por item.
 private struct StatementTimelineChart: View {
     let statements: [Statement]
     let projections: [StatementWindow]
@@ -298,10 +278,6 @@ private struct StatementTimelineChart: View {
             Text("Faturas")
                 .font(GranaTheme.Typography.headline)
 
-            // Versão custom (HStack de retângulos) em vez de Swift Charts
-            // BarMark porque precisamos de cor diferente por barra E hit
-            // testing individual pra seleção — combinação onde o `Chart`
-            // fica mais verbosa que vale a pena nesse caso.
             HStack(alignment: .bottom, spacing: GranaTheme.Spacing.md) {
                 ForEach(bars) { bar in
                     BarColumn(
@@ -376,9 +352,6 @@ private struct StatementTimelineChart: View {
             }
         }
 
-        /// Altura proporcional ao maior valor dentro do bloco. Faturas
-        /// projetadas (total = 0) ganham um stub mínimo (8pt) pra ficarem
-        /// visíveis e clicáveis mesmo zeradas — caso contrário sumiriam.
         private func fillHeight(in available: CGFloat) -> CGFloat {
             let total = NSDecimalNumber(decimal: bar.total).doubleValue
             let max = NSDecimalNumber(decimal: maxTotal).doubleValue
@@ -389,19 +362,11 @@ private struct StatementTimelineChart: View {
     }
 }
 
-// MARK: - Cycle panel (3 columns)
-
-/// Trio de cards "anterior / atual / próxima" centrado na fatura selecionada.
-/// Caixa central com borda colorida — espelha o destaque do Inter pra fatura
-/// em aberto. Quando a seleção está numa borda (primeira ou última fatura),
-/// o card daquele lado fica vazio em vez de mostrar fatura aleatória.
 private struct StatementCyclePanel: View {
     let statements: [Statement]
     let projections: [StatementWindow]
     @Binding var selectedId: UUID?
     let currency: String
-    /// Dia "ideal" pra fazer uma compra (fechamento + 1) — só faz sentido
-    /// pra fatura em aberto.
     let bestPurchaseDay: Int?
     let onEditDates: (UUID) -> Void
 
@@ -413,20 +378,10 @@ private struct StatementCyclePanel: View {
         }
     }
 
-    // MARK: - Item resolution
-
     private enum CycleItem {
         case statement(Statement)
         case projection(StatementWindow)
         case none
-
-        var closingDate: Date? {
-            switch self {
-            case let .statement(s): return s.closingDate
-            case let .projection(w): return w.closingDate
-            case .none: return nil
-            }
-        }
 
         var dueDate: Date? {
             switch self {
@@ -437,9 +392,6 @@ private struct StatementCyclePanel: View {
         }
     }
 
-    /// Lista unificada (statements + projeções) ordenada por closingDate.
-    /// `selectedId` só aponta pra Statement real — projeções não são
-    /// selecionáveis.
     private var ordered: [CycleItem] {
         var items: [CycleItem] = statements.map { .statement($0) }
         items.append(contentsOf: projections.map { .projection($0) })
@@ -470,8 +422,6 @@ private struct StatementCyclePanel: View {
         guard let idx = selectedIndex, idx + 1 < ordered.count else { return .none }
         return ordered[idx + 1]
     }
-
-    // MARK: - Cell rendering
 
     private enum Role {
         case previous, selected, next
@@ -513,7 +463,6 @@ private struct StatementCyclePanel: View {
                 onEditDates: nil
             )
         case .none:
-            // Slot vazio com mesma largura pra manter o trio alinhado.
             Color.clear
                 .frame(maxWidth: .infinity)
                 .frame(minHeight: 120)
@@ -533,9 +482,6 @@ private struct StatementCyclePanel: View {
     }
 }
 
-/// Card individual do trio de ciclo. Visual segue o padrão do Inter:
-/// header com mês + badge de status, total grande, data de vencimento e —
-/// quando é a fatura em aberto — o "melhor dia de compra".
 private struct StatementCycleCard: View {
     let title: String
     let amount: Decimal
@@ -668,109 +614,5 @@ private struct StatementCycleCard: View {
             case .neutral: return Color.secondary
             }
         }
-    }
-}
-
-private struct StatementDateEditorView: View {
-    @Bindable var store: StoreOf<StatementDateEditorFeature>
-
-    var body: some View {
-        ZStack {
-            GranaBackground()
-
-            VStack(alignment: .leading, spacing: GranaTheme.Spacing.xl) {
-                header
-                dateFields
-                explanatoryText
-                Spacer(minLength: GranaTheme.Spacing.none)
-                actions
-            }
-            .padding(GranaTheme.Spacing.xl)
-        }
-        .toolbar(.hidden, for: .windowToolbar)
-        .frame(minWidth: 520, idealWidth: 520, maxWidth: 520, minHeight: 320)
-        .environment(\.timeZone, TimeZone(secondsFromGMT: 0) ?? .current)
-    }
-
-    private var header: some View {
-        VStack(alignment: .leading, spacing: GranaTheme.Spacing.xs) {
-            Text(store.title)
-                .font(GranaTheme.Typography.title3)
-                .foregroundStyle(GranaTheme.Palette.ink)
-
-            Text("Datas próprias desta fatura")
-                .font(GranaTheme.Typography.callout)
-                .foregroundStyle(GranaTheme.Palette.muted)
-        }
-    }
-
-    private var dateFields: some View {
-        VStack(spacing: GranaTheme.Spacing.none) {
-            dateRow("Data de fechamento", selection: $store.closingDate)
-
-            Divider()
-                .overlay(GranaTheme.Palette.line)
-
-            dateRow("Data de vencimento", selection: $store.dueDate)
-        }
-        .padding(.horizontal, GranaTheme.Spacing.md)
-        .granaSurface(.solid, cornerRadius: GranaTheme.Radius.card)
-    }
-
-    private var explanatoryText: some View {
-        HStack(alignment: .top, spacing: GranaTheme.Spacing.sm) {
-            Image(systemName: AppIcon.info.systemImage)
-                .font(.system(size: GranaTheme.IconSize.small))
-                .foregroundStyle(GranaTheme.Palette.amber)
-                .padding(.top, GranaTheme.Spacing.xxs)
-
-            Text(
-                "Alterar o fechamento realoca compras e estornos entre faturas. Pagamentos permanecem na fatura onde foram registrados."
-            )
-            .font(GranaTheme.Typography.callout)
-            .foregroundStyle(GranaTheme.Palette.muted)
-        }
-    }
-
-    private var actions: some View {
-        HStack(spacing: GranaTheme.Spacing.sm) {
-            Spacer(minLength: GranaTheme.Spacing.none)
-
-            Button("Cancelar") {
-                store.send(.cancelButtonTapped)
-            }
-            .buttonStyle(GranaSecondaryButtonStyle())
-            .disabled(store.isSaving)
-
-            Button {
-                store.send(.saveButtonTapped)
-            } label: {
-                if store.isSaving {
-                    ProgressView()
-                        .controlSize(.small)
-                        .frame(minWidth: 88)
-                } else {
-                    Text("Salvar datas")
-                        .frame(minWidth: 88)
-                }
-            }
-            .buttonStyle(GranaPrimaryButtonStyle())
-            .disabled(store.isSaving)
-        }
-    }
-
-    private func dateRow(_ title: String, selection: Binding<Date>) -> some View {
-        HStack(spacing: GranaTheme.Spacing.md) {
-            Text(title)
-                .font(GranaTheme.Typography.bodyEmphasis)
-                .foregroundStyle(GranaTheme.Palette.ink)
-
-            Spacer(minLength: GranaTheme.Spacing.md)
-
-            DatePicker("", selection: selection, displayedComponents: .date)
-                .labelsHidden()
-                .disabled(store.isSaving)
-        }
-        .padding(.vertical, GranaTheme.Spacing.md)
     }
 }
