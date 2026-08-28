@@ -36,8 +36,14 @@ struct DesignSystemView: View {
     ]
 
     var body: some View {
-        ScrollView {
-            content
+        VStack(spacing: GranaTheme.Spacing.sm) {
+            FeatureScreenHeader(
+                title: "Design System"
+            )
+
+            ScrollView {
+                content
+            }
         }
         .background(.clear)
         .navigationTitle("")
