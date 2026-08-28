@@ -23,7 +23,6 @@ struct TransactionFormFeature {
         var categoryId: UUID?
         var subcategoryId: UUID?
         var destinationAccountId: UUID?
-        var refundOfTransactionId: UUID?
         var notes = ""
         var saveError: String?
         var isSaving = false
@@ -62,7 +61,6 @@ struct TransactionFormFeature {
                 self.categoryId = existing.categoryId
                 self.subcategoryId = existing.subcategoryId
                 self.destinationAccountId = existing.destinationAccountId
-                self.refundOfTransactionId = existing.refundOfTransactionId
                 self.notes = existing.notes ?? ""
             } else {
                 self.accountId = accounts.first?.id
@@ -110,13 +108,6 @@ struct TransactionFormFeature {
             let invalidTransfer = selectedCategoryKind == .transfer && destinationAccountId == accountId
             if invalidTransfer {
                 return false
-            }
-
-            if let refundOfTransactionId {
-                let purchase = refundablePurchases.first { $0.id == refundOfTransactionId }
-                if let purchase, amount > remainingRefundableAmount(for: purchase) {
-                    return false
-                }
             }
 
             return true
@@ -180,14 +171,6 @@ struct TransactionFormFeature {
             return creditCards.first { $0.accountId == accountId }
         }
 
-        var refundablePurchases: [Transaction] {
-            refundablePurchases(
-                accountId: accountId,
-                occurredAt: occurredAt,
-                excluding: existing?.id
-            )
-        }
-
         var automaticPaymentPreview: [(statement: Statement, amount: Decimal)] {
             guard let destinationAccountId else { return [] }
             return automaticPaymentPreview(
@@ -218,14 +201,6 @@ struct TransactionFormFeature {
                             + "Pagamentos já registrados em outras faturas não serão redistribuídos."
                     )
             }
-            if let existing {
-                let linkedRefunds = transactions.filter {
-                    $0.refundOfTransactionId == existing.id
-                }.count
-                if linkedRefunds > 0 {
-                    effects.append("\(linkedRefunds) estorno(s) vinculado(s) serão revalidados.")
-                }
-            }
             return effects.joined(separator: "\n")
         }
 
@@ -252,13 +227,6 @@ struct TransactionFormFeature {
 
         func remainingAmount(of statement: Statement) -> Decimal {
             statement.remainingAmount
-        }
-
-        func remainingRefundableAmount(for purchase: Transaction) -> Decimal {
-            let refunded = transactions
-                .filter { $0.refundOfTransactionId == purchase.id }
-                .reduce(Decimal(0)) { $0 + $1.amount }
-            return max(0, purchase.amount - refunded)
         }
 
         func automaticPaymentPreview(
@@ -295,17 +263,13 @@ struct TransactionFormFeature {
                 occurredAt: occurredAt,
                 description: description,
                 notes: trimmedNotes.isEmpty ? nil : trimmedNotes,
-                destinationAccountId: selectedCategoryKind == .transfer ? destinationAccountId : nil,
-                refundOfTransactionId: refundOfTransactionId
+                destinationAccountId: selectedCategoryKind == .transfer ? destinationAccountId : nil
             )
         }
 
         mutating func accountSelectionChanged() {
             if destinationAccountId == accountId {
                 destinationAccountId = nil
-            }
-            if !refundablePurchases.contains(where: { $0.id == refundOfTransactionId }) {
-                refundOfTransactionId = nil
             }
         }
 
@@ -314,31 +278,6 @@ struct TransactionFormFeature {
             if selectedCategoryKind != .transfer {
                 destinationAccountId = nil
             }
-        }
-
-        mutating func refundSelectionChanged() {
-            guard let purchase = refundablePurchases.first(where: { $0.id == refundOfTransactionId })
-            else { return }
-            categoryId = purchase.categoryId
-            subcategoryId = purchase.subcategoryId
-        }
-
-        private func refundablePurchases(
-            accountId: UUID?,
-            occurredAt: Date,
-            excluding transactionId: UUID? = nil
-        ) -> [Transaction] {
-            guard let accountId else { return [] }
-            return transactions
-                .filter {
-                    $0.accountId == accountId
-                        && $0.id != transactionId
-                        && $0.refundOfTransactionId == nil
-                        && $0.destinationAccountId == nil
-                        && $0.occurredAt <= occurredAt
-                        && remainingRefundableAmount(for: $0) > 0
-                }
-                .sorted { $0.occurredAt > $1.occurredAt }
         }
 
         private func openStatements(for accountId: UUID) -> [Statement] {
@@ -355,7 +294,6 @@ struct TransactionFormFeature {
             var categoryId: UUID?
             var subcategoryId: UUID?
             var destinationAccountId: UUID?
-            var refundOfTransactionId: UUID?
             var notes = ""
 
             init() {}
@@ -368,7 +306,6 @@ struct TransactionFormFeature {
                 self.categoryId = state.categoryId
                 self.subcategoryId = state.subcategoryId
                 self.destinationAccountId = state.destinationAccountId
-                self.refundOfTransactionId = state.refundOfTransactionId
                 self.notes = state.notes.trimmingCharacters(in: .whitespacesAndNewlines)
             }
         }
@@ -407,10 +344,6 @@ struct TransactionFormFeature {
 
             case .binding(\.categoryId):
                 state.categorySelectionChanged()
-                return .none
-
-            case .binding(\.refundOfTransactionId):
-                state.refundSelectionChanged()
                 return .none
 
             case .binding:

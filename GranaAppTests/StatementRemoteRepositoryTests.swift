@@ -73,7 +73,6 @@ struct StatementRemoteRepositoryTests {
                             externalId: nil,
                             destinationAccountId: nil,
                             statementId: statementId,
-                            refundOfTransactionId: nil,
                             createdAt: now.addingTimeInterval(-60),
                             updatedAt: now
                         ),

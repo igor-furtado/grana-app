@@ -23,8 +23,8 @@ struct TransactionListFeatureTests {
         #expect(state.accountName(for: data.transaction).contains("Banco Inter"))
     }
 
-    @Test("Mensagem de exclusão mostra efeitos de cartão e estornos vinculados")
-    func deletePreviewIncludesCardAndLinkedRefunds() {
+    @Test("Mensagem de exclusão mostra efeitos de cartão")
+    func deletePreviewIncludesCardImpact() {
         let data = makeTransactionsFixture()
         let card = makeRemoteCreditCardAccount(id: UUID(), institutionId: data.institution.id)
         var purchase = makeTransaction(
@@ -34,17 +34,10 @@ struct TransactionListFeatureTests {
             amount: 100
         )
         purchase.statementId = UUID()
-        let refund = makeTransaction(
-            id: UUID(),
-            accountId: card.id,
-            categoryId: data.category.id,
-            amount: 20,
-            refundOfTransactionId: purchase.id
-        )
         var state = TransactionListFeature.State()
         state.apply(
             makeTransactionsSnapshot(
-                page: TransactionRemotePage(transactions: [purchase, refund], nextCursor: nil),
+                page: TransactionRemotePage(transactions: [purchase], nextCursor: nil),
                 accounts: [card],
                 institutions: [data.institution],
                 categories: [data.category]
@@ -54,7 +47,6 @@ struct TransactionListFeatureTests {
         let message = state.deletePreview(for: purchase)
 
         #expect(message.contains("Pagamentos já registrados permanecem nas faturas onde foram aplicados"))
-        #expect(message.contains("1 estorno vinculado"))
     }
 
     @Test("Query de transações filtra por banco e tipo")

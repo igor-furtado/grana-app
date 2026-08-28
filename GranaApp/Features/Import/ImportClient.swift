@@ -171,8 +171,7 @@ enum ImportCommitBuilder {
                     occurredAt: row.draft.occurredAt,
                     description: row.draft.description,
                     notes: row.draft.notes,
-                    externalId: row.draft.externalId,
-                    refundOfTransactionId: row.draft.refundOfTransactionId
+                    externalId: row.draft.externalId
                 )
             }
 

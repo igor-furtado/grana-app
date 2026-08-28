@@ -113,10 +113,6 @@ struct TransactionFormView: View {
                     formExposedField(title: "Conta de destino") { formDestinationSelector }
                 }
 
-                if showsRefundSection {
-                    formExposedField(title: "Estorno de") { formRefundSelector }
-                }
-
                 if showsStatementPaymentSection {
                     formExposedField(title: "Pagamento de fatura") {
                         formStatementPaymentSummary
@@ -167,12 +163,6 @@ struct TransactionFormView: View {
 
     private var showsDestinationAccountRow: Bool {
         store.selectedCategoryKind == .transfer
-    }
-
-    private var showsRefundSection: Bool {
-        store.supportsAdvancedCardRules
-            && store.selectedAccountIsCreditCard
-            && store.selectedCategoryKind != .transfer
     }
 
     private var showsStatementPaymentSection: Bool {
@@ -295,19 +285,6 @@ struct TransactionFormView: View {
         )
     }
 
-    private var formRefundSelector: some View {
-        TransactionFormPrototypeOptionSelector(
-            title: "Estorno de",
-            subtitle: nil,
-            options: refundablePurchaseOptions,
-            selection: $store.refundOfTransactionId,
-            includesNoneOption: true,
-            noneOptionTitle: "Não é estorno",
-            style: .filterMenu,
-            icon: "arrow.uturn.backward"
-        )
-    }
-
     private var formDateSelector: some View {
         TransactionFormPrototypeDateSelector(selection: $store.occurredAt)
     }
@@ -365,16 +342,6 @@ struct TransactionFormView: View {
                 id: account.id,
                 title: store.state.displayName(for: account),
                 badge: account.type == .creditCard ? "Cartão" : "Conta"
-            )
-        }
-    }
-
-    private var refundablePurchaseOptions: [TransactionFormPrototypeOption<UUID>] {
-        store.state.refundablePurchases.map { purchase in
-            .init(
-                id: purchase.id,
-                title: purchase.description,
-                badge: store.state.remainingRefundableAmount(for: purchase).formatted(.currency(code: "BRL"))
             )
         }
     }

@@ -55,11 +55,7 @@ nonisolated enum TransactionRemoteRepositoryError: UserFacingError, Equatable {
     case invalidCategory
     case invalidSubcategory
     case invalidTransferDestination
-    case invalidRefund
-    case refundBeforePurchase
-    case refundExceedsPurchase
     case unappliedPayment
-    case linkedRefundsExist
     case transactionNotFound
     case unexpectedResponse
 
@@ -86,16 +82,8 @@ nonisolated enum TransactionRemoteRepositoryError: UserFacingError, Equatable {
             return "A subcategoria selecionada não pertence à categoria informada."
         case .invalidTransferDestination:
             return "Escolha uma conta de destino diferente da conta de origem."
-        case .invalidRefund:
-            return "O estorno precisa apontar para uma compra válida do mesmo cartão."
-        case .refundBeforePurchase:
-            return "A data do estorno não pode ser anterior à compra original."
-        case .refundExceedsPurchase:
-            return "A soma dos estornos não pode superar o valor da compra original."
         case .unappliedPayment:
             return "O pagamento precisa ser integralmente aplicado às faturas elegíveis nessa data."
-        case .linkedRefundsExist:
-            return "Não é possível apagar uma transação enquanto houver estornos vinculados."
         case .transactionNotFound:
             return "A transação não foi encontrada para concluir a operação."
         case .unexpectedResponse:
@@ -115,16 +103,8 @@ nonisolated enum TransactionRemoteRepositoryError: UserFacingError, Equatable {
             return .invalidSubcategory
         case "invalid_transfer_destination":
             return .invalidTransferDestination
-        case "invalid_refund":
-            return .invalidRefund
-        case "refund_before_purchase":
-            return .refundBeforePurchase
-        case "refund_exceeds_purchase":
-            return .refundExceedsPurchase
         case "unapplied_payment":
             return .unappliedPayment
-        case "linked_refunds_exist":
-            return .linkedRefundsExist
         case "transaction_not_found":
             return .transactionNotFound
         default:
@@ -142,7 +122,6 @@ nonisolated struct TransactionMutationInput: Hashable {
     var description: String
     var notes: String?
     var destinationAccountId: UUID?
-    var refundOfTransactionId: UUID?
 }
 
 nonisolated struct TransactionRecordRow: Decodable {
@@ -158,7 +137,6 @@ nonisolated struct TransactionRecordRow: Decodable {
     let externalId: String?
     let destinationAccountId: UUID?
     let statementId: UUID?
-    let refundOfTransactionId: UUID?
     let createdAt: Date
     let updatedAt: Date
 
@@ -175,7 +153,6 @@ nonisolated struct TransactionRecordRow: Decodable {
         case externalId = "external_id"
         case destinationAccountId = "destination_account_id"
         case statementId = "statement_id"
-        case refundOfTransactionId = "refund_of_transaction_id"
         case createdAt = "created_at"
         case updatedAt = "updated_at"
     }
@@ -335,7 +312,6 @@ final class TransactionRemoteRepository: TransactionRemoteRepositoryProtocol, Se
             externalId: row.externalId,
             destinationAccountId: row.destinationAccountId,
             statementId: row.statementId,
-            refundOfTransactionId: row.refundOfTransactionId,
             createdAt: row.createdAt,
             updatedAt: row.updatedAt
         )
@@ -410,7 +386,6 @@ nonisolated struct CreateTransactionRequest: Encodable {
     let pDescription: String
     let pNotes: String?
     let pDestinationAccountId: UUID?
-    let pRefundOfTransactionId: UUID?
 
     init(input: TransactionMutationInput) {
         self.pAccountId = input.accountId
@@ -421,7 +396,6 @@ nonisolated struct CreateTransactionRequest: Encodable {
         self.pDescription = input.description
         self.pNotes = input.notes
         self.pDestinationAccountId = input.destinationAccountId
-        self.pRefundOfTransactionId = input.refundOfTransactionId
     }
 
     enum CodingKeys: String, CodingKey {
@@ -433,7 +407,6 @@ nonisolated struct CreateTransactionRequest: Encodable {
         case pDescription = "p_description"
         case pNotes = "p_notes"
         case pDestinationAccountId = "p_destination_account_id"
-        case pRefundOfTransactionId = "p_refund_of_transaction_id"
     }
 
     func encode(to encoder: any Encoder) throws {
@@ -446,7 +419,6 @@ nonisolated struct CreateTransactionRequest: Encodable {
         try container.encode(pDescription, forKey: .pDescription)
         try container.encode(pNotes, forKey: .pNotes)
         try container.encode(pDestinationAccountId, forKey: .pDestinationAccountId)
-        try container.encode(pRefundOfTransactionId, forKey: .pRefundOfTransactionId)
     }
 }
 
@@ -460,7 +432,6 @@ nonisolated struct UpdateTransactionRequest: Encodable {
     let pDescription: String
     let pNotes: String?
     let pDestinationAccountId: UUID?
-    let pRefundOfTransactionId: UUID?
 
     init(transactionId: UUID, input: TransactionMutationInput) {
         self.pTransactionId = transactionId
@@ -472,7 +443,6 @@ nonisolated struct UpdateTransactionRequest: Encodable {
         self.pDescription = input.description
         self.pNotes = input.notes
         self.pDestinationAccountId = input.destinationAccountId
-        self.pRefundOfTransactionId = input.refundOfTransactionId
     }
 
     enum CodingKeys: String, CodingKey {
@@ -485,7 +455,6 @@ nonisolated struct UpdateTransactionRequest: Encodable {
         case pDescription = "p_description"
         case pNotes = "p_notes"
         case pDestinationAccountId = "p_destination_account_id"
-        case pRefundOfTransactionId = "p_refund_of_transaction_id"
     }
 
     func encode(to encoder: any Encoder) throws {
@@ -499,7 +468,6 @@ nonisolated struct UpdateTransactionRequest: Encodable {
         try container.encode(pDescription, forKey: .pDescription)
         try container.encode(pNotes, forKey: .pNotes)
         try container.encode(pDestinationAccountId, forKey: .pDestinationAccountId)
-        try container.encode(pRefundOfTransactionId, forKey: .pRefundOfTransactionId)
     }
 }
 

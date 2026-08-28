@@ -408,7 +408,6 @@ private func makeSuggestion(
         transactionAccountId: draft.accountId,
         transactionNotes: draft.notes,
         transactionDestinationAccountId: draft.destinationAccountId,
-        transactionRefundOfTransactionId: draft.refundOfTransactionId,
         isReviewed: true
     )
 }

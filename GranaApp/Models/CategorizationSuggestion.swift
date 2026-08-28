@@ -36,7 +36,6 @@ struct CategorizationSuggestion: Identifiable, Hashable {
     var transactionAccountId: UUID
     var transactionNotes: String?
     var transactionDestinationAccountId: UUID?
-    var transactionRefundOfTransactionId: UUID?
     /// Marca de revisão. Quando o usuário aceita explicitamente (botão de
     /// confirm), vira true. Correção também marca como reviewed automaticamente.
     var isReviewed: Bool

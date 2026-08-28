@@ -85,7 +85,7 @@ struct CreditCardStatementsView: View {
 
     private func statementSummary(_ statement: Statement) -> some View {
         Grid(alignment: .leading, horizontalSpacing: 24, verticalSpacing: 6) {
-            summaryRow("Compras menos estornos", value: statement.netAmount)
+            summaryRow("Compras menos créditos", value: statement.netAmount)
             summaryRow("Pagamentos", value: statement.paymentApplied)
             summaryRow("Total a quitar", value: statement.totalAmount)
             if statement.remainingAmount > 0 {
@@ -95,7 +95,7 @@ struct CreditCardStatementsView: View {
                 summaryRow("Pagamento excedente", value: statement.paymentExcess)
             }
             if statement.creditBalance > 0 {
-                summaryRow("Saldo credor", value: statement.creditBalance)
+                summaryRow("Saldo", value: statement.creditBalance)
             }
         }
         .padding(GranaTheme.Spacing.sm)

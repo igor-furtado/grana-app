@@ -13,11 +13,7 @@ nonisolated enum ImportRemoteRepositoryError: UserFacingError, Equatable {
     case invalidCategory
     case invalidSubcategory
     case unsupportedImportFormat
-    case invalidRefund
-    case refundBeforePurchase
-    case refundExceedsPurchase
     case unappliedPayment
-    case linkedRefundsExist
     case importBatchNotFound
     case unexpectedResponse
 
@@ -25,8 +21,6 @@ nonisolated enum ImportRemoteRepositoryError: UserFacingError, Equatable {
         switch self {
         case .importBatchNotFound:
             return "Importação não encontrada"
-        case .linkedRefundsExist:
-            return "Não foi possível desfazer a importação"
         default:
             return "Falha ao concluir importação"
         }
@@ -44,16 +38,8 @@ nonisolated enum ImportRemoteRepositoryError: UserFacingError, Equatable {
             return "A subcategoria selecionada não pertence à categoria informada."
         case .unsupportedImportFormat:
             return "A conta selecionada não suporta esse formato de importação."
-        case .invalidRefund:
-            return "O estorno importado precisa apontar para uma compra válida do mesmo cartão."
-        case .refundBeforePurchase:
-            return "A data do estorno importado não pode ser anterior à compra original."
-        case .refundExceedsPurchase:
-            return "Os estornos importados não podem superar o valor da compra original."
         case .unappliedPayment:
             return "O backend não conseguiu reconciliar integralmente os pagamentos das faturas afetadas."
-        case .linkedRefundsExist:
-            return "Há estornos em outros lançamentos apontando para transações deste lote."
         case .importBatchNotFound:
             return "O lote selecionado não foi encontrado para desfazer a importação."
         case .unexpectedResponse:
@@ -71,16 +57,8 @@ nonisolated enum ImportRemoteRepositoryError: UserFacingError, Equatable {
             return .invalidSubcategory
         case "unsupported_import_format":
             return .unsupportedImportFormat
-        case "invalid_refund":
-            return .invalidRefund
-        case "refund_before_purchase":
-            return .refundBeforePurchase
-        case "refund_exceeds_purchase":
-            return .refundExceedsPurchase
         case "unapplied_payment":
             return .unappliedPayment
-        case "linked_refunds_exist":
-            return .linkedRefundsExist
         case "import_batch_not_found":
             return .importBatchNotFound
         default:
@@ -113,7 +91,6 @@ nonisolated struct ImportTransactionCommitInput: Hashable, Sendable {
     var description: String
     var notes: String?
     var externalId: String?
-    var refundOfTransactionId: UUID?
 }
 
 nonisolated struct ImportCommitDuplicateRow: Decodable, Equatable, Sendable {
@@ -403,7 +380,6 @@ nonisolated struct CommitImportTransactionRequest: Encodable, Hashable, Sendable
     let description: String
     let notes: String?
     let externalId: String?
-    let refundOfTransactionId: UUID?
 
     init(input: ImportTransactionCommitInput) {
         transactionId = input.transactionId
@@ -415,7 +391,6 @@ nonisolated struct CommitImportTransactionRequest: Encodable, Hashable, Sendable
         description = input.description
         notes = input.notes
         externalId = input.externalId
-        refundOfTransactionId = input.refundOfTransactionId
     }
 
     enum CodingKeys: String, CodingKey {
@@ -428,7 +403,6 @@ nonisolated struct CommitImportTransactionRequest: Encodable, Hashable, Sendable
         case description
         case notes
         case externalId = "external_id"
-        case refundOfTransactionId = "refund_of_transaction_id"
     }
 }
 

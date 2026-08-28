@@ -45,33 +45,6 @@ struct TransactionFormFeatureTests {
         #expect(state.destinationAccountId == nil)
     }
 
-    @Test("Selecionar estorno herda categoria da compra")
-    func selectingRefundInheritsPurchaseCategory() {
-        let data = makeTransactionsFixture()
-        let subcategory = GranaApp.Category(
-            id: UUID(),
-            parentId: data.category.id,
-            name: "Restaurante",
-            kind: .expense,
-            slug: nil,
-            createdAt: Date()
-        )
-        var purchase = data.transaction
-        purchase.subcategoryId = subcategory.id
-        var state = makeTransactionFormState(
-            data: data,
-            transactions: [purchase],
-            categories: [data.category, subcategory]
-        )
-        state.occurredAt = purchase.occurredAt.addingTimeInterval(60)
-
-        state.refundOfTransactionId = purchase.id
-        state.refundSelectionChanged()
-
-        #expect(state.categoryId == purchase.categoryId)
-        #expect(state.subcategoryId == purchase.subcategoryId)
-    }
-
     @Test("Cancelar formulário alterado pede confirmação de descarte")
     func cancelDirtyFormAsksForDiscardConfirmation() async {
         let data = makeTransactionsFixture()

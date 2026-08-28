@@ -56,7 +56,7 @@ struct StatementDateEditorView: View {
                 .padding(.top, GranaTheme.Spacing.xxs)
 
             Text(
-                "Alterar o fechamento realoca compras e estornos entre faturas. Pagamentos permanecem na fatura onde foram registrados."
+                "Alterar o fechamento realoca compras e créditos entre faturas. Pagamentos permanecem na fatura onde foram registrados."
             )
             .font(GranaTheme.Typography.callout)
             .foregroundStyle(GranaTheme.Palette.muted)

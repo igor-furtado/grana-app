@@ -88,7 +88,6 @@ func makeTransaction(
     occurredAt: Date = Date(),
     description: String = "Transação",
     notes: String? = nil,
-    refundOfTransactionId: UUID? = nil,
     destinationAccountId: UUID? = nil,
     createdAt: Date = Date().addingTimeInterval(-5)
 ) -> Transaction {
@@ -102,7 +101,6 @@ func makeTransaction(
         description: description,
         notes: notes,
         destinationAccountId: destinationAccountId,
-        refundOfTransactionId: refundOfTransactionId,
         createdAt: createdAt,
         updatedAt: createdAt
     )

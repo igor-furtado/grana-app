@@ -53,7 +53,6 @@ struct CategorizationFeatureTests {
             transactionAccountId: draft.accountId,
             transactionNotes: draft.notes,
             transactionDestinationAccountId: draft.destinationAccountId,
-            transactionRefundOfTransactionId: draft.refundOfTransactionId,
             isReviewed: false
         )
 
@@ -122,7 +121,6 @@ struct CategorizationFeatureTests {
             transactionAccountId: UUID(),
             transactionNotes: nil,
             transactionDestinationAccountId: nil,
-            transactionRefundOfTransactionId: nil,
             isReviewed: false
         )
         let second = CategorizationSuggestion(
@@ -143,7 +141,6 @@ struct CategorizationFeatureTests {
             transactionAccountId: UUID(),
             transactionNotes: nil,
             transactionDestinationAccountId: nil,
-            transactionRefundOfTransactionId: nil,
             isReviewed: false
         )
 
@@ -191,7 +188,6 @@ struct CategorizationFeatureTests {
             transactionAccountId: UUID(),
             transactionNotes: nil,
             transactionDestinationAccountId: nil,
-            transactionRefundOfTransactionId: nil,
             isReviewed: true
         )
         let regular = CategorizationSuggestion(
@@ -212,7 +208,6 @@ struct CategorizationFeatureTests {
             transactionAccountId: UUID(),
             transactionNotes: nil,
             transactionDestinationAccountId: nil,
-            transactionRefundOfTransactionId: nil,
             isReviewed: false
         )
 

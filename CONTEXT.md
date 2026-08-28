@@ -123,12 +123,12 @@ _Evite_: Saldo credor, quando o excedente veio de pagamento vinculado
 Diferença visível quando o total a quitar de uma fatura supera os pagamentos vinculados depois de uma correção de datas, transações ou valores.
 _Evite_: Atraso, quando a divergência ainda é uma pendência de reconciliação
 
-**Estorno de cartão**:
-Reversão total ou parcial de uma compra específica, lançada no ciclo da data do estorno. Uma compra pode receber vários estornos, cuja soma não pode superar seu valor original.
-_Evite_: Receita, pagamento, compra negativa
+**Crédito em fatura**:
+Transação positiva lançada no cartão de crédito que reduz o total a quitar da fatura do próprio ciclo. Pode representar saldo, bônus, presente, ajuste ou outro crédito informado pela instituição, sem vínculo obrigatório com outra transação.
+_Evite_: Estorno vinculado, pagamento, compra negativa
 
 **Fatura em formação**:
-Fatura cujo ciclo de compras ainda não alcançou a data de fechamento. Pode receber novas compras e estornos mesmo quando seu saldo restante estiver integralmente coberto.
+Fatura cujo ciclo de compras ainda não alcançou a data de fechamento. Pode receber novas compras e créditos mesmo quando seu saldo restante estiver integralmente coberto.
 _Evite_: Fatura aberta, fatura futura
 
 **Fatura fechada**:
@@ -148,11 +148,11 @@ Momento em que pagamentos e saldos credores passaram a cobrir integralmente o to
 _Evite_: Data de pagamento, quando a quitação não depender exclusivamente de pagamento
 
 **Total da fatura**:
-Valor líquido a quitar em um ciclo, resultante das compras menos os estornos vinculados à fatura. Os componentes permanecem distinguíveis para auditoria.
+Valor líquido a quitar em um ciclo, resultante das compras menos os créditos da própria fatura. Os componentes permanecem distinguíveis para auditoria.
 _Evite_: Soma das compras, saldo restante
 
-**Saldo credor da fatura**:
-Crédito visível quando os estornos vinculados a uma fatura superam suas compras. Não é propagado automaticamente para faturas seguintes no MVP.
+**Saldo da fatura**:
+Crédito visível quando os créditos de uma fatura superam suas compras. Não é propagado automaticamente para faturas seguintes no MVP.
 _Evite_: Pagamento antecipado, receita, desconto
 
 ## Importação e classificação

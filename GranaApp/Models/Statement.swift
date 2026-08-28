@@ -9,14 +9,14 @@ import Foundation
 ///
 /// Os valores financeiros são lidos como projeções calculáveis a partir de
 /// transações e pagamentos. `creditReceived` permanece no contrato por
-/// compatibilidade, mas saldo credor automático entre faturas não é mais regra
+/// compatibilidade, mas saldo automático entre faturas não é mais regra
 /// de domínio.
 struct Statement: Identifiable, Codable, Hashable {
     let id: UUID
     let accountId: UUID
     let closingDate: Date
     let dueDate: Date
-    /// Compras menos estornos do próprio ciclo. Pode ser negativo.
+    /// Compras menos créditos do próprio ciclo. Pode ser negativo.
     var netAmount: Decimal
     /// Crédito explícito/legado informado pelo backend, sem propagação automática.
     var creditReceived: Decimal
@@ -88,7 +88,7 @@ struct StatementPayment: Identifiable, Codable, Hashable {
 }
 
 /// Aplicação explícita/legada de crédito entre faturas. O fluxo atual não cria
-/// saldo credor automático entre faturas.
+/// saldo automático entre faturas.
 struct StatementCreditApplication: Identifiable, Codable, Hashable {
     let id: UUID
     let sourceStatementId: UUID

@@ -171,7 +171,7 @@ struct StatementTransactionTableRow: Identifiable, Equatable {
     }
 
     var signedAmount: Decimal {
-        if source.transaction.refundOfTransactionId != nil {
+        if source.category?.kind == .income {
             return source.transaction.amount.magnitude
         }
         return -source.transaction.amount.magnitude

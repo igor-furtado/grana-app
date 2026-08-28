@@ -395,15 +395,6 @@ struct TransactionListFeature {
                 )
             }
 
-            let linkedRefundCount = transactions.filter {
-                $0.refundOfTransactionId == transaction.id
-            }.count
-            if linkedRefundCount > 0 {
-                let refundText = linkedRefundCount == 1
-                    ? "1 estorno vinculado"
-                    : "\(linkedRefundCount) estornos vinculados"
-                messages.append("A exclusão será rejeitada enquanto houver \(refundText).")
-            }
             return messages.joined(separator: "\n")
         }
 
@@ -429,7 +420,7 @@ struct TransactionListFeature {
                 return true
             }
 
-            if transaction.statementId != nil || transaction.refundOfTransactionId != nil {
+            if transaction.statementId != nil {
                 return false
             }
 

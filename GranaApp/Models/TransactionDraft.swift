@@ -29,8 +29,6 @@ struct TransactionDraft: Identifiable, Hashable {
     /// do CSV do Inter: SUPERMERCADO, TRANSPORTE, BARES…). **Não é nossa
     /// taxonomia**. `nil` quando a fonte não fornece.
     let sourceCategoryHint: String?
-    let refundOfTransactionId: UUID?
-
     init(
         id: UUID,
         accountId: UUID,
@@ -42,8 +40,7 @@ struct TransactionDraft: Identifiable, Hashable {
         notes: String?,
         externalId: String?,
         destinationAccountId: UUID? = nil,
-        sourceCategoryHint: String? = nil,
-        refundOfTransactionId: UUID? = nil
+        sourceCategoryHint: String? = nil
     ) {
         self.id = id
         self.accountId = accountId
@@ -56,6 +53,5 @@ struct TransactionDraft: Identifiable, Hashable {
         self.externalId = externalId
         self.destinationAccountId = destinationAccountId
         self.sourceCategoryHint = sourceCategoryHint
-        self.refundOfTransactionId = refundOfTransactionId
     }
 }

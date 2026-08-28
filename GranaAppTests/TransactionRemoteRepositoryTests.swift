@@ -69,38 +69,14 @@ struct TransactionRemoteRepositoryTests {
         }
     }
 
-    @Test("Mapeia erros estáveis de estorno e pagamento")
+    @Test("Mapeia erro estável de pagamento")
     func mapsCardRuleCodes() async {
-        let invalidRefund = TransactionRemoteRepository(
-            remoteStore: FakeTransactionRemoteStore(
-                createResponse: .init(ok: false, code: "invalid_refund", transactionId: nil)
-            )
-        )
-        let refundBeforePurchase = TransactionRemoteRepository(
-            remoteStore: FakeTransactionRemoteStore(
-                createResponse: .init(ok: false, code: "refund_before_purchase", transactionId: nil)
-            )
-        )
-        let refundExceedsPurchase = TransactionRemoteRepository(
-            remoteStore: FakeTransactionRemoteStore(
-                createResponse: .init(ok: false, code: "refund_exceeds_purchase", transactionId: nil)
-            )
-        )
         let unappliedPayment = TransactionRemoteRepository(
             remoteStore: FakeTransactionRemoteStore(
                 createResponse: .init(ok: false, code: "unapplied_payment", transactionId: nil)
             )
         )
 
-        await #expect(throws: TransactionRemoteRepositoryError.invalidRefund) {
-            try await invalidRefund.create(input: makeTransactionMutationInput())
-        }
-        await #expect(throws: TransactionRemoteRepositoryError.refundBeforePurchase) {
-            try await refundBeforePurchase.create(input: makeTransactionMutationInput())
-        }
-        await #expect(throws: TransactionRemoteRepositoryError.refundExceedsPurchase) {
-            try await refundExceedsPurchase.create(input: makeTransactionMutationInput())
-        }
         await #expect(throws: TransactionRemoteRepositoryError.unappliedPayment) {
             try await unappliedPayment.create(input: makeTransactionMutationInput())
         }
@@ -116,8 +92,7 @@ struct TransactionRemoteRepositoryTests {
             occurredAt: Date(),
             description: "Mercado",
             notes: "Sem observações",
-            destinationAccountId: nil,
-            refundOfTransactionId: nil
+            destinationAccountId: nil
         )
 
         let createRequest = CreateTransactionRequest(input: input)
@@ -139,7 +114,6 @@ struct TransactionRemoteRepositoryTests {
         #expect(payload["p_subcategory_id"] is NSNull)
         #expect(payload["p_notes"] is NSNull)
         #expect(payload["p_destination_account_id"] is NSNull)
-        #expect(payload["p_refund_of_transaction_id"] is NSNull)
     }
 
     @Test("Payload de update preserva parâmetros opcionais nulos para RPC")
@@ -154,7 +128,6 @@ struct TransactionRemoteRepositoryTests {
         #expect(payload["p_subcategory_id"] is NSNull)
         #expect(payload["p_notes"] is NSNull)
         #expect(payload["p_destination_account_id"] is NSNull)
-        #expect(payload["p_refund_of_transaction_id"] is NSNull)
     }
 }
 
@@ -353,15 +326,13 @@ private func makeTransactionRecordRow(
         externalId: nil,
         destinationAccountId: nil,
         statementId: nil,
-        refundOfTransactionId: nil,
         createdAt: createdAt,
         updatedAt: updatedAt ?? createdAt
     )
 }
 
 private func makeTransactionMutationInput(
-    destinationAccountId: UUID? = nil,
-    refundOfTransactionId: UUID? = nil
+    destinationAccountId: UUID? = nil
 ) -> TransactionMutationInput {
     TransactionMutationInput(
         accountId: UUID(),
@@ -371,8 +342,7 @@ private func makeTransactionMutationInput(
         occurredAt: Date(),
         description: "Almoço",
         notes: nil,
-        destinationAccountId: destinationAccountId,
-        refundOfTransactionId: refundOfTransactionId
+        destinationAccountId: destinationAccountId
     )
 }
 
