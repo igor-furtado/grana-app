@@ -10,52 +10,50 @@ struct ImportView: View {
     @State private var didTriggerPicker = false
 
     var body: some View {
-        NavigationStack {
-            wizard
-                .fileImporter(
-                    isPresented: $fileImporterShown,
-                    allowedContentTypes: [.data],
-                    allowsMultipleSelection: false
-                ) { result in
-                    switch result {
-                    case let .success(urls):
-                        if let url = urls.first {
-                            fileWasPicked = true
-                            store.send(.fileSelected(url))
-                        }
-                    case let .failure(error):
+        wizard
+            .fileImporter(
+                isPresented: $fileImporterShown,
+                allowedContentTypes: [.data],
+                allowsMultipleSelection: false
+            ) { result in
+                switch result {
+                case let .success(urls):
+                    if let url = urls.first {
                         fileWasPicked = true
-                        store.send(.fileLoaded(.failure(error)))
+                        store.send(.fileSelected(url))
                     }
+                case let .failure(error):
+                    fileWasPicked = true
+                    store.send(.fileLoaded(.failure(error)))
                 }
-                .onChange(of: fileImporterShown) { _, isShown in
-                    if isShown {
-                        fileWasPicked = false
-                        return
-                    }
-                    Task { @MainActor in
-                        try? await Task.sleep(for: .milliseconds(80))
-                        if !fileWasPicked {
-                            dismiss()
-                        }
-                    }
+            }
+            .onChange(of: fileImporterShown) { _, isShown in
+                if isShown {
+                    fileWasPicked = false
+                    return
                 }
-                .onChange(of: store.phase) { _, phase in
-                    if case .done = phase {
+                Task { @MainActor in
+                    try? await Task.sleep(for: .milliseconds(80))
+                    if !fileWasPicked {
                         dismiss()
                     }
                 }
-                .task {
-                    await store.send(.task).finish()
+            }
+            .onChange(of: store.phase) { _, phase in
+                if case .done = phase {
+                    dismiss()
                 }
-                .onAppear {
-                    guard !didTriggerPicker,
-                          store.initialFile == nil
-                    else { return }
-                    didTriggerPicker = true
-                    fileImporterShown = true
-                }
-        }
+            }
+            .task {
+                await store.send(.task).finish()
+            }
+            .onAppear {
+                guard !didTriggerPicker,
+                      store.initialFile == nil
+                else { return }
+                didTriggerPicker = true
+                fileImporterShown = true
+            }
         .toolbar(.hidden, for: .windowToolbar)
         .frame(
             minWidth: 1080, idealWidth: 1240, maxWidth: 1440,
