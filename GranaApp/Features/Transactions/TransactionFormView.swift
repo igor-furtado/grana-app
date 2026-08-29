@@ -210,14 +210,13 @@ struct TransactionFormView: View {
     }
 
     private var formDescriptionField: some View {
-        TextField("Ex: almoço no restaurante", text: $store.description)
-            .textFieldStyle(.plain)
-            .font(GranaTheme.Typography.bodyEmphasis)
-            .padding(.horizontal, GranaTheme.Spacing.md)
-            .padding(.vertical, GranaTheme.Spacing.sm)
-            .frame(maxWidth: .infinity, minHeight: 46, alignment: .leading)
-            .background(formControlBackground)
-            .focused($focusedField, equals: .description)
+        AppUI.TextField(
+            label: "Descrição",
+            text: $store.description,
+            placeholder: "Ex: almoço no restaurante",
+            textAlignment: .trailing
+        )
+        .focused($focusedField, equals: .description)
     }
 
     private var formAmountField: some View {
@@ -226,7 +225,7 @@ struct TransactionFormView: View {
                 .font(GranaTheme.Typography.moneyHeadline)
                 .foregroundStyle(GranaTheme.Palette.muted)
 
-            CurrencyField(cents: $store.amountCents)
+            AppUI.CurrencyField(label: "Valor", cents: $store.amountCents)
                 .font(GranaTheme.Typography.moneyTitle3)
 
             Spacer(minLength: GranaTheme.Spacing.none)
@@ -238,49 +237,41 @@ struct TransactionFormView: View {
     }
 
     private var formAccountSelector: some View {
-        TransactionFormPrototypeOptionSelector(
-            title: "Conta",
-            subtitle: nil,
+        AppUI.Selector(
+            label: "Conta",
             options: accountOptions,
             selection: $store.accountId,
-            style: .filterMenu,
             icon: AppIcon.sidebarAccounts.systemImage
         )
     }
 
     private var formCategorySelector: some View {
-        TransactionFormPrototypeOptionSelector(
-            title: "Categoria",
-            subtitle: nil,
+        AppUI.Selector(
+            label: "Categoria",
             options: categoryOptions,
             selection: $store.categoryId,
-            style: .filterMenu,
             icon: "tag"
         )
     }
 
     private var formSubcategorySelector: some View {
-        TransactionFormPrototypeOptionSelector(
-            title: "Subcategoria",
-            subtitle: nil,
+        AppUI.Selector(
+            label: "Subcategoria",
             options: subcategoryOptions,
             selection: $store.subcategoryId,
             includesNoneOption: true,
             noneOptionTitle: "Sem subcategoria",
-            style: .filterMenu,
             icon: "square.grid.2x2"
         )
     }
 
     private var formDestinationSelector: some View {
-        TransactionFormPrototypeOptionSelector(
-            title: "Conta de destino",
-            subtitle: nil,
+        AppUI.Selector(
+            label: "Conta de destino",
             options: destinationAccountOptions,
             selection: $store.destinationAccountId,
             includesNoneOption: true,
             noneOptionTitle: "Selecionar depois",
-            style: .filterMenu,
             icon: "arrow.left.arrow.right"
         )
     }

@@ -98,9 +98,12 @@ struct StatementDateEditorView: View {
 
             Spacer(minLength: GranaTheme.Spacing.md)
 
-            DatePicker("", selection: selection, displayedComponents: .date)
-                .labelsHidden()
-                .disabled(store.isSaving)
+            AppUI.DatePicker(
+                label: "",
+                selection: selection,
+                displayedComponents: .date,
+                isEnabled: !store.isSaving
+            )
         }
         .padding(.vertical, GranaTheme.Spacing.md)
     }

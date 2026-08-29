@@ -29,7 +29,15 @@ Leia `docs/design-system.md` antes de alterar UI SwiftUI no GranaApp.
   tooltip e label de acessibilidade.
 - Reserve glass para o shell estrutural. Cards de conteudo usam `subtle` sem
   contorno; rows/listas/tabelas usam `solid`, a unica superficie com linha.
-- Quando uma tela precisar de tabela, use `GranaTable` em vez de instanciar
-  `SwiftUI.Table` direto. O wrapper concentra o shell visual; estado de dados,
-  selecao, ordenacao, filtros e refresh continuam fora dele.
+- Quando uma tela precisar de primitive visual reutilizavel, prefira `AppUI.*`
+  em vez de instanciar `SwiftUI` direto. Isso inclui `AppUI.Table`,
+  `AppUI.TextField`, `AppUI.Toggle`, `AppUI.DatePicker`,
+  `AppUI.CurrencyField` e `AppUI.Selector`.
+- `AppUI.Table` e o ponto de entrada para tabelas.
+  O wrapper concentra o shell visual; estado de dados, selecao, ordenacao,
+  filtros e refresh continuam fora dele.
+- Campos `AppUI.*` podem concentrar `label`, texto de apoio e erro local,
+  mas nao substituem `Section` nem o agrupamento semantico maior da tela.
+- `#Preview` continua proibido no repositorio. Valide componentes e telas no
+  app em execucao, sem depender de previews locais.
 - O app e light-only. Nao adicione toggle de tema nem variante dark por inercia.

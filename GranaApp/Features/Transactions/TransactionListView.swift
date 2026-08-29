@@ -40,13 +40,13 @@ struct TransactionListView: View {
                     Button {
                         store.send(.addButtonTapped)
                     } label: {
-                        Label("Adicionar", systemImage: AppIcon.add.systemImage)
+                        Label("Nova transação", systemImage: AppIcon.add.systemImage)
                     }
                     .buttonStyle(GranaPrimaryButtonStyle())
                 }
             }
 
-            GranaTable(tableRows, sortOrder: $sortOrder) {
+            AppUI.Table(tableRows, sortOrder: $sortOrder) {
                 TableColumn("Instituição", value: \.institutionName) { row in
                     HStack(spacing: GranaTheme.Spacing.sm) {
                         InstitutionIcon(kind: row.institutionKind, size: 22)
@@ -69,7 +69,7 @@ struct TransactionListView: View {
                         .font(GranaTheme.Typography.caption1)
                         .foregroundStyle(GranaTheme.Palette.muted)
                 }
-                .width(min: 92, ideal: 110, max: 132)
+                .width(min: 92, ideal: 100, max: 124)
 
                 TableColumn("Descrição", value: \.description) { row in
                     Text(row.description)
@@ -340,35 +340,15 @@ private struct TransactionsFilterBar: View {
     }
 
     private var searchField: some View {
-        HStack(spacing: GranaTheme.Spacing.sm) {
-            Image(systemName: "magnifyingglass")
-                .font(.system(size: GranaTheme.IconSize.small, weight: .semibold))
-                .foregroundStyle(GranaTheme.Palette.tealDeep)
-
-            TextField("Descrição, categoria ou conta", text: $searchText)
-                .textFieldStyle(.plain)
-                .font(GranaTheme.Typography.subheadlineEmphasis)
-
-            if !searchText.isEmpty {
-                Button {
-                    searchText = ""
-                } label: {
-                    Image(systemName: "xmark.circle.fill")
-                        .foregroundStyle(GranaTheme.Palette.muted)
-                }
-                .buttonStyle(.plain)
-            }
-        }
-        .padding(.horizontal, GranaTheme.Spacing.sm)
-        .frame(maxWidth: .infinity, minHeight: 40, alignment: .leading)
-        .background(
-            RoundedRectangle(cornerRadius: 14, style: .continuous)
-                .fill(GranaTheme.Palette.paper.opacity(0.92))
+        AppUI.TextField(
+            label: "Buscar transação",
+            text: $searchText,
+            placeholder: "Descrição, categoria ou conta",
+            leadingSystemImage: "magnifyingglass",
+            showsClearButton: true,
+            font: GranaTheme.Typography.subheadlineEmphasis,
+            textAlignment: .leading
         )
-        .overlay {
-            RoundedRectangle(cornerRadius: 14, style: .continuous)
-                .stroke(GranaTheme.Palette.line, lineWidth: 1)
-        }
     }
 
     private func filterMenu<Content: View>(

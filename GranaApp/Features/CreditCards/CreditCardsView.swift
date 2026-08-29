@@ -20,8 +20,8 @@ struct CreditCardsView: View {
 
                     if store.list.hasArchivedCard {
                         Menu {
-                            Toggle(
-                                "Mostrar arquivados",
+                            AppUI.Toggle(
+                                label: "Mostrar arquivados",
                                 isOn: Binding(
                                     get: { store.list.showArchived },
                                     set: { store.send(.list(.binding(.set(\.showArchived, $0)))) }

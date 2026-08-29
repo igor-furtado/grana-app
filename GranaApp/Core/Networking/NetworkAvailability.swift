@@ -1,6 +1,5 @@
-import Auth
 import Foundation
-import PostgREST
+import Supabase
 
 enum NetworkAvailability {
     static func isUnavailable(_ error: any Error) -> Bool {

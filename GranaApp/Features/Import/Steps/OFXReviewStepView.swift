@@ -78,22 +78,20 @@ private struct OFXAccountInfoCard: View {
         ImportWizardSectionCard(
             title: "Conta de destino",
             trailing: AnyView(
-                Picker(
-                    "Conta de destino",
+                AppUI.Selector(
+                    placeholder: "Selecione…",
+                    options: store.state.availableAccounts.map {
+                        .init(id: $0.id, title: store.state.label(for: $0))
+                    },
                     selection: Binding(
                         get: { resolution?.accountId },
                         set: { newValue in
                             store.send(.accountSelected(statementIndex: statementIndex, accountId: newValue))
                         }
-                    )
-                ) {
-                    Text("Selecione…").tag(UUID?.none)
-                    ForEach(store.state.availableAccounts) { account in
-                        Text(store.state.label(for: account)).tag(UUID?.some(account.id))
-                    }
-                }
+                    ),
+                    icon: "building.columns"
+                )
                 .labelsHidden()
-                .pickerStyle(.menu)
                 .frame(maxWidth: .infinity, alignment: .leading)
             )
         ) {
@@ -168,10 +166,10 @@ private struct OFXTransactionsListCard: View {
 
     var body: some View {
         ImportWizardSectionCard(title: "Transações") {
-            GranaTable(tableRows) {
+            AppUI.Table(tableRows) {
                 TableColumn("") { row in
                     if let selection = selectionBinding(for: row.id) {
-                        Toggle("", isOn: selection)
+                        AppUI.Toggle(label: "", isOn: selection)
                             .toggleStyle(.checkbox)
                             .labelsHidden()
                     } else {
@@ -224,12 +222,14 @@ private struct OFXTransactionsListCard: View {
             } filterBar: {
                 VStack(alignment: .leading, spacing: GranaTheme.Spacing.sm) {
                     if resolutions.count > 1 {
-                        Picker("Extrato", selection: selectedBinding) {
-                            ForEach(Array(resolutions.enumerated()), id: \.element.id) { index, statement in
-                                Text(tabLabel(for: index)).tag(Optional.some(statement.id))
-                            }
-                        }
-                        .pickerStyle(.segmented)
+                        AppUI.Selector(
+                            label: "Extrato",
+                            options: Array(resolutions.enumerated()).map { index, statement in
+                                .init(id: statement.id, title: tabLabel(for: index))
+                            },
+                            selection: selectedBinding,
+                            style: .segmented
+                        )
                     }
 
                     TransactionsSelectionRow(

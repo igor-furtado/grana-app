@@ -45,13 +45,13 @@ struct StatementListView: View {
     }
 
     private var table: some View {
-        GranaTable(sortedRows, sortOrder: $sortOrder) {
+        AppUI.Table(sortedRows, sortOrder: $sortOrder) {
             TableColumn("Data", value: \.occurredAt) { row in
                 Text(Self.dayMonthFormatter.string(from: row.occurredAt))
                     .font(GranaTheme.Typography.caption1)
                     .foregroundStyle(GranaTheme.Palette.muted)
             }
-            .width(min: 92, ideal: 108, max: 124)
+            .width(min: 92, ideal: 100, max: 124)
 
             TableColumn("Categoria", value: \.categorySortLabel) { row in
                 Group {
@@ -121,7 +121,7 @@ struct StatementListView: View {
 
     private static let dayMonthFormatter: DateFormatter = {
         let f = DateFormatter()
-        f.dateFormat = "dd 'de' MMM"
+        f.dateFormat = "dd 'de' MMM yyyy"
         f.locale = Locale(identifier: "pt_BR")
         return f
     }()

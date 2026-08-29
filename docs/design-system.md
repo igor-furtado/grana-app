@@ -1,10 +1,5 @@
 # GranaApp Design System
 
-Fonte canonica da linguagem visual do GranaApp. Os prototipos de referencia sao
-`GranaApp/Prototypes/DashboardDesignSystemPrototype.html`,
-`GranaApp/Prototypes/ContentUnavailablePrototype.html` e, para navegacao,
-`GranaApp/Prototypes/NavigationMenuPrototype.html`.
-
 ## Direcao
 
 O tema e light-only, quente e analitico. A UI deve parecer um painel financeiro
@@ -45,10 +40,16 @@ Listas densas, tabelas, formularios e rows repetidas usam `solid`: preenchimento
 quente solido, sombra baixa e linha `line`. `solid` e a unica superficie base
 com contorno de linha aparente.
 
-Quando uma feature precisar de tabela, use `GranaTable` como ponto de entrada.
-Ela encapsula o shell visual padrao das tabelas do app sobre `SwiftUI.Table`.
+Quando uma feature precisar de primitive visual reutilizavel, use `AppUI.*` como
+fachada oficial. `AppUI.Table` encapsula o shell visual padrao das tabelas do
+app sobre `SwiftUI.Table`; `AppUI.TextField`, `AppUI.Toggle`, `AppUI.DatePicker`, `AppUI.CurrencyField` e
+`AppUI.Selector` concentram os controles de entrada e selecao.
+
 Estado de selecao, ordenacao, filtros e qualquer `load()`/`refresh()` continua
-na tela ou store; a tabela nao possui estado de dados.
+na tela ou store; `AppUI.Table` nao possui estado de dados. `Section`,
+agrupamentos semanticos e composicao de formularios continuam na tela chamadora;
+os controles `AppUI.*` centralizam o shell visual e, quando cabivel,
+`label`, texto de apoio e erro local.
 
 ## Navegacao
 
@@ -67,8 +68,7 @@ header. Modais e sheets tambem podem ocultar a toolbar nativa. O rail lateral co
 
 Use SF Pro via SwiftUI system fonts. Numeros financeiros usam digitos
 monoespacados. Evite serif, fontes decorativas e letter spacing negativo.
-Titulos em cards e paineis devem ser compactos; hero-scale type fica restrito a
-login e estados vazios.
+Titulos em cards e paineis devem ser compactos;
 
 Texto no app usa exclusivamente tokens em `GranaTheme.Typography`. Views e
 componentes nao escolhem tamanho ou peso diretamente com `.font(.system(...))`,
@@ -78,24 +78,8 @@ componentes nao escolhem tamanho ou peso diretamente com `.font(.system(...))`,
 `caption1Emphasis`, `caption2Emphasis`) em vez de aplicar `.weight(...)` na
 view.
 
-Escala textual:
-
-| Token | Uso |
-|---|---|
-| `largeTitle` | Marca, login e estados vazios de maior impacto |
-| `title1` | Titulo hero de estado vazio |
-| `title2` | Titulo de painel amplo |
-| `title3` | Titulo compacto de painel, secao ou placeholder |
-| `headline` | Texto em destaque para acompanhar corpo ou nomear secoes |
-| `body` | Leitura continua |
-| `callout` | Informacao ligeiramente menor que o corpo |
-| `subheadline` | Linhas densas e metadados proximo ao corpo |
-| `footnote` | Dados auxiliares |
-| `caption1` | Legendas, status e apoio compacto |
-| `caption2` | Microtexto |
-
 Valores financeiros usam a escala `money*` de `GranaTheme.Typography`, sempre
-com digitos monoespacados. Use `moneyLargeTitle`, `moneyTitle1`,
+com digitos monoespacados. Use `moneyTitle1`,
 `moneyTitle2`, `moneyTitle3`, `moneyHeadline`, `moneyBody`, `moneyCallout`,
 `moneySubheadline`, `moneyFootnote`, `moneyCaption1` e `moneyCaption2` conforme
 a hierarquia visual. Nao use `money*` para datas, contagens, percentuais ou

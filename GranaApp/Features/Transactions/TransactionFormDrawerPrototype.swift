@@ -8,11 +8,7 @@ enum TransactionFormPrototypeCategoryStyle {
     case filterMenu
 }
 
-struct TransactionFormPrototypeOption<ID: Hashable>: Identifiable {
-    let id: ID
-    let title: String
-    var badge: String?
-}
+typealias TransactionFormPrototypeOption<ID: Hashable> = AppUI.SelectorOption<ID>
 
 enum TransactionFormPrototypeStatementItem: Identifiable {
     case empty(message: String)
@@ -28,95 +24,18 @@ enum TransactionFormPrototypeStatementItem: Identifiable {
     }
 }
 
-struct TransactionFormPrototypeOptionSelector<ID: Hashable>: View {
-    let title: String
-    let subtitle: String?
-    let options: [TransactionFormPrototypeOption<ID>]
-    @Binding var selection: ID?
-    var includesNoneOption = false
-    var noneOptionTitle = "Nenhum"
-    var style: TransactionFormPrototypeCategoryStyle = .filterMenu
-    var icon: String = "tag"
-
-    var body: some View {
-        switch style {
-        case .filterMenu:
-            filterMenu
-        }
-    }
-
-    private var allOptions: [TransactionFormPrototypeOption<ID?>] {
-        var items: [TransactionFormPrototypeOption<ID?>] = []
-        if includesNoneOption {
-            items.append(.init(id: nil, title: noneOptionTitle, badge: nil))
-        }
-        items.append(contentsOf: options.map { .init(id: Optional($0.id), title: $0.title, badge: $0.badge) })
-        return items
-    }
-
-    private var selectedTitle: String {
-        allOptions.first(where: { $0.id == selection })?.title ?? noneOptionTitle
-    }
-
-    private var filterMenu: some View {
-        Menu {
-            ForEach(allOptions) { option in
-                Button(option.title) {
-                    selection = option.id
-                }
-            }
-        } label: {
-            HStack(spacing: GranaTheme.Spacing.sm) {
-                Image(systemName: icon)
-                    .font(.system(size: GranaTheme.IconSize.small, weight: .semibold))
-                    .foregroundStyle(GranaTheme.Palette.tealDeep)
-
-                Text(selectedTitle)
-                    .font(GranaTheme.Typography.footnoteEmphasis)
-                    .foregroundStyle(GranaTheme.Palette.ink)
-                    .lineLimit(1)
-
-                Spacer(minLength: GranaTheme.Spacing.none)
-
-                Image(systemName: "chevron.down")
-                    .font(.system(size: GranaTheme.IconSize.micro, weight: .semibold))
-                    .foregroundStyle(GranaTheme.Palette.muted)
-            }
-            .padding(.horizontal, GranaTheme.Spacing.sm)
-            .frame(maxWidth: .infinity, minHeight: 40, alignment: .leading)
-            .background(
-                RoundedRectangle(cornerRadius: 14, style: .continuous)
-                    .fill(GranaTheme.Palette.paper.opacity(0.92))
-            )
-            .overlay {
-                RoundedRectangle(cornerRadius: 14, style: .continuous)
-                    .stroke(GranaTheme.Palette.line, lineWidth: 1)
-            }
-        }
-        .buttonStyle(.plain)
-    }
-}
+@available(*, deprecated, renamed: "AppUI.Selector")
+typealias TransactionFormPrototypeOptionSelector<ID: Hashable> = AppUI.Selector<ID>
 
 struct TransactionFormPrototypeDateSelector: View {
     @Binding var selection: Date
 
     var body: some View {
-        DatePicker("", selection: $selection, displayedComponents: [.date])
-            .labelsHidden()
-            .datePickerStyle(.compact)
-            .padding(.horizontal, GranaTheme.Spacing.md)
-            .padding(.vertical, GranaTheme.Spacing.sm)
-            .frame(maxWidth: .infinity, alignment: .leading)
-            .background(controlBackground)
-    }
-
-    private var controlBackground: some View {
-        RoundedRectangle(cornerRadius: 14, style: .continuous)
-            .fill(GranaTheme.Palette.paper)
-            .overlay {
-                RoundedRectangle(cornerRadius: 14, style: .continuous)
-                    .stroke(GranaTheme.Palette.line, lineWidth: 1)
-            }
+        AppUI.DatePicker(
+            label: "",
+            selection: $selection,
+            displayedComponents: [.date],
+        )
     }
 }
 
@@ -124,22 +43,11 @@ struct TransactionFormPrototypeTimeSelector: View {
     @Binding var selection: Date
 
     var body: some View {
-        DatePicker("", selection: $selection, displayedComponents: [.hourAndMinute])
-            .labelsHidden()
-            .datePickerStyle(.compact)
-            .padding(.horizontal, GranaTheme.Spacing.md)
-            .padding(.vertical, GranaTheme.Spacing.sm)
-            .frame(maxWidth: .infinity, alignment: .leading)
-            .background(controlBackground)
-    }
-
-    private var controlBackground: some View {
-        RoundedRectangle(cornerRadius: 14, style: .continuous)
-            .fill(GranaTheme.Palette.paper)
-            .overlay {
-                RoundedRectangle(cornerRadius: 14, style: .continuous)
-                    .stroke(GranaTheme.Palette.line, lineWidth: 1)
-            }
+        AppUI.DatePicker(
+            label: "",
+            selection: $selection,
+            displayedComponents: [.hourAndMinute],
+        )
     }
 }
 

@@ -1,6 +1,5 @@
-import Auth
 import Foundation
-import PostgREST
+import Supabase
 import Testing
 @testable import GranaApp
 

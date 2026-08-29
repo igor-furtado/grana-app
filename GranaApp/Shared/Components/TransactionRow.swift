@@ -50,7 +50,7 @@ struct TransactionRow: View {
     var body: some View {
         HStack(alignment: .center, spacing: GranaTheme.Spacing.sm) {
             if let selection {
-                Toggle("", isOn: selection)
+                AppUI.Toggle(label: "", isOn: selection)
                     .toggleStyle(.checkbox)
                     .labelsHidden()
             }

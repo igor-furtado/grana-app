@@ -36,7 +36,7 @@ struct EmptyStateView<Actions: View>: View {
                 .padding(.bottom, GranaTheme.Spacing.lg)
 
             Text(title)
-                .font(GranaTheme.Typography.title1)
+                .font(GranaTheme.Typography.title2)
                 .foregroundStyle(GranaTheme.Palette.ink)
                 .multilineTextAlignment(.center)
                 .lineLimit(3)

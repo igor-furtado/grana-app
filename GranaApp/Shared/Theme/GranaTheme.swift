@@ -32,6 +32,7 @@ enum GranaTheme {
 
     enum Radius {
         static let control: CGFloat = 15
+        static let pill: CGFloat = 48
         static let card: CGFloat = 22
         static let hero: CGFloat = 32
         static let rail: CGFloat = 27
@@ -172,13 +173,6 @@ enum GranaTheme {
             }
         }
 
-        private static let largeTitleToken = Token(
-            name: "largeTitle",
-            family: .text,
-            size: 54,
-            weight: .black,
-            usage: "Marca, login e estados vazios"
-        )
         private static let title1Token = Token(
             name: "title1",
             family: .text,
@@ -291,13 +285,6 @@ enum GranaTheme {
             weight: .bold,
             usage: "Microtexto enfatizado"
         )
-        private static let moneyLargeTitleToken = Token(
-            name: "moneyLargeTitle",
-            family: .money,
-            size: 54,
-            weight: .black,
-            usage: "Valor financeiro hero"
-        )
         private static let moneyTitle1Token = Token(
             name: "moneyTitle1",
             family: .money,
@@ -376,7 +363,6 @@ enum GranaTheme {
             usage: "IDs, slugs e tokens"
         )
 
-        static let largeTitle = largeTitleToken.font
         static let title1 = title1Token.font
         static let title2 = title2Token.font
         static let title3 = title3Token.font
@@ -394,7 +380,6 @@ enum GranaTheme {
         static let caption2 = caption2Token.font
         static let caption2Emphasis = caption2EmphasisToken.font
 
-        static let moneyLargeTitle = moneyLargeTitleToken.font
         static let moneyTitle1 = moneyTitle1Token.font
         static let moneyTitle2 = moneyTitle2Token.font
         static let moneyTitle3 = moneyTitle3Token.font
@@ -413,7 +398,6 @@ enum GranaTheme {
         static let code = codeToken.font
 
         static let tokens: [Token] = [
-            largeTitleToken,
             title1Token,
             title2Token,
             title3Token,
@@ -430,7 +414,6 @@ enum GranaTheme {
             caption1EmphasisToken,
             caption2Token,
             caption2EmphasisToken,
-            moneyLargeTitleToken,
             moneyTitle1Token,
             moneyTitle2Token,
             moneyTitle3Token,

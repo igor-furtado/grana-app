@@ -14,13 +14,12 @@ struct TransactionsSelectionRow: View {
 
     var body: some View {
         HStack(alignment: .center, spacing: GranaTheme.Spacing.sm) {
-            Toggle("", isOn: Binding(
+            AppUI.Toggle(label: allSelected ? "Desmarcar todas" : "Marcar todas", isOn: Binding(
                 get: { allSelected },
                 set: { onToggleAll($0) }
             ))
             .toggleStyle(.checkbox)
             .labelsHidden()
-            .help(allSelected ? "Desmarcar todas" : "Marcar todas")
             Text(summary)
                 .font(GranaTheme.Typography.caption1)
                 .foregroundStyle(.secondary)

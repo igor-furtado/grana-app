@@ -1,5 +1,5 @@
 import Foundation
-import PostgREST
+import Supabase
 
 /// Protocolo opcional pra erros que querem controlar o **título** exibido no
 /// toast global. Sem implementar, o `NoticeCenter` cai num título genérico

@@ -1804,7 +1804,7 @@ declare
     v_row record;
 begin
     for v_row in
-        select account.user_id, account.id as account_id
+        select account.user_id, account.account_id
         from pg_temp.legacy_refund_cleanup_account account
         where app_private.v1_is_credit_card_account(account.user_id, account.account_id)
     loop

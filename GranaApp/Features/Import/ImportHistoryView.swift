@@ -191,7 +191,7 @@ private struct ImportHistoryMainPanel: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: GranaTheme.Spacing.none) {
-            GranaTable(rows, sortOrder: $sortOrder) {
+            AppUI.Table(rows, sortOrder: $sortOrder) {
                 TableColumn("Instituição", value: \.institutionName) { row in
                     HStack(spacing: GranaTheme.Spacing.sm) {
                         InstitutionIcon(kind: row.institutionKind, size: 24)
@@ -318,38 +318,15 @@ private struct ImportHistoryFilterBar: View {
         prompt: String,
         text: Binding<String>
     ) -> some View {
-        VStack(alignment: .leading, spacing: GranaTheme.Spacing.xxs) {
-            Text(title)
-                .font(GranaTheme.Typography.caption2Emphasis)
-                .foregroundStyle(GranaTheme.Palette.muted)
-            HStack(spacing: GranaTheme.Spacing.sm) {
-                Image(systemName: "magnifyingglass")
-                    .font(.system(size: GranaTheme.IconSize.small, weight: .semibold))
-                    .foregroundStyle(GranaTheme.Palette.tealDeep)
-                TextField(prompt, text: text)
-                    .textFieldStyle(.plain)
-                    .font(GranaTheme.Typography.footnoteEmphasis)
-                if !text.wrappedValue.isEmpty {
-                    Button {
-                        text.wrappedValue = ""
-                    } label: {
-                        Image(systemName: "xmark.circle.fill")
-                            .foregroundStyle(GranaTheme.Palette.muted)
-                    }
-                    .buttonStyle(.plain)
-                }
-            }
-            .padding(.horizontal, GranaTheme.Spacing.sm)
-            .frame(height: 40)
-            .background(
-                RoundedRectangle(cornerRadius: 14, style: .continuous)
-                    .fill(GranaTheme.Palette.paper.opacity(0.92))
-            )
-            .overlay {
-                RoundedRectangle(cornerRadius: 14, style: .continuous)
-                    .stroke(GranaTheme.Palette.line, lineWidth: 1)
-            }
-        }
+        AppUI.TextField(
+            label: title,
+            text: text,
+            placeholder: prompt,
+            leadingSystemImage: "magnifyingglass",
+            showsClearButton: true,
+            font: GranaTheme.Typography.footnoteEmphasis,
+            textAlignment: .leading
+        )
         .frame(maxWidth: .infinity, alignment: .leading)
     }
 

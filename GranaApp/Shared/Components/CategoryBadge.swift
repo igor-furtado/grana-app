@@ -63,7 +63,7 @@ struct CategoryBadge: View {
         .padding(.horizontal, GranaTheme.Spacing.xs)
         .padding(.vertical, GranaTheme.Spacing.xxs)
         .background(color.opacity(0.15))
-        .clipShape(Capsule())
+        .clipShape(RoundedRectangle(cornerRadius: GranaTheme.Radius.pill, style: .continuous))
     }
 
     /// Cor do badge: preferir `icon.color` (semântica do glyph) e cair pra

@@ -21,7 +21,7 @@ struct LoginView: View {
 
             VStack(alignment: .leading, spacing: GranaTheme.Spacing.md) {
                 Text("GranaApp")
-                    .font(GranaTheme.Typography.largeTitle)
+                    .font(GranaTheme.Typography.title1)
                     .foregroundStyle(GranaTheme.Palette.creamText)
                     .lineLimit(1)
                     .minimumScaleFactor(0.75)
@@ -68,25 +68,12 @@ struct LoginView: View {
                     .fixedSize(horizontal: false, vertical: true)
             }
 
-            VStack(alignment: .leading, spacing: GranaTheme.Spacing.xs) {
-                Text("E-mail")
-                    .font(GranaTheme.Typography.footnoteEmphasis)
-                    .foregroundStyle(GranaTheme.Palette.muted)
-
-                TextField("voce@exemplo.com", text: $email)
-                    .textFieldStyle(.plain)
-                    .font(GranaTheme.Typography.bodyEmphasis)
-                    .padding(.horizontal, GranaTheme.Spacing.md)
-                    .frame(height: 52)
-                    .background(
-                        GranaTheme.Palette.paper.opacity(0.86),
-                        in: RoundedRectangle(cornerRadius: 16, style: .continuous)
-                    )
-                    .overlay {
-                        RoundedRectangle(cornerRadius: 16, style: .continuous)
-                            .strokeBorder(GranaTheme.Palette.line, lineWidth: 1)
-                    }
-            }
+            AppUI.TextField(
+                label: "E-mail",
+                text: $email,
+                placeholder: "voce@exemplo.com",
+                textAlignment: .trailing
+            )
 
             Button(isSendingMagicLink ? "Enviando…" : "Enviar magic link") {
                 Task {

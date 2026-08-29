@@ -11,7 +11,7 @@ struct AccountListView: View {
         VStack(alignment: .leading, spacing: GranaTheme.Spacing.none) {
             panelHeader
 
-            GranaTable(store.visibleItems, sortOrder: $sortOrder) {
+            AppUI.Table(store.visibleItems, sortOrder: $sortOrder) {
                 TableColumn("Instituição", value: \.institutionName) { item in
                     HStack(spacing: GranaTheme.Spacing.sm) {
                         InstitutionIcon(kind: item.institutionKind, size: 24)
@@ -141,44 +141,15 @@ private struct AccountListFilterBar: View {
             }
             .frame(width: 220, alignment: .leading)
 
-            VStack(alignment: .leading, spacing: GranaTheme.Spacing.xxs) {
-                Text("Conta")
-                    .font(GranaTheme.Typography.caption2Emphasis)
-                    .foregroundStyle(GranaTheme.Palette.muted)
-
-                HStack(spacing: GranaTheme.Spacing.sm) {
-                    Image(systemName: "magnifyingglass")
-                        .font(.system(size: GranaTheme.IconSize.small, weight: .semibold))
-                        .foregroundStyle(GranaTheme.Palette.tealDeep)
-
-                    TextField(
-                        "Buscar conta ou instituição",
-                        text: $store.searchText
-                    )
-                    .textFieldStyle(.plain)
-                    .font(GranaTheme.Typography.footnoteEmphasis)
-
-                    if !store.searchText.isEmpty {
-                        Button {
-                            store.send(.binding(.set(\.searchText, "")))
-                        } label: {
-                            Image(systemName: "xmark.circle.fill")
-                                .foregroundStyle(GranaTheme.Palette.muted)
-                        }
-                        .buttonStyle(.plain)
-                    }
-                }
-                .padding(.horizontal, GranaTheme.Spacing.sm)
-                .frame(maxWidth: .infinity, minHeight: 40, alignment: .leading)
-                .background(
-                    RoundedRectangle(cornerRadius: 14, style: .continuous)
-                        .fill(GranaTheme.Palette.paper.opacity(0.92))
-                )
-                .overlay {
-                    RoundedRectangle(cornerRadius: 14, style: .continuous)
-                        .stroke(GranaTheme.Palette.line, lineWidth: 1)
-                }
-            }
+            AppUI.TextField(
+                label: "Buscar conta",
+                text: $store.searchText,
+                placeholder: "Buscar conta ou instituição",
+                leadingSystemImage: "magnifyingglass",
+                showsClearButton: true,
+                font: GranaTheme.Typography.footnoteEmphasis,
+                textAlignment: .leading
+            )
             .frame(maxWidth: .infinity, alignment: .leading)
 
             VStack(alignment: .leading, spacing: GranaTheme.Spacing.xxs) {
@@ -186,13 +157,10 @@ private struct AccountListFilterBar: View {
                     .font(GranaTheme.Typography.caption2Emphasis)
                     .foregroundStyle(GranaTheme.Palette.muted)
 
-                Toggle(
+                AppUI.Toggle(
+                    label: "Mostrar arquivadas",
                     isOn: $store.showArchived
-                ) {
-                    Text("Mostrar arquivadas")
-                        .font(GranaTheme.Typography.footnoteEmphasis)
-                        .foregroundStyle(GranaTheme.Palette.ink)
-                }
+                )
                 .toggleStyle(.switch)
                 .frame(width: 180, alignment: .leading)
                 .padding(.horizontal, GranaTheme.Spacing.sm)

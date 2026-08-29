@@ -34,12 +34,15 @@ struct CreditCardFormView: View {
 
     private var identitySection: some View {
         Section {
-            Picker("Emissor", selection: $store.institutionId) {
-                ForEach(store.availableInstitutions) { institution in
-                    Label(institution.name, systemImage: institution.kind.systemImage)
-                        .tag(UUID?.some(institution.id))
-                }
-            }
+            AppUI.Selector(
+                label: "Emissor",
+                placeholder: "Selecione…",
+                options: store.availableInstitutions.map {
+                    .init(id: $0.id, title: $0.name)
+                },
+                selection: $store.institutionId,
+                icon: "building.columns"
+            )
         } header: {
             Text("Identidade")
         }
@@ -47,12 +50,15 @@ struct CreditCardFormView: View {
 
     private var cardDetailsSection: some View {
         Section {
-            TextField("Últimos 4 dígitos", text: $store.cardLastFour, prompt: Text("Ex: 1234"))
-            Toggle("Informar limite de crédito", isOn: $store.hasCreditLimit)
+            AppUI.TextField(
+                label: "Últimos 4 dígitos",
+                text: $store.cardLastFour,
+                placeholder: "Ex: 1234",
+                textAlignment: .trailing
+            )
+            AppUI.Toggle(label: "Informar limite de crédito", isOn: $store.hasCreditLimit)
             if store.hasCreditLimit {
-                LabeledContent("Limite") {
-                    CurrencyField(cents: $store.creditLimitCents)
-                }
+                AppUI.CurrencyField(label: "Limite", cents: $store.creditLimitCents)
             }
         } header: {
             Text("Detalhes do cartão")
@@ -68,16 +74,18 @@ struct CreditCardFormView: View {
 
     private var cardCycleSection: some View {
         Section {
-            Picker("Dia de fechamento", selection: $store.statementClosingDay) {
-                ForEach(1 ... 31, id: \.self) { day in
-                    Text("\(day)").tag(day)
-                }
-            }
-            Picker("Dia de vencimento", selection: $store.paymentDueDay) {
-                ForEach(1 ... 31, id: \.self) { day in
-                    Text("\(day)").tag(day)
-                }
-            }
+            AppUI.Selector(
+                label: "Dia de fechamento",
+                options: (1 ... 31).map { .init(id: $0, title: "\($0)") },
+                selection: $store.statementClosingDay,
+                icon: "calendar"
+            )
+            AppUI.Selector(
+                label: "Dia de vencimento",
+                options: (1 ... 31).map { .init(id: $0, title: "\($0)") },
+                selection: $store.paymentDueDay,
+                icon: "calendar"
+            )
         } header: {
             Text("Ciclo da fatura")
         } footer: {

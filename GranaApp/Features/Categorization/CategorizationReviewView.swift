@@ -56,7 +56,7 @@ struct CategorizationReviewView: View {
         if store.suggestions.isEmpty {
             emptyState
         } else {
-            GranaTable(tableRows) {
+            AppUI.Table(tableRows) {
                 TableColumn("Status") { row in
                     if row.needsAttention {
                         ImportWizardTableStatusBadge(

@@ -49,20 +49,17 @@ private struct CSVAccountInfoCard: View {
         ImportWizardSectionCard(
             title: "Conta de destino",
             trailing: AnyView(
-                Picker(
-                    "Conta-cartão",
+                AppUI.Selector(
+                    placeholder: "Selecione…",
+                    options: store.state.creditCardAccounts.map {
+                        .init(id: $0.id, title: store.state.accountLabel(for: $0))
+                    },
                     selection: Binding(
                         get: { store.state.resolution.accountId },
                         set: { store.send(.accountSelected($0)) }
-                    )
-                ) {
-                    Text("Selecione…").tag(UUID?.none)
-                    ForEach(store.state.creditCardAccounts) { account in
-                        Text(store.state.accountLabel(for: account)).tag(UUID?.some(account.id))
-                    }
-                }
-                .labelsHidden()
-                .pickerStyle(.menu)
+                    ),
+                    icon: "creditcard"
+                )
                 .frame(maxWidth: .infinity, alignment: .leading)
             )
         ) {}
@@ -122,7 +119,7 @@ private struct CSVTransactionsListCard: View {
 
     var body: some View {
         ImportWizardSectionCard(title: "Transações") {
-            GranaTable(tableRows) {
+            AppUI.Table(tableRows) {
                 TableColumn("") { row in
                     selectionCell(for: row)
                 }
@@ -181,7 +178,7 @@ private struct CSVTransactionsListCard: View {
     @ViewBuilder
     private func selectionCell(for row: CSVTransactionTableRow) -> some View {
         if let selection = selectionBinding(for: row) {
-            Toggle("", isOn: selection)
+            AppUI.Toggle(label: "", isOn: selection)
                 .toggleStyle(.checkbox)
                 .labelsHidden()
         } else {

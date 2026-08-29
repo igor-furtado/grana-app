@@ -9,6 +9,7 @@ extension AppUI {
         private let leadingSystemImage: String?
         private let showsClearButton: Bool
         private let font: Font
+        private let textAlignment: TextAlignment
 
         init(
             label: String,
@@ -17,7 +18,8 @@ extension AppUI {
             errorMessage: String? = nil,
             leadingSystemImage: String? = nil,
             showsClearButton: Bool = false,
-            font: Font = GranaTheme.Typography.body
+            font: Font = GranaTheme.Typography.body,
+            textAlignment: TextAlignment = .leading
         ) {
             self.label = label
             _text = text
@@ -26,6 +28,7 @@ extension AppUI {
             self.leadingSystemImage = leadingSystemImage
             self.showsClearButton = showsClearButton
             self.font = font
+            self.textAlignment = textAlignment
         }
 
         var body: some View {
@@ -44,7 +47,7 @@ extension AppUI {
                     )
                     .textFieldStyle(.plain)
                     .font(font)
-                    .multilineTextAlignment(.trailing)
+                    .multilineTextAlignment(textAlignment)
 
                     if showsClearButton, !text.isEmpty {
                         clearButton

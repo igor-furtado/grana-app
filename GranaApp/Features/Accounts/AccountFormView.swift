@@ -34,12 +34,15 @@ struct AccountFormView: View {
 
     private var identitySection: some View {
         Section {
-            Picker("Banco", selection: $store.institutionId) {
-                ForEach(store.availableInstitutions) { institution in
-                    Label(institution.name, systemImage: institution.kind.systemImage)
-                        .tag(UUID?.some(institution.id))
-                }
-            }
+            AppUI.Selector(
+                label: "Banco",
+                placeholder: "Selecione…",
+                options: store.availableInstitutions.map {
+                    .init(id: $0.id, title: $0.name)
+                },
+                selection: $store.institutionId,
+                icon: "building.columns"
+            )
         } header: {
             Text("Identidade")
         }
@@ -47,8 +50,18 @@ struct AccountFormView: View {
 
     private var bankIdentitySection: some View {
         Section {
-            TextField("Agência", text: $store.branchId, prompt: Text("Ex: 0001-9"))
-            TextField("Número da conta", text: $store.accountNumber, prompt: Text("Ex: 310013887"))
+            AppUI.TextField(
+                label: "Agência",
+                text: $store.branchId,
+                placeholder: "Ex: 0001-9",
+                textAlignment: .trailing
+            )
+            AppUI.TextField(
+                label: "Número da conta",
+                text: $store.accountNumber,
+                placeholder: "Ex: 310013887",
+                textAlignment: .trailing
+            )
         } header: {
             Text("Identidade bancária")
         } footer: {
@@ -58,10 +71,10 @@ struct AccountFormView: View {
 
     private var balanceSection: some View {
         Section {
-            LabeledContent("Valor") {
-                CurrencyField(cents: $store.balanceCents)
-            }
-            Toggle("Saldo negativo", isOn: $store.balanceIsNegative)
+            AppUI.CurrencyField(
+                label: "Valor",
+                cents: $store.balanceCents)
+            AppUI.Toggle(label: "Saldo negativo", isOn: $store.balanceIsNegative)
         } header: {
             Text("Saldo inicial")
         } footer: {

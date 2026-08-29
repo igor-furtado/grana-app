@@ -2,47 +2,49 @@ import SwiftUI
 
 /// Wrapper fino sobre `SwiftUI.Table` para concentrar o shell visual padrão do
 /// tema nas tabelas densas do app.
-struct GranaTable<RowValue: Identifiable, Sort: SortComparator, FilterBar: View, Columns: TableColumnContent>: View
-    where Columns.TableRowValue == RowValue,
-    Columns.TableColumnSortComparator == Sort {
-    private let hasFilterBar: Bool
-    private let filterBar: FilterBar
-    private let tableView: AnyView
+extension AppUI {
+    struct Table<RowValue: Identifiable, Sort: SortComparator, FilterBar: View, Columns: TableColumnContent>: View
+        where Columns.TableRowValue == RowValue,
+        Columns.TableColumnSortComparator == Sort {
+        private let hasFilterBar: Bool
+        private let filterBar: FilterBar
+        private let tableView: AnyView
 
-    private init(
-        tableView: AnyView,
-        hasFilterBar: Bool,
-        filterBar: FilterBar
-    ) {
-        self.tableView = tableView
-        self.hasFilterBar = hasFilterBar
-        self.filterBar = filterBar
-    }
-
-    var body: some View {
-        VStack(spacing: GranaTheme.Spacing.none) {
-            if hasFilterBar {
-                filterBar
-                    .padding(GranaTheme.Spacing.md)
-                    .frame(maxWidth: .infinity, alignment: .leading)
-                    .background(GranaTheme.Palette.paper.opacity(0.58))
-                    .overlay(alignment: .bottom) {
-                        Rectangle()
-                            .fill(GranaTheme.Palette.line)
-                            .frame(height: 1)
-                    }
-            }
-
-            tableView
+        private init(
+            tableView: AnyView,
+            hasFilterBar: Bool,
+            filterBar: FilterBar
+        ) {
+            self.tableView = tableView
+            self.hasFilterBar = hasFilterBar
+            self.filterBar = filterBar
         }
-        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
-        .background(GranaTheme.Palette.paper.opacity(0.42))
-        .granaSurface(.solid, cornerRadius: GranaTheme.Radius.card)
-        .clipShape(RoundedRectangle(cornerRadius: GranaTheme.Radius.card, style: .continuous))
+
+        var body: some View {
+            VStack(spacing: GranaTheme.Spacing.none) {
+                if hasFilterBar {
+                    filterBar
+                        .padding(GranaTheme.Spacing.md)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                        .background(GranaTheme.Palette.paper.opacity(0.58))
+                        .overlay(alignment: .bottom) {
+                            Rectangle()
+                                .fill(GranaTheme.Palette.line)
+                                .frame(height: 1)
+                        }
+                }
+
+                tableView
+            }
+            .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
+            .background(GranaTheme.Palette.paper.opacity(0.42))
+            .granaSurface(.solid, cornerRadius: GranaTheme.Radius.card)
+            .clipShape(RoundedRectangle(cornerRadius: GranaTheme.Radius.card, style: .continuous))
+        }
     }
 }
 
-private extension GranaTable {
+private extension AppUI.Table {
     enum TableSelection {
         case none
         case single(Binding<RowValue.ID?>)
@@ -50,7 +52,7 @@ private extension GranaTable {
     }
 }
 
-private extension GranaTable where Sort.Compared == RowValue {
+private extension AppUI.Table where Sort.Compared == RowValue {
     static func makeSortableTable(
         rows: [RowValue],
         selection: TableSelection,
@@ -61,15 +63,15 @@ private extension GranaTable where Sort.Compared == RowValue {
             Group {
                 switch selection {
                 case .none:
-                    Table(rows, sortOrder: sortOrder) {
+                    SwiftUI.Table(rows, sortOrder: sortOrder) {
                         columns
                     }
                 case let .single(selection):
-                    Table(rows, selection: selection, sortOrder: sortOrder) {
+                    SwiftUI.Table(rows, selection: selection, sortOrder: sortOrder) {
                         columns
                     }
                 case let .multiple(selection):
-                    Table(rows, selection: selection, sortOrder: sortOrder) {
+                    SwiftUI.Table(rows, selection: selection, sortOrder: sortOrder) {
                         columns
                     }
                 }
@@ -80,7 +82,7 @@ private extension GranaTable where Sort.Compared == RowValue {
     }
 }
 
-private extension GranaTable where Sort == Never {
+private extension AppUI.Table where Sort == Never {
     static func makePlainTable(
         rows: [RowValue],
         selection: TableSelection,
@@ -90,7 +92,7 @@ private extension GranaTable where Sort == Never {
             Group {
                 switch selection {
                 case .none:
-                    Table(of: RowValue.self) {
+                    SwiftUI.Table(of: RowValue.self) {
                         columns
                     } rows: {
                         ForEach(rows) { row in
@@ -98,7 +100,7 @@ private extension GranaTable where Sort == Never {
                         }
                     }
                 case let .single(selection):
-                    Table(of: RowValue.self, selection: selection) {
+                    SwiftUI.Table(of: RowValue.self, selection: selection) {
                         columns
                     } rows: {
                         ForEach(rows) { row in
@@ -106,7 +108,7 @@ private extension GranaTable where Sort == Never {
                         }
                     }
                 case let .multiple(selection):
-                    Table(of: RowValue.self, selection: selection) {
+                    SwiftUI.Table(of: RowValue.self, selection: selection) {
                         columns
                     } rows: {
                         ForEach(rows) { row in
@@ -121,7 +123,7 @@ private extension GranaTable where Sort == Never {
     }
 }
 
-extension GranaTable where Sort.Compared == RowValue {
+extension AppUI.Table where Sort.Compared == RowValue {
     init(
         _ rows: [RowValue],
         sortOrder: Binding<[Sort]>,
@@ -179,7 +181,7 @@ extension GranaTable where Sort.Compared == RowValue {
     }
 }
 
-extension GranaTable where Sort.Compared == RowValue, FilterBar == EmptyView {
+extension AppUI.Table where Sort.Compared == RowValue, FilterBar == EmptyView {
     init(
         _ rows: [RowValue],
         sortOrder: Binding<[Sort]>,
@@ -213,7 +215,7 @@ extension GranaTable where Sort.Compared == RowValue, FilterBar == EmptyView {
     }
 }
 
-extension GranaTable where Sort == Never {
+extension AppUI.Table where Sort == Never {
     init(
         _ rows: [RowValue],
         @TableColumnBuilder<RowValue, Never> columns: () -> Columns,
@@ -265,7 +267,7 @@ extension GranaTable where Sort == Never {
     }
 }
 
-extension GranaTable where Sort == Never, FilterBar == EmptyView {
+extension AppUI.Table where Sort == Never, FilterBar == EmptyView {
     init(
         _ rows: [RowValue],
         @TableColumnBuilder<RowValue, Never> columns: () -> Columns
