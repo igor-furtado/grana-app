@@ -1,3 +1,4 @@
+import AppKit
 import SwiftUI
 
 enum GranaTheme {
@@ -126,6 +127,21 @@ enum GranaTheme {
             case black
 
             var fontWeight: Font.Weight {
+                switch self {
+                case .regular:
+                    .regular
+                case .medium:
+                    .medium
+                case .semibold:
+                    .semibold
+                case .bold:
+                    .bold
+                case .black:
+                    .black
+                }
+            }
+
+            var nsFontWeight: NSFont.Weight {
                 switch self {
                 case .regular:
                     .regular
@@ -384,6 +400,10 @@ enum GranaTheme {
         static let moneyTitle3 = moneyTitle3Token.font
         static let moneyHeadline = moneyHeadlineToken.font
         static let moneyBody = moneyBodyToken.font
+        static let moneyBodyNSFont = NSFont.monospacedSystemFont(
+            ofSize: moneyBodyToken.size,
+            weight: moneyBodyToken.weight.nsFontWeight
+        )
         static let moneyCallout = moneyCalloutToken.font
         static let moneySubheadline = moneySubheadlineToken.font
         static let moneyFootnote = moneyFootnoteToken.font
