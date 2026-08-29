@@ -1,26 +1,5 @@
 import SwiftUI
 
-/// Faixa horizontal padrão de rodapé pra wizards e sheets de revisão.
-///
-/// Layout fixo:
-/// - `Divider()` no topo, separando do conteúdo acima.
-/// - Caption à esquerda (contagem, status) — opcional, oculta quando `nil`.
-/// - Conteúdo do `trailing` (geralmente 1–2 botões) ancorado à direita via `Spacer`.
-/// - Padding consistente: `20pt` horizontal · `12pt` vertical, alinhando com
-///   o título da toolbar do sheet.
-///
-/// **Por que componente compartilhado:** as telas de import (OFX preview) e
-/// de revisão de categorização repetiam o mesmo padrão. Centralizar evita
-/// drift visual (padding diferente, espaçamentos diferentes) entre as telas.
-///
-/// Uso:
-/// ```swift
-/// BottomActionBar(caption: "7 transações selecionadas em 1 conta") {
-///     Button("Voltar") { ... }
-///     Button("Importar") { ... }
-///         .buttonStyle(.borderedProminent)
-/// }
-/// ```
 struct BottomActionBar<Trailing: View>: View {
     let caption: String?
     @ViewBuilder var trailing: () -> Trailing
@@ -34,18 +13,16 @@ struct BottomActionBar<Trailing: View>: View {
     }
 
     var body: some View {
-        VStack(spacing: GranaTheme.Spacing.none) {
-            HStack(spacing: GranaTheme.Spacing.sm) {
-                if let caption {
-                    Text(caption)
-                        .font(GranaTheme.Typography.caption1)
-                        .foregroundStyle(.secondary)
-                }
-                Spacer()
-                trailing()
-                    .controlSize(.large)
+        HStack(spacing: GranaTheme.Spacing.sm) {
+            if let caption {
+                Text(caption)
+                    .font(GranaTheme.Typography.caption1)
+                    .foregroundStyle(.secondary)
             }
-            .padding(.vertical, GranaTheme.Spacing.md)
+            Spacer()
+            trailing()
+                .controlSize(.large)
         }
+        .padding(.horizontal, GranaTheme.Spacing.lg)
     }
 }

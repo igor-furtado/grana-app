@@ -36,11 +36,10 @@ struct AccountFormView: View {
                     .buttonStyle(GranaPrimaryButtonStyle())
                     .disabled(!store.canSave || store.isSaving)
                 }
-                .padding(.horizontal, GranaTheme.Spacing.md)
             }
-            .padding(GranaTheme.Spacing.xl)
-            .granaSurface(.subtle, cornerRadius: GranaTheme.Radius.hero)
-            .padding(GranaTheme.Spacing.lg)
+            .padding(.vertical, GranaTheme.Spacing.lg)
+            .granaSurface(.subtle, cornerRadius: GranaTheme.Radius.card)
+            .padding(GranaTheme.Spacing.sm)
         }
         .toolbar(.hidden, for: .windowToolbar)
         .frame(minWidth: 560, idealWidth: 560, maxWidth: 560, minHeight: 560)
@@ -51,17 +50,15 @@ struct AccountFormView: View {
 
     private var identitySection: some View {
         Section {
-            sectionCard {
-                AppUI.Selector(
-                    label: "Banco",
-                    placeholder: "Selecione…",
-                    options: store.availableInstitutions.map {
-                        .init(id: $0.id, title: $0.name)
-                    },
-                    selection: $store.institutionId,
-                    icon: "building.columns"
-                )
-            }
+            AppUI.Selector(
+                label: "Banco",
+                placeholder: "Selecione…",
+                options: store.availableInstitutions.map {
+                    .init(id: $0.id, title: $0.name)
+                },
+                selection: $store.institutionId,
+                icon: "building.columns"
+            )
         } header: {
             sectionHeader("Identidade")
         }
@@ -69,20 +66,18 @@ struct AccountFormView: View {
 
     private var bankIdentitySection: some View {
         Section {
-            sectionCard {
-                AppUI.TextField(
-                    label: "Agência",
-                    text: $store.branchId,
-                    placeholder: "Ex: 0001-9",
-                    textAlignment: .trailing
-                )
-                AppUI.TextField(
-                    label: "Número da conta",
-                    text: $store.accountNumber,
-                    placeholder: "Ex: 310013887",
-                    textAlignment: .trailing
-                )
-            }
+            AppUI.TextField(
+                label: "Agência",
+                text: $store.branchId,
+                placeholder: "Ex: 0001-9",
+                textAlignment: .trailing
+            )
+            AppUI.TextField(
+                label: "Número da conta",
+                text: $store.accountNumber,
+                placeholder: "Ex: 310013887",
+                textAlignment: .trailing
+            )
         } header: {
             sectionHeader("Identidade bancária")
         } footer: {
@@ -94,13 +89,11 @@ struct AccountFormView: View {
 
     private var balanceSection: some View {
         Section {
-            sectionCard {
-                AppUI.CurrencyField(
-                    label: "Valor",
-                    cents: $store.balanceCents
-                )
-                AppUI.Toggle(label: "Saldo negativo", isOn: $store.balanceIsNegative)
-            }
+            AppUI.CurrencyField(
+                label: "Valor",
+                cents: $store.balanceCents
+            )
+            AppUI.Toggle(label: "Saldo negativo", isOn: $store.balanceIsNegative)
         } header: {
             sectionHeader("Saldo inicial")
         } footer: {
@@ -110,15 +103,13 @@ struct AccountFormView: View {
 
     private func errorSection(message: String) -> some View {
         Section {
-            sectionCard {
-                Label {
-                    Text(message)
-                        .font(GranaTheme.Typography.callout)
-                        .foregroundStyle(.danger)
-                } icon: {
-                    Image(systemName: "exclamationmark.triangle.fill")
-                        .foregroundStyle(.danger)
-                }
+            Label {
+                Text(message)
+                    .font(GranaTheme.Typography.callout)
+                    .foregroundStyle(.danger)
+            } icon: {
+                Image(systemName: "exclamationmark.triangle.fill")
+                    .foregroundStyle(.danger)
             }
         } header: {
             sectionHeader("Erro ao salvar")
@@ -150,42 +141,8 @@ struct AccountFormView: View {
             }
 
             Spacer(minLength: GranaTheme.Spacing.none)
-
-            Button {
-                store.send(.cancelButtonTapped)
-            } label: {
-                Image(systemName: AppIcon.close.systemImage)
-                    .font(.system(size: GranaTheme.IconSize.small, weight: .semibold))
-                    .foregroundStyle(GranaTheme.Palette.muted)
-                    .frame(width: 28, height: 28)
-                    .contentShape(Rectangle())
-            }
-            .buttonStyle(.plain)
-            .disabled(store.isSaving)
-            .help("Fechar")
-            .accessibilityLabel("Fechar formulário")
         }
-        .padding(.horizontal, GranaTheme.Spacing.md)
-    }
-
-    private func sectionCard<Content: View>(
-        @ViewBuilder content: () -> Content
-    ) -> some View {
-        VStack(alignment: .leading, spacing: GranaTheme.Spacing.sm) {
-            content()
-        }
-        .padding(GranaTheme.Spacing.md)
-        .granaSurface(.solid, cornerRadius: GranaTheme.Radius.card)
-        .listRowInsets(
-            EdgeInsets(
-                top: GranaTheme.Spacing.xs,
-                leading: GranaTheme.Spacing.none,
-                bottom: GranaTheme.Spacing.xs,
-                trailing: GranaTheme.Spacing.none
-            )
-        )
-        .listRowBackground(Color.clear)
-        .listRowSeparator(.hidden)
+        .padding(.horizontal, GranaTheme.Spacing.lg)
     }
 
     private func sectionHeader(_ title: String) -> some View {
