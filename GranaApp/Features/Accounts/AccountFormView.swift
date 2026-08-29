@@ -9,7 +9,7 @@ struct AccountFormView: View {
         ZStack {
             GranaBackground()
 
-            VStack(alignment: .leading, spacing: GranaTheme.Spacing.lg) {
+            AppUI.Form.Shell {
                 header
 
                 Form {
@@ -24,7 +24,7 @@ struct AccountFormView: View {
                 .scrollContentBackground(.hidden)
                 .background(Color.clear)
 
-                BottomActionBar {
+                AppUI.Form.Actions {
                     Button("Cancelar") {
                         store.send(.cancelButtonTapped)
                     }
@@ -37,9 +37,6 @@ struct AccountFormView: View {
                     .disabled(!store.canSave || store.isSaving)
                 }
             }
-            .padding(.vertical, GranaTheme.Spacing.lg)
-            .granaSurface(.subtle, cornerRadius: GranaTheme.Radius.card)
-            .padding(GranaTheme.Spacing.sm)
         }
         .toolbar(.hidden, for: .windowToolbar)
         .frame(minWidth: 560, idealWidth: 560, maxWidth: 560, minHeight: 560)
@@ -129,33 +126,14 @@ struct AccountFormView: View {
     }
 
     private var header: some View {
-        HStack(alignment: .top, spacing: GranaTheme.Spacing.md) {
-            VStack(alignment: .leading, spacing: GranaTheme.Spacing.xs) {
-                Text(title)
-                    .font(GranaTheme.Typography.title3)
-                    .foregroundStyle(GranaTheme.Palette.ink)
-
-                Text(subtitle)
-                    .font(GranaTheme.Typography.subheadline)
-                    .foregroundStyle(GranaTheme.Palette.muted)
-            }
-
-            Spacer(minLength: GranaTheme.Spacing.none)
-        }
-        .padding(.horizontal, GranaTheme.Spacing.lg)
+        AppUI.Form.Header(title: title, subtitle: subtitle)
     }
 
     private func sectionHeader(_ title: String) -> some View {
-        Text(title)
-            .font(GranaTheme.Typography.subheadlineEmphasis)
-            .foregroundStyle(GranaTheme.Palette.ink)
-            .textCase(nil)
+        AppUI.Form.SectionHeader(title: title)
     }
 
     private func sectionFooter(_ text: String) -> some View {
-        Text(text)
-            .font(GranaTheme.Typography.footnote)
-            .foregroundStyle(GranaTheme.Palette.muted)
-            .textCase(nil)
+        AppUI.Form.SectionFooter(text: text)
     }
 }

@@ -159,9 +159,6 @@ struct DesignSystemView: View {
             DesignSystemCard(title: "Header") {
                 HeaderShowcase()
             }
-            DesignSystemCard(title: "Drawer") {
-                DrawerShowcase()
-            }
         }
     }
 
@@ -420,7 +417,7 @@ private enum AtlasSection: String, CaseIterable, Identifiable {
         case .combinedComponents:
             "Barra de pesquisa, e tabelas."
         case .complexComponents:
-            "Rail, header e drawer."
+            "Rail e header."
         case .templates:
             "Dashboard e transações."
         }
@@ -930,34 +927,6 @@ private struct HeaderShowcase: View {
             Button("Nova transação") {}
                 .buttonStyle(GranaPrimaryButtonStyle())
         }
-    }
-}
-
-private struct DrawerShowcase: View {
-    var body: some View {
-        ZStack(alignment: .trailing) {
-            RoundedRectangle(cornerRadius: GranaTheme.Radius.card, style: .continuous)
-                .fill(GranaTheme.Palette.ink.opacity(0.08))
-
-            SideDrawer(width: 320, onDismiss: {}) {
-                VStack(alignment: .leading, spacing: GranaTheme.Spacing.md) {
-                    Text("Filtros")
-                        .font(GranaTheme.Typography.title3)
-                        .foregroundStyle(GranaTheme.Palette.ink)
-                    AppUI.TextField(
-                        label: "Buscar conta",
-                        text: .constant("Conta salário"),
-                        leadingSystemImage: "magnifyingglass",
-                        textAlignment: .leading
-                    )
-                    AppUI.Toggle(label: "Ocultar transferências", isOn: .constant(true))
-                    Spacer(minLength: 0)
-                }
-                .padding(GranaTheme.Spacing.lg)
-            }
-        }
-        .frame(height: 280)
-        .clipShape(RoundedRectangle(cornerRadius: GranaTheme.Radius.card, style: .continuous))
     }
 }
 

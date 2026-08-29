@@ -5,31 +5,44 @@ struct CreditCardFormView: View {
     @Bindable var store: StoreOf<CreditCardFormFeature>
 
     var body: some View {
-        VStack(spacing: GranaTheme.Spacing.none) {
-            Form {
-                identitySection
-                cardDetailsSection
-                cardCycleSection
+        ZStack {
+            GranaBackground()
 
-                if let saveError = store.saveError {
-                    errorSection(message: saveError)
-                }
-            }
-            .formStyle(.grouped)
+            AppUI.Form.Shell {
+                header
 
-            BottomActionBar {
-                Button("Cancelar") {
-                    store.send(.cancelButtonTapped)
+                Form {
+                    identitySection
+                    cardDetailsSection
+                    cardCycleSection
+
+                    if let saveError = store.saveError {
+                        errorSection(message: saveError)
+                    }
                 }
-                Button(store.existingCard == nil ? "Cadastrar" : "Salvar") {
-                    store.send(.saveButtonTapped)
+                .formStyle(.grouped)
+                .scrollContentBackground(.hidden)
+                .background(Color.clear)
+
+                AppUI.Form.Actions {
+                    Button("Cancelar") {
+                        store.send(.cancelButtonTapped)
+                    }
+                    .buttonStyle(GranaSecondaryButtonStyle())
+
+                    Button(primaryActionTitle) {
+                        store.send(.saveButtonTapped)
+                    }
+                    .buttonStyle(GranaPrimaryButtonStyle())
+                    .disabled(!store.canSave || store.isSaving)
                 }
-                .buttonStyle(.borderedProminent)
-                .disabled(!store.canSave || store.isSaving)
             }
         }
         .toolbar(.hidden, for: .windowToolbar)
-        .frame(minWidth: 520, idealWidth: 520, maxWidth: 520, minHeight: 480)
+        .frame(minWidth: 560, idealWidth: 560, maxWidth: 560, minHeight: 560)
+        .onExitCommand {
+            store.send(.cancelButtonTapped)
+        }
     }
 
     private var identitySection: some View {
@@ -44,7 +57,7 @@ struct CreditCardFormView: View {
                 icon: "building.columns"
             )
         } header: {
-            Text("Identidade")
+            AppUI.Form.SectionHeader(title: "Identidade")
         }
     }
 
@@ -61,13 +74,13 @@ struct CreditCardFormView: View {
                 AppUI.CurrencyField(label: "Limite", cents: $store.creditLimitCents)
             }
         } header: {
-            Text("Detalhes do cartão")
+            AppUI.Form.SectionHeader(title: "Detalhes do cartão")
         } footer: {
             if store.isCardLastFourPartial {
-                Text("Informe os 4 dígitos completos.")
+                AppUI.Form.SectionFooter(text: "Informe os 4 dígitos completos.")
                     .foregroundStyle(.danger)
             } else {
-                Text("Last4 distingue cartões do mesmo emissor e o limite é opcional.")
+                AppUI.Form.SectionFooter(text: "Last4 distingue cartões do mesmo emissor e o limite é opcional.")
             }
         }
     }
@@ -87,9 +100,10 @@ struct CreditCardFormView: View {
                 icon: "calendar"
             )
         } header: {
-            Text("Ciclo da fatura")
+            AppUI.Form.SectionHeader(title: "Ciclo da fatura")
         } footer: {
-            Text(
+            AppUI.Form.SectionFooter(
+                text:
                 "Dias inexistentes usam o último dia do mês. Estes dias são o padrão para novas faturas; faturas já existentes mantêm datas próprias."
             )
         }
@@ -97,13 +111,20 @@ struct CreditCardFormView: View {
 
     private func errorSection(message: String) -> some View {
         Section {
-            Label {
-                Text(message)
-                    .foregroundStyle(.danger)
-            } icon: {
-                Image(systemName: "exclamationmark.triangle.fill")
-                    .foregroundStyle(.danger)
-            }
+            AppUI.Form.ErrorMessage(message: message)
+        } header: {
+            AppUI.Form.SectionHeader(title: "Erro ao salvar")
         }
+    }
+
+    private var primaryActionTitle: String {
+        store.existingCard == nil ? "Cadastrar" : "Salvar"
+    }
+
+    private var header: some View {
+        AppUI.Form.Header(
+            title: store.existingCard == nil ? "Novo cartão" : "Editar cartão",
+            subtitle: "Cartão de crédito com emissor, limite e ciclo padrão da fatura."
+        )
     }
 }

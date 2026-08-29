@@ -5,34 +5,35 @@ struct AccountDeleteView: View {
     @Bindable var store: StoreOf<AccountDeleteFeature>
 
     var body: some View {
-        VStack(alignment: .leading, spacing: GranaTheme.Spacing.lg) {
-            Text("Apagar conta")
-                .font(GranaTheme.Typography.title3)
-                .foregroundStyle(GranaTheme.Palette.ink)
+        ZStack {
+            GranaBackground()
 
-            Text("A conta só será apagada se não houver transações, faturas ou lotes de importação vinculados.")
-                .font(GranaTheme.Typography.callout)
-                .foregroundStyle(GranaTheme.Palette.muted)
+            AppUI.Form.Shell {
+                AppUI.Form.Header(
+                    title: "Apagar conta",
+                    subtitle: "A conta só será apagada se não houver transações, faturas ou lotes de importação vinculados."
+                )
 
-            if let saveError = store.saveError {
-                Text(saveError)
-                    .font(GranaTheme.Typography.callout)
-                    .foregroundStyle(.danger)
-            }
-
-            BottomActionBar {
-                Button("Cancelar") {
-                    store.send(.cancelButtonTapped)
+                if let saveError = store.saveError {
+                    AppUI.Form.ErrorMessage(message: saveError)
+                        .padding(.horizontal, GranaTheme.Spacing.lg)
                 }
-                Button("Apagar") {
-                    store.send(.confirmButtonTapped)
+
+                AppUI.Form.Actions {
+                    Button("Cancelar") {
+                        store.send(.cancelButtonTapped)
+                    }
+                    .buttonStyle(GranaSecondaryButtonStyle())
+
+                    Button("Apagar") {
+                        store.send(.confirmButtonTapped)
+                    }
+                    .buttonStyle(GranaDestructiveButtonStyle())
+                    .disabled(store.isSaving)
                 }
-                .buttonStyle(.borderedProminent)
-                .tint(.danger)
-                .disabled(store.isSaving)
             }
         }
-        .padding(GranaTheme.Spacing.xl)
-        .frame(minWidth: 460, idealWidth: 460)
+        .toolbar(.hidden, for: .windowToolbar)
+        .frame(minWidth: 460, idealWidth: 460, maxWidth: 460, minHeight: 240)
     }
 }

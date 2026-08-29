@@ -201,12 +201,6 @@ private struct AuthenticatedShellView: View {
                     .frame(maxWidth: .infinity, maxHeight: .infinity)
             }
         }
-        .overlay {
-            if selection == .transactions {
-                TransactionFormDrawerOverlay(store: transactionsFeatureStore)
-                    .zIndex(1)
-            }
-        }
         .dropDestination(for: URL.self, action: handleImportDrop, isTargeted: setImportDropTargeted)
         .overlay {
             if isImportDropTargeted, environment.importFeatureStore.wizard == nil {
@@ -260,7 +254,7 @@ private struct AuthenticatedShellView: View {
         case .dashboard:
             DashboardView()
         case .transactions:
-            TransactionsView(store: transactionsFeatureStore, showsDrawerOverlay: false)
+            TransactionsView(store: transactionsFeatureStore)
         case .creditCards:
             CreditCardsView(store: environment.creditCardsFeatureStore)
         case .accounts:

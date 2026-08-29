@@ -7,7 +7,32 @@ struct TransactionFormView: View {
 
     var body: some View {
         ZStack {
-            mainLayout
+            GranaBackground()
+
+            AppUI.Form.Shell {
+                header
+
+                Form {
+                    detailsSection
+                    classificationSection
+
+                    if showsStatementPaymentSection {
+                        statementPaymentSection
+                    }
+
+                    scheduleSection
+                    notesSection
+
+                    if let saveError = store.saveError {
+                        errorSection(message: saveError)
+                    }
+                }
+                .formStyle(.grouped)
+                .scrollContentBackground(.hidden)
+                .background(Color.clear)
+
+                actions
+            }
 
             if store.showsDiscardConfirmation {
                 TransactionFormConfirmationOverlay(
@@ -36,6 +61,7 @@ struct TransactionFormView: View {
             }
         }
         .toolbar(.hidden, for: .windowToolbar)
+        .frame(minWidth: 560, idealWidth: 560, maxWidth: 560, minHeight: 640)
         .onAppear {
             if !store.isEditing {
                 focusedField = .description
@@ -46,89 +72,124 @@ struct TransactionFormView: View {
         }
     }
 
-    private var mainLayout: some View {
-        VStack(spacing: GranaTheme.Spacing.none) {
-            header
-            Divider()
-                .overlay(GranaTheme.Palette.line)
-            activeFormContent
-            Divider()
-                .overlay(GranaTheme.Palette.line)
-            actions
-        }
-        .frame(maxWidth: .infinity, maxHeight: .infinity)
-    }
-
     private var header: some View {
-        HStack(alignment: .top, spacing: GranaTheme.Spacing.md) {
-            VStack(alignment: .leading, spacing: GranaTheme.Spacing.xs) {
-                Text(store.title)
-                    .font(GranaTheme.Typography.title3)
-                    .foregroundStyle(GranaTheme.Palette.tealDeep)
-
-                if let subtitle = store.subtitle {
-                    Text(subtitle)
-                        .font(GranaTheme.Typography.subheadline)
-                        .foregroundStyle(GranaTheme.Palette.muted)
-                        .lineLimit(2)
-                }
-            }
-
-            Spacer(minLength: GranaTheme.Spacing.none)
-
-            Button {
-                store.send(.cancelButtonTapped)
-            } label: {
-                Image(systemName: AppIcon.close.systemImage)
-                    .font(.system(size: GranaTheme.IconSize.small, weight: .semibold))
-                    .foregroundStyle(GranaTheme.Palette.muted)
-                    .padding(GranaTheme.Spacing.xs)
-                    .contentShape(Rectangle())
-            }
-            .buttonStyle(.borderless)
-            .disabled(store.isSaving)
-            .help("Fechar")
-            .accessibilityLabel("Fechar formulário")
-        }
-        .padding(GranaTheme.Spacing.lg)
+        AppUI.Form.Header(
+            title: store.title,
+            subtitle: store.subtitle ?? "Transação manual com conta, categoria, data e valor."
+        )
     }
 
-    private var activeFormContent: some View {
-        defaultFormContent
+    private var detailsSection: some View {
+        Section {
+            AppUI.TextField(
+                label: "Descrição",
+                text: $store.description,
+                placeholder: "Ex: almoço no restaurante",
+                textAlignment: .trailing
+            )
+            .focused($focusedField, equals: .description)
+
+            AppUI.CurrencyField(
+                label: "Valor",
+                cents: $store.amountCents
+            )
+        } header: {
+            AppUI.Form.SectionHeader(title: "Detalhes")
+        }
     }
 
-    private var defaultFormContent: some View {
-        ScrollView {
-            LazyVStack(alignment: .leading, spacing: GranaTheme.Spacing.lg) {
-                formExposedField(title: "Descrição") { formDescriptionField }
-                formExposedField(title: "Valor") { formAmountField }
-                formExposedField(title: "Conta") { formAccountSelector }
-                formExposedField(title: "Categoria") { formCategorySelector }
+    private var classificationSection: some View {
+        Section {
+            AppUI.Selector(
+                label: "Conta",
+                options: accountOptions,
+                selection: $store.accountId,
+                icon: AppIcon.sidebarAccounts.systemImage
+            )
+            AppUI.Selector(
+                label: "Categoria",
+                options: categoryOptions,
+                selection: $store.categoryId,
+                icon: "tag"
+            )
 
-                if showsSubcategoryRow {
-                    formExposedField(title: "Subcategoria") { formSubcategorySelector }
-                }
-
-                if showsDestinationAccountRow {
-                    formExposedField(title: "Conta de destino") { formDestinationSelector }
-                }
-
-                if showsStatementPaymentSection {
-                    formExposedField(title: "Pagamento de fatura") {
-                        formStatementPaymentSummary
-                    }
-                }
-
-                formExposedDateTimeRow
-                formExposedField(title: "Notas") { formNotesField }
+            if showsSubcategoryRow {
+                AppUI.Selector(
+                    label: "Subcategoria",
+                    options: subcategoryOptions,
+                    selection: $store.subcategoryId,
+                    includesNoneOption: true,
+                    noneOptionTitle: "Sem subcategoria",
+                    icon: "square.grid.2x2"
+                )
             }
-            .padding(GranaTheme.Spacing.lg)
+
+            if showsDestinationAccountRow {
+                AppUI.Selector(
+                    label: "Conta de destino",
+                    options: destinationAccountOptions,
+                    selection: $store.destinationAccountId,
+                    includesNoneOption: true,
+                    noneOptionTitle: "Selecionar depois",
+                    icon: "arrow.left.arrow.right"
+                )
+            }
+        } header: {
+            AppUI.Form.SectionHeader(title: "Classificação")
+        } footer: {
+            if store.selectedCategoryKind == .transfer {
+                AppUI.Form.SectionFooter(
+                    text: "Transferências exigem uma conta de destino diferente da conta de origem."
+                )
+            }
         }
-        .scrollIndicators(.visible)
+    }
+
+    private var statementPaymentSection: some View {
+        Section {
+            TransactionStatementSummary(items: statementPreviewItems)
+        } header: {
+            AppUI.Form.SectionHeader(title: "Pagamento de fatura")
+        } footer: {
+            AppUI.Form.SectionFooter(text: "Prévia das faturas elegíveis nesta data para o valor informado.")
+        }
+    }
+
+    private var scheduleSection: some View {
+        Section {
+            AppUI.DatePicker(
+                label: "Data",
+                selection: $store.occurredAt,
+                displayedComponents: .date
+            )
+            AppUI.DatePicker(
+                label: "Hora",
+                selection: $store.occurredAt,
+                displayedComponents: .hourAndMinute
+            )
+        } header: {
+            AppUI.Form.SectionHeader(title: "Data e hora")
+        }
+    }
+
+    private var notesSection: some View {
+        Section {
+            TransactionNotesField(text: $store.notes)
+        } header: {
+            AppUI.Form.SectionHeader(title: "Notas")
+        }
+    }
+
+    private func errorSection(message: String) -> some View {
+        Section {
+            AppUI.Form.ErrorMessage(message: message)
+        } header: {
+            AppUI.Form.SectionHeader(title: "Erro ao salvar")
+        }
     }
 
     private var actions: some View {
-        BottomActionBar {
+        AppUI.Form.Actions {
             Button("Cancelar") {
                 store.send(.cancelButtonTapped)
             }
@@ -149,7 +210,6 @@ struct TransactionFormView: View {
             .buttonStyle(GranaPrimaryButtonStyle())
             .disabled(!store.canSave || store.isSaving)
         }
-        .padding(.horizontal, GranaTheme.Spacing.lg)
     }
 
     private var selectedSubcategories: [Category] {
@@ -169,7 +229,56 @@ struct TransactionFormView: View {
         store.supportsAdvancedCardRules && store.isPayingCreditCard
     }
 
-    private func statementPickerLabel(_ statement: Statement) -> String {
+    private var accountOptions: [AppUI.SelectorOption<UUID>] {
+        store.state.sourceAccountOptions.map { account in
+            .init(
+                id: account.id,
+                title: store.state.displayName(for: account),
+                badge: account.type == .creditCard ? "Cartão" : "Conta"
+            )
+        }
+    }
+
+    private var categoryOptions: [AppUI.SelectorOption<UUID>] {
+        store.state.rootCategories.map { category in
+            .init(
+                id: category.id,
+                title: category.name,
+                badge: category.kind.displayName
+            )
+        }
+    }
+
+    private var subcategoryOptions: [AppUI.SelectorOption<UUID>] {
+        selectedSubcategories.map { category in
+            .init(id: category.id, title: category.name)
+        }
+    }
+
+    private var destinationAccountOptions: [AppUI.SelectorOption<UUID>] {
+        store.state.destinationAccountOptions.map { account in
+            .init(
+                id: account.id,
+                title: store.state.displayName(for: account),
+                badge: account.type == .creditCard ? "Cartão" : "Conta"
+            )
+        }
+    }
+
+    private var statementPreviewItems: [StatementPreviewItem] {
+        if store.state.automaticPaymentPreview.isEmpty {
+            return [.empty(message: "Nenhuma dívida elegível nessa data.")]
+        }
+
+        return store.state.automaticPaymentPreview.map { item in
+            .filled(
+                title: statementPreviewTitle(for: item.statement),
+                value: item.amount.formatted(.currency(code: "BRL"))
+            )
+        }
+    }
+
+    private func statementPreviewTitle(for statement: Statement) -> String {
         let monthYear = Self.statementMonthFormatter.string(from: statement.dueDate)
         let remaining = store.state.remainingAmount(of: statement)
         let total = statement.totalAmount
@@ -189,165 +298,89 @@ struct TransactionFormView: View {
         formatter.timeZone = TimeZone(secondsFromGMT: 0)
         return formatter
     }()
+}
 
-    private func formExposedField<Content: View>(
-        title: String,
-        @ViewBuilder content: () -> Content
-    ) -> some View {
+private enum StatementPreviewItem: Identifiable {
+    case empty(message: String)
+    case filled(title: String, value: String)
+
+    var id: String {
+        switch self {
+        case let .empty(message):
+            "empty-\(message)"
+        case let .filled(title, value):
+            "filled-\(title)-\(value)"
+        }
+    }
+}
+
+private struct TransactionStatementSummary: View {
+    let items: [StatementPreviewItem]
+
+    var body: some View {
         VStack(alignment: .leading, spacing: GranaTheme.Spacing.sm) {
-            Text(title)
-                .font(GranaTheme.Typography.subheadline)
-                .foregroundStyle(GranaTheme.Palette.ink)
-            content()
-        }
-    }
-
-    private var formExposedDateTimeRow: some View {
-        HStack(alignment: .top, spacing: GranaTheme.Spacing.md) {
-            formExposedField(title: "Data") { formDateSelector }
-            formExposedField(title: "Hora") { formTimeSelector }
-        }
-    }
-
-    private var formDescriptionField: some View {
-        AppUI.TextField(
-            label: "Descrição",
-            text: $store.description,
-            placeholder: "Ex: almoço no restaurante",
-            textAlignment: .trailing
-        )
-        .focused($focusedField, equals: .description)
-    }
-
-    private var formAmountField: some View {
-        HStack(spacing: GranaTheme.Spacing.sm) {
-            Text("R$")
-                .font(GranaTheme.Typography.moneyHeadline)
-                .foregroundStyle(GranaTheme.Palette.muted)
-
-            AppUI.CurrencyField(label: "Valor", cents: $store.amountCents)
-                .font(GranaTheme.Typography.moneyTitle3)
-
-            Spacer(minLength: GranaTheme.Spacing.none)
-        }
-        .padding(.horizontal, GranaTheme.Spacing.md)
-        .padding(.vertical, GranaTheme.Spacing.sm)
-        .frame(maxWidth: .infinity, minHeight: 46, alignment: .leading)
-        .background(formControlBackground)
-    }
-
-    private var formAccountSelector: some View {
-        AppUI.Selector(
-            label: "Conta",
-            options: accountOptions,
-            selection: $store.accountId,
-            icon: AppIcon.sidebarAccounts.systemImage
-        )
-    }
-
-    private var formCategorySelector: some View {
-        AppUI.Selector(
-            label: "Categoria",
-            options: categoryOptions,
-            selection: $store.categoryId,
-            icon: "tag"
-        )
-    }
-
-    private var formSubcategorySelector: some View {
-        AppUI.Selector(
-            label: "Subcategoria",
-            options: subcategoryOptions,
-            selection: $store.subcategoryId,
-            includesNoneOption: true,
-            noneOptionTitle: "Sem subcategoria",
-            icon: "square.grid.2x2"
-        )
-    }
-
-    private var formDestinationSelector: some View {
-        AppUI.Selector(
-            label: "Conta de destino",
-            options: destinationAccountOptions,
-            selection: $store.destinationAccountId,
-            includesNoneOption: true,
-            noneOptionTitle: "Selecionar depois",
-            icon: "arrow.left.arrow.right"
-        )
-    }
-
-    private var formDateSelector: some View {
-        TransactionFormPrototypeDateSelector(selection: $store.occurredAt)
-    }
-
-    private var formTimeSelector: some View {
-        TransactionFormPrototypeTimeSelector(selection: $store.occurredAt)
-    }
-
-    private var formNotesField: some View {
-        TransactionFormPrototypeNotesField(text: $store.notes, style: .panel)
-    }
-
-    private var formStatementPaymentSummary: some View {
-        TransactionFormPrototypeStatementSummary(items: statementPreviewItems)
-    }
-
-    private var formControlBackground: some View {
-        RoundedRectangle(cornerRadius: 14, style: .continuous)
-            .fill(GranaTheme.Palette.paper.opacity(0.92))
-            .overlay {
-                RoundedRectangle(cornerRadius: 14, style: .continuous)
-                    .stroke(GranaTheme.Palette.line, lineWidth: 1)
+            ForEach(items) { item in
+                switch item {
+                case let .empty(message):
+                    Text(message)
+                        .font(GranaTheme.Typography.callout)
+                        .foregroundStyle(GranaTheme.Palette.muted)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                        .padding(GranaTheme.Spacing.sm)
+                        .background(rowBackground)
+                case let .filled(title, value):
+                    HStack(alignment: .top, spacing: GranaTheme.Spacing.sm) {
+                        Text(title)
+                            .font(GranaTheme.Typography.footnote)
+                            .foregroundStyle(GranaTheme.Palette.ink)
+                            .fixedSize(horizontal: false, vertical: true)
+                        Spacer(minLength: GranaTheme.Spacing.none)
+                        Text(value)
+                            .font(GranaTheme.Typography.moneyFootnote)
+                            .foregroundStyle(GranaTheme.Palette.ink)
+                    }
+                    .padding(GranaTheme.Spacing.sm)
+                    .background(rowBackground)
+                }
             }
-    }
-
-    private var accountOptions: [TransactionFormPrototypeOption<UUID>] {
-        store.state.sourceAccountOptions.map { account in
-            .init(
-                id: account.id,
-                title: store.state.displayName(for: account),
-                badge: account.type == .creditCard ? "Cartão" : "Conta"
-            )
         }
     }
 
-    private var categoryOptions: [TransactionFormPrototypeOption<UUID>] {
-        store.state.rootCategories.map { category in
-            .init(
-                id: category.id,
-                title: category.name,
-                badge: category.kind.displayName
-            )
-        }
+    private var rowBackground: some View {
+        RoundedRectangle(cornerRadius: GranaTheme.Radius.control, style: .continuous)
+            .fill(GranaTheme.Palette.paper)
     }
+}
 
-    private var subcategoryOptions: [TransactionFormPrototypeOption<UUID>] {
-        selectedSubcategories.map { category in
-            .init(id: category.id, title: category.name)
-        }
-    }
+private struct TransactionNotesField: View {
+    @Binding var text: String
 
-    private var destinationAccountOptions: [TransactionFormPrototypeOption<UUID>] {
-        store.state.destinationAccountOptions.map { account in
-            .init(
-                id: account.id,
-                title: store.state.displayName(for: account),
-                badge: account.type == .creditCard ? "Cartão" : "Conta"
-            )
-        }
-    }
+    var body: some View {
+        ZStack(alignment: .topLeading) {
+            if text.isEmpty {
+                Text("Observação, contexto, lembrete…")
+                    .font(GranaTheme.Typography.callout)
+                    .foregroundStyle(GranaTheme.Palette.muted)
+                    .padding(.horizontal, GranaTheme.Spacing.md)
+                    .padding(.vertical, GranaTheme.Spacing.sm)
+                    .allowsHitTesting(false)
+            }
 
-    private var statementPreviewItems: [TransactionFormPrototypeStatementItem] {
-        if store.state.automaticPaymentPreview.isEmpty {
-            return [.empty(message: "Nenhuma dívida elegível nessa data.")]
+            TextEditor(text: $text)
+                .font(GranaTheme.Typography.body)
+                .foregroundStyle(GranaTheme.Palette.ink)
+                .scrollContentBackground(.hidden)
+                .frame(minHeight: 110)
+                .padding(GranaTheme.Spacing.xs)
         }
-
-        return store.state.automaticPaymentPreview.map { item in
-            .filled(
-                title: statementPickerLabel(item.statement),
-                value: item.amount.formatted(.currency(code: "BRL"))
-            )
-        }
+        .background(
+            RoundedRectangle(cornerRadius: 14, style: .continuous)
+                .fill(GranaTheme.Palette.paper.opacity(0.92))
+                .overlay {
+                    RoundedRectangle(cornerRadius: 14, style: .continuous)
+                        .stroke(GranaTheme.Palette.line, lineWidth: 1)
+                }
+        )
     }
 }
 

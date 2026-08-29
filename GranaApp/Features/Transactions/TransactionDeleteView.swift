@@ -8,41 +8,30 @@ struct TransactionDeleteView: View {
         ZStack {
             GranaBackground()
 
-            VStack(alignment: .leading, spacing: GranaTheme.Spacing.xl) {
+            AppUI.Form.Shell {
                 header
+
                 if !store.impactMessage.isEmpty {
                     messageBlock
                 }
+
                 if let saveError = store.saveError {
-                    Text(saveError)
-                        .font(GranaTheme.Typography.callout)
-                        .foregroundStyle(.danger)
+                    AppUI.Form.ErrorMessage(message: saveError)
+                        .padding(.horizontal, GranaTheme.Spacing.lg)
                 }
-                Spacer(minLength: GranaTheme.Spacing.none)
+
                 actions
             }
-            .padding(GranaTheme.Spacing.xl)
         }
         .toolbar(.hidden, for: .windowToolbar)
         .frame(minWidth: 460, idealWidth: 460, maxWidth: 460, minHeight: 280)
     }
 
     private var header: some View {
-        VStack(alignment: .leading, spacing: GranaTheme.Spacing.sm) {
-            HStack(spacing: GranaTheme.Spacing.sm) {
-                Image(systemName: AppIcon.delete.systemImage)
-                    .font(.system(size: GranaTheme.IconSize.medium, weight: .semibold))
-                    .foregroundStyle(GranaTheme.Palette.red)
-
-                Text("Apagar transação?")
-                    .font(GranaTheme.Typography.title3)
-                    .foregroundStyle(GranaTheme.Palette.ink)
-            }
-
-            Text(transactionSummary)
-                .font(GranaTheme.Typography.bodyEmphasis)
-                .foregroundStyle(GranaTheme.Palette.ink)
-        }
+        AppUI.Form.Header(
+            title: "Apagar transação?",
+            subtitle: transactionSummary
+        )
     }
 
     private var messageBlock: some View {
@@ -62,9 +51,7 @@ struct TransactionDeleteView: View {
     }
 
     private var actions: some View {
-        HStack(spacing: GranaTheme.Spacing.sm) {
-            Spacer(minLength: GranaTheme.Spacing.none)
-
+        AppUI.Form.Actions {
             Button("Cancelar") {
                 store.send(.cancelButtonTapped)
             }

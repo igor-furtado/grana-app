@@ -55,47 +55,47 @@ struct LoginView: View {
     }
 
     private var loginPanel: some View {
-        VStack(alignment: .leading, spacing: GranaTheme.Spacing.xl) {
-            VStack(alignment: .leading, spacing: GranaTheme.Spacing.sm) {
-                Text("Iniciar sessão")
-                    .font(GranaTheme.Typography.title2)
-                    .foregroundStyle(GranaTheme.Palette.ink)
-
-                Text("Informe o e-mail para receber o magic link e voltar ao app com a sessão ativa.")
-                    .font(GranaTheme.Typography.calloutEmphasis)
-                    .foregroundStyle(GranaTheme.Palette.muted)
-                    .lineSpacing(2)
-                    .fixedSize(horizontal: false, vertical: true)
-            }
-
-            AppUI.TextField(
-                label: "E-mail",
-                text: $email,
-                placeholder: "voce@exemplo.com",
-                textAlignment: .trailing
+        AppUI.Form.Shell {
+            AppUI.Form.Header(
+                title: "Iniciar sessão",
+                subtitle: "Informe o e-mail para receber o magic link e voltar ao app com a sessão ativa."
             )
 
-            Button(isSendingMagicLink ? "Enviando…" : "Enviar magic link") {
-                Task {
-                    await sendMagicLink()
+            Form {
+                Section {
+                    AppUI.TextField(
+                        label: "E-mail",
+                        text: $email,
+                        placeholder: "voce@exemplo.com",
+                        textAlignment: .trailing
+                    )
+                } header: {
+                    AppUI.Form.SectionHeader(title: "Acesso")
                 }
             }
-            .buttonStyle(GranaPrimaryButtonStyle())
-            .disabled(isSubmitDisabled)
-            .opacity(isSubmitDisabled ? 0.55 : 1)
+            .formStyle(.grouped)
+            .scrollContentBackground(.hidden)
+            .background(Color.clear)
 
-            Divider()
-                .overlay(GranaTheme.Palette.line)
+            AppUI.Form.Actions {
+                Button(isSendingMagicLink ? "Enviando…" : "Enviar magic link") {
+                    Task {
+                        await sendMagicLink()
+                    }
+                }
+                .buttonStyle(GranaPrimaryButtonStyle())
+                .disabled(isSubmitDisabled)
+                .opacity(isSubmitDisabled ? 0.55 : 1)
+            }
 
             VStack(alignment: .leading, spacing: GranaTheme.Spacing.xs) {
                 statusRow("E-mail", normalizedEmail.isEmpty ? "vazio" : normalizedEmail)
                 statusRow("Envio", isSendingMagicLink ? "em andamento" : "aguardando")
             }
+            .padding(.horizontal, GranaTheme.Spacing.lg)
         }
-        .padding(GranaTheme.Spacing.xxl)
         .frame(width: 420, alignment: .leading)
         .frame(minHeight: 520, alignment: .leading)
-        .granaSurface(.subtle, cornerRadius: GranaTheme.Radius.hero)
     }
 
     private var logoMark: some View {

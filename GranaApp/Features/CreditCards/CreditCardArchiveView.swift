@@ -5,33 +5,35 @@ struct CreditCardArchiveView: View {
     @Bindable var store: StoreOf<CreditCardArchiveFeature>
 
     var body: some View {
-        VStack(alignment: .leading, spacing: GranaTheme.Spacing.lg) {
-            Text(store.title)
-                .font(GranaTheme.Typography.title3)
-                .foregroundStyle(GranaTheme.Palette.ink)
+        ZStack {
+            GranaBackground()
 
-            Text(store.message)
-                .font(GranaTheme.Typography.callout)
-                .foregroundStyle(GranaTheme.Palette.muted)
+            AppUI.Form.Shell {
+                AppUI.Form.Header(
+                    title: store.title,
+                    subtitle: store.message
+                )
 
-            if let saveError = store.saveError {
-                Text(saveError)
-                    .font(GranaTheme.Typography.callout)
-                    .foregroundStyle(.danger)
-            }
-
-            BottomActionBar {
-                Button("Cancelar") {
-                    store.send(.cancelButtonTapped)
+                if let saveError = store.saveError {
+                    AppUI.Form.ErrorMessage(message: saveError)
+                        .padding(.horizontal, GranaTheme.Spacing.lg)
                 }
-                Button(store.confirmTitle) {
-                    store.send(.confirmButtonTapped)
+
+                AppUI.Form.Actions {
+                    Button("Cancelar") {
+                        store.send(.cancelButtonTapped)
+                    }
+                    .buttonStyle(GranaSecondaryButtonStyle())
+
+                    Button(store.confirmTitle) {
+                        store.send(.confirmButtonTapped)
+                    }
+                    .buttonStyle(GranaPrimaryButtonStyle())
+                    .disabled(store.isSaving)
                 }
-                .buttonStyle(.borderedProminent)
-                .disabled(store.isSaving)
             }
         }
-        .padding(GranaTheme.Spacing.xl)
-        .frame(minWidth: 460, idealWidth: 460)
+        .toolbar(.hidden, for: .windowToolbar)
+        .frame(minWidth: 460, idealWidth: 460, maxWidth: 460, minHeight: 240)
     }
 }
