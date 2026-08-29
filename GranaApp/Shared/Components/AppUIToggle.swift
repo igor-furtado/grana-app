@@ -17,23 +17,37 @@ extension AppUI {
         }
 
         var body: some View {
-            Button {
-                isOn.toggle()
-            } label: {
-                AppUI.Field(label: label, errorMessage: errorMessage) {
-                    HStack(spacing: GranaTheme.Spacing.none) {
-                        Spacer(minLength: GranaTheme.Spacing.none)
+            if usesFieldShell {
+                AppUI.Field(label: normalizedLabel, errorMessage: normalizedErrorMessage) {
+                    toggleControl
+                        .frame(maxWidth: .infinity, alignment: .trailing)
+                }
+            } else {
+                toggleControl
+            }
+        }
 
-                        SwiftUI.Toggle("", isOn: $isOn)
-                            .labelsHidden()
-                            .toggleStyle(.checkbox)
-                            .allowsHitTesting(false)
-                    }
-                    .frame(maxWidth: .infinity, alignment: .trailing)
+        private var usesFieldShell: Bool {
+            normalizedLabel != nil || normalizedErrorMessage != nil
+        }
+
+        private var normalizedLabel: String? {
+            label?.nilIfBlank
+        }
+
+        private var normalizedErrorMessage: String? {
+            errorMessage?.nilIfBlank
+        }
+
+        @ViewBuilder
+        private var toggleControl: some View {
+            if let normalizedLabel {
+                SwiftUI.Toggle(normalizedLabel, isOn: $isOn)
+            } else {
+                SwiftUI.Toggle(isOn: $isOn) {
+                    EmptyView()
                 }
             }
-            .buttonStyle(.plain)
-            .contentShape(Rectangle())
         }
     }
 }
