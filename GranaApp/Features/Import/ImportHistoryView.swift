@@ -177,7 +177,7 @@ private struct ImportHistoryBatchPresentation: Identifiable {
 
     var sourceFilename: String { batch.sourceFilename }
     var rowCount: Int { batch.rowCount }
-    var importedAtText: String { batch.importedAt.formatted(date: .abbreviated, time: .shortened) }
+    var importedAtText: String { GranaDateFormat.dateTime(batch.importedAt) }
     var importedAt: Date { batch.importedAt }
 }
 

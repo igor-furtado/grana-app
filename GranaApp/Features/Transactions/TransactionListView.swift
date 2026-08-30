@@ -2,7 +2,7 @@ import ComposableArchitecture
 import SwiftUI
 
 struct TransactionListView: View {
-    private static let ptBR = Locale(identifier: "pt_BR")
+    private static let numberLocale = Locale(identifier: "pt_BR")
 
     @Bindable var store: StoreOf<TransactionListFeature>
     @Environment(\.calendar) private var calendar
@@ -65,11 +65,11 @@ struct TransactionListView: View {
                 .width(min: 210, ideal: 240, max: 300)
 
                 TableColumn("Data", value: \.occurredAt) { row in
-                    Text(row.occurredAt.formatted(date: .numeric, time: .omitted))
+                    Text(GranaDateFormat.fullDate(row.occurredAt))
                         .font(GranaTheme.Typography.caption1)
                         .foregroundStyle(GranaTheme.Palette.muted)
                 }
-                .width(min: 92, ideal: 100, max: 124)
+                .width(min: 128, ideal: 148, max: 172)
 
                 TableColumn("Descrição", value: \.description) { row in
                     Text(row.description)
@@ -178,7 +178,7 @@ struct TransactionListView: View {
         let number = amount.formatted(
             .number
                 .precision(.fractionLength(2))
-                .locale(Self.ptBR)
+                .locale(Self.numberLocale)
         )
         return HStack(spacing: GranaTheme.Spacing.xxs) {
             Text("R$")

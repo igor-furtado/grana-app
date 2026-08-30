@@ -77,16 +77,8 @@ struct CreditCardStatementsFeature {
         }
 
         private static func statementTitle(for dueDate: Date) -> String {
-            monthYearFormatter.string(from: dueDate).capitalized
+            GranaDateFormat.monthYear(dueDate)
         }
-
-        private static let monthYearFormatter: DateFormatter = {
-            let formatter = DateFormatter()
-            formatter.dateFormat = "MMMM/yyyy"
-            formatter.locale = Locale(identifier: "pt_BR")
-            formatter.timeZone = TimeZone(secondsFromGMT: 0)
-            return formatter
-        }()
     }
 
     enum Action: Equatable {

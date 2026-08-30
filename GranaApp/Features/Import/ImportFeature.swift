@@ -36,7 +36,7 @@ struct ImportHistoryFeature {
             guard let latest = snapshot.batches.max(by: { $0.importedAt < $1.importedAt }) else {
                 return "Sem histórico"
             }
-            return latest.importedAt.formatted(date: .numeric, time: .omitted)
+            return GranaDateFormat.fullDate(latest.importedAt)
         }
     }
 

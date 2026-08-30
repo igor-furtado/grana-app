@@ -126,11 +126,11 @@ private struct CSVTransactionsListCard: View {
                 .width(min: 38, ideal: 44, max: 48)
 
                 TableColumn("Data") { row in
-                    Text(row.date.formatted(date: .numeric, time: .omitted))
+                    Text(GranaDateFormat.fullDate(row.date))
                         .font(GranaTheme.Typography.caption1)
                         .foregroundStyle(GranaTheme.Palette.muted)
                 }
-                .width(min: 92, ideal: 104, max: 118)
+                .width(min: 128, ideal: 148, max: 172)
 
                 TableColumn("Descrição") { row in
                     HStack(spacing: GranaTheme.Spacing.sm) {

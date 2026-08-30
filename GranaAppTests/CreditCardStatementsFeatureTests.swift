@@ -132,7 +132,7 @@ struct CreditCardStatementsFeatureTests {
         await store.send(.editStatementDatesButtonTapped(statement.id)) {
             $0.dateEditor = StatementDateEditorFeature.State(
                 statementId: statement.id,
-                title: "Outubro/2023",
+                title: GranaDateFormat.monthYear(statement.dueDate),
                 closingDate: originalClosing,
                 dueDate: originalDue,
                 previousClosingDate: nil,

@@ -242,7 +242,7 @@ private struct StatementTimelineChart: View {
         var result: [Bar] = statements.map { s in
             Bar(
                 id: s.id,
-                label: Self.monthFormatter.string(from: s.dueDate),
+                label: GranaDateFormat.shortMonth(s.dueDate),
                 total: s.totalAmount,
                 status: {
                     switch s.status() {
@@ -256,7 +256,7 @@ private struct StatementTimelineChart: View {
         for window in projections {
             result.append(Bar(
                 id: UUID(),
-                label: Self.monthFormatter.string(from: window.dueDate),
+                label: GranaDateFormat.shortMonth(window.dueDate),
                 total: 0,
                 status: .projected,
                 dueDate: window.dueDate
@@ -264,14 +264,6 @@ private struct StatementTimelineChart: View {
         }
         return result.sorted { $0.dueDate < $1.dueDate }
     }
-
-    private static let monthFormatter: DateFormatter = {
-        let f = DateFormatter()
-        f.dateFormat = "MMM"
-        f.locale = Locale(identifier: "pt_BR")
-        f.timeZone = TimeZone(secondsFromGMT: 0)
-        return f
-    }()
 
     var body: some View {
         VStack(alignment: .leading, spacing: GranaTheme.Spacing.xs) {
@@ -332,7 +324,7 @@ private struct StatementTimelineChart: View {
                     .frame(maxHeight: .infinity, alignment: .bottom)
                 }
 
-                Text(bar.label.capitalized)
+                Text(bar.label)
                     .font(isSelected ? GranaTheme.Typography.caption2Emphasis : GranaTheme.Typography.caption2)
                     .foregroundStyle(isSelected ? .primary : .secondary)
             }
@@ -469,16 +461,8 @@ private struct StatementCyclePanel: View {
         }
     }
 
-    private static let monthYearFormatter: DateFormatter = {
-        let f = DateFormatter()
-        f.dateFormat = "MMMM"
-        f.locale = Locale(identifier: "pt_BR")
-        f.timeZone = TimeZone(secondsFromGMT: 0)
-        return f
-    }()
-
     private func monthTitle(_ date: Date) -> String {
-        Self.monthYearFormatter.string(from: date).capitalized
+        GranaDateFormat.shortMonth(date)
     }
 }
 
@@ -537,7 +521,7 @@ private struct StatementCycleCard: View {
                         .font(GranaTheme.Typography.caption1)
                         .foregroundStyle(.secondary)
                     Spacer()
-                    Text(Self.dayMonthFormatter.string(from: closingDate))
+                    Text(GranaDateFormat.dayMonth(closingDate))
                         .font(GranaTheme.Typography.footnoteEmphasis)
                 }
                 HStack {
@@ -545,7 +529,7 @@ private struct StatementCycleCard: View {
                         .font(GranaTheme.Typography.caption1)
                         .foregroundStyle(.secondary)
                     Spacer()
-                    Text(Self.dayMonthFormatter.string(from: dueDate))
+                    Text(GranaDateFormat.dayMonth(dueDate))
                         .font(GranaTheme.Typography.footnoteEmphasis)
                 }
                 if let bestPurchaseDay {
@@ -577,14 +561,6 @@ private struct StatementCycleCard: View {
         .contentShape(Rectangle())
         .onTapGesture { onTap?() }
     }
-
-    private static let dayMonthFormatter: DateFormatter = {
-        let f = DateFormatter()
-        f.dateFormat = "dd/MM"
-        f.locale = Locale(identifier: "pt_BR")
-        f.timeZone = TimeZone(secondsFromGMT: 0)
-        return f
-    }()
 
     private struct StatusBadge: View {
         let label: String

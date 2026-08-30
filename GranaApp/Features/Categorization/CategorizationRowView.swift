@@ -29,11 +29,11 @@ struct CategorizationRowView: View {
                 Text(suggestion.transactionAmount.formatted(.currency(code: "BRL")))
                     .font(GranaTheme.Typography.moneySubheadline)
                     .foregroundStyle(amountColor)
-                Text(Self.dateFormatter.string(from: suggestion.transactionOccurredAt))
+                Text(GranaDateFormat.fullDate(suggestion.transactionOccurredAt))
                     .font(GranaTheme.Typography.footnote)
                     .foregroundStyle(.secondary)
             }
-            .frame(width: 92, alignment: .trailing)
+            .frame(width: 132, alignment: .trailing)
         }
         .opacity(suggestion.isReviewed ? 0.6 : 1.0)
     }
@@ -108,12 +108,6 @@ struct CategorizationRowView: View {
         guard let subcategoryId = suggestion.subcategoryId else { return nil }
         return store.state.category(for: subcategoryId)?.name
     }
-
-    private static let dateFormatter: DateFormatter = {
-        let formatter = DateFormatter()
-        formatter.dateFormat = "dd/MM/yyyy"
-        return formatter
-    }()
 
     private func menuLabel(text: String) -> some View {
         HStack(spacing: GranaTheme.Spacing.xxs) {

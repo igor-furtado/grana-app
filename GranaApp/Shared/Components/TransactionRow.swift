@@ -82,11 +82,11 @@ struct TransactionRow: View {
                 Text(Self.currencyFormatter.string(from: amount as NSDecimalNumber) ?? "")
                     .font(GranaTheme.Typography.moneySubheadline)
                     .foregroundStyle(amountColor)
-                Text(Self.dateFormatter.string(from: date))
+                Text(GranaDateFormat.fullDate(date))
                     .font(GranaTheme.Typography.footnote)
                     .foregroundStyle(.secondary)
             }
-            .frame(minWidth: 88, alignment: .trailing)
+            .frame(minWidth: 132, alignment: .trailing)
         }
         // Opacidade reduzida quando há status "neutro" desativado (ex:
         // duplicada não-selecionada) — sinaliza que está pulada sem sumir
@@ -134,12 +134,6 @@ struct TransactionRow: View {
         case .neutral: return .secondary
         }
     }
-
-    private static let dateFormatter: DateFormatter = {
-        let f = DateFormatter()
-        f.dateFormat = "dd/MM/yyyy"
-        return f
-    }()
 
     private static let currencyFormatter: NumberFormatter = {
         let f = NumberFormatter()

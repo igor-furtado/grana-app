@@ -71,11 +71,11 @@ struct CategorizationReviewView: View {
                 .width(min: 132, ideal: 156, max: 180)
 
                 TableColumn("Data") { row in
-                    Text(row.occurredAt.formatted(date: .numeric, time: .omitted))
+                    Text(GranaDateFormat.fullDate(row.occurredAt))
                         .font(GranaTheme.Typography.caption1)
                         .foregroundStyle(GranaTheme.Palette.muted)
                 }
-                .width(min: 92, ideal: 104, max: 118)
+                .width(min: 128, ideal: 148, max: 172)
 
                 TableColumn("Descrição") { row in
                     HStack(spacing: GranaTheme.Spacing.sm) {

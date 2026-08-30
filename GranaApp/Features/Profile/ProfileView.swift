@@ -304,7 +304,7 @@ struct ProfileView: View {
 
     private func displayDate(_ date: Date?) -> String {
         guard let date else { return "Não informado" }
-        return date.formatted(date: .abbreviated, time: .shortened)
+        return GranaDateFormat.dateTime(date)
     }
 }
 

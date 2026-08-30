@@ -47,11 +47,11 @@ struct StatementListView: View {
     private var table: some View {
         AppUI.Table(sortedRows, sortOrder: $sortOrder) {
             TableColumn("Data", value: \.occurredAt) { row in
-                Text(Self.dayMonthFormatter.string(from: row.occurredAt))
+                Text(GranaDateFormat.fullDate(row.occurredAt))
                     .font(GranaTheme.Typography.caption1)
                     .foregroundStyle(GranaTheme.Palette.muted)
             }
-            .width(min: 92, ideal: 100, max: 124)
+            .width(min: 128, ideal: 148, max: 172)
 
             TableColumn("Categoria", value: \.categorySortLabel) { row in
                 Group {
@@ -118,13 +118,6 @@ struct StatementListView: View {
                     .foregroundStyle(GranaTheme.Palette.muted)
             }
     }
-
-    private static let dayMonthFormatter: DateFormatter = {
-        let f = DateFormatter()
-        f.dateFormat = "dd 'de' MMM yyyy"
-        f.locale = Locale(identifier: "pt_BR")
-        return f
-    }()
 }
 
 struct StatementTransactionTableRow: Identifiable, Equatable {

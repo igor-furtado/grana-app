@@ -279,7 +279,7 @@ struct TransactionFormView: View {
     }
 
     private func statementPreviewTitle(for statement: Statement) -> String {
-        let monthYear = Self.statementMonthFormatter.string(from: statement.dueDate)
+        let monthYear = GranaDateFormat.monthYear(statement.dueDate)
         let remaining = store.state.remainingAmount(of: statement)
         let total = statement.totalAmount
         let remainingStr = remaining.formatted(.currency(code: "BRL"))
@@ -290,14 +290,6 @@ struct TransactionFormView: View {
     private enum Field: Hashable {
         case description
     }
-
-    private static let statementMonthFormatter: DateFormatter = {
-        let formatter = DateFormatter()
-        formatter.dateFormat = "MMMM/yyyy"
-        formatter.locale = Locale(identifier: "pt_BR")
-        formatter.timeZone = TimeZone(secondsFromGMT: 0)
-        return formatter
-    }()
 }
 
 private enum StatementPreviewItem: Identifiable {
