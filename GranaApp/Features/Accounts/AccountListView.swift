@@ -122,7 +122,7 @@ private struct AccountListFilterBar: View {
     @Bindable var store: StoreOf<AccountListFeature>
 
     var body: some View {
-        HStack(alignment: .top, spacing: GranaTheme.Spacing.sm) {
+        AppUI.TableFilterBar {
             AppUI.Selector(
                 label: "Instituição",
                 options: store.availableInstitutionNames.map { .init(id: $0, title: $0) },

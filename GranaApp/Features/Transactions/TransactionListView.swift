@@ -280,48 +280,46 @@ private struct TransactionsFilterBar: View {
     let onKindSelected: (TransactionKindFilter) -> Void
 
     var body: some View {
-        VStack(alignment: .leading, spacing: GranaTheme.Spacing.sm) {
+        AppUI.TableFilterBar {
             searchField
 
-            HStack(alignment: .top, spacing: GranaTheme.Spacing.sm) {
-                AppUI.Selector(
-                    label: "Banco",
-                    options: availableBanks.map { .init(id: $0.id, title: $0.name) },
-                    selection: bankSelection,
-                    includesNoneOption: true,
-                    noneOptionTitle: "Todos bancos",
-                    icon: AppIcon.sidebarAccounts.systemImage
-                )
-                .frame(maxWidth: .infinity, alignment: .leading)
+            AppUI.Selector(
+                label: "Banco",
+                options: availableBanks.map { .init(id: $0.id, title: $0.name) },
+                selection: bankSelection,
+                includesNoneOption: true,
+                noneOptionTitle: "Todos bancos",
+                icon: AppIcon.sidebarAccounts.systemImage
+            )
+            .frame(maxWidth: .infinity, alignment: .leading)
 
-                AppUI.Selector(
-                    label: "Categoria",
-                    options: categories.map { .init(id: $0.id, title: $0.name) },
-                    selection: categorySelection,
-                    includesNoneOption: true,
-                    noneOptionTitle: "Todas categorias",
-                    icon: AppIcon.sidebarCategories.systemImage
-                )
-                .frame(maxWidth: .infinity, alignment: .leading)
+            AppUI.Selector(
+                label: "Categoria",
+                options: categories.map { .init(id: $0.id, title: $0.name) },
+                selection: categorySelection,
+                includesNoneOption: true,
+                noneOptionTitle: "Todas categorias",
+                icon: AppIcon.sidebarCategories.systemImage
+            )
+            .frame(maxWidth: .infinity, alignment: .leading)
 
-                AppUI.Selector(
-                    label: "Período",
-                    options: TransactionPeriodFilter.allCases.map { .init(id: $0, title: $0.name) },
-                    selection: periodSelection,
-                    icon: AppIcon.sidebarAccounts.systemImage
-                )
-                .frame(maxWidth: .infinity, alignment: .leading)
+            AppUI.Selector(
+                label: "Período",
+                options: TransactionPeriodFilter.allCases.map { .init(id: $0, title: $0.name) },
+                selection: periodSelection,
+                icon: AppIcon.sidebarAccounts.systemImage
+            )
+            .frame(maxWidth: .infinity, alignment: .leading)
 
-                AppUI.Selector(
-                    label: "Tipo",
-                    options: TransactionKindFilter.allCases.map { .init(id: $0, title: $0.name) },
-                    selection: kindSelection,
-                    icon: "line.3.horizontal.decrease.circle"
-                )
-                .frame(maxWidth: .infinity, alignment: .leading)
+            AppUI.Selector(
+                label: "Tipo",
+                options: TransactionKindFilter.allCases.map { .init(id: $0, title: $0.name) },
+                selection: kindSelection,
+                icon: "line.3.horizontal.decrease.circle"
+            )
+            .frame(maxWidth: .infinity, alignment: .leading)
 
-                Spacer(minLength: GranaTheme.Spacing.none)
-            }
+            Spacer(minLength: GranaTheme.Spacing.none)
         }
     }
 
@@ -335,6 +333,7 @@ private struct TransactionsFilterBar: View {
             font: GranaTheme.Typography.subheadlineEmphasis,
             textAlignment: .leading
         )
+        .frame(maxWidth: .infinity, alignment: .leading)
     }
 
     private var bankSelection: Binding<UUID?> {

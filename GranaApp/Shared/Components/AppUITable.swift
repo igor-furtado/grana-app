@@ -3,6 +3,28 @@ import SwiftUI
 /// Wrapper fino sobre `SwiftUI.Table` para concentrar o shell visual padrão do
 /// tema nas tabelas densas do app.
 extension AppUI {
+    struct TableFilterBar<Content: View>: View {
+        @ViewBuilder private let content: () -> Content
+
+        init(@ViewBuilder content: @escaping () -> Content) {
+            self.content = content
+        }
+
+        var body: some View {
+            HStack(alignment: .top, spacing: GranaTheme.Spacing.sm) {
+                content()
+            }
+            .padding(GranaTheme.Spacing.md)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .background(GranaTheme.Palette.paper.opacity(0.58))
+            .overlay(alignment: .bottom) {
+                Rectangle()
+                    .fill(GranaTheme.Palette.line)
+                    .frame(height: 1)
+            }
+        }
+    }
+
     struct Table<RowValue: Identifiable, Sort: SortComparator, FilterBar: View, Columns: TableColumnContent>: View
         where Columns.TableRowValue == RowValue,
         Columns.TableColumnSortComparator == Sort {
@@ -24,14 +46,6 @@ extension AppUI {
             VStack(spacing: GranaTheme.Spacing.none) {
                 if hasFilterBar {
                     filterBar
-                        .padding(GranaTheme.Spacing.md)
-                        .frame(maxWidth: .infinity, alignment: .leading)
-                        .background(GranaTheme.Palette.paper.opacity(0.58))
-                        .overlay(alignment: .bottom) {
-                            Rectangle()
-                                .fill(GranaTheme.Palette.line)
-                                .frame(height: 1)
-                        }
                 }
 
                 tableView

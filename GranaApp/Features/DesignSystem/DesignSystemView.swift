@@ -1150,7 +1150,7 @@ private struct TransactionsTableExample: View {
             }
             .width(min: 120, ideal: 148, max: 180)
         } filterBar: {
-            HStack(spacing: GranaTheme.Spacing.sm) {
+            AppUI.TableFilterBar {
                 AppUI.TextField(
                     label: "Transação",
                     text: $filterText,

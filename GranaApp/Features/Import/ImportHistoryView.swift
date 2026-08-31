@@ -262,7 +262,7 @@ private struct ImportHistoryFilterBar: View {
     @Binding var accountFilter: String
 
     var body: some View {
-        HStack(alignment: .top, spacing: GranaTheme.Spacing.sm) {
+        AppUI.TableFilterBar {
             AppUI.Selector(
                 label: "Instituição",
                 options: institutionOptions.map { .init(id: $0, title: $0) },
