@@ -184,7 +184,7 @@ private struct LimitGaugeBlock: View {
             AppUI.UsageMeterBar(
                 progress: percent,
                 fill: color,
-                track: Color.secondary.opacity(0.18),
+                track: GranaTheme.Palette.line,
                 minimumFillWidth: 4
             )
 
