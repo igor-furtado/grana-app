@@ -1,5 +1,6 @@
 import ComposableArchitecture
 import SwiftUI
+import AppUI
 
 struct TransactionFormView: View {
     @Bindable var store: StoreOf<TransactionFormFeature>
@@ -36,8 +37,8 @@ struct TransactionFormView: View {
 
             if store.showsDiscardConfirmation {
                 TransactionFormConfirmationOverlay(
-                    icon: AppIcon.warning.systemImage,
-                    tint: GranaTheme.Palette.amber,
+                    icon: AppUI.Icon.warning.systemImage,
+                    tint: AppUI.Theme.Palette.amber,
                     title: "Descartar alterações?",
                     message: "As mudanças desta transação serão perdidas.",
                     cancelTitle: "Continuar editando",
@@ -48,8 +49,8 @@ struct TransactionFormView: View {
                 )
             } else if store.showsRetroactivePreview {
                 TransactionFormConfirmationOverlay(
-                    icon: AppIcon.invalidDate.systemImage,
-                    tint: GranaTheme.Palette.amber,
+                    icon: AppUI.Icon.invalidDate.systemImage,
+                    tint: AppUI.Theme.Palette.amber,
                     title: "Prévia do recálculo",
                     message: store.state.retroactivePreviewText,
                     cancelTitle: "Cancelar",
@@ -104,7 +105,7 @@ struct TransactionFormView: View {
                 label: "Conta",
                 options: accountOptions,
                 selection: $store.accountId,
-                icon: AppIcon.sidebarAccounts.systemImage
+                icon: AppUI.Icon.sidebarAccounts.systemImage
             )
             AppUI.Selector(
                 label: "Categoria",
@@ -199,7 +200,7 @@ struct TransactionFormView: View {
             Button {
                 store.send(.saveButtonTapped)
             } label: {
-                HStack(spacing: GranaTheme.Spacing.xs) {
+                HStack(spacing: AppUI.Theme.Spacing.xs) {
                     if store.isSaving {
                         ProgressView()
                             .controlSize(.small)
@@ -310,28 +311,28 @@ private struct TransactionStatementSummary: View {
     let items: [StatementPreviewItem]
 
     var body: some View {
-        VStack(alignment: .leading, spacing: GranaTheme.Spacing.sm) {
+        VStack(alignment: .leading, spacing: AppUI.Theme.Spacing.sm) {
             ForEach(items) { item in
                 switch item {
                 case let .empty(message):
                     Text(message)
-                        .font(GranaTheme.Typography.callout)
-                        .foregroundStyle(GranaTheme.Palette.muted)
+                        .font(AppUI.Theme.Typography.callout)
+                        .foregroundStyle(AppUI.Theme.Palette.muted)
                         .frame(maxWidth: .infinity, alignment: .leading)
-                        .padding(GranaTheme.Spacing.sm)
+                        .padding(AppUI.Theme.Spacing.sm)
                         .background(rowBackground)
                 case let .filled(title, value):
-                    HStack(alignment: .top, spacing: GranaTheme.Spacing.sm) {
+                    HStack(alignment: .top, spacing: AppUI.Theme.Spacing.sm) {
                         Text(title)
-                            .font(GranaTheme.Typography.footnote)
-                            .foregroundStyle(GranaTheme.Palette.ink)
+                            .font(AppUI.Theme.Typography.footnote)
+                            .foregroundStyle(AppUI.Theme.Palette.ink)
                             .fixedSize(horizontal: false, vertical: true)
-                        Spacer(minLength: GranaTheme.Spacing.none)
+                        Spacer(minLength: AppUI.Theme.Spacing.none)
                         Text(value)
-                            .font(GranaTheme.Typography.moneyFootnote)
-                            .foregroundStyle(GranaTheme.Palette.ink)
+                            .font(AppUI.Theme.Typography.moneyFootnote)
+                            .foregroundStyle(AppUI.Theme.Palette.ink)
                     }
-                    .padding(GranaTheme.Spacing.sm)
+                    .padding(AppUI.Theme.Spacing.sm)
                     .background(rowBackground)
                 }
             }
@@ -339,8 +340,8 @@ private struct TransactionStatementSummary: View {
     }
 
     private var rowBackground: some View {
-        RoundedRectangle(cornerRadius: GranaTheme.Radius.control, style: .continuous)
-            .fill(GranaTheme.Palette.paper)
+        RoundedRectangle(cornerRadius: AppUI.Theme.Radius.control, style: .continuous)
+            .fill(AppUI.Theme.Palette.paper)
     }
 }
 
@@ -351,26 +352,26 @@ private struct TransactionNotesField: View {
         ZStack(alignment: .topLeading) {
             if text.isEmpty {
                 Text("Observação, contexto, lembrete…")
-                    .font(GranaTheme.Typography.callout)
-                    .foregroundStyle(GranaTheme.Palette.muted)
-                    .padding(.horizontal, GranaTheme.Spacing.md)
-                    .padding(.vertical, GranaTheme.Spacing.sm)
+                    .font(AppUI.Theme.Typography.callout)
+                    .foregroundStyle(AppUI.Theme.Palette.muted)
+                    .padding(.horizontal, AppUI.Theme.Spacing.md)
+                    .padding(.vertical, AppUI.Theme.Spacing.sm)
                     .allowsHitTesting(false)
             }
 
             TextEditor(text: $text)
-                .font(GranaTheme.Typography.body)
-                .foregroundStyle(GranaTheme.Palette.ink)
+                .font(AppUI.Theme.Typography.body)
+                .foregroundStyle(AppUI.Theme.Palette.ink)
                 .scrollContentBackground(.hidden)
                 .frame(minHeight: 110)
-                .padding(GranaTheme.Spacing.xs)
+                .padding(AppUI.Theme.Spacing.xs)
         }
         .background(
             RoundedRectangle(cornerRadius: 14, style: .continuous)
-                .fill(GranaTheme.Palette.paper.opacity(0.92))
+                .fill(AppUI.Theme.Palette.paper.opacity(0.92))
                 .overlay {
                     RoundedRectangle(cornerRadius: 14, style: .continuous)
-                        .stroke(GranaTheme.Palette.line, lineWidth: 1)
+                        .stroke(AppUI.Theme.Palette.line, lineWidth: 1)
                 }
         )
     }
@@ -395,30 +396,30 @@ private struct TransactionFormConfirmationOverlay: View {
     var body: some View {
         ZStack {
             Rectangle()
-                .fill(GranaTheme.Palette.ink.opacity(0.20))
+                .fill(AppUI.Theme.Palette.ink.opacity(0.20))
                 .ignoresSafeArea()
 
-            VStack(alignment: .leading, spacing: GranaTheme.Spacing.lg) {
-                HStack(alignment: .top, spacing: GranaTheme.Spacing.sm) {
+            VStack(alignment: .leading, spacing: AppUI.Theme.Spacing.lg) {
+                HStack(alignment: .top, spacing: AppUI.Theme.Spacing.sm) {
                     Image(systemName: icon)
-                        .font(.system(size: GranaTheme.IconSize.medium, weight: .semibold))
+                        .font(.system(size: AppUI.Theme.IconSize.medium, weight: .semibold))
                         .foregroundStyle(tint)
-                        .padding(.top, GranaTheme.Spacing.xxs)
+                        .padding(.top, AppUI.Theme.Spacing.xxs)
 
-                    VStack(alignment: .leading, spacing: GranaTheme.Spacing.xs) {
+                    VStack(alignment: .leading, spacing: AppUI.Theme.Spacing.xs) {
                         Text(title)
-                            .font(GranaTheme.Typography.title3)
-                            .foregroundStyle(GranaTheme.Palette.ink)
+                            .font(AppUI.Theme.Typography.title3)
+                            .foregroundStyle(AppUI.Theme.Palette.ink)
 
                         Text(message)
-                            .font(GranaTheme.Typography.callout)
-                            .foregroundStyle(GranaTheme.Palette.muted)
+                            .font(AppUI.Theme.Typography.callout)
+                            .foregroundStyle(AppUI.Theme.Palette.muted)
                             .fixedSize(horizontal: false, vertical: true)
                     }
                 }
 
-                HStack(spacing: GranaTheme.Spacing.sm) {
-                    Spacer(minLength: GranaTheme.Spacing.none)
+                HStack(spacing: AppUI.Theme.Spacing.sm) {
+                    Spacer(minLength: AppUI.Theme.Spacing.none)
 
                     Button(cancelTitle, action: onCancel)
                         .buttonStyle(GranaSecondaryButtonStyle())
@@ -426,10 +427,10 @@ private struct TransactionFormConfirmationOverlay: View {
                     confirmButton
                 }
             }
-            .padding(GranaTheme.Spacing.lg)
+            .padding(AppUI.Theme.Spacing.lg)
             .frame(maxWidth: 420, alignment: .leading)
-            .granaSurface(.subtle, cornerRadius: GranaTheme.Radius.card)
-            .padding(GranaTheme.Spacing.lg)
+            .granaSurface(.subtle, cornerRadius: AppUI.Theme.Radius.card)
+            .padding(AppUI.Theme.Spacing.lg)
         }
     }
 

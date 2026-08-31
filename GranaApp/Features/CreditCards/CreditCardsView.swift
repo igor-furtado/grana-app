@@ -1,20 +1,21 @@
 import ComposableArchitecture
 import SwiftUI
+import AppUI
 
 struct CreditCardsView: View {
     @Bindable var store: StoreOf<CreditCardsFeature>
 
     var body: some View {
-        VStack(spacing: GranaTheme.Spacing.sm) {
+        VStack(spacing: AppUI.Theme.Spacing.sm) {
             AppUI.Layout.ScreenHeader(
                 title: "Cartões de crédito",
                 subtitle: store.list.summarySubtitle
             ) {
-                HStack(spacing: GranaTheme.Spacing.sm) {
+                HStack(spacing: AppUI.Theme.Spacing.sm) {
                     Button {
                         store.send(.list(.addButtonTapped))
                     } label: {
-                        Label("Novo cartão", systemImage: AppIcon.add.systemImage)
+                        Label("Novo cartão", systemImage: AppUI.Icon.add.systemImage)
                     }
                     .buttonStyle(GranaPrimaryButtonStyle())
 
@@ -28,7 +29,7 @@ struct CreditCardsView: View {
                                 )
                             )
                         } label: {
-                            Label("Mais", systemImage: AppIcon.more.systemImage)
+                            Label("Mais", systemImage: AppUI.Icon.more.systemImage)
                         }
                         .buttonStyle(GranaSecondaryButtonStyle())
                     }
@@ -40,7 +41,7 @@ struct CreditCardsView: View {
                     emptyState
                         .frame(maxWidth: .infinity, maxHeight: .infinity)
                 } else if let statementsStore = store.scope(state: \.statements, action: \.statements) {
-                    VStack(alignment: .leading, spacing: GranaTheme.Spacing.md) {
+                    VStack(alignment: .leading, spacing: AppUI.Theme.Spacing.md) {
                         CreditCardListView(store: store.scope(state: \.list, action: \.list))
                         CreditCardStatementsView(store: statementsStore)
                             .frame(maxWidth: .infinity, maxHeight: .infinity)
@@ -81,21 +82,21 @@ struct CreditCardsView: View {
             Button {
                 store.send(.list(.addButtonTapped))
             } label: {
-                Label("Cadastrar primeiro cartão", systemImage: AppIcon.add.systemImage)
+                Label("Cadastrar primeiro cartão", systemImage: AppUI.Icon.add.systemImage)
             }
             .buttonStyle(GranaPrimaryButtonStyle())
         }
     }
 
     private var placeholderDetail: some View {
-        VStack(spacing: GranaTheme.Spacing.sm) {
+        VStack(spacing: AppUI.Theme.Spacing.sm) {
             ProgressView()
             Text("Carregando cartões…")
-                .font(GranaTheme.Typography.callout)
-                .foregroundStyle(GranaTheme.Palette.muted)
+                .font(AppUI.Theme.Typography.callout)
+                .foregroundStyle(AppUI.Theme.Palette.muted)
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
-        .padding(GranaTheme.Spacing.xxxl)
-        .granaSurface(.subtle, cornerRadius: GranaTheme.Radius.hero)
+        .padding(AppUI.Theme.Spacing.xxxl)
+        .granaSurface(.subtle, cornerRadius: AppUI.Theme.Radius.hero)
     }
 }

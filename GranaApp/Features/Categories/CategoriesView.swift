@@ -1,6 +1,7 @@
 import ComposableArchitecture
 import Foundation
 import SwiftUI
+import AppUI
 
 /// Inspeção read-only da taxonomia de categorias (raízes + subcategorias).
 ///
@@ -37,7 +38,7 @@ private struct CategoriesLoadedView: View {
     @Binding var inspectorPresented: Bool
 
     var body: some View {
-        VStack(spacing: GranaTheme.Spacing.sm) {
+        VStack(spacing: AppUI.Theme.Spacing.sm) {
             header
 
             Group {
@@ -77,7 +78,7 @@ private struct CategoriesLoadedView: View {
             title: "Categorias",
             subtitle: "\(store.sortedRootCategories.count) categorias raiz no catálogo global"
         ) {
-            HStack(spacing: GranaTheme.Spacing.sm) {
+            HStack(spacing: AppUI.Theme.Spacing.sm) {
                 Button {
                     Task {
                         await store.send(.refresh).finish()
@@ -91,7 +92,7 @@ private struct CategoriesLoadedView: View {
                 Button {
                     inspectorPresented.toggle()
                 } label: {
-                    Label("Detalhes", systemImage: AppIcon.inspectorToggle.systemImage)
+                    Label("Detalhes", systemImage: AppUI.Icon.inspectorToggle.systemImage)
                 }
                 .buttonStyle(GranaSecondaryButtonStyle())
                 .help(inspectorPresented ? "Ocultar painel de detalhes" : "Mostrar painel de detalhes")
@@ -110,7 +111,7 @@ private struct CategoriesLoadedView: View {
         ]
 
         ScrollView {
-            LazyVStack(alignment: .leading, spacing: GranaTheme.Spacing.xxl) {
+            LazyVStack(alignment: .leading, spacing: AppUI.Theme.Spacing.xxl) {
                 ForEach(sections, id: \.0) { kind, title, accent in
                     let groups = makeGroups(from: byKind[kind] ?? [])
                     if !groups.isEmpty {
@@ -125,19 +126,19 @@ private struct CategoriesLoadedView: View {
     /// Seção de um kind: cabeçalho com bolinha de cor + título + contagem,
     /// e um `LazyVGrid` adaptativo de cards uniformes.
     private func kindSection(title: String, accent: Color, groups: [CategoryGroup]) -> some View {
-        VStack(alignment: .leading, spacing: GranaTheme.Spacing.md) {
-            HStack(spacing: GranaTheme.Spacing.xs) {
+        VStack(alignment: .leading, spacing: AppUI.Theme.Spacing.md) {
+            HStack(spacing: AppUI.Theme.Spacing.xs) {
                 Circle()
                     .fill(accent)
                     .frame(width: 10, height: 10)
                 Text(title)
-                    .font(GranaTheme.Typography.title3)
+                    .font(AppUI.Theme.Typography.title3)
                 Text("(\(groups.count))")
-                    .font(GranaTheme.Typography.callout)
+                    .font(AppUI.Theme.Typography.callout)
                     .foregroundStyle(.secondary)
             }
 
-            LazyVGrid(columns: Self.gridColumns, alignment: .leading, spacing: GranaTheme.Spacing.sm) {
+            LazyVGrid(columns: Self.gridColumns, alignment: .leading, spacing: AppUI.Theme.Spacing.sm) {
                 ForEach(groups) { group in
                     CategoryCard(
                         group: group,
@@ -150,7 +151,7 @@ private struct CategoriesLoadedView: View {
     }
 
     private static let gridColumns: [GridItem] = [
-        GridItem(.adaptive(minimum: 150), spacing: GranaTheme.Spacing.sm, alignment: .top),
+        GridItem(.adaptive(minimum: 150), spacing: AppUI.Theme.Spacing.sm, alignment: .top),
     ]
 
     @ViewBuilder
@@ -163,12 +164,12 @@ private struct CategoriesLoadedView: View {
     }
 
     private var inspectorPlaceholder: some View {
-        VStack(spacing: GranaTheme.Spacing.sm) {
-            Image(systemName: AppIcon.sidebarCategories.systemImage)
-                .font(.system(size: GranaTheme.IconSize.large))
+        VStack(spacing: AppUI.Theme.Spacing.sm) {
+            Image(systemName: AppUI.Icon.sidebarCategories.systemImage)
+                .font(.system(size: AppUI.Theme.IconSize.large))
                 .foregroundStyle(.tertiary)
             Text("Selecione uma categoria")
-                .font(GranaTheme.Typography.callout)
+                .font(AppUI.Theme.Typography.callout)
                 .foregroundStyle(.secondary)
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
@@ -241,12 +242,12 @@ private struct CategoryCard: View {
         // SF Symbols pra tile selecionada).
         Button(action: onTap) {
             GroupBox {
-                VStack(spacing: GranaTheme.Spacing.sm) {
+                VStack(spacing: AppUI.Theme.Spacing.sm) {
                     iconView
                         .frame(maxWidth: .infinity)
 
                     Text(group.root.name)
-                        .font(GranaTheme.Typography.calloutEmphasis)
+                        .font(AppUI.Theme.Typography.calloutEmphasis)
                         .foregroundStyle(.primary)
                         .lineLimit(2)
                         .multilineTextAlignment(.center)
@@ -275,12 +276,12 @@ private struct CategoryCard: View {
     private var iconView: some View {
         if let icon = group.root.icon {
             Image(systemName: icon.systemImage)
-                .font(.system(size: GranaTheme.IconSize.large, weight: .regular))
+                .font(.system(size: AppUI.Theme.IconSize.large, weight: .regular))
                 .symbolRenderingMode(.hierarchical)
                 .foregroundStyle(icon.color.gradient)
         } else {
-            Image(systemName: AppIcon.warning.systemImage)
-                .font(.system(size: GranaTheme.IconSize.large, weight: .regular))
+            Image(systemName: AppUI.Icon.warning.systemImage)
+                .font(.system(size: AppUI.Theme.IconSize.large, weight: .regular))
                 .foregroundStyle(.tertiary)
         }
     }
@@ -294,12 +295,12 @@ private struct CategoryInspector: View {
 
     var body: some View {
         ScrollView {
-            VStack(alignment: .leading, spacing: GranaTheme.Spacing.lg) {
+            VStack(alignment: .leading, spacing: AppUI.Theme.Spacing.lg) {
                 iconHero
 
-                VStack(alignment: .center, spacing: GranaTheme.Spacing.xxs) {
+                VStack(alignment: .center, spacing: AppUI.Theme.Spacing.xxs) {
                     Text(group.root.name)
-                        .font(GranaTheme.Typography.title3)
+                        .font(AppUI.Theme.Typography.title3)
                         .multilineTextAlignment(.center)
                         .frame(maxWidth: .infinity)
 
@@ -311,7 +312,7 @@ private struct CategoryInspector: View {
 
                 subsSection
             }
-            .padding(GranaTheme.Spacing.lg)
+            .padding(AppUI.Theme.Spacing.lg)
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
     }
@@ -327,12 +328,12 @@ private struct CategoryInspector: View {
 
             if let icon = group.root.icon {
                 Image(systemName: icon.systemImage)
-                    .font(.system(size: GranaTheme.IconSize.hero, weight: .regular))
+                    .font(.system(size: AppUI.Theme.IconSize.hero, weight: .regular))
                     .symbolRenderingMode(.hierarchical)
                     .foregroundStyle(icon.color.gradient)
             } else {
-                Image(systemName: AppIcon.warning.systemImage)
-                    .font(.system(size: GranaTheme.IconSize.hero, weight: .regular))
+                Image(systemName: AppUI.Icon.warning.systemImage)
+                    .font(.system(size: AppUI.Theme.IconSize.hero, weight: .regular))
                     .foregroundStyle(.tertiary)
             }
         }
@@ -343,12 +344,12 @@ private struct CategoryInspector: View {
     @ViewBuilder
     private var kindBadge: some View {
         let (label, color) = kindMeta
-        HStack(spacing: GranaTheme.Spacing.xxs) {
+        HStack(spacing: AppUI.Theme.Spacing.xxs) {
             Circle()
                 .fill(color)
                 .frame(width: 7, height: 7)
             Text(label)
-                .font(GranaTheme.Typography.caption1)
+                .font(AppUI.Theme.Typography.caption1)
                 .foregroundStyle(.secondary)
         }
     }
@@ -371,22 +372,22 @@ private struct CategoryInspector: View {
         GroupBox {
             if group.subs.isEmpty {
                 Text("Sem subcategorias cadastradas")
-                    .font(GranaTheme.Typography.subheadline)
+                    .font(AppUI.Theme.Typography.subheadline)
                     .foregroundStyle(.tertiary)
                     .italic()
                     .frame(maxWidth: .infinity, alignment: .leading)
             } else {
-                VStack(alignment: .leading, spacing: GranaTheme.Spacing.xs) {
+                VStack(alignment: .leading, spacing: AppUI.Theme.Spacing.xs) {
                     ForEach(group.subs) { sub in
                         Text(sub.name)
-                            .font(GranaTheme.Typography.subheadline)
+                            .font(AppUI.Theme.Typography.subheadline)
                             .foregroundStyle(.primary.opacity(0.85))
                             .frame(maxWidth: .infinity, alignment: .leading)
                     }
                 }
             }
         } label: {
-            HStack(spacing: GranaTheme.Spacing.xxs) {
+            HStack(spacing: AppUI.Theme.Spacing.xxs) {
                 Text("Subcategorias")
                 Text("(\(group.subs.count))")
                     .foregroundStyle(.tertiary)

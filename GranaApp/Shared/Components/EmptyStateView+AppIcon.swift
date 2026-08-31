@@ -1,9 +1,10 @@
 import SwiftUI
+import AppUI
 
 extension EmptyStateView where Icon == EmptyStateSymbolIcon {
     init(
         _ title: String,
-        icon: AppIcon,
+        icon: AppUI.Icon,
         description: String? = nil,
         @ViewBuilder actions: () -> Actions
     ) {
@@ -18,7 +19,7 @@ extension EmptyStateView where Icon == EmptyStateSymbolIcon {
 extension EmptyStateView where Icon == EmptyStateSymbolIcon, Actions == EmptyView {
     init(
         _ title: String,
-        icon: AppIcon,
+        icon: AppUI.Icon,
         description: String? = nil
     ) {
         self.init(title, description: description) {

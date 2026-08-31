@@ -1,4 +1,5 @@
 import SwiftUI
+import AppUI
 
 /// Pill com ícone + nome da categoria. Usado tanto na linha da lista de
 /// transações quanto na coluna "Categoria" da `Table` do macOS.
@@ -18,7 +19,7 @@ struct CategoryBadge: View {
             }
         } else {
             Text("—")
-                .font(GranaTheme.Typography.caption1)
+                .font(AppUI.Theme.Typography.caption1)
                 .foregroundStyle(.secondary)
         }
     }
@@ -48,22 +49,22 @@ struct CategoryBadge: View {
 
     private func pillBody(for category: Category) -> some View {
         let color = tint(for: category, icon: icon)
-        return HStack(spacing: GranaTheme.Spacing.xs) {
+        return HStack(spacing: AppUI.Theme.Spacing.xs) {
             if let icon {
                 Image(systemName: icon.systemImage)
-                    .font(.system(size: GranaTheme.IconSize.small))
+                    .font(.system(size: AppUI.Theme.IconSize.small))
                     .symbolRenderingMode(.hierarchical)
                     .foregroundStyle(color.gradient)
             }
             Text(category.name)
-                .font(GranaTheme.Typography.caption1)
+                .font(AppUI.Theme.Typography.caption1)
                 .lineLimit(1)
                 .foregroundStyle(color)
         }
-        .padding(.horizontal, GranaTheme.Spacing.xs)
-        .padding(.vertical, GranaTheme.Spacing.xxs)
+        .padding(.horizontal, AppUI.Theme.Spacing.xs)
+        .padding(.vertical, AppUI.Theme.Spacing.xxs)
         .background(color.opacity(0.15))
-        .clipShape(RoundedRectangle(cornerRadius: GranaTheme.Radius.pill, style: .continuous))
+        .clipShape(RoundedRectangle(cornerRadius: AppUI.Theme.Radius.pill, style: .continuous))
     }
 
     /// Cor do badge: preferir `icon.color` (semântica do glyph) e cair pra

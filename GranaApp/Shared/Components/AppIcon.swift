@@ -15,7 +15,7 @@ import SwiftUI
 /// **Nomeação por intenção, não pelo símbolo.** Caso é `success`, não
 /// `checkmarkCircle` — se amanhã trocarmos pro `checkmark.seal.fill`, o nome
 /// do caso continua certo. Mesmo princípio do `CategoryIcon`.
-enum AppIcon {
+public enum Icon {
     // MARK: - Ações
 
     case add
@@ -74,7 +74,7 @@ enum AppIcon {
     case sidebarProfile
 
     /// Nome do SF Symbol, pra `Image(systemName:)` ou `Label(_:systemImage:)`.
-    var systemImage: String {
+    public var systemImage: String {
         switch self {
         // Ações
         case .add: "plus"

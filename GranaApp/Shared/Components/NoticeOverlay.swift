@@ -1,4 +1,5 @@
 import SwiftUI
+import AppUI
 
 /// Overlay global de toasts. Plugado uma única vez na raiz da árvore
 /// (`ContentView`). Observa o `NoticeCenter.shared` e renderiza um stack de
@@ -14,7 +15,7 @@ struct NoticeOverlay: ViewModifier {
 
     func body(content: Content) -> some View {
         content.overlay(alignment: .topTrailing) {
-            VStack(spacing: GranaTheme.Spacing.sm) {
+            VStack(spacing: AppUI.Theme.Spacing.sm) {
                 ForEach(center.notices) { notice in
                     NoticeCard(notice: notice) {
                         center.dismiss(notice.id)
@@ -29,7 +30,7 @@ struct NoticeOverlay: ViewModifier {
                     ))
                 }
             }
-            .padding(GranaTheme.Spacing.md)
+            .padding(AppUI.Theme.Spacing.md)
             .frame(maxWidth: 420, alignment: .trailing)
             .animation(.spring(duration: 0.35, bounce: 0.15), value: center.notices)
             .allowsHitTesting(false)
@@ -44,20 +45,20 @@ struct NoticeCard: View {
     let onDismiss: () -> Void
 
     var body: some View {
-        HStack(alignment: .top, spacing: GranaTheme.Spacing.sm) {
+        HStack(alignment: .top, spacing: AppUI.Theme.Spacing.sm) {
             Image(systemName: notice.kind.iconName)
-                .font(.system(size: GranaTheme.IconSize.medium))
+                .font(.system(size: AppUI.Theme.IconSize.medium))
                 .foregroundStyle(notice.kind.tint)
                 .accessibilityHidden(true)
 
-            VStack(alignment: .leading, spacing: GranaTheme.Spacing.xxs) {
+            VStack(alignment: .leading, spacing: AppUI.Theme.Spacing.xxs) {
                 Text(notice.title)
-                    .font(GranaTheme.Typography.headline)
-                    .foregroundStyle(GranaTheme.Palette.ink)
+                    .font(AppUI.Theme.Typography.headline)
+                    .foregroundStyle(AppUI.Theme.Palette.ink)
                 if let message = notice.message {
                     Text(message)
-                        .font(GranaTheme.Typography.subheadline)
-                        .foregroundStyle(GranaTheme.Palette.muted)
+                        .font(AppUI.Theme.Typography.subheadline)
+                        .foregroundStyle(AppUI.Theme.Palette.muted)
                         .fixedSize(horizontal: false, vertical: true)
                 }
                 if !notice.actions.isEmpty {
@@ -65,20 +66,20 @@ struct NoticeCard: View {
                 }
             }
 
-            Spacer(minLength: GranaTheme.Spacing.none)
+            Spacer(minLength: AppUI.Theme.Spacing.none)
 
             Button(action: onDismiss) {
                 Image(systemName: "xmark")
-                    .font(.system(size: GranaTheme.IconSize.micro, weight: .bold))
-                    .foregroundStyle(GranaTheme.Palette.muted)
-                    .padding(GranaTheme.Spacing.xs)
+                    .font(.system(size: AppUI.Theme.IconSize.micro, weight: .bold))
+                    .foregroundStyle(AppUI.Theme.Palette.muted)
+                    .padding(AppUI.Theme.Spacing.xs)
                     .contentShape(Rectangle())
             }
             .buttonStyle(.borderless)
             .help("Fechar")
             .accessibilityLabel("Fechar notificação")
         }
-        .padding(GranaTheme.Spacing.md)
+        .padding(AppUI.Theme.Spacing.md)
         .frame(maxWidth: .infinity, alignment: .leading)
         .granaSurface(.subtle, cornerRadius: 14)
         .overlay(alignment: .leading) {
@@ -91,7 +92,7 @@ struct NoticeCard: View {
     }
 
     private var actionsRow: some View {
-        HStack(spacing: GranaTheme.Spacing.xs) {
+        HStack(spacing: AppUI.Theme.Spacing.xs) {
             ForEach(notice.actions) { action in
                 Button(action.title) {
                     action.handler()
@@ -105,7 +106,7 @@ struct NoticeCard: View {
                 .tint(action.role == .destructive ? .danger : .accentColor)
             }
         }
-        .padding(.top, GranaTheme.Spacing.xxs)
+        .padding(.top, AppUI.Theme.Spacing.xxs)
     }
 }
 
@@ -114,9 +115,9 @@ struct NoticeCard: View {
 extension NoticeCenter.Kind {
     var iconName: String {
         switch self {
-        case .error: AppIcon.error.systemImage
-        case .success: AppIcon.success.systemImage
-        case .info: AppIcon.info.systemImage
+        case .error: AppUI.Icon.error.systemImage
+        case .success: AppUI.Icon.success.systemImage
+        case .info: AppUI.Icon.info.systemImage
         }
     }
 
@@ -124,7 +125,7 @@ extension NoticeCenter.Kind {
         switch self {
         case .error: .danger
         case .success: .success
-        case .info: GranaTheme.Palette.ink
+        case .info: AppUI.Theme.Palette.ink
         }
     }
 }

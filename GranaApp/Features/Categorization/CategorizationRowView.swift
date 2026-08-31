@@ -1,5 +1,6 @@
 import ComposableArchitecture
 import SwiftUI
+import AppUI
 
 struct CategorizationRowView: View {
     @Bindable var store: StoreOf<CategorizationFeature>
@@ -10,13 +11,13 @@ struct CategorizationRowView: View {
     }
 
     var body: some View {
-        HStack(alignment: .center, spacing: GranaTheme.Spacing.sm) {
+        HStack(alignment: .center, spacing: AppUI.Theme.Spacing.sm) {
             if let kind = store.state.institutionKind(forAccountId: suggestion.transactionAccountId) {
                 InstitutionIcon(kind: kind, size: 24)
             }
 
             Text(suggestion.transactionDescription)
-                .font(GranaTheme.Typography.callout)
+                .font(AppUI.Theme.Typography.callout)
                 .lineLimit(1)
                 .truncationMode(.tail)
                 .frame(minWidth: 160, maxWidth: .infinity, alignment: .leading)
@@ -25,12 +26,12 @@ struct CategorizationRowView: View {
             categoryMenu
             subcategoryMenu
 
-            VStack(alignment: .trailing, spacing: GranaTheme.Spacing.xxs) {
+            VStack(alignment: .trailing, spacing: AppUI.Theme.Spacing.xxs) {
                 Text(suggestion.transactionAmount.formatted(.currency(code: "BRL")))
-                    .font(GranaTheme.Typography.moneySubheadline)
+                    .font(AppUI.Theme.Typography.moneySubheadline)
                     .foregroundStyle(amountColor)
                 Text(GranaDateFormat.fullDate(suggestion.transactionOccurredAt))
-                    .font(GranaTheme.Typography.footnote)
+                    .font(AppUI.Theme.Typography.footnote)
                     .foregroundStyle(.secondary)
             }
             .frame(width: 132, alignment: .trailing)
@@ -110,16 +111,16 @@ struct CategorizationRowView: View {
     }
 
     private func menuLabel(text: String) -> some View {
-        HStack(spacing: GranaTheme.Spacing.xxs) {
+        HStack(spacing: AppUI.Theme.Spacing.xxs) {
             Text(text)
                 .lineLimit(1)
                 .frame(maxWidth: .infinity, alignment: .leading)
-            Image(systemName: AppIcon.sort.systemImage)
-                .font(.system(size: GranaTheme.IconSize.micro))
+            Image(systemName: AppUI.Icon.sort.systemImage)
+                .font(.system(size: AppUI.Theme.IconSize.micro))
                 .foregroundStyle(.secondary)
         }
-        .padding(.horizontal, GranaTheme.Spacing.xs)
-        .padding(.vertical, GranaTheme.Spacing.xxs)
+        .padding(.horizontal, AppUI.Theme.Spacing.xs)
+        .padding(.vertical, AppUI.Theme.Spacing.xxs)
         .background(Color(nsColor: .controlBackgroundColor))
         .clipShape(RoundedRectangle(cornerRadius: 6, style: .continuous))
     }

@@ -1,4 +1,5 @@
 import SwiftUI
+import AppUI
 
 /// Row genérica de transação usada em todas as listas (import preview,
 /// categorization review, extrato).
@@ -48,7 +49,7 @@ struct TransactionRow: View {
     let status: Status?
 
     var body: some View {
-        HStack(alignment: .center, spacing: GranaTheme.Spacing.sm) {
+        HStack(alignment: .center, spacing: AppUI.Theme.Spacing.sm) {
             if let selection {
                 AppUI.Toggle(label: "", isOn: selection)
                     .toggleStyle(.checkbox)
@@ -59,14 +60,14 @@ struct TransactionRow: View {
                 InstitutionIcon(kind: institutionKind, size: 24)
             }
 
-            VStack(alignment: .leading, spacing: GranaTheme.Spacing.xxs) {
+            VStack(alignment: .leading, spacing: AppUI.Theme.Spacing.xxs) {
                 Text(description)
-                    .font(GranaTheme.Typography.callout)
+                    .font(AppUI.Theme.Typography.callout)
                     .lineLimit(1)
                     .truncationMode(.tail)
                 if let memo, !memo.isEmpty {
                     Text(memo)
-                        .font(GranaTheme.Typography.caption1)
+                        .font(AppUI.Theme.Typography.caption1)
                         .foregroundStyle(.secondary)
                         .lineLimit(1)
                         .truncationMode(.tail)
@@ -78,12 +79,12 @@ struct TransactionRow: View {
                 statusBadge(status)
             }
 
-            VStack(alignment: .trailing, spacing: GranaTheme.Spacing.xxs) {
+            VStack(alignment: .trailing, spacing: AppUI.Theme.Spacing.xxs) {
                 Text(Self.currencyFormatter.string(from: amount as NSDecimalNumber) ?? "")
-                    .font(GranaTheme.Typography.moneySubheadline)
+                    .font(AppUI.Theme.Typography.moneySubheadline)
                     .foregroundStyle(amountColor)
                 Text(GranaDateFormat.fullDate(date))
-                    .font(GranaTheme.Typography.footnote)
+                    .font(AppUI.Theme.Typography.footnote)
                     .foregroundStyle(.secondary)
             }
             .frame(minWidth: 132, alignment: .trailing)
@@ -109,9 +110,9 @@ struct TransactionRow: View {
 
     private func statusBadge(_ status: Status) -> some View {
         Text(status.label)
-            .font(GranaTheme.Typography.caption1)
-            .padding(.horizontal, GranaTheme.Spacing.xs)
-            .padding(.vertical, GranaTheme.Spacing.xxs)
+            .font(AppUI.Theme.Typography.caption1)
+            .padding(.horizontal, AppUI.Theme.Spacing.xs)
+            .padding(.vertical, AppUI.Theme.Spacing.xxs)
             .background(background(for: status.tint))
             .foregroundStyle(foreground(for: status.tint))
             .clipShape(Capsule())

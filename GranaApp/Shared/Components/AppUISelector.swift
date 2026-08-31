@@ -1,96 +1,101 @@
 import SwiftUI
 
-extension AppUI {
-    struct SelectorOption<ID: Hashable>: Identifiable {
-        let id: ID
-        let title: String
-        var badge: String?
+public struct SelectorOption<ID: Hashable>: Identifiable {
+    public let id: ID
+    public let title: String
+    public var badge: String?
+
+    public init(id: ID, title: String, badge: String? = nil) {
+        self.id = id
+        self.title = title
+        self.badge = badge
+    }
+}
+
+public struct Selector<ID: Hashable>: View {
+    public enum Style {
+        case menu
+        case segmented
     }
 
-    struct Selector<ID: Hashable>: View {
-        enum Style {
-            case menu
-            case segmented
+    private let label: String?
+    private let placeholder: String
+    private let options: [SelectorOption<ID>]
+    private let includesNoneOption: Bool
+    private let noneOptionTitle: String
+    private let icon: String
+    private let style: Style
+    private let errorMessage: String?
+    private let selectedID: () -> ID?
+    private let setSelectedID: (ID?) -> Void
+
+    public init(
+        label: String? = nil,
+        placeholder: String = "Selecione…",
+        options: [SelectorOption<ID>],
+        selection: Binding<ID?>,
+        includesNoneOption: Bool = false,
+        noneOptionTitle: String = "Nenhum",
+        icon: String = "tag",
+        style: Style = .menu,
+        errorMessage: String? = nil
+    ) {
+        self.label = label
+        self.placeholder = placeholder
+        self.options = options
+        self.includesNoneOption = includesNoneOption
+        self.noneOptionTitle = noneOptionTitle
+        self.icon = icon
+        self.style = style
+        self.errorMessage = errorMessage
+        self.selectedID = { selection.wrappedValue }
+        self.setSelectedID = { selection.wrappedValue = $0 }
+    }
+
+    public init(
+        label: String? = nil,
+        options: [SelectorOption<ID>],
+        selection: Binding<ID>,
+        icon: String = "tag",
+        style: Style = .menu,
+        errorMessage: String? = nil
+    ) {
+        self.label = label
+        self.placeholder = ""
+        self.options = options
+        self.includesNoneOption = false
+        self.noneOptionTitle = "Nenhum"
+        self.icon = icon
+        self.style = style
+        self.errorMessage = errorMessage
+        self.selectedID = { selection.wrappedValue }
+        self.setSelectedID = { newValue in
+            guard let newValue else { return }
+            selection.wrappedValue = newValue
         }
+    }
 
-        private let label: String?
-        private let placeholder: String
-        private let options: [SelectorOption<ID>]
-        private let includesNoneOption: Bool
-        private let noneOptionTitle: String
-        private let icon: String
-        private let style: Style
-        private let errorMessage: String?
-        private let selectedID: () -> ID?
-        private let setSelectedID: (ID?) -> Void
-
-        init(
-            label: String? = nil,
-            placeholder: String = "Selecione…",
-            options: [SelectorOption<ID>],
-            selection: Binding<ID?>,
-            includesNoneOption: Bool = false,
-            noneOptionTitle: String = "Nenhum",
-            icon: String = "tag",
-            style: Style = .menu,
-            errorMessage: String? = nil
-        ) {
-            self.label = label
-            self.placeholder = placeholder
-            self.options = options
-            self.includesNoneOption = includesNoneOption
-            self.noneOptionTitle = noneOptionTitle
-            self.icon = icon
-            self.style = style
-            self.errorMessage = errorMessage
-            self.selectedID = { selection.wrappedValue }
-            self.setSelectedID = { selection.wrappedValue = $0 }
-        }
-
-        init(
-            label: String? = nil,
-            options: [SelectorOption<ID>],
-            selection: Binding<ID>,
-            icon: String = "tag",
-            style: Style = .menu,
-            errorMessage: String? = nil
-        ) {
-            self.label = label
-            self.placeholder = ""
-            self.options = options
-            self.includesNoneOption = false
-            self.noneOptionTitle = "Nenhum"
-            self.icon = icon
-            self.style = style
-            self.errorMessage = errorMessage
-            self.selectedID = { selection.wrappedValue }
-            self.setSelectedID = { newValue in
-                guard let newValue else { return }
-                selection.wrappedValue = newValue
+    public var body: some View {
+        switch style {
+        case .menu:
+            Field(
+                label: label,
+                leadingSystemImage: icon,
+                errorMessage: errorMessage
+            ) {
+                selectorMenu
+                    .frame(maxWidth: .infinity, alignment: .trailing)
+            }
+        case .segmented:
+            Field(
+                label: label,
+                errorMessage: errorMessage
+            ) {
+                segmentedSelector
+                    .frame(maxWidth: .infinity, alignment: .trailing)
             }
         }
-
-        var body: some View {
-            switch style {
-            case .menu:
-                AppUI.Field(
-                    label: label,
-                    leadingSystemImage: icon,
-                    errorMessage: errorMessage
-                ) {
-                    selectorMenu
-                        .frame(maxWidth: .infinity, alignment: .trailing)
-                }
-            case .segmented:
-                AppUI.Field(
-                    label: label,
-                    errorMessage: errorMessage
-                ) {
-                    segmentedSelector
-                        .frame(maxWidth: .infinity, alignment: .trailing)
-                }
-            }
-        }
+    }
 
         private var selectorMenu: some View {
             Menu {
@@ -100,29 +105,29 @@ extension AppUI {
                     }
                 }
             } label: {
-                HStack(spacing: GranaTheme.Spacing.sm) {
-                    VStack(alignment: .trailing, spacing: GranaTheme.Spacing.xxs) {
+                HStack(spacing: Theme.Spacing.sm) {
+                    VStack(alignment: .trailing, spacing: Theme.Spacing.xxs) {
                         Text(selectedTitle)
-                            .font(GranaTheme.Typography.body)
-                            .foregroundStyle(GranaTheme.Palette.ink)
+                            .font(Theme.Typography.body)
+                            .foregroundStyle(Theme.Palette.ink)
                             .lineLimit(1)
                     }
 
                     if let badge = selectedBadge {
                         Text(badge)
-                            .font(GranaTheme.Typography.caption2Emphasis)
-                            .foregroundStyle(GranaTheme.Palette.tealDeep)
-                            .padding(.horizontal, GranaTheme.Spacing.xs)
-                            .padding(.vertical, GranaTheme.Spacing.xxs)
+                            .font(Theme.Typography.caption2Emphasis)
+                            .foregroundStyle(Theme.Palette.tealDeep)
+                            .padding(.horizontal, Theme.Spacing.xs)
+                            .padding(.vertical, Theme.Spacing.xxs)
                             .background(
-                                GranaTheme.Palette.teal.opacity(0.10),
-                                in: RoundedRectangle(cornerRadius: GranaTheme.Radius.pill, style: .continuous)
+                                Theme.Palette.teal.opacity(0.10),
+                                in: RoundedRectangle(cornerRadius: Theme.Radius.pill, style: .continuous)
                             )
                     }
 
                     Image(systemName: "chevron.down")
-                        .font(.system(size: GranaTheme.IconSize.micro, weight: .semibold))
-                        .foregroundStyle(GranaTheme.Palette.muted)
+                        .font(.system(size: Theme.IconSize.micro, weight: .semibold))
+                        .foregroundStyle(Theme.Palette.muted)
                 }
                 .frame(maxWidth: .infinity, alignment: .trailing)
             }
@@ -168,5 +173,4 @@ extension AppUI {
         private var normalizedPlaceholder: String? {
             placeholder.nilIfBlank
         }
-    }
 }

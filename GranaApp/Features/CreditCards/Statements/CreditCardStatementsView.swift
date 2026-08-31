@@ -2,6 +2,7 @@ import Charts
 import ComposableArchitecture
 import Foundation
 import SwiftUI
+import AppUI
 
 /// Painel de detalhe do cartão selecionado.
 /// A view só renderiza o read model do reducer; seleção de fatura e
@@ -11,7 +12,7 @@ struct CreditCardStatementsView: View {
 
     var body: some View {
         ScrollView {
-            VStack(alignment: .leading, spacing: GranaTheme.Spacing.lg) {
+            VStack(alignment: .leading, spacing: AppUI.Theme.Spacing.lg) {
                 if let details = store.card.details, let limit = details.creditLimit, limit > 0 {
                     LimitGaugeBlock(
                         used: store.card.currentBalance.magnitude,
@@ -43,9 +44,9 @@ struct CreditCardStatementsView: View {
                 }
                 transactionsBlock
             }
-            .padding(GranaTheme.Spacing.xl)
+            .padding(AppUI.Theme.Spacing.xl)
         }
-        .granaSurface(.subtle, cornerRadius: GranaTheme.Radius.hero)
+        .granaSurface(.subtle, cornerRadius: AppUI.Theme.Radius.hero)
         .sheet(
             item: $store.scope(\.$dateEditor, action: \.dateEditor)
         ) { dateEditorStore in
@@ -57,14 +58,14 @@ struct CreditCardStatementsView: View {
     }
 
     private var transactionsBlock: some View {
-        VStack(alignment: .leading, spacing: GranaTheme.Spacing.xs) {
+        VStack(alignment: .leading, spacing: AppUI.Theme.Spacing.xs) {
             HStack {
                 Text("Lançamentos")
-                    .font(GranaTheme.Typography.headline)
+                    .font(AppUI.Theme.Typography.headline)
                 Spacer()
                 if let total = store.selectedStatementTotal {
                     Text(total.formatted(.currency(code: store.card.account.currency)))
-                        .font(GranaTheme.Typography.moneySubheadline)
+                        .font(AppUI.Theme.Typography.moneySubheadline)
                         .foregroundStyle(.secondary)
                 }
             }
@@ -98,8 +99,8 @@ struct CreditCardStatementsView: View {
                 summaryRow("Saldo", value: statement.creditBalance)
             }
         }
-        .padding(GranaTheme.Spacing.sm)
-        .granaSurface(.solid, cornerRadius: GranaTheme.Radius.control)
+        .padding(AppUI.Theme.Spacing.sm)
+        .granaSurface(.solid, cornerRadius: AppUI.Theme.Radius.control)
     }
 
     private func summaryRow(_ label: String, value: Decimal) -> some View {
@@ -107,7 +108,7 @@ struct CreditCardStatementsView: View {
             Text(label)
                 .foregroundStyle(.secondary)
             Text(value.formatted(.currency(code: store.card.account.currency)))
-                .font(GranaTheme.Typography.moneySubheadline)
+                .font(AppUI.Theme.Typography.moneySubheadline)
                 .gridColumnAlignment(.trailing)
         }
     }
@@ -115,24 +116,24 @@ struct CreditCardStatementsView: View {
     private var emptyTransactions: some View {
         HStack {
             Spacer()
-            VStack(spacing: GranaTheme.Spacing.xs) {
+            VStack(spacing: AppUI.Theme.Spacing.xs) {
                 Image(systemName: "tray")
-                    .font(.system(size: GranaTheme.IconSize.medium))
+                    .font(.system(size: AppUI.Theme.IconSize.medium))
                     .foregroundStyle(.secondary)
                 Text("Sem lançamentos nesta fatura")
-                    .font(GranaTheme.Typography.callout)
+                    .font(AppUI.Theme.Typography.callout)
                     .foregroundStyle(.secondary)
             }
-            .padding(.vertical, GranaTheme.Spacing.xxl)
+            .padding(.vertical, AppUI.Theme.Spacing.xxl)
             Spacer()
         }
         .background(
-            RoundedRectangle(cornerRadius: GranaTheme.Radius.card, style: .continuous)
-                .fill(GranaTheme.Palette.paperSolid.opacity(0.88))
+            RoundedRectangle(cornerRadius: AppUI.Theme.Radius.card, style: .continuous)
+                .fill(AppUI.Theme.Palette.paperSolid.opacity(0.88))
         )
         .overlay {
-            RoundedRectangle(cornerRadius: GranaTheme.Radius.card, style: .continuous)
-                .strokeBorder(GranaTheme.Palette.line, lineWidth: 1)
+            RoundedRectangle(cornerRadius: AppUI.Theme.Radius.card, style: .continuous)
+                .strokeBorder(AppUI.Theme.Palette.line, lineWidth: 1)
         }
     }
 }
@@ -158,25 +159,25 @@ private struct LimitGaugeBlock: View {
     }
 
     var body: some View {
-        VStack(alignment: .leading, spacing: GranaTheme.Spacing.sm) {
+        VStack(alignment: .leading, spacing: AppUI.Theme.Spacing.sm) {
             HStack(alignment: .firstTextBaseline) {
-                VStack(alignment: .leading, spacing: GranaTheme.Spacing.xxs) {
+                VStack(alignment: .leading, spacing: AppUI.Theme.Spacing.xxs) {
                     Text("LIMITE UTILIZADO")
-                        .font(GranaTheme.Typography.caption2Emphasis)
+                        .font(AppUI.Theme.Typography.caption2Emphasis)
                         .tracking(0.8)
                         .foregroundStyle(.secondary)
                     Text(used.formatted(.currency(code: currency)))
-                        .font(GranaTheme.Typography.moneyTitle2)
+                        .font(AppUI.Theme.Typography.moneyTitle2)
                         .foregroundStyle(.primary)
                 }
                 Spacer()
-                VStack(alignment: .trailing, spacing: GranaTheme.Spacing.xxs) {
+                VStack(alignment: .trailing, spacing: AppUI.Theme.Spacing.xxs) {
                     Text("LIMITE TOTAL")
-                        .font(GranaTheme.Typography.caption2Emphasis)
+                        .font(AppUI.Theme.Typography.caption2Emphasis)
                         .tracking(0.8)
                         .foregroundStyle(.secondary)
                     Text(limit.formatted(.currency(code: currency)))
-                        .font(GranaTheme.Typography.moneyHeadline)
+                        .font(AppUI.Theme.Typography.moneyHeadline)
                         .foregroundStyle(.secondary)
                 }
             }
@@ -184,31 +185,31 @@ private struct LimitGaugeBlock: View {
             AppUI.UsageMeterBar(
                 progress: percent,
                 fill: color,
-                track: GranaTheme.Palette.line,
+                track: AppUI.Theme.Palette.line,
                 minimumFillWidth: 4
             )
 
-            HStack(spacing: GranaTheme.Spacing.md) {
-                HStack(spacing: GranaTheme.Spacing.xs) {
+            HStack(spacing: AppUI.Theme.Spacing.md) {
+                HStack(spacing: AppUI.Theme.Spacing.xs) {
                     Circle().fill(color).frame(width: 8, height: 8)
                     Text("Usado: \(used.formatted(.currency(code: currency)))")
-                        .font(GranaTheme.Typography.caption1)
+                        .font(AppUI.Theme.Typography.caption1)
                         .foregroundStyle(.primary)
                 }
-                HStack(spacing: GranaTheme.Spacing.xs) {
+                HStack(spacing: AppUI.Theme.Spacing.xs) {
                     Circle().fill(Color.secondary.opacity(0.4)).frame(width: 8, height: 8)
                     Text("Disponível: \(available.formatted(.currency(code: currency)))")
-                        .font(GranaTheme.Typography.caption1)
+                        .font(AppUI.Theme.Typography.caption1)
                         .foregroundStyle(.secondary)
                 }
                 Spacer()
                 Text("\(Int(percent * 100))%")
-                    .font(GranaTheme.Typography.footnoteEmphasis)
+                    .font(AppUI.Theme.Typography.footnoteEmphasis)
                     .foregroundStyle(color)
             }
         }
-        .padding(GranaTheme.Spacing.md)
-        .granaSurface(.solid, cornerRadius: GranaTheme.Radius.card)
+        .padding(AppUI.Theme.Spacing.md)
+        .granaSurface(.solid, cornerRadius: AppUI.Theme.Radius.card)
     }
 }
 
@@ -260,11 +261,11 @@ private struct StatementTimelineChart: View {
     }
 
     var body: some View {
-        VStack(alignment: .leading, spacing: GranaTheme.Spacing.xs) {
+        VStack(alignment: .leading, spacing: AppUI.Theme.Spacing.xs) {
             Text("Faturas")
-                .font(GranaTheme.Typography.headline)
+                .font(AppUI.Theme.Typography.headline)
 
-            HStack(alignment: .bottom, spacing: GranaTheme.Spacing.md) {
+            HStack(alignment: .bottom, spacing: AppUI.Theme.Spacing.md) {
                 ForEach(bars) { bar in
                     BarColumn(
                         bar: bar,
@@ -280,10 +281,10 @@ private struct StatementTimelineChart: View {
                 }
             }
             .frame(height: 140)
-            .padding(.horizontal, GranaTheme.Spacing.xs)
-            .padding(.vertical, GranaTheme.Spacing.sm)
+            .padding(.horizontal, AppUI.Theme.Spacing.xs)
+            .padding(.vertical, AppUI.Theme.Spacing.sm)
             .frame(maxWidth: .infinity)
-            .granaSurface(.solid, cornerRadius: GranaTheme.Radius.card)
+            .granaSurface(.solid, cornerRadius: AppUI.Theme.Radius.card)
         }
     }
 
@@ -300,9 +301,9 @@ private struct StatementTimelineChart: View {
         let onTap: () -> Void
 
         var body: some View {
-            VStack(spacing: GranaTheme.Spacing.xxs) {
+            VStack(spacing: AppUI.Theme.Spacing.xxs) {
                 Text(bar.total > 0 ? bar.total.formatted(.currency(code: currency)) : " ")
-                    .font(GranaTheme.Typography.moneyCaption2)
+                    .font(AppUI.Theme.Typography.moneyCaption2)
                     .foregroundStyle(isSelected ? .primary : .secondary)
                     .lineLimit(1)
                     .minimumScaleFactor(0.7)
@@ -319,7 +320,7 @@ private struct StatementTimelineChart: View {
                 }
 
                 Text(bar.label)
-                    .font(isSelected ? GranaTheme.Typography.caption2Emphasis : GranaTheme.Typography.caption2)
+                    .font(isSelected ? AppUI.Theme.Typography.caption2Emphasis : AppUI.Theme.Typography.caption2)
                     .foregroundStyle(isSelected ? .primary : .secondary)
             }
             .frame(maxWidth: .infinity)
@@ -357,7 +358,7 @@ private struct StatementCyclePanel: View {
     let onEditDates: (UUID) -> Void
 
     var body: some View {
-        HStack(alignment: .top, spacing: GranaTheme.Spacing.sm) {
+        HStack(alignment: .top, spacing: AppUI.Theme.Spacing.sm) {
             cell(for: previousItem, role: .previous)
             cell(for: selectedItem, role: .selected)
             cell(for: nextItem, role: .next)
@@ -479,25 +480,25 @@ private struct StatementCycleCard: View {
     }
 
     var body: some View {
-        VStack(alignment: .leading, spacing: GranaTheme.Spacing.sm) {
-            HStack(spacing: GranaTheme.Spacing.xs) {
+        VStack(alignment: .leading, spacing: AppUI.Theme.Spacing.sm) {
+            HStack(spacing: AppUI.Theme.Spacing.xs) {
                 Text(title)
-                    .font(GranaTheme.Typography.calloutEmphasis)
+                    .font(AppUI.Theme.Typography.calloutEmphasis)
                 StatusBadge(label: statusLabel, tint: statusTint)
                 Spacer()
                 if let onEditDates {
                     Button(action: onEditDates) {
-                        Image(systemName: AppIcon.edit.systemImage)
-                            .font(.system(size: GranaTheme.IconSize.small, weight: .semibold))
+                        Image(systemName: AppUI.Icon.edit.systemImage)
+                            .font(.system(size: AppUI.Theme.IconSize.small, weight: .semibold))
                     }
                     .buttonStyle(.plain)
-                    .foregroundStyle(GranaTheme.Palette.muted)
+                    .foregroundStyle(AppUI.Theme.Palette.muted)
                     .frame(width: 28, height: 28)
                     .background(
-                        Circle().fill(GranaTheme.Palette.paper.opacity(0.95))
+                        Circle().fill(AppUI.Theme.Palette.paper.opacity(0.95))
                     )
                     .overlay {
-                        Circle().strokeBorder(GranaTheme.Palette.line, lineWidth: 1)
+                        Circle().strokeBorder(AppUI.Theme.Palette.line, lineWidth: 1)
                     }
                     .help("Editar datas da fatura")
                     .accessibilityLabel("Editar datas da fatura")
@@ -505,49 +506,49 @@ private struct StatementCycleCard: View {
             }
 
             Text(amount.formatted(.currency(code: currency)))
-                .font(GranaTheme.Typography.moneyTitle3)
+                .font(AppUI.Theme.Typography.moneyTitle3)
 
             Divider()
 
-            VStack(alignment: .leading, spacing: GranaTheme.Spacing.xxs) {
+            VStack(alignment: .leading, spacing: AppUI.Theme.Spacing.xxs) {
                 HStack {
                     Text("Data de fechamento")
-                        .font(GranaTheme.Typography.caption1)
+                        .font(AppUI.Theme.Typography.caption1)
                         .foregroundStyle(.secondary)
                     Spacer()
                     Text(GranaDateFormat.dayMonth(closingDate))
-                        .font(GranaTheme.Typography.footnoteEmphasis)
+                        .font(AppUI.Theme.Typography.footnoteEmphasis)
                 }
                 HStack {
                     Text("Data de vencimento")
-                        .font(GranaTheme.Typography.caption1)
+                        .font(AppUI.Theme.Typography.caption1)
                         .foregroundStyle(.secondary)
                     Spacer()
                     Text(GranaDateFormat.dayMonth(dueDate))
-                        .font(GranaTheme.Typography.footnoteEmphasis)
+                        .font(AppUI.Theme.Typography.footnoteEmphasis)
                 }
                 if let bestPurchaseDay {
                     HStack {
                         Text("Melhor dia de compra")
-                            .font(GranaTheme.Typography.caption1)
+                            .font(AppUI.Theme.Typography.caption1)
                             .foregroundStyle(.secondary)
                         Spacer()
                         Text("\(bestPurchaseDay)")
-                            .font(GranaTheme.Typography.footnoteEmphasis)
+                            .font(AppUI.Theme.Typography.footnoteEmphasis)
                     }
                 }
             }
         }
-        .padding(GranaTheme.Spacing.md)
+        .padding(AppUI.Theme.Spacing.md)
         .frame(maxWidth: .infinity, alignment: .leading)
         .background(
-            RoundedRectangle(cornerRadius: GranaTheme.Radius.card, style: .continuous)
-                .fill(GranaTheme.Palette.paperSolid.opacity(0.94))
+            RoundedRectangle(cornerRadius: AppUI.Theme.Radius.card, style: .continuous)
+                .fill(AppUI.Theme.Palette.paperSolid.opacity(0.94))
         )
         .overlay(
-            RoundedRectangle(cornerRadius: GranaTheme.Radius.card, style: .continuous)
+            RoundedRectangle(cornerRadius: AppUI.Theme.Radius.card, style: .continuous)
                 .strokeBorder(
-                    isHighlighted ? GranaTheme.Palette.teal : GranaTheme.Palette.line,
+                    isHighlighted ? AppUI.Theme.Palette.teal : AppUI.Theme.Palette.line,
                     lineWidth: isHighlighted ? 1.5 : 1
                 )
         )
@@ -562,9 +563,9 @@ private struct StatementCycleCard: View {
 
         var body: some View {
             Text(label)
-                .font(GranaTheme.Typography.caption2Emphasis)
-                .padding(.horizontal, GranaTheme.Spacing.xs)
-                .padding(.vertical, GranaTheme.Spacing.xxs)
+                .font(AppUI.Theme.Typography.caption2Emphasis)
+                .padding(.horizontal, AppUI.Theme.Spacing.xs)
+                .padding(.vertical, AppUI.Theme.Spacing.xxs)
                 .background(
                     Capsule().fill(background)
                 )

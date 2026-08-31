@@ -1,4 +1,5 @@
 import SwiftUI
+import AppUI
 
 struct BottomActionBar<Trailing: View>: View {
     let caption: String?
@@ -13,16 +14,16 @@ struct BottomActionBar<Trailing: View>: View {
     }
 
     var body: some View {
-        HStack(spacing: GranaTheme.Spacing.sm) {
+        HStack(spacing: AppUI.Theme.Spacing.sm) {
             if let caption {
                 Text(caption)
-                    .font(GranaTheme.Typography.caption1)
+                    .font(AppUI.Theme.Typography.caption1)
                     .foregroundStyle(.secondary)
             }
             Spacer()
             trailing()
                 .controlSize(.large)
         }
-        .padding(.horizontal, GranaTheme.Spacing.lg)
+        .padding(.horizontal, AppUI.Theme.Spacing.lg)
     }
 }

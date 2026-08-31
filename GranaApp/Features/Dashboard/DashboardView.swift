@@ -1,8 +1,9 @@
 import SwiftUI
+import AppUI
 
 struct DashboardView: View {
     var body: some View {
-        VStack(spacing: GranaTheme.Spacing.sm) {
+        VStack(spacing: AppUI.Theme.Spacing.sm) {
             AppUI.Layout.ScreenHeader(
                 title: "Dashboard",
                 subtitle: "Esta seção permanece disponível, mas está sem visualizações nesta fase."

@@ -44,6 +44,7 @@ Leia `docs/design-system.md` antes de alterar UI SwiftUI no GranaApp.
   filtros e refresh continuam fora dele.
 - Campos `AppUI.*` podem concentrar `label`, texto de apoio e erro local,
   mas nao substituem `Section` nem o agrupamento semantico maior da tela.
-- `#Preview` continua proibido no repositorio. Valide componentes e telas no
-  app em execucao, sem depender de previews locais.
+- `#Preview` so e permitido no target `AppUI`.
+  Primitives e base visual extraidas podem ter preview local; features, telas e
+  qualquer codigo fora de `AppUI` continuam validados com o app em execucao.
 - O app e light-only. Nao adicione toggle de tema nem variante dark por inercia.

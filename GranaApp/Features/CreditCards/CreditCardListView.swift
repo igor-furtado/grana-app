@@ -1,13 +1,14 @@
 import ComposableArchitecture
 import Foundation
 import SwiftUI
+import AppUI
 
 struct CreditCardListView: View {
     @Bindable var store: StoreOf<CreditCardListFeature>
 
     var body: some View {
         ScrollView(.horizontal, showsIndicators: false) {
-            HStack(spacing: GranaTheme.Spacing.md) {
+            HStack(spacing: AppUI.Theme.Spacing.md) {
                 ForEach(store.visibleItems) { card in
                     CreditCardSelectorCard(
                         card: card,
@@ -19,7 +20,7 @@ struct CreditCardListView: View {
                     )
                 }
             }
-            .padding(.horizontal, GranaTheme.Spacing.md)
+            .padding(.horizontal, AppUI.Theme.Spacing.md)
         }
     }
 }
@@ -34,71 +35,71 @@ private struct CreditCardSelectorCard: View {
 
     var body: some View {
         Button(action: onSelect) {
-            VStack(alignment: .leading, spacing: GranaTheme.Spacing.md) {
-                HStack(alignment: .center, spacing: GranaTheme.Spacing.sm) {
+            VStack(alignment: .leading, spacing: AppUI.Theme.Spacing.md) {
+                HStack(alignment: .center, spacing: AppUI.Theme.Spacing.sm) {
                     if let institution = card.institution {
                         InstitutionIcon(kind: institution.kind, size: 40)
                     } else {
                         placeholderIcon
                     }
 
-                    VStack(alignment: .leading, spacing: GranaTheme.Spacing.xxs) {
+                    VStack(alignment: .leading, spacing: AppUI.Theme.Spacing.xxs) {
                         Text(bankName)
-                            .font(GranaTheme.Typography.bodyEmphasis)
-                            .foregroundStyle(GranaTheme.Palette.ink)
+                            .font(AppUI.Theme.Typography.bodyEmphasis)
+                            .foregroundStyle(AppUI.Theme.Palette.ink)
                             .lineLimit(1)
                         Text(maskedNumber)
-                            .font(GranaTheme.Typography.code)
-                            .foregroundStyle(GranaTheme.Palette.muted)
+                            .font(AppUI.Theme.Typography.code)
+                            .foregroundStyle(AppUI.Theme.Palette.muted)
                     }
 
-                    Spacer(minLength: GranaTheme.Spacing.none)
+                    Spacer(minLength: AppUI.Theme.Spacing.none)
 
                     if card.account.archived {
                         Text("Arquivado")
-                            .font(GranaTheme.Typography.caption2Emphasis)
-                            .foregroundStyle(GranaTheme.Palette.muted)
-                            .padding(.horizontal, GranaTheme.Spacing.xs)
-                            .padding(.vertical, GranaTheme.Spacing.xxs)
-                            .background(GranaTheme.Palette.soft, in: Capsule())
+                            .font(AppUI.Theme.Typography.caption2Emphasis)
+                            .foregroundStyle(AppUI.Theme.Palette.muted)
+                            .padding(.horizontal, AppUI.Theme.Spacing.xs)
+                            .padding(.vertical, AppUI.Theme.Spacing.xxs)
+                            .background(AppUI.Theme.Palette.soft, in: Capsule())
                     }
                 }
 
-                VStack(alignment: .leading, spacing: GranaTheme.Spacing.xxs) {
+                VStack(alignment: .leading, spacing: AppUI.Theme.Spacing.xxs) {
                     Text("Fatura atual")
-                        .font(GranaTheme.Typography.caption1)
-                        .foregroundStyle(GranaTheme.Palette.muted)
+                        .font(AppUI.Theme.Typography.caption1)
+                        .foregroundStyle(AppUI.Theme.Palette.muted)
                     Text(card.currentBalance.magnitude.formatted(.currency(code: card.account.currency)))
-                        .font(GranaTheme.Typography.moneyHeadline)
-                        .foregroundStyle(GranaTheme.Palette.ink)
+                        .font(AppUI.Theme.Typography.moneyHeadline)
+                        .foregroundStyle(AppUI.Theme.Palette.ink)
                 }
 
                 if let limit = card.details?.creditLimit, limit > 0 {
                     let progress = usagePercent(limit: limit)
-                    VStack(alignment: .leading, spacing: GranaTheme.Spacing.xs) {
+                    VStack(alignment: .leading, spacing: AppUI.Theme.Spacing.xs) {
                         AppUI.UsageMeterBar(progress: progress)
                         HStack {
                             Text("Limite \(limit.formatted(.currency(code: card.account.currency)))")
-                                .font(GranaTheme.Typography.caption1)
-                                .foregroundStyle(GranaTheme.Palette.muted)
-                            Spacer(minLength: GranaTheme.Spacing.none)
+                                .font(AppUI.Theme.Typography.caption1)
+                                .foregroundStyle(AppUI.Theme.Palette.muted)
+                            Spacer(minLength: AppUI.Theme.Spacing.none)
                             Text("\(Int(progress * 100))%")
-                                .font(GranaTheme.Typography.caption1Emphasis)
-                                .foregroundStyle(GranaTheme.Palette.ink)
+                                .font(AppUI.Theme.Typography.caption1Emphasis)
+                                .foregroundStyle(AppUI.Theme.Palette.ink)
                         }
                     }
                 }
             }
-            .padding(GranaTheme.Spacing.lg)
+            .padding(AppUI.Theme.Spacing.lg)
             .frame(width: 280, alignment: .leading)
             .background(
-                RoundedRectangle(cornerRadius: GranaTheme.Radius.card, style: .continuous)
-                    .fill(GranaTheme.Palette.paperSolid.opacity(0.94))
+                RoundedRectangle(cornerRadius: AppUI.Theme.Radius.card, style: .continuous)
+                    .fill(AppUI.Theme.Palette.paperSolid.opacity(0.94))
             )
             .overlay(
-                RoundedRectangle(cornerRadius: GranaTheme.Radius.card, style: .continuous)
+                RoundedRectangle(cornerRadius: AppUI.Theme.Radius.card, style: .continuous)
                     .strokeBorder(
-                        isSelected ? GranaTheme.Palette.teal : GranaTheme.Palette.line,
+                        isSelected ? AppUI.Theme.Palette.teal : AppUI.Theme.Palette.line,
                         lineWidth: isSelected ? 1.5 : 1
                     )
             )
@@ -122,12 +123,12 @@ private struct CreditCardSelectorCard: View {
     }
 
     private var placeholderIcon: some View {
-        RoundedRectangle(cornerRadius: GranaTheme.Radius.control, style: .continuous)
-            .fill(GranaTheme.Palette.soft)
+        RoundedRectangle(cornerRadius: AppUI.Theme.Radius.control, style: .continuous)
+            .fill(AppUI.Theme.Palette.soft)
             .frame(width: 40, height: 40)
             .overlay {
-                Image(systemName: AppIcon.sidebarCreditCards.systemImage)
-                    .foregroundStyle(GranaTheme.Palette.muted)
+                Image(systemName: AppUI.Icon.sidebarCreditCards.systemImage)
+                    .foregroundStyle(AppUI.Theme.Palette.muted)
             }
     }
 

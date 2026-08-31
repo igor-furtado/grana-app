@@ -1,3 +1,5 @@
+import AppUI
+
 /// Seções principais do app, exibidas no rail lateral autenticado.
 ///
 /// A ordem visual do rail é determinada por `AppNavigationRail`, não pela ordem
@@ -31,9 +33,9 @@ enum AppSection: String, CaseIterable, Hashable, Identifiable {
         }
     }
 
-    /// Ícone da seção. Delega pro `AppIcon` (catálogo central de chrome de UI)
+    /// Ícone da seção. Delega pro `AppUI.Icon` (catálogo central de chrome de UI)
     /// pra manter strings de SF Symbol num único lugar e evitar typos.
-    var icon: AppIcon {
+    var icon: AppUI.Icon {
         switch self {
         case .dashboard: .sidebarDashboard
         case .transactions: .sidebarTransactions

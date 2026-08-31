@@ -1,5 +1,6 @@
 import ComposableArchitecture
 import SwiftUI
+import AppUI
 
 struct AccountListView: View {
     @Bindable var store: StoreOf<AccountListFeature>
@@ -8,16 +9,16 @@ struct AccountListView: View {
     ]
 
     var body: some View {
-        VStack(alignment: .leading, spacing: GranaTheme.Spacing.none) {
+        VStack(alignment: .leading, spacing: AppUI.Theme.Spacing.none) {
             panelHeader
 
             AppUI.Table(store.visibleItems, sortOrder: $sortOrder) {
                 TableColumn("Instituição", value: \.institutionName) { item in
-                    HStack(spacing: GranaTheme.Spacing.sm) {
+                    HStack(spacing: AppUI.Theme.Spacing.sm) {
                         InstitutionIcon(kind: item.institutionKind, size: 24)
                         Text(item.institutionName)
-                            .font(GranaTheme.Typography.subheadlineEmphasis)
-                            .foregroundStyle(GranaTheme.Palette.ink)
+                            .font(AppUI.Theme.Typography.subheadlineEmphasis)
+                            .foregroundStyle(AppUI.Theme.Palette.ink)
                             .lineLimit(1)
                     }
                 }
@@ -25,34 +26,34 @@ struct AccountListView: View {
 
                 TableColumn("Conta", value: \.displayName) { item in
                     Text(item.displayName)
-                        .font(GranaTheme.Typography.subheadline)
-                        .foregroundStyle(GranaTheme.Palette.ink)
+                        .font(AppUI.Theme.Typography.subheadline)
+                        .foregroundStyle(AppUI.Theme.Palette.ink)
                         .lineLimit(1)
                 }
                 .width(min: 220, ideal: 300)
 
                 TableColumn("Saldo", value: \.currentBalance) { item in
                     Text(item.currentBalance.formatted(.currency(code: item.account.currency)))
-                        .font(GranaTheme.Typography.moneySubheadline)
-                        .foregroundStyle(item.currentBalance < 0 ? GranaTheme.Palette.red : GranaTheme.Palette.ink)
+                        .font(AppUI.Theme.Typography.moneySubheadline)
+                        .foregroundStyle(item.currentBalance < 0 ? AppUI.Theme.Palette.red : AppUI.Theme.Palette.ink)
                         .frame(maxWidth: .infinity, alignment: .trailing)
                 }
                 .width(min: 120, ideal: 150, max: 180)
 
                 TableColumn("Status", value: \.statusRank) { item in
                     Text(item.statusText)
-                        .font(GranaTheme.Typography.caption1Emphasis)
-                        .foregroundStyle(item.account.archived ? GranaTheme.Palette.muted : GranaTheme.Palette.tealDeep)
+                        .font(AppUI.Theme.Typography.caption1Emphasis)
+                        .foregroundStyle(item.account.archived ? AppUI.Theme.Palette.muted : AppUI.Theme.Palette.tealDeep)
                 }
                 .width(min: 92, ideal: 110, max: 132)
 
                 TableColumn("Ações") { item in
-                    HStack(spacing: GranaTheme.Spacing.sm) {
+                    HStack(spacing: AppUI.Theme.Spacing.sm) {
                         Button {
                             store.send(.editButtonTapped(item.id))
                         } label: {
-                            Image(systemName: AppIcon.edit.systemImage)
-                                .foregroundStyle(GranaTheme.Palette.muted)
+                            Image(systemName: AppUI.Icon.edit.systemImage)
+                                .foregroundStyle(AppUI.Theme.Palette.muted)
                         }
                         .buttonStyle(.borderless)
                         .help("Editar conta")
@@ -62,10 +63,10 @@ struct AccountListView: View {
                         } label: {
                             Image(
                                 systemName: item.account.archived
-                                    ? AppIcon.unarchive.systemImage
-                                    : AppIcon.archive.systemImage
+                                    ? AppUI.Icon.unarchive.systemImage
+                                    : AppUI.Icon.archive.systemImage
                             )
-                            .foregroundStyle(GranaTheme.Palette.muted)
+                            .foregroundStyle(AppUI.Theme.Palette.muted)
                         }
                         .buttonStyle(.borderless)
                         .help(item.account.archived ? "Desarquivar conta" : "Arquivar conta")
@@ -73,8 +74,8 @@ struct AccountListView: View {
                         Button(role: .destructive) {
                             store.send(.deleteButtonTapped(item.id))
                         } label: {
-                            Image(systemName: AppIcon.delete.systemImage)
-                                .foregroundStyle(GranaTheme.Palette.muted)
+                            Image(systemName: AppUI.Icon.delete.systemImage)
+                                .foregroundStyle(AppUI.Theme.Palette.muted)
                         }
                         .buttonStyle(.borderless)
                         .help("Apagar conta")
@@ -84,35 +85,35 @@ struct AccountListView: View {
             } filterBar: {
                 AccountListFilterBar(store: store)
             }
-            .padding(GranaTheme.Spacing.md)
+            .padding(AppUI.Theme.Spacing.md)
         }
     }
 
     private var panelHeader: some View {
-        HStack(alignment: .center, spacing: GranaTheme.Spacing.sm) {
-            VStack(alignment: .leading, spacing: GranaTheme.Spacing.xxs) {
+        HStack(alignment: .center, spacing: AppUI.Theme.Spacing.sm) {
+            VStack(alignment: .leading, spacing: AppUI.Theme.Spacing.xxs) {
                 Text("Contas acompanhadas")
-                    .font(GranaTheme.Typography.headline)
-                    .foregroundStyle(GranaTheme.Palette.ink)
+                    .font(AppUI.Theme.Typography.headline)
+                    .foregroundStyle(AppUI.Theme.Palette.ink)
                 Text("Selecione uma conta para revisar o saldo atual e operar ações administrativas.")
-                    .font(GranaTheme.Typography.footnote)
-                    .foregroundStyle(GranaTheme.Palette.muted)
+                    .font(AppUI.Theme.Typography.footnote)
+                    .foregroundStyle(AppUI.Theme.Palette.muted)
             }
 
-            Spacer(minLength: GranaTheme.Spacing.none)
+            Spacer(minLength: AppUI.Theme.Spacing.none)
 
             Text("\(store.visibleItems.count) conta\(store.visibleItems.count == 1 ? "" : "s")")
-                .font(GranaTheme.Typography.caption1Emphasis)
-                .foregroundStyle(GranaTheme.Palette.tealDeep)
-                .padding(.horizontal, GranaTheme.Spacing.sm)
-                .padding(.vertical, GranaTheme.Spacing.xs)
-                .background(GranaTheme.Palette.teal.opacity(0.10), in: Capsule())
+                .font(AppUI.Theme.Typography.caption1Emphasis)
+                .foregroundStyle(AppUI.Theme.Palette.tealDeep)
+                .padding(.horizontal, AppUI.Theme.Spacing.sm)
+                .padding(.vertical, AppUI.Theme.Spacing.xs)
+                .background(AppUI.Theme.Palette.teal.opacity(0.10), in: Capsule())
         }
-        .padding(GranaTheme.Spacing.md)
-        .background(GranaTheme.Palette.paper.opacity(0.58))
+        .padding(AppUI.Theme.Spacing.md)
+        .background(AppUI.Theme.Palette.paper.opacity(0.58))
         .overlay(alignment: .bottom) {
             Rectangle()
-                .fill(GranaTheme.Palette.line)
+                .fill(AppUI.Theme.Palette.line)
                 .frame(height: 1)
         }
     }
@@ -137,7 +138,7 @@ private struct AccountListFilterBar: View {
                 placeholder: "Buscar conta ou instituição",
                 leadingSystemImage: "magnifyingglass",
                 showsClearButton: true,
-                font: GranaTheme.Typography.footnoteEmphasis,
+                font: AppUI.Theme.Typography.footnoteEmphasis,
                 textAlignment: .leading
             )
             .frame(maxWidth: .infinity, alignment: .leading)

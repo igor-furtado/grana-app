@@ -1,5 +1,6 @@
 import ComposableArchitecture
 import SwiftUI
+import AppUI
 
 /// Form de criação/edição de conta corrente da vertical de Contas.
 struct AccountFormView: View {
@@ -105,7 +106,7 @@ struct AccountFormView: View {
         Section {
             Label {
                 Text(message)
-                    .font(GranaTheme.Typography.callout)
+                    .font(AppUI.Theme.Typography.callout)
                     .foregroundStyle(.danger)
             } icon: {
                 Image(systemName: "exclamationmark.triangle.fill")

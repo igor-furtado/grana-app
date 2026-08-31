@@ -1,4 +1,5 @@
 import SwiftUI
+import AppUI
 
 /// Linha de controle de seleção que vai **dentro do scroll**, logo antes das
 /// rows de transação. Fica abaixo do header `Section` (que tem só o título
@@ -13,7 +14,7 @@ struct TransactionsSelectionRow: View {
     let onToggleAll: (Bool) -> Void
 
     var body: some View {
-        HStack(alignment: .center, spacing: GranaTheme.Spacing.sm) {
+        HStack(alignment: .center, spacing: AppUI.Theme.Spacing.sm) {
             AppUI.Toggle(label: allSelected ? "Desmarcar todas" : "Marcar todas", isOn: Binding(
                 get: { allSelected },
                 set: { onToggleAll($0) }
@@ -21,12 +22,12 @@ struct TransactionsSelectionRow: View {
             .toggleStyle(.checkbox)
             .labelsHidden()
             Text(summary)
-                .font(GranaTheme.Typography.caption1)
+                .font(AppUI.Theme.Typography.caption1)
                 .foregroundStyle(.secondary)
             Spacer()
         }
-        .padding(.horizontal, GranaTheme.Spacing.md)
-        .padding(.vertical, GranaTheme.Spacing.xs)
+        .padding(.horizontal, AppUI.Theme.Spacing.md)
+        .padding(.vertical, AppUI.Theme.Spacing.xs)
         .background(Color.primary.opacity(0.03))
     }
 }

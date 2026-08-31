@@ -1,5 +1,6 @@
 import ComposableArchitecture
 import SwiftUI
+import AppUI
 
 struct TransactionListView: View {
     private static let numberLocale = Locale(identifier: "pt_BR")
@@ -9,7 +10,7 @@ struct TransactionListView: View {
     @State private var sortOrder = TransactionsSortMapper.comparators(for: .occurredAtDescending)
 
     var body: some View {
-        VStack(spacing: GranaTheme.Spacing.none) {
+        VStack(spacing: AppUI.Theme.Spacing.none) {
             mainContent
                 .overlay {
                     if tableRows.isEmpty && !store.isLoading {
@@ -31,16 +32,16 @@ struct TransactionListView: View {
     }
 
     private var mainContent: some View {
-        VStack(spacing: GranaTheme.Spacing.sm) {
+        VStack(spacing: AppUI.Theme.Spacing.sm) {
             AppUI.Layout.ScreenHeader(
                 title: "Transações",
                 subtitle: store.state.transactionsCountText(calendar: calendar)
             ) {
-                HStack(spacing: GranaTheme.Spacing.sm) {
+                HStack(spacing: AppUI.Theme.Spacing.sm) {
                     Button {
                         store.send(.addButtonTapped)
                     } label: {
-                        Label("Nova transação", systemImage: AppIcon.add.systemImage)
+                        Label("Nova transação", systemImage: AppUI.Icon.add.systemImage)
                     }
                     .buttonStyle(GranaPrimaryButtonStyle())
                 }
@@ -48,16 +49,16 @@ struct TransactionListView: View {
 
             AppUI.Table(tableRows, sortOrder: $sortOrder) {
                 TableColumn("Instituição", value: \.institutionName) { row in
-                    HStack(spacing: GranaTheme.Spacing.sm) {
+                    HStack(spacing: AppUI.Theme.Spacing.sm) {
                         InstitutionIcon(kind: row.institutionKind, size: 24)
-                        VStack(alignment: .leading, spacing: GranaTheme.Spacing.xxs) {
+                        VStack(alignment: .leading, spacing: AppUI.Theme.Spacing.xxs) {
                             Text(row.institutionName)
-                                .font(GranaTheme.Typography.subheadlineEmphasis)
-                                .foregroundStyle(GranaTheme.Palette.ink)
+                                .font(AppUI.Theme.Typography.subheadlineEmphasis)
+                                .foregroundStyle(AppUI.Theme.Palette.ink)
                                 .lineLimit(1)
                             Text(row.accountName)
-                                .font(GranaTheme.Typography.caption1)
-                                .foregroundStyle(GranaTheme.Palette.muted)
+                                .font(AppUI.Theme.Typography.caption1)
+                                .foregroundStyle(AppUI.Theme.Palette.muted)
                                 .lineLimit(1)
                         }
                     }
@@ -66,28 +67,28 @@ struct TransactionListView: View {
 
                 TableColumn("Data", value: \.occurredAt) { row in
                     Text(GranaDateFormat.fullDate(row.occurredAt))
-                        .font(GranaTheme.Typography.caption1)
-                        .foregroundStyle(GranaTheme.Palette.muted)
+                        .font(AppUI.Theme.Typography.caption1)
+                        .foregroundStyle(AppUI.Theme.Palette.muted)
                 }
                 .width(min: 110, ideal: 140, max: 140)
 
                 TableColumn("Descrição", value: \.description) { row in
                     Text(row.description)
-                        .font(GranaTheme.Typography.subheadlineEmphasis)
-                        .foregroundStyle(GranaTheme.Palette.ink)
+                        .font(AppUI.Theme.Typography.subheadlineEmphasis)
+                        .foregroundStyle(AppUI.Theme.Palette.ink)
                         .lineLimit(1)
                 }
 
                 TableColumn("Categoria", value: \.categorySummary) { row in
-                    HStack(spacing: GranaTheme.Spacing.xs) {
+                    HStack(spacing: AppUI.Theme.Spacing.xs) {
                         CategoryBadge(
                             category: store.state.category(for: row.transaction.categoryId),
                             icon: store.state.icon(for: row.transaction.categoryId),
                             iconOnly: true
                         )
                         Text(row.categoryDisplayName)
-                            .font(GranaTheme.Typography.footnoteEmphasis)
-                            .foregroundStyle(GranaTheme.Palette.muted)
+                            .font(AppUI.Theme.Typography.footnoteEmphasis)
+                            .foregroundStyle(AppUI.Theme.Palette.muted)
                             .lineLimit(1)
                     }
                     .help(row.categoryName)
@@ -155,12 +156,12 @@ struct TransactionListView: View {
         let canMutate = store.state.supportsBasicMutation(for: transaction)
         let unsupportedMessage = "A edição desta transação não está disponível nesta configuração."
 
-        return HStack(spacing: GranaTheme.Spacing.sm) {
+        return HStack(spacing: AppUI.Theme.Spacing.sm) {
             Button {
                 store.send(.editButtonTapped(transaction))
             } label: {
-                Image(systemName: AppIcon.edit.systemImage)
-                    .foregroundStyle(GranaTheme.Palette.muted)
+                Image(systemName: AppUI.Icon.edit.systemImage)
+                    .foregroundStyle(AppUI.Theme.Palette.muted)
             }
             .buttonStyle(.borderless)
             .disabled(!canMutate)
@@ -169,8 +170,8 @@ struct TransactionListView: View {
             Button(role: .destructive) {
                 store.send(.deleteButtonTapped(transaction))
             } label: {
-                Image(systemName: AppIcon.delete.systemImage)
-                    .foregroundStyle(GranaTheme.Palette.muted)
+                Image(systemName: AppUI.Icon.delete.systemImage)
+                    .foregroundStyle(AppUI.Theme.Palette.muted)
             }
             .buttonStyle(.borderless)
             .disabled(!canMutate)
@@ -184,13 +185,13 @@ struct TransactionListView: View {
                 .precision(.fractionLength(2))
                 .locale(Self.numberLocale)
         )
-        return HStack(spacing: GranaTheme.Spacing.xxs) {
+        return HStack(spacing: AppUI.Theme.Spacing.xxs) {
             Text("R$")
-                .foregroundStyle(GranaTheme.Palette.muted)
-            Spacer(minLength: GranaTheme.Spacing.xxs)
+                .foregroundStyle(AppUI.Theme.Palette.muted)
+            Spacer(minLength: AppUI.Theme.Spacing.xxs)
             Text(number)
         }
-        .font(GranaTheme.Typography.moneySubheadline)
+        .font(AppUI.Theme.Typography.moneySubheadline)
     }
 
     private func amountColor(for transaction: Transaction) -> Color {
@@ -289,7 +290,7 @@ private struct TransactionsFilterBar: View {
                 selection: bankSelection,
                 includesNoneOption: true,
                 noneOptionTitle: "Todos bancos",
-                icon: AppIcon.sidebarAccounts.systemImage
+                icon: AppUI.Icon.sidebarAccounts.systemImage
             )
             .frame(maxWidth: .infinity, alignment: .leading)
 
@@ -299,7 +300,7 @@ private struct TransactionsFilterBar: View {
                 selection: categorySelection,
                 includesNoneOption: true,
                 noneOptionTitle: "Todas categorias",
-                icon: AppIcon.sidebarCategories.systemImage
+                icon: AppUI.Icon.sidebarCategories.systemImage
             )
             .frame(maxWidth: .infinity, alignment: .leading)
 
@@ -307,7 +308,7 @@ private struct TransactionsFilterBar: View {
                 label: "Período",
                 options: TransactionPeriodFilter.allCases.map { .init(id: $0, title: $0.name) },
                 selection: periodSelection,
-                icon: AppIcon.sidebarAccounts.systemImage
+                icon: AppUI.Icon.sidebarAccounts.systemImage
             )
             .frame(maxWidth: .infinity, alignment: .leading)
 
@@ -319,7 +320,7 @@ private struct TransactionsFilterBar: View {
             )
             .frame(maxWidth: .infinity, alignment: .leading)
 
-            Spacer(minLength: GranaTheme.Spacing.none)
+            Spacer(minLength: AppUI.Theme.Spacing.none)
         }
     }
 
@@ -330,7 +331,7 @@ private struct TransactionsFilterBar: View {
             placeholder: "Descrição, categoria ou conta",
             leadingSystemImage: "magnifyingglass",
             showsClearButton: true,
-            font: GranaTheme.Typography.subheadlineEmphasis,
+            font: AppUI.Theme.Typography.subheadlineEmphasis,
             textAlignment: .leading
         )
         .frame(maxWidth: .infinity, alignment: .leading)

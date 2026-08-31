@@ -1,11 +1,12 @@
 import ComposableArchitecture
 import SwiftUI
+import AppUI
 
 struct AccountsView: View {
     @Bindable var store: StoreOf<AccountsFeature>
 
     var body: some View {
-        VStack(spacing: GranaTheme.Spacing.sm) {
+        VStack(spacing: AppUI.Theme.Spacing.sm) {
             AppUI.Layout.ScreenHeader(
                 title: "Contas",
                 subtitle: store.list.summarySubtitle
@@ -13,7 +14,7 @@ struct AccountsView: View {
                 Button {
                     store.send(.list(.addButtonTapped))
                 } label: {
-                    Label("Nova conta", systemImage: AppIcon.add.systemImage)
+                    Label("Nova conta", systemImage: AppUI.Icon.add.systemImage)
                 }
                 .buttonStyle(GranaPrimaryButtonStyle())
             }
@@ -60,7 +61,7 @@ struct AccountsView: View {
             Button {
                 store.send(.list(.addButtonTapped))
             } label: {
-                Label("Cadastrar primeira conta", systemImage: AppIcon.add.systemImage)
+                Label("Cadastrar primeira conta", systemImage: AppUI.Icon.add.systemImage)
             }
             .buttonStyle(GranaPrimaryButtonStyle())
         }

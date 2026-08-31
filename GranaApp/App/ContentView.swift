@@ -1,5 +1,6 @@
 import ComposableArchitecture
 import SwiftUI
+import AppUI
 
 struct ContentView: View {
     @Environment(AppEnvironment.self) private var environment
@@ -41,7 +42,7 @@ struct ContentView: View {
         ZStack {
             GranaBackground()
             ProgressView("Restaurando sessão…")
-                .foregroundStyle(GranaTheme.Palette.ink)
+                .foregroundStyle(AppUI.Theme.Palette.ink)
         }
         .frame(minWidth: 1280, minHeight: 820)
     }
@@ -65,7 +66,7 @@ struct ContentView: View {
                 }
                 .buttonStyle(GranaPrimaryButtonStyle())
             }
-            .padding(GranaTheme.Spacing.xl)
+            .padding(AppUI.Theme.Spacing.xl)
         }
         .frame(minWidth: 1280, minHeight: 820)
     }
@@ -96,36 +97,36 @@ private struct GlobalImportDropOverlay: View {
             Rectangle()
                 .fill(.regularMaterial)
                 .opacity(0.84)
-            VStack(spacing: GranaTheme.Spacing.md) {
+            VStack(spacing: AppUI.Theme.Spacing.md) {
                 ZStack {
                     Circle()
-                        .fill(GranaTheme.Palette.teal.opacity(0.18))
+                        .fill(AppUI.Theme.Palette.teal.opacity(0.18))
                         .frame(width: 96, height: 96)
-                    Image(systemName: AppIcon.importFile.systemImage)
-                        .font(.system(size: GranaTheme.IconSize.hero, weight: .regular))
-                        .foregroundStyle(GranaTheme.Palette.tealDeep)
+                    Image(systemName: AppUI.Icon.importFile.systemImage)
+                        .font(.system(size: AppUI.Theme.IconSize.hero, weight: .regular))
+                        .foregroundStyle(AppUI.Theme.Palette.tealDeep)
                 }
                 Text("Solte o extrato para revisar")
-                    .font(GranaTheme.Typography.title3)
-                    .foregroundStyle(GranaTheme.Palette.ink)
+                    .font(AppUI.Theme.Typography.title3)
+                    .foregroundStyle(AppUI.Theme.Palette.ink)
                 Text("OFX ou CSV em qualquer tela")
-                    .font(GranaTheme.Typography.callout)
-                    .foregroundStyle(GranaTheme.Palette.muted)
+                    .font(AppUI.Theme.Typography.callout)
+                    .foregroundStyle(AppUI.Theme.Palette.muted)
             }
-            .padding(GranaTheme.Spacing.xxxl)
+            .padding(AppUI.Theme.Spacing.xxxl)
             .background {
-                RoundedRectangle(cornerRadius: GranaTheme.Radius.hero, style: .continuous)
-                    .fill(GranaTheme.Palette.paper.opacity(0.92))
+                RoundedRectangle(cornerRadius: AppUI.Theme.Radius.hero, style: .continuous)
+                    .fill(AppUI.Theme.Palette.paper.opacity(0.92))
             }
             .overlay {
-                RoundedRectangle(cornerRadius: GranaTheme.Radius.hero, style: .continuous)
+                RoundedRectangle(cornerRadius: AppUI.Theme.Radius.hero, style: .continuous)
                     .strokeBorder(
-                        GranaTheme.Palette.teal.opacity(0.40),
+                        AppUI.Theme.Palette.teal.opacity(0.40),
                         style: StrokeStyle(lineWidth: 2, dash: [10, 8])
                     )
             }
-            .shadow(color: GranaTheme.Shadow.cardColor, radius: 24, y: 10)
-            .padding(GranaTheme.Spacing.xxxl)
+            .shadow(color: AppUI.Theme.Shadow.cardColor, radius: 24, y: 10)
+            .padding(AppUI.Theme.Spacing.xxxl)
         }
     }
 }
@@ -192,14 +193,14 @@ private struct AuthenticatedShellView: View {
 
         ZStack {
             GranaBackground()
-            HStack(spacing: GranaTheme.Spacing.none) {
+            HStack(spacing: AppUI.Theme.Spacing.none) {
                 AppNavigationRail(selection: selection) { section in
                     activate(section)
                 }
-                .padding(GranaTheme.Layout.railInsets)
+                .padding(AppUI.Theme.Layout.railInsets)
 
                 shellContent
-                    .padding(GranaTheme.Layout.pageInsets)
+                    .padding(AppUI.Theme.Layout.pageInsets)
                     .frame(maxWidth: .infinity, maxHeight: .infinity)
             }
             .allowsHitTesting(!isWorkspaceModalPresented)
@@ -315,14 +316,14 @@ private struct ImportOverlayContainer<Content: View>: View {
     }
 
     private func overlayWidth(for containerWidth: CGFloat) -> CGFloat {
-        let horizontalInset = GranaTheme.Spacing.xl * 2
+        let horizontalInset = AppUI.Theme.Spacing.xl * 2
         let availableWidth = max(minimumWidth, containerWidth - horizontalInset)
         let proportionalWidth = max(minimumWidth, containerWidth * widthRatio)
         return min(availableWidth, proportionalWidth)
     }
 
     private func overlayHeight(for containerHeight: CGFloat) -> CGFloat {
-        let verticalInset = GranaTheme.Spacing.xl * 2
+        let verticalInset = AppUI.Theme.Spacing.xl * 2
         let availableHeight = max(minimumHeight, containerHeight - verticalInset)
         let proportionalHeight = max(minimumHeight, containerHeight * heightRatio)
         return min(availableHeight, proportionalHeight)

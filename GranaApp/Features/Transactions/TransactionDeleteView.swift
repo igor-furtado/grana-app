@@ -1,5 +1,6 @@
 import ComposableArchitecture
 import SwiftUI
+import AppUI
 
 struct TransactionDeleteView: View {
     @Bindable var store: StoreOf<TransactionDeleteFeature>
@@ -18,12 +19,12 @@ struct TransactionDeleteView: View {
                     messageBlock
                 }
                 else {
-                    Spacer(minLength: GranaTheme.Spacing.none)
+                    Spacer(minLength: AppUI.Theme.Spacing.none)
                 }
 
                 if let saveError = store.saveError {
                     AppUI.Form.ErrorMessage(message: saveError)
-                        .padding(.horizontal, GranaTheme.Spacing.lg)
+                        .padding(.horizontal, AppUI.Theme.Spacing.lg)
                 }
                 
                 AppUI.Form.Actions {
@@ -46,18 +47,18 @@ struct TransactionDeleteView: View {
     }
 
     private var messageBlock: some View {
-        HStack(alignment: .top, spacing: GranaTheme.Spacing.sm) {
-            Image(systemName: AppIcon.warning.systemImage)
-                .font(.system(size: GranaTheme.IconSize.small))
-                .foregroundStyle(GranaTheme.Palette.amber)
-                .padding(.top, GranaTheme.Spacing.xxs)
+        HStack(alignment: .top, spacing: AppUI.Theme.Spacing.sm) {
+            Image(systemName: AppUI.Icon.warning.systemImage)
+                .font(.system(size: AppUI.Theme.IconSize.small))
+                .foregroundStyle(AppUI.Theme.Palette.amber)
+                .padding(.top, AppUI.Theme.Spacing.xxs)
 
             Text(store.impactMessage)
-                .font(GranaTheme.Typography.callout)
-                .foregroundStyle(GranaTheme.Palette.muted)
+                .font(AppUI.Theme.Typography.callout)
+                .foregroundStyle(AppUI.Theme.Palette.muted)
                 .fixedSize(horizontal: false, vertical: true)
         }
-        .padding(GranaTheme.Spacing.lg)
+        .padding(AppUI.Theme.Spacing.lg)
     }
 
     private var transactionSummary: String {

@@ -1,45 +1,46 @@
 import SwiftUI
 
-extension AppUI {
-    enum Wizard {}
-}
+public enum Wizard {
+    public struct Step: Hashable {
+        public let title: String
+        public let state: State
 
-extension AppUI.Wizard {
-    struct Step: Hashable {
-        let title: String
-        let state: State
-
-        enum State {
+        public enum State {
             case completed
             case current
             case pending
         }
+
+        public init(title: String, state: State) {
+            self.title = title
+            self.state = state
+        }
     }
 
-    struct Shell<Content: View>: View {
+    public struct Shell<Content: View>: View {
         @ViewBuilder private let content: () -> Content
 
-        init(@ViewBuilder content: @escaping () -> Content) {
+        public init(@ViewBuilder content: @escaping () -> Content) {
             self.content = content
         }
 
-        var body: some View {
-            VStack(spacing: GranaTheme.Spacing.lg) {
+        public var body: some View {
+            VStack(spacing: Theme.Spacing.lg) {
                 content()
                     .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
             }
-            .padding(GranaTheme.Spacing.sm)
+            .padding(Theme.Spacing.sm)
             .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
             .background(GranaBackground())
         }
     }
 
-    struct Layout<MainContent: View, SidebarActions: View>: View {
+    public struct Layout<MainContent: View, SidebarActions: View>: View {
         private let steps: [Step]
         private let mainContent: MainContent
         private let sidebarActions: SidebarActions
 
-        init(
+        public init(
             steps: [Step],
             @ViewBuilder mainContent: () -> MainContent,
             @ViewBuilder sidebarActions: () -> SidebarActions
@@ -49,8 +50,8 @@ extension AppUI.Wizard {
             self.sidebarActions = sidebarActions()
         }
 
-        var body: some View {
-            HStack(alignment: .top, spacing: GranaTheme.Spacing.sm) {
+        public var body: some View {
+            HStack(alignment: .top, spacing: Theme.Spacing.sm) {
                 mainContent
                     .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
 
@@ -63,7 +64,7 @@ extension AppUI.Wizard {
     }
 }
 
-private extension AppUI.Wizard {
+private extension Wizard {
     struct Sidebar<Actions: View>: View {
         let steps: [Step]
         let actions: Actions
@@ -77,28 +78,28 @@ private extension AppUI.Wizard {
         }
 
         var body: some View {
-            VStack(alignment: .leading, spacing: GranaTheme.Spacing.lg) {
-                VStack(alignment: .leading, spacing: GranaTheme.Spacing.none) {
+            VStack(alignment: .leading, spacing: Theme.Spacing.lg) {
+                VStack(alignment: .leading, spacing: Theme.Spacing.none) {
                     ForEach(Array(steps.enumerated()), id: \.offset) { index, step in
                         stepRow(step, index: index)
                     }
                 }
 
-                Spacer(minLength: GranaTheme.Spacing.none)
+                Spacer(minLength: Theme.Spacing.none)
 
-                VStack(spacing: GranaTheme.Spacing.sm) {
+                VStack(spacing: Theme.Spacing.sm) {
                     actions
                         .controlSize(.large)
                 }
             }
-            .padding(GranaTheme.Spacing.md)
+            .padding(Theme.Spacing.md)
             .frame(maxHeight: .infinity, alignment: .top)
-            .granaSurface(.solid, cornerRadius: GranaTheme.Radius.card)
+            .granaSurface(.solid, cornerRadius: Theme.Radius.card)
         }
 
         @ViewBuilder
         private func stepRow(_ step: Step, index: Int) -> some View {
-            HStack(alignment: .center, spacing: GranaTheme.Spacing.sm) {
+            HStack(alignment: .center, spacing: Theme.Spacing.sm) {
                 ZStack {
                     Circle()
                         .fill(fillColor(for: step.state))
@@ -109,28 +110,28 @@ private extension AppUI.Wizard {
 
                     if step.state == .completed {
                         Image(systemName: "checkmark")
-                            .font(.system(size: GranaTheme.IconSize.micro, weight: .bold))
-                            .foregroundStyle(GranaTheme.Palette.creamText)
+                            .font(.system(size: Theme.IconSize.micro, weight: .bold))
+                            .foregroundStyle(Theme.Palette.creamText)
                     } else {
                         Text("\(index + 1)")
-                            .font(GranaTheme.Typography.footnoteEmphasis)
+                            .font(Theme.Typography.footnoteEmphasis)
                             .foregroundStyle(numberColor(for: step.state))
                     }
                 }
 
                 Text(step.title)
-                    .font(step.state == .current ? GranaTheme.Typography.calloutEmphasis : GranaTheme.Typography.callout)
+                    .font(step.state == .current ? Theme.Typography.calloutEmphasis : Theme.Typography.callout)
                     .foregroundStyle(labelColor(for: step.state))
 
-                Spacer(minLength: GranaTheme.Spacing.none)
+                Spacer(minLength: Theme.Spacing.none)
             }
-            .padding(.vertical, GranaTheme.Spacing.sm)
+            .padding(.vertical, Theme.Spacing.sm)
             .overlay(alignment: .bottomLeading) {
                 if index < steps.count - 1 {
                     Rectangle()
                         .fill(connectorColor(at: index))
                         .frame(width: 1.5, height: 18)
-                        .offset(x: 11, y: GranaTheme.Spacing.lg)
+                        .offset(x: 11, y: Theme.Spacing.lg)
                 }
             }
         }
@@ -138,7 +139,7 @@ private extension AppUI.Wizard {
         private func fillColor(for state: Step.State) -> Color {
             switch state {
             case .completed, .current:
-                GranaTheme.Palette.teal
+                Theme.Palette.teal
             case .pending:
                 .clear
             }
@@ -147,32 +148,32 @@ private extension AppUI.Wizard {
         private func strokeColor(for state: Step.State) -> Color {
             switch state {
             case .completed, .current:
-                GranaTheme.Palette.teal
+                Theme.Palette.teal
             case .pending:
-                GranaTheme.Palette.line
+                Theme.Palette.line
             }
         }
 
         private func numberColor(for state: Step.State) -> Color {
             switch state {
             case .current:
-                GranaTheme.Palette.creamText
+                Theme.Palette.creamText
             case .completed, .pending:
-                GranaTheme.Palette.muted
+                Theme.Palette.muted
             }
         }
 
         private func labelColor(for state: Step.State) -> Color {
             switch state {
             case .completed, .current:
-                GranaTheme.Palette.ink
+                Theme.Palette.ink
             case .pending:
-                GranaTheme.Palette.muted
+                Theme.Palette.muted
             }
         }
 
         private func connectorColor(at index: Int) -> Color {
-            steps[index].state == .completed ? GranaTheme.Palette.teal : GranaTheme.Palette.line
+            steps[index].state == .completed ? Theme.Palette.teal : Theme.Palette.line
         }
     }
 }

@@ -76,7 +76,8 @@ SwiftUI View -> @Observable Store -> Repository -> Supabase backend
 - Estado apenas visual fica em `@State`; dados persistidos ou compartilhados ficam no Store.
 - Dados financeiros não podem ser persistidos em `UserDefaults`, arquivos, SQLite, banco local ou caches em disco.
 - Mantenha Views pequenas e extraia subviews quando acumularem responsabilidades.
-- Não adicione `#Preview`; valide UI executando o app.
+- `#Preview` so e permitido no target `AppUI`. Fora dele, valide UI
+  executando o app.
 - Ícones de UI vêm de `AppIcon`; ícones de categoria passam por `CategoryIcon` e seus mappings.
 - Tokens visuais do tema ficam em `GranaTheme`. Assets de cor só são necessários quando a cor precisar ser referenciada
   pelo asset catalog/Xcode; enquanto o app for light-only, novas cores visuais não exigem variante dark.

@@ -1,5 +1,6 @@
 import AppKit
 import SwiftUI
+import AppUI
 
 struct ProfileView: View {
     @Environment(AppEnvironment.self) private var environment
@@ -32,7 +33,7 @@ struct ProfileView: View {
     }
 
     private func authenticatedContent(_ session: AuthSessionContext) -> some View {
-        VStack(spacing: GranaTheme.Spacing.sm) {
+        VStack(spacing: AppUI.Theme.Spacing.sm) {
             AppUI.Layout.ScreenHeader(
                 title: "Perfil",
                 subtitle: headerSubtitle(for: session)
@@ -45,7 +46,7 @@ struct ProfileView: View {
                             .controlSize(.small)
                             .frame(maxWidth: .infinity)
                     } else {
-                        Label("Sair", systemImage: AppIcon.signOut.systemImage)
+                        Label("Sair", systemImage: AppUI.Icon.signOut.systemImage)
                             .frame(maxWidth: .infinity)
                     }
                 }
@@ -54,7 +55,7 @@ struct ProfileView: View {
             }
 
             ScrollView {
-                VStack(alignment: .leading, spacing: GranaTheme.Spacing.md) {
+                VStack(alignment: .leading, spacing: AppUI.Theme.Spacing.md) {
                     identityCard(session)
                     infoSection(
                         title: "Sessão",
@@ -63,7 +64,7 @@ struct ProfileView: View {
                     )
                     infoSection(
                         title: "Backend",
-                        icon: AppIcon.sidebarInstitutions.systemImage,
+                        icon: AppUI.Icon.sidebarInstitutions.systemImage,
                         rows: [backendRow]
                     )
                 }
@@ -73,32 +74,32 @@ struct ProfileView: View {
     }
 
     private func identityCard(_ session: AuthSessionContext) -> some View {
-        VStack(alignment: .leading, spacing: GranaTheme.Spacing.lg) {
-            HStack(alignment: .top, spacing: GranaTheme.Spacing.md) {
+        VStack(alignment: .leading, spacing: AppUI.Theme.Spacing.lg) {
+            HStack(alignment: .top, spacing: AppUI.Theme.Spacing.md) {
                 profileBadge
 
-                VStack(alignment: .leading, spacing: GranaTheme.Spacing.xxs) {
+                VStack(alignment: .leading, spacing: AppUI.Theme.Spacing.xxs) {
                     Text(displayName(for: session))
-                        .font(GranaTheme.Typography.title3)
-                        .foregroundStyle(GranaTheme.Palette.ink)
+                        .font(AppUI.Theme.Typography.title3)
+                        .foregroundStyle(AppUI.Theme.Palette.ink)
 
                     Text(displayValue(session.email))
-                        .font(GranaTheme.Typography.subheadline)
-                        .foregroundStyle(GranaTheme.Palette.muted)
+                        .font(AppUI.Theme.Typography.subheadline)
+                        .foregroundStyle(AppUI.Theme.Palette.muted)
 
                     providerBadgeText(session.providers)
                 }
 
-                Spacer(minLength: GranaTheme.Spacing.none)
+                Spacer(minLength: AppUI.Theme.Spacing.none)
             }
 
-            VStack(alignment: .leading, spacing: GranaTheme.Spacing.sm) {
+            VStack(alignment: .leading, spacing: AppUI.Theme.Spacing.sm) {
                 rowLabel("ID do usuário")
 
-                HStack(spacing: GranaTheme.Spacing.sm) {
+                HStack(spacing: AppUI.Theme.Spacing.sm) {
                     Text(session.userID.uuidString.lowercased())
-                        .font(GranaTheme.Typography.code)
-                        .foregroundStyle(GranaTheme.Palette.ink)
+                        .font(AppUI.Theme.Typography.code)
+                        .foregroundStyle(AppUI.Theme.Palette.ink)
                         .textSelection(.enabled)
                         .lineLimit(1)
                         .truncationMode(.middle)
@@ -106,7 +107,7 @@ struct ProfileView: View {
                     Button {
                         copyUserID(session.userID)
                     } label: {
-                        Label("Copiar ID do usuário", systemImage: AppIcon.copy.systemImage)
+                        Label("Copiar ID do usuário", systemImage: AppUI.Icon.copy.systemImage)
                             .labelStyle(.iconOnly)
                     }
                     .buttonStyle(GranaSecondaryButtonStyle())
@@ -114,7 +115,7 @@ struct ProfileView: View {
                 }
             }
 
-            HStack(spacing: GranaTheme.Spacing.md) {
+            HStack(spacing: AppUI.Theme.Spacing.md) {
                 compactFact(
                     title: "Criado em",
                     value: displayDate(session.createdAt)
@@ -125,8 +126,8 @@ struct ProfileView: View {
                 )
             }
         }
-        .padding(GranaTheme.Spacing.lg)
-        .granaSurface(.subtle, cornerRadius: GranaTheme.Radius.hero)
+        .padding(AppUI.Theme.Spacing.lg)
+        .granaSurface(.subtle, cornerRadius: AppUI.Theme.Radius.hero)
     }
 
     private func infoSection(
@@ -134,52 +135,52 @@ struct ProfileView: View {
         icon: String,
         rows: [ProfileRow]
     ) -> some View {
-        VStack(alignment: .leading, spacing: GranaTheme.Spacing.md) {
-            HStack(spacing: GranaTheme.Spacing.xs) {
+        VStack(alignment: .leading, spacing: AppUI.Theme.Spacing.md) {
+            HStack(spacing: AppUI.Theme.Spacing.xs) {
                 Image(systemName: icon)
-                    .font(.system(size: GranaTheme.IconSize.medium))
-                    .foregroundStyle(GranaTheme.Palette.tealDeep)
+                    .font(.system(size: AppUI.Theme.IconSize.medium))
+                    .foregroundStyle(AppUI.Theme.Palette.tealDeep)
 
                 Text(title)
-                    .font(GranaTheme.Typography.headline)
-                    .foregroundStyle(GranaTheme.Palette.ink)
+                    .font(AppUI.Theme.Typography.headline)
+                    .foregroundStyle(AppUI.Theme.Palette.ink)
             }
 
-            VStack(spacing: GranaTheme.Spacing.sm) {
+            VStack(spacing: AppUI.Theme.Spacing.sm) {
                 ForEach(rows) { row in
                     infoRow(row)
                 }
             }
         }
-        .padding(GranaTheme.Spacing.md)
-        .granaSurface(.subtle, cornerRadius: GranaTheme.Radius.card)
+        .padding(AppUI.Theme.Spacing.md)
+        .granaSurface(.subtle, cornerRadius: AppUI.Theme.Radius.card)
     }
 
     private func infoRow(_ row: ProfileRow) -> some View {
-        HStack(alignment: .top, spacing: GranaTheme.Spacing.md) {
+        HStack(alignment: .top, spacing: AppUI.Theme.Spacing.md) {
             Text(row.title)
-                .font(GranaTheme.Typography.caption1Emphasis)
-                .foregroundStyle(GranaTheme.Palette.muted)
+                .font(AppUI.Theme.Typography.caption1Emphasis)
+                .foregroundStyle(AppUI.Theme.Palette.muted)
                 .frame(maxWidth: .infinity, alignment: .leading)
 
             if row.usesCodeFont {
                 valueText(row)
-                    .font(GranaTheme.Typography.code)
+                    .font(AppUI.Theme.Typography.code)
                     .textSelection(.enabled)
             } else {
                 valueText(row)
-                    .font(GranaTheme.Typography.body)
+                    .font(AppUI.Theme.Typography.body)
                     .textSelection(.disabled)
             }
         }
-        .padding(.horizontal, GranaTheme.Spacing.md)
-        .padding(.vertical, GranaTheme.Spacing.sm)
-        .granaSurface(.solid, cornerRadius: GranaTheme.Radius.card)
+        .padding(.horizontal, AppUI.Theme.Spacing.md)
+        .padding(.vertical, AppUI.Theme.Spacing.sm)
+        .granaSurface(.solid, cornerRadius: AppUI.Theme.Radius.card)
     }
 
     private func valueText(_ row: ProfileRow) -> some View {
         Text(row.value)
-            .foregroundStyle(row.accent ?? GranaTheme.Palette.ink)
+            .foregroundStyle(row.accent ?? AppUI.Theme.Palette.ink)
             .multilineTextAlignment(.trailing)
             .frame(maxWidth: .infinity, alignment: .trailing)
     }
@@ -187,40 +188,40 @@ struct ProfileView: View {
     private var profileBadge: some View {
         ZStack {
             Circle()
-                .fill(GranaTheme.brandGradient())
+                .fill(AppUI.Theme.brandGradient())
 
-            Image(systemName: AppIcon.sidebarProfile.systemImage)
-                .font(.system(size: GranaTheme.IconSize.large, weight: .semibold))
-                .foregroundStyle(GranaTheme.Palette.creamText)
+            Image(systemName: AppUI.Icon.sidebarProfile.systemImage)
+                .font(.system(size: AppUI.Theme.IconSize.large, weight: .semibold))
+                .foregroundStyle(AppUI.Theme.Palette.creamText)
         }
         .frame(width: 64, height: 64)
-        .shadow(color: GranaTheme.Shadow.accentColor, radius: 16, y: 10)
+        .shadow(color: AppUI.Theme.Shadow.accentColor, radius: 16, y: 10)
     }
 
     private func rowLabel(_ text: String) -> some View {
         Text(text)
-            .font(GranaTheme.Typography.caption1Emphasis)
-            .foregroundStyle(GranaTheme.Palette.muted)
+            .font(AppUI.Theme.Typography.caption1Emphasis)
+            .foregroundStyle(AppUI.Theme.Palette.muted)
     }
 
     private func providerBadgeText(_ providers: [String]) -> some View {
         Text(providersText(providers))
-            .font(GranaTheme.Typography.caption1Emphasis)
-            .foregroundStyle(GranaTheme.Palette.tealDeep)
-            .padding(.horizontal, GranaTheme.Spacing.xs)
-            .padding(.vertical, GranaTheme.Spacing.xxs)
-            .background(GranaTheme.Palette.teal.opacity(0.10), in: Capsule())
+            .font(AppUI.Theme.Typography.caption1Emphasis)
+            .foregroundStyle(AppUI.Theme.Palette.tealDeep)
+            .padding(.horizontal, AppUI.Theme.Spacing.xs)
+            .padding(.vertical, AppUI.Theme.Spacing.xxs)
+            .background(AppUI.Theme.Palette.teal.opacity(0.10), in: Capsule())
     }
 
     private func compactFact(title: String, value: String) -> some View {
-        VStack(alignment: .leading, spacing: GranaTheme.Spacing.xxs) {
+        VStack(alignment: .leading, spacing: AppUI.Theme.Spacing.xxs) {
             Text(title)
-                .font(GranaTheme.Typography.caption2Emphasis)
-                .foregroundStyle(GranaTheme.Palette.muted)
+                .font(AppUI.Theme.Typography.caption2Emphasis)
+                .foregroundStyle(AppUI.Theme.Palette.muted)
 
             Text(value)
-                .font(GranaTheme.Typography.subheadline)
-                .foregroundStyle(GranaTheme.Palette.ink)
+                .font(AppUI.Theme.Typography.subheadline)
+                .foregroundStyle(AppUI.Theme.Palette.ink)
         }
         .frame(maxWidth: .infinity, alignment: .leading)
     }
@@ -236,7 +237,7 @@ struct ProfileView: View {
 
     private func sessionRows(for session: AuthSessionContext) -> [ProfileRow] {
         [
-            ProfileRow(title: "Status", value: "Autenticado", accent: GranaTheme.Palette.green),
+            ProfileRow(title: "Status", value: "Autenticado", accent: AppUI.Theme.Palette.green),
             ProfileRow(title: "Provedores", value: providersText(session.providers)),
             ProfileRow(title: "Último login", value: displayDate(session.lastSignInAt)),
             ProfileRow(title: "Expira em", value: displayDate(session.expiresAt)),
@@ -248,7 +249,7 @@ struct ProfileView: View {
         return ProfileRow(
             title: "Status",
             value: isAvailable ? "Disponível" : "Indisponível",
-            accent: isAvailable ? GranaTheme.Palette.green : GranaTheme.Palette.red
+            accent: isAvailable ? AppUI.Theme.Palette.green : AppUI.Theme.Palette.red
         )
     }
 

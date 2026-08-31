@@ -1,5 +1,6 @@
 import ComposableArchitecture
 import SwiftUI
+import AppUI
 
 struct CategorizingStepView: View {
     @Bindable var store: StoreOf<CategorizationFeature>
@@ -23,34 +24,34 @@ struct CategorizingStepView: View {
     }
 
     private var loadingCard: some View {
-        VStack(spacing: GranaTheme.Spacing.lg) {
+        VStack(spacing: AppUI.Theme.Spacing.lg) {
             ZStack {
                 Circle()
-                    .fill(GranaTheme.Palette.teal.opacity(0.10))
+                    .fill(AppUI.Theme.Palette.teal.opacity(0.10))
                     .frame(width: 112, height: 112)
                 Circle()
-                    .strokeBorder(GranaTheme.Palette.teal.opacity(0.18), lineWidth: 1)
+                    .strokeBorder(AppUI.Theme.Palette.teal.opacity(0.18), lineWidth: 1)
                     .frame(width: 112, height: 112)
 
-                Image(systemName: AppIcon.completedSeal.systemImage)
-                    .font(.system(size: GranaTheme.IconSize.hero, weight: .regular))
-                    .foregroundStyle(GranaTheme.Palette.tealDeep)
+                Image(systemName: AppUI.Icon.completedSeal.systemImage)
+                    .font(.system(size: AppUI.Theme.IconSize.hero, weight: .regular))
+                    .foregroundStyle(AppUI.Theme.Palette.tealDeep)
             }
 
             progressIndicator
 
-            VStack(spacing: GranaTheme.Spacing.xs) {
+            VStack(spacing: AppUI.Theme.Spacing.xs) {
                 Text(headlineText)
-                    .font(GranaTheme.Typography.title3)
-                    .foregroundStyle(GranaTheme.Palette.ink)
+                    .font(AppUI.Theme.Typography.title3)
+                    .foregroundStyle(AppUI.Theme.Palette.ink)
 
                 statusText
             }
         }
-        .padding(.horizontal, GranaTheme.Spacing.xxxl)
-        .padding(.vertical, GranaTheme.Spacing.xxl)
+        .padding(.horizontal, AppUI.Theme.Spacing.xxxl)
+        .padding(.vertical, AppUI.Theme.Spacing.xxl)
         .frame(maxWidth: .infinity, maxHeight: .infinity)
-        .granaSurface(.subtle, cornerRadius: GranaTheme.Radius.hero)
+        .granaSurface(.subtle, cornerRadius: AppUI.Theme.Radius.hero)
     }
 
     @ViewBuilder
@@ -59,13 +60,13 @@ struct CategorizingStepView: View {
         case let .classifying(processed, total, _) where total > 0:
             ProgressView(value: Double(processed), total: Double(total))
                 .progressViewStyle(.linear)
-                .tint(GranaTheme.Palette.teal)
+                .tint(AppUI.Theme.Palette.teal)
                 .frame(maxWidth: 360)
                 .animation(.easeOut(duration: 0.25), value: processed)
         default:
             ProgressView()
                 .progressViewStyle(.linear)
-                .tint(GranaTheme.Palette.teal)
+                .tint(AppUI.Theme.Palette.teal)
                 .frame(maxWidth: 360)
         }
     }
@@ -88,27 +89,27 @@ struct CategorizingStepView: View {
         switch store.status {
         case .idle:
             Text("Carregando categorias e contexto necessário para a próxima etapa.")
-                .font(GranaTheme.Typography.callout)
-                .foregroundStyle(GranaTheme.Palette.muted)
+                .font(AppUI.Theme.Typography.callout)
+                .foregroundStyle(AppUI.Theme.Palette.muted)
                 .multilineTextAlignment(.center)
         case let .classifying(processed, total, message):
-            VStack(spacing: GranaTheme.Spacing.xs) {
+            VStack(spacing: AppUI.Theme.Spacing.xs) {
                 Text("\(processed) de \(total) processadas")
-                    .font(GranaTheme.Typography.calloutEmphasis)
-                    .foregroundStyle(GranaTheme.Palette.ink)
+                    .font(AppUI.Theme.Typography.calloutEmphasis)
+                    .foregroundStyle(AppUI.Theme.Palette.ink)
 
                 TimelineView(.periodic(from: .now, by: 1.8)) { context in
                     Text(rotatingMessage(for: loadingStage(processed: processed, total: total, message: message), date: context.date))
-                        .font(GranaTheme.Typography.callout)
-                        .foregroundStyle(GranaTheme.Palette.muted)
+                        .font(AppUI.Theme.Typography.callout)
+                        .foregroundStyle(AppUI.Theme.Palette.muted)
                 }
             }
         case .ready:
             EmptyView()
         case let .failed(message):
             Text(message)
-                .font(GranaTheme.Typography.callout)
-                .foregroundStyle(GranaTheme.Palette.muted)
+                .font(AppUI.Theme.Typography.callout)
+                .foregroundStyle(AppUI.Theme.Palette.muted)
                 .multilineTextAlignment(.center)
         }
     }

@@ -1,5 +1,6 @@
 import ComposableArchitecture
 import SwiftUI
+import AppUI
 
 struct CategorizationReviewView: View {
     enum Mode {
@@ -18,7 +19,7 @@ struct CategorizationReviewView: View {
     var body: some View {
         switch mode {
         case .modal:
-            VStack(spacing: GranaTheme.Spacing.none) {
+            VStack(spacing: AppUI.Theme.Spacing.none) {
                 content
                 BottomActionBar {
                     Button("Fechar") { dismiss() }
@@ -64,28 +65,28 @@ struct CategorizationReviewView: View {
                         )
                     } else {
                         Text("Classificada")
-                            .font(GranaTheme.Typography.caption1Emphasis)
-                            .foregroundStyle(GranaTheme.Palette.tealDeep)
+                            .font(AppUI.Theme.Typography.caption1Emphasis)
+                            .foregroundStyle(AppUI.Theme.Palette.tealDeep)
                     }
                 }
                 .width(min: 132, ideal: 156, max: 180)
 
                 TableColumn("Data") { row in
                     Text(GranaDateFormat.fullDate(row.occurredAt))
-                        .font(GranaTheme.Typography.caption1)
-                        .foregroundStyle(GranaTheme.Palette.muted)
+                        .font(AppUI.Theme.Typography.caption1)
+                        .foregroundStyle(AppUI.Theme.Palette.muted)
                 }
                 .width(min: 128, ideal: 148, max: 172)
 
                 TableColumn("Descrição") { row in
-                    HStack(spacing: GranaTheme.Spacing.sm) {
+                    HStack(spacing: AppUI.Theme.Spacing.sm) {
                         if let kind = row.institutionKind {
                             InstitutionIcon(kind: kind, size: 22)
                         }
 
                         Text(row.description)
-                            .font(GranaTheme.Typography.subheadlineEmphasis)
-                            .foregroundStyle(GranaTheme.Palette.ink)
+                            .font(AppUI.Theme.Typography.subheadlineEmphasis)
+                            .foregroundStyle(AppUI.Theme.Palette.ink)
                             .lineLimit(1)
                             .help(row.description)
                     }
@@ -103,7 +104,7 @@ struct CategorizationReviewView: View {
 
                 TableColumn("Valor") { row in
                     Text(row.amount.formatted(.currency(code: "BRL")))
-                        .font(GranaTheme.Typography.moneySubheadline)
+                        .font(AppUI.Theme.Typography.moneySubheadline)
                         .foregroundStyle(amountColor(for: row.categoryId))
                         .frame(maxWidth: .infinity, alignment: .trailing)
                 }
@@ -116,7 +117,7 @@ struct CategorizationReviewView: View {
     @ViewBuilder
     private var emptyState: some View {
         if case .classifying = store.status {
-            VStack(spacing: GranaTheme.Spacing.sm) {
+            VStack(spacing: AppUI.Theme.Spacing.sm) {
                 ProgressView()
                 Text("Categorizando…").foregroundStyle(.secondary)
             }
@@ -224,17 +225,17 @@ struct CategorizationReviewView: View {
     }
 
     private func tableMenuLabel(text: String) -> some View {
-        HStack(spacing: GranaTheme.Spacing.xxs) {
+        HStack(spacing: AppUI.Theme.Spacing.xxs) {
             Text(text)
-                .font(GranaTheme.Typography.caption1)
+                .font(AppUI.Theme.Typography.caption1)
                 .lineLimit(1)
                 .frame(maxWidth: .infinity, alignment: .leading)
-            Image(systemName: AppIcon.sort.systemImage)
-                .font(.system(size: GranaTheme.IconSize.micro))
+            Image(systemName: AppUI.Icon.sort.systemImage)
+                .font(.system(size: AppUI.Theme.IconSize.micro))
                 .foregroundStyle(.secondary)
         }
-        .padding(.horizontal, GranaTheme.Spacing.xs)
-        .padding(.vertical, GranaTheme.Spacing.xxs)
+        .padding(.horizontal, AppUI.Theme.Spacing.xs)
+        .padding(.vertical, AppUI.Theme.Spacing.xxs)
         .background(Color(nsColor: .controlBackgroundColor))
         .clipShape(RoundedRectangle(cornerRadius: 6, style: .continuous))
     }

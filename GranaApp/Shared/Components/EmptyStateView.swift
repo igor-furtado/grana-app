@@ -1,5 +1,6 @@
 import AppKit
 import SwiftUI
+import AppUI
 
 private enum EmptyStateMetrics {
     static let maxContentWidth: CGFloat = 620
@@ -35,15 +36,15 @@ struct EmptyStateView<Icon: View, Actions: View>: View {
     }
 
     var body: some View {
-        VStack(spacing: GranaTheme.Spacing.none) {
+        VStack(spacing: AppUI.Theme.Spacing.none) {
             if showsIcon {
                 icon
-                    .padding(.bottom, GranaTheme.Spacing.lg)
+                    .padding(.bottom, AppUI.Theme.Spacing.lg)
             }
 
             Text(title)
-                .font(GranaTheme.Typography.title2)
-                .foregroundStyle(GranaTheme.Palette.ink)
+                .font(AppUI.Theme.Typography.title2)
+                .foregroundStyle(AppUI.Theme.Palette.ink)
                 .multilineTextAlignment(.center)
                 .lineLimit(3)
                 .minimumScaleFactor(0.72)
@@ -51,25 +52,25 @@ struct EmptyStateView<Icon: View, Actions: View>: View {
 
             if let descriptionText {
                 Text(descriptionText)
-                    .font(GranaTheme.Typography.headline)
-                    .foregroundStyle(GranaTheme.Palette.muted)
+                    .font(AppUI.Theme.Typography.headline)
+                    .foregroundStyle(AppUI.Theme.Palette.muted)
                     .multilineTextAlignment(.center)
                     .fixedSize(horizontal: false, vertical: true)
                     .frame(maxWidth: EmptyStateMetrics.maxTextWidth)
-                    .padding(.top, GranaTheme.Spacing.md)
+                    .padding(.top, AppUI.Theme.Spacing.md)
             }
 
             if showsActions {
                 actions
                     .controlSize(.large)
                     .frame(maxWidth: .infinity, alignment: .center)
-                    .padding(.top, GranaTheme.Spacing.xxl)
+                    .padding(.top, AppUI.Theme.Spacing.xxl)
             }
         }
         .frame(maxWidth: EmptyStateMetrics.maxContentWidth)
         .frame(maxWidth: .infinity, maxHeight: .infinity)
-        .padding(.horizontal, GranaTheme.Spacing.xl)
-        .padding(.vertical, GranaTheme.Spacing.xxxl)
+        .padding(.horizontal, AppUI.Theme.Spacing.xl)
+        .padding(.vertical, AppUI.Theme.Spacing.xxxl)
     }
 }
 
@@ -166,8 +167,8 @@ struct EmptyStateSymbolIcon: View {
         Image(systemName: Self.resolveSymbol(systemName))
             .symbolRenderingMode(.hierarchical)
             .font(.system(size: EmptyStateMetrics.iconSize, weight: .bold))
-            .foregroundStyle(GranaTheme.Palette.ink)
-            .shadow(color: GranaTheme.Shadow.accentColor.opacity(0.64), radius: 18, y: 12)
+            .foregroundStyle(AppUI.Theme.Palette.ink)
+            .shadow(color: AppUI.Theme.Shadow.accentColor.opacity(0.64), radius: 18, y: 12)
     }
 
     /// Procura o variant `.circle.fill` do símbolo. Estratégia em ordem:

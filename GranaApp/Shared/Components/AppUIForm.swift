@@ -1,34 +1,29 @@
 import SwiftUI
 
-extension AppUI {
-    enum Form {}
-    enum Modal {}
-}
-
-extension AppUI.Form {
-    struct Shell<Content: View>: View {
+public enum Form {
+    public struct Shell<Content: View>: View {
         @ViewBuilder private let content: () -> Content
 
-        init(@ViewBuilder content: @escaping () -> Content) {
+        public init(@ViewBuilder content: @escaping () -> Content) {
             self.content = content
         }
 
-        var body: some View {
-            VStack(alignment: .leading, spacing: GranaTheme.Spacing.lg) {
+        public var body: some View {
+            VStack(alignment: .leading, spacing: Theme.Spacing.lg) {
                 content()
             }
-            .padding(.vertical, GranaTheme.Spacing.lg)
-            .granaSurface(.subtle, cornerRadius: GranaTheme.Radius.card)
-            .padding(GranaTheme.Spacing.sm)
+            .padding(.vertical, Theme.Spacing.lg)
+            .granaSurface(.subtle, cornerRadius: Theme.Radius.card)
+            .padding(Theme.Spacing.sm)
         }
     }
 
-    struct Header<Trailing: View>: View {
+    public struct Header<Trailing: View>: View {
         let title: String
         let subtitle: String?
         @ViewBuilder private let trailing: () -> Trailing
 
-        init(
+        public init(
             title: String,
             subtitle: String? = nil,
             @ViewBuilder trailing: @escaping () -> Trailing
@@ -38,7 +33,7 @@ extension AppUI.Form {
             self.trailing = trailing
         }
 
-        init(
+        public init(
             title: String,
             subtitle: String? = nil
         ) where Trailing == EmptyView {
@@ -47,55 +42,63 @@ extension AppUI.Form {
             self.trailing = { EmptyView() }
         }
 
-        var body: some View {
-            HStack(alignment: .top, spacing: GranaTheme.Spacing.md) {
-                VStack(alignment: .leading, spacing: GranaTheme.Spacing.xs) {
+        public var body: some View {
+            HStack(alignment: .top, spacing: Theme.Spacing.md) {
+                VStack(alignment: .leading, spacing: Theme.Spacing.xs) {
                     Text(title)
-                        .font(GranaTheme.Typography.title3)
-                        .foregroundStyle(GranaTheme.Palette.ink)
+                        .font(Theme.Typography.title3)
+                        .foregroundStyle(Theme.Palette.ink)
 
                     if let subtitle, !subtitle.isEmpty {
                         Text(subtitle)
-                            .font(GranaTheme.Typography.subheadline)
-                            .foregroundStyle(GranaTheme.Palette.muted)
+                            .font(Theme.Typography.subheadline)
+                            .foregroundStyle(Theme.Palette.muted)
                     }
                 }
 
-                Spacer(minLength: GranaTheme.Spacing.none)
+                Spacer(minLength: Theme.Spacing.none)
 
                 trailing()
             }
-            .padding(.horizontal, GranaTheme.Spacing.lg)
+            .padding(.horizontal, Theme.Spacing.lg)
         }
     }
 
-    struct SectionHeader: View {
-        let title: String
+    public struct SectionHeader: View {
+        public let title: String
 
-        var body: some View {
+        public init(title: String) {
+            self.title = title
+        }
+
+        public var body: some View {
             Text(title)
-                .font(GranaTheme.Typography.subheadlineEmphasis)
-                .foregroundStyle(GranaTheme.Palette.ink)
+                .font(Theme.Typography.subheadlineEmphasis)
+                .foregroundStyle(Theme.Palette.ink)
                 .textCase(nil)
         }
     }
 
-    struct SectionFooter: View {
-        let text: String
+    public struct SectionFooter: View {
+        public let text: String
 
-        var body: some View {
+        public init(text: String) {
+            self.text = text
+        }
+
+        public var body: some View {
             Text(text)
-                .font(GranaTheme.Typography.footnote)
-                .foregroundStyle(GranaTheme.Palette.muted)
+                .font(Theme.Typography.footnote)
+                .foregroundStyle(Theme.Palette.muted)
                 .textCase(nil)
         }
     }
 
-    struct Actions<Trailing: View>: View {
+    public struct Actions<Trailing: View>: View {
         let caption: String?
         @ViewBuilder private let trailing: () -> Trailing
 
-        init(
+        public init(
             caption: String? = nil,
             @ViewBuilder trailing: @escaping () -> Trailing
         ) {
@@ -103,20 +106,32 @@ extension AppUI.Form {
             self.trailing = trailing
         }
 
-        var body: some View {
-            BottomActionBar(caption: caption) {
+        public var body: some View {
+            HStack(spacing: Theme.Spacing.sm) {
+                if let caption {
+                    Text(caption)
+                        .font(Theme.Typography.caption1)
+                        .foregroundStyle(.secondary)
+                }
+                Spacer()
                 trailing()
+                    .controlSize(.large)
             }
+            .padding(.horizontal, Theme.Spacing.lg)
         }
     }
 
-    struct ErrorMessage: View {
-        let message: String
+    public struct ErrorMessage: View {
+        public let message: String
 
-        var body: some View {
+        public init(message: String) {
+            self.message = message
+        }
+
+        public var body: some View {
             Label {
                 Text(message)
-                    .font(GranaTheme.Typography.callout)
+                    .font(Theme.Typography.callout)
                     .foregroundStyle(.danger)
             } icon: {
                 Image(systemName: "exclamationmark.triangle.fill")
@@ -126,15 +141,15 @@ extension AppUI.Form {
     }
 }
 
-extension AppUI.Modal {
-    struct Workspace<Content: View>: View {
+public enum Modal {
+    public struct Workspace<Content: View>: View {
         @ViewBuilder private let content: () -> Content
         @FocusState private var isModalFocused: Bool
         private let width: CGFloat
         private let height: CGFloat
         private let onDismiss: (() -> Void)?
 
-        init(
+        public init(
             width: CGFloat,
             height: CGFloat,
             onDismiss: (() -> Void)? = nil,
@@ -146,7 +161,7 @@ extension AppUI.Modal {
             self.content = content
         }
 
-        var body: some View {
+        public var body: some View {
             ZStack {
                 Rectangle()
                     .fill(.regularMaterial)
@@ -155,16 +170,16 @@ extension AppUI.Modal {
                 content()
                     .frame(width: width, height: height)
                     .background {
-                        RoundedRectangle(cornerRadius: GranaTheme.Radius.hero, style: .continuous)
-                            .fill(GranaTheme.Palette.paper.opacity(0.94))
+                        RoundedRectangle(cornerRadius: Theme.Radius.hero, style: .continuous)
+                            .fill(Theme.Palette.paper.opacity(0.94))
                     }
                     .overlay {
-                        RoundedRectangle(cornerRadius: GranaTheme.Radius.hero, style: .continuous)
-                            .strokeBorder(GranaTheme.Palette.line.opacity(0.55), lineWidth: 1)
+                        RoundedRectangle(cornerRadius: Theme.Radius.hero, style: .continuous)
+                            .strokeBorder(Theme.Palette.line.opacity(0.55), lineWidth: 1)
                     }
-                    .clipShape(RoundedRectangle(cornerRadius: GranaTheme.Radius.hero, style: .continuous))
-                    .shadow(color: GranaTheme.Shadow.glassColor, radius: 30, y: 16)
-                    .padding(GranaTheme.Spacing.xl)
+                    .clipShape(RoundedRectangle(cornerRadius: Theme.Radius.hero, style: .continuous))
+                    .shadow(color: Theme.Shadow.glassColor, radius: 30, y: 16)
+                    .padding(Theme.Spacing.xl)
                     .focusable()
                     .focused($isModalFocused)
             }

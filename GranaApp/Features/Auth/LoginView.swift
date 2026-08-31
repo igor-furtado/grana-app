@@ -1,4 +1,5 @@
 import SwiftUI
+import AppUI
 
 struct LoginView: View {
     let authService: AuthService
@@ -7,51 +8,51 @@ struct LoginView: View {
     @State private var isSendingMagicLink = false
 
     var body: some View {
-        HStack(spacing: GranaTheme.Spacing.lg) {
+        HStack(spacing: AppUI.Theme.Spacing.lg) {
             storyPanel
             loginPanel
         }
         .frame(maxWidth: 1060)
-        .padding(GranaTheme.Spacing.xl)
+        .padding(AppUI.Theme.Spacing.xl)
     }
 
     private var storyPanel: some View {
-        VStack(alignment: .leading, spacing: GranaTheme.Spacing.xl) {
+        VStack(alignment: .leading, spacing: AppUI.Theme.Spacing.xl) {
             logoMark
 
-            VStack(alignment: .leading, spacing: GranaTheme.Spacing.md) {
+            VStack(alignment: .leading, spacing: AppUI.Theme.Spacing.md) {
                 Text("GranaApp")
-                    .font(GranaTheme.Typography.title1)
-                    .foregroundStyle(GranaTheme.Palette.creamText)
+                    .font(AppUI.Theme.Typography.title1)
+                    .foregroundStyle(AppUI.Theme.Palette.creamText)
                     .lineLimit(1)
                     .minimumScaleFactor(0.75)
 
                 Text("Acesse seu painel financeiro com uma sessão remota validada.")
-                    .font(GranaTheme.Typography.headline)
-                    .foregroundStyle(GranaTheme.Palette.creamText.opacity(0.72))
+                    .font(AppUI.Theme.Typography.headline)
+                    .foregroundStyle(AppUI.Theme.Palette.creamText.opacity(0.72))
                     .lineSpacing(2)
                     .fixedSize(horizontal: false, vertical: true)
             }
 
-            Spacer(minLength: GranaTheme.Spacing.xxl)
+            Spacer(minLength: AppUI.Theme.Spacing.xxl)
 
-            HStack(spacing: GranaTheme.Spacing.xs) {
+            HStack(spacing: AppUI.Theme.Spacing.xs) {
                 pill("Sem senha fixa")
                 pill("Online-only")
                 pill("Fonte remota")
             }
         }
-        .padding(GranaTheme.Spacing.xxl)
+        .padding(AppUI.Theme.Spacing.xxl)
         .frame(maxWidth: .infinity, minHeight: 520, alignment: .leading)
         .background(
-            GranaTheme.brandGradient(),
-            in: RoundedRectangle(cornerRadius: GranaTheme.Radius.hero, style: .continuous)
+            AppUI.Theme.brandGradient(),
+            in: RoundedRectangle(cornerRadius: AppUI.Theme.Radius.hero, style: .continuous)
         )
         .overlay {
-            RoundedRectangle(cornerRadius: GranaTheme.Radius.hero, style: .continuous)
-                .strokeBorder(GranaTheme.Palette.creamText.opacity(0.15), lineWidth: 1)
+            RoundedRectangle(cornerRadius: AppUI.Theme.Radius.hero, style: .continuous)
+                .strokeBorder(AppUI.Theme.Palette.creamText.opacity(0.15), lineWidth: 1)
         }
-        .shadow(color: GranaTheme.Shadow.accentColor, radius: 37, y: 16)
+        .shadow(color: AppUI.Theme.Shadow.accentColor, radius: 37, y: 16)
     }
 
     private var loginPanel: some View {
@@ -88,11 +89,11 @@ struct LoginView: View {
                 .opacity(isSubmitDisabled ? 0.55 : 1)
             }
 
-            VStack(alignment: .leading, spacing: GranaTheme.Spacing.xs) {
+            VStack(alignment: .leading, spacing: AppUI.Theme.Spacing.xs) {
                 statusRow("E-mail", normalizedEmail.isEmpty ? "vazio" : normalizedEmail)
                 statusRow("Envio", isSendingMagicLink ? "em andamento" : "aguardando")
             }
-            .padding(.horizontal, GranaTheme.Spacing.lg)
+            .padding(.horizontal, AppUI.Theme.Spacing.lg)
         }
         .frame(width: 420, alignment: .leading)
         .frame(minHeight: 520, alignment: .leading)
@@ -100,33 +101,33 @@ struct LoginView: View {
 
     private var logoMark: some View {
         Text("G")
-            .font(GranaTheme.Typography.title3)
-            .foregroundStyle(GranaTheme.Palette.creamText)
+            .font(AppUI.Theme.Typography.title3)
+            .foregroundStyle(AppUI.Theme.Palette.creamText)
             .frame(width: 58, height: 58)
             .background(
-                GranaTheme.Palette.creamText.opacity(0.12),
+                AppUI.Theme.Palette.creamText.opacity(0.12),
                 in: RoundedRectangle(cornerRadius: 21, style: .continuous)
             )
     }
 
     private func pill(_ text: String) -> some View {
         Text(text)
-            .font(GranaTheme.Typography.footnoteEmphasis)
-            .foregroundStyle(GranaTheme.Palette.creamText.opacity(0.86))
-            .padding(.horizontal, GranaTheme.Spacing.sm)
-            .padding(.vertical, GranaTheme.Spacing.xs)
-            .background(GranaTheme.Palette.creamText.opacity(0.10), in: Capsule())
+            .font(AppUI.Theme.Typography.footnoteEmphasis)
+            .foregroundStyle(AppUI.Theme.Palette.creamText.opacity(0.86))
+            .padding(.horizontal, AppUI.Theme.Spacing.sm)
+            .padding(.vertical, AppUI.Theme.Spacing.xs)
+            .background(AppUI.Theme.Palette.creamText.opacity(0.10), in: Capsule())
     }
 
     private func statusRow(_ label: String, _ value: String) -> some View {
         HStack {
             Text(label)
-                .foregroundStyle(GranaTheme.Palette.muted)
+                .foregroundStyle(AppUI.Theme.Palette.muted)
             Spacer()
             Text(value)
-                .foregroundStyle(GranaTheme.Palette.ink)
+                .foregroundStyle(AppUI.Theme.Palette.ink)
         }
-        .font(GranaTheme.Typography.subheadlineEmphasis)
+        .font(AppUI.Theme.Typography.subheadlineEmphasis)
     }
 
     private var normalizedEmail: String {

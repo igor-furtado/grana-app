@@ -2,34 +2,32 @@ import AppKit
 import Foundation
 import SwiftUI
 
-extension AppUI {
-    struct CurrencyField: View {
-        private let label: String
-        @Binding private var cents: Int
-        private let placeholder: String
-        private let errorMessage: String?
+public struct CurrencyField: View {
+    private let label: String
+    @Binding private var cents: Int
+    private let placeholder: String
+    private let errorMessage: String?
 
-        init(
-            label: String,
-            cents: Binding<Int>,
-            placeholder: String = "R$ 0,00",
-            errorMessage: String? = nil
+    public init(
+        label: String,
+        cents: Binding<Int>,
+        placeholder: String = "R$ 0,00",
+        errorMessage: String? = nil
+    ) {
+        self.label = label
+        _cents = cents
+        self.placeholder = placeholder
+        self.errorMessage = errorMessage
+    }
+
+    public var body: some View {
+        Field(
+            label: label,
+            errorMessage: errorMessage
         ) {
-            self.label = label
-            _cents = cents
-            self.placeholder = placeholder
-            self.errorMessage = errorMessage
-        }
-
-        var body: some View {
-            AppUI.Field(
-                label: label,
-                errorMessage: errorMessage
-            ) {
-                CurrencyTextField(cents: $cents, placeholder: placeholder)
-                    .font(GranaTheme.Typography.moneyBody)
-                    .frame(maxWidth: .infinity, alignment: .trailing)
-            }
+            CurrencyTextField(cents: $cents, placeholder: placeholder)
+                .font(Theme.Typography.moneyBody)
+                .frame(maxWidth: .infinity, alignment: .trailing)
         }
     }
 }
@@ -60,7 +58,7 @@ private struct CurrencyTextField: NSViewRepresentable {
         let textField = NSTextField()
         textField.delegate = context.coordinator
         textField.placeholderString = placeholder
-        textField.font = GranaTheme.Typography.moneyBodyNSFont
+        textField.font = Theme.Typography.moneyBodyNSFont
         textField.alignment = .right
         textField.isBordered = false
         textField.drawsBackground = false
@@ -70,7 +68,7 @@ private struct CurrencyTextField: NSViewRepresentable {
     }
 
     func updateNSView(_ nsView: NSTextField, context: Context) {
-        nsView.font = GranaTheme.Typography.moneyBodyNSFont
+        nsView.font = Theme.Typography.moneyBodyNSFont
         guard !context.coordinator.isEditing else { return }
         let expected = AppUICurrencyFormat.format(cents)
         if nsView.stringValue != expected {

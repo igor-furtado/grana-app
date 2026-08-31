@@ -2,63 +2,62 @@ import SwiftUI
 
 /// Wrapper fino sobre `SwiftUI.Table` para concentrar o shell visual padrão do
 /// tema nas tabelas densas do app.
-extension AppUI {
-    struct TableFilterBar<Content: View>: View {
-        @ViewBuilder private let content: () -> Content
+public struct TableFilterBar<Content: View>: View {
+    @ViewBuilder private let content: () -> Content
 
-        init(@ViewBuilder content: @escaping () -> Content) {
-            self.content = content
+    public init(@ViewBuilder content: @escaping () -> Content) {
+        self.content = content
+    }
+
+    public var body: some View {
+        HStack(alignment: .top, spacing: Theme.Spacing.sm) {
+            content()
         }
-
-        var body: some View {
-            HStack(alignment: .top, spacing: GranaTheme.Spacing.sm) {
-                content()
-            }
-            .padding(GranaTheme.Spacing.md)
-            .frame(maxWidth: .infinity, alignment: .leading)
-            .background(GranaTheme.Palette.paper.opacity(0.58))
-            .overlay(alignment: .bottom) {
-                Rectangle()
-                    .fill(GranaTheme.Palette.line)
-                    .frame(height: 1)
-            }
+        .padding(Theme.Spacing.md)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(Theme.Palette.paper.opacity(0.58))
+        .overlay(alignment: .bottom) {
+            Rectangle()
+                .fill(Theme.Palette.line)
+                .frame(height: 1)
         }
     }
 
-    struct Table<RowValue: Identifiable, Sort: SortComparator, FilterBar: View, Columns: TableColumnContent>: View
-        where Columns.TableRowValue == RowValue,
-        Columns.TableColumnSortComparator == Sort {
-        private let hasFilterBar: Bool
-        private let filterBar: FilterBar
-        private let tableView: AnyView
+}
 
-        private init(
-            tableView: AnyView,
-            hasFilterBar: Bool,
-            filterBar: FilterBar
-        ) {
-            self.tableView = tableView
-            self.hasFilterBar = hasFilterBar
-            self.filterBar = filterBar
-        }
+public struct Table<RowValue: Identifiable, Sort: SortComparator, FilterBar: View, Columns: TableColumnContent>: View
+    where Columns.TableRowValue == RowValue,
+    Columns.TableColumnSortComparator == Sort {
+    private let hasFilterBar: Bool
+    private let filterBar: FilterBar
+    private let tableView: AnyView
 
-        var body: some View {
-            VStack(spacing: GranaTheme.Spacing.none) {
-                if hasFilterBar {
-                    filterBar
-                }
+    private init(
+        tableView: AnyView,
+        hasFilterBar: Bool,
+        filterBar: FilterBar
+    ) {
+        self.tableView = tableView
+        self.hasFilterBar = hasFilterBar
+        self.filterBar = filterBar
+    }
 
-                tableView
+    public var body: some View {
+        VStack(spacing: Theme.Spacing.none) {
+            if hasFilterBar {
+                filterBar
             }
-            .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
-            .background(GranaTheme.Palette.paper.opacity(0.42))
-            .granaSurface(.solid, cornerRadius: GranaTheme.Radius.card)
-            .clipShape(RoundedRectangle(cornerRadius: GranaTheme.Radius.card, style: .continuous))
+
+            tableView
         }
+        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
+        .background(Theme.Palette.paper.opacity(0.42))
+        .granaSurface(.solid, cornerRadius: Theme.Radius.card)
+        .clipShape(RoundedRectangle(cornerRadius: Theme.Radius.card, style: .continuous))
     }
 }
 
-private extension AppUI.Table {
+private extension Table {
     enum TableSelection {
         case none
         case single(Binding<RowValue.ID?>)
@@ -66,7 +65,7 @@ private extension AppUI.Table {
     }
 }
 
-private extension AppUI.Table where Sort.Compared == RowValue {
+private extension Table where Sort.Compared == RowValue {
     static func makeSortableTable(
         rows: [RowValue],
         selection: TableSelection,
@@ -96,7 +95,7 @@ private extension AppUI.Table where Sort.Compared == RowValue {
     }
 }
 
-private extension AppUI.Table where Sort == Never {
+private extension Table where Sort == Never {
     static func makePlainTable(
         rows: [RowValue],
         selection: TableSelection,
@@ -137,8 +136,8 @@ private extension AppUI.Table where Sort == Never {
     }
 }
 
-extension AppUI.Table where Sort.Compared == RowValue {
-    init(
+extension Table where Sort.Compared == RowValue {
+    public init(
         _ rows: [RowValue],
         sortOrder: Binding<[Sort]>,
         @TableColumnBuilder<RowValue, Sort> columns: () -> Columns,
@@ -156,7 +155,7 @@ extension AppUI.Table where Sort.Compared == RowValue {
         )
     }
 
-    init(
+    public init(
         _ rows: [RowValue],
         selection: Binding<RowValue.ID?>,
         sortOrder: Binding<[Sort]>,
@@ -175,7 +174,7 @@ extension AppUI.Table where Sort.Compared == RowValue {
         )
     }
 
-    init(
+    public init(
         _ rows: [RowValue],
         selection: Binding<Set<RowValue.ID>>,
         sortOrder: Binding<[Sort]>,
@@ -195,8 +194,8 @@ extension AppUI.Table where Sort.Compared == RowValue {
     }
 }
 
-extension AppUI.Table where Sort.Compared == RowValue, FilterBar == EmptyView {
-    init(
+extension Table where Sort.Compared == RowValue, FilterBar == EmptyView {
+    public init(
         _ rows: [RowValue],
         sortOrder: Binding<[Sort]>,
         @TableColumnBuilder<RowValue, Sort> columns: () -> Columns
@@ -206,7 +205,7 @@ extension AppUI.Table where Sort.Compared == RowValue, FilterBar == EmptyView {
         }
     }
 
-    init(
+    public init(
         _ rows: [RowValue],
         selection: Binding<RowValue.ID?>,
         sortOrder: Binding<[Sort]>,
@@ -217,7 +216,7 @@ extension AppUI.Table where Sort.Compared == RowValue, FilterBar == EmptyView {
         }
     }
 
-    init(
+    public init(
         _ rows: [RowValue],
         selection: Binding<Set<RowValue.ID>>,
         sortOrder: Binding<[Sort]>,
@@ -229,8 +228,8 @@ extension AppUI.Table where Sort.Compared == RowValue, FilterBar == EmptyView {
     }
 }
 
-extension AppUI.Table where Sort == Never {
-    init(
+extension Table where Sort == Never {
+    public init(
         _ rows: [RowValue],
         @TableColumnBuilder<RowValue, Never> columns: () -> Columns,
         @ViewBuilder filterBar: () -> FilterBar
@@ -246,7 +245,7 @@ extension AppUI.Table where Sort == Never {
         )
     }
 
-    init(
+    public init(
         _ rows: [RowValue],
         selection: Binding<RowValue.ID?>,
         @TableColumnBuilder<RowValue, Never> columns: () -> Columns,
@@ -263,7 +262,7 @@ extension AppUI.Table where Sort == Never {
         )
     }
 
-    init(
+    public init(
         _ rows: [RowValue],
         selection: Binding<Set<RowValue.ID>>,
         @TableColumnBuilder<RowValue, Never> columns: () -> Columns,
@@ -281,8 +280,8 @@ extension AppUI.Table where Sort == Never {
     }
 }
 
-extension AppUI.Table where Sort == Never, FilterBar == EmptyView {
-    init(
+extension Table where Sort == Never, FilterBar == EmptyView {
+    public init(
         _ rows: [RowValue],
         @TableColumnBuilder<RowValue, Never> columns: () -> Columns
     ) {
@@ -291,7 +290,7 @@ extension AppUI.Table where Sort == Never, FilterBar == EmptyView {
         }
     }
 
-    init(
+    public init(
         _ rows: [RowValue],
         selection: Binding<RowValue.ID?>,
         @TableColumnBuilder<RowValue, Never> columns: () -> Columns
@@ -301,7 +300,7 @@ extension AppUI.Table where Sort == Never, FilterBar == EmptyView {
         }
     }
 
-    init(
+    public init(
         _ rows: [RowValue],
         selection: Binding<Set<RowValue.ID>>,
         @TableColumnBuilder<RowValue, Never> columns: () -> Columns

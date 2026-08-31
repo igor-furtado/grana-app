@@ -1,6 +1,7 @@
 import ComposableArchitecture
 import SwiftUI
 import UniformTypeIdentifiers
+import AppUI
 
 struct ImportView: View {
     @Bindable var store: StoreOf<ImportWizardFeature>
@@ -71,14 +72,14 @@ struct ImportView: View {
         switch store.phase {
         case .idle:
             ImportWizardStatusView(
-                icon: AppIcon.importFile,
+                icon: AppUI.Icon.importFile,
                 title: "Preparando importação",
                 message: "Carregando contas e catálogos antes da revisão do arquivo.",
                 showsProgress: true
             )
         case let .loading(progress):
             ImportWizardStatusView(
-                icon: AppIcon.importFile,
+                icon: AppUI.Icon.importFile,
                 title: "Lendo arquivo",
                 message: progress,
                 showsProgress: true
@@ -115,7 +116,7 @@ struct ImportView: View {
             )
         case .confirming:
             ImportWizardStatusView(
-                icon: AppIcon.completedSeal,
+                icon: AppUI.Icon.completedSeal,
                 title: "Consolidando lotes",
                 message: "Aplicando a revisão e finalizando a importação.",
                 showsProgress: true
@@ -147,7 +148,7 @@ private struct FailedStepView: View {
             message: message,
             showsProgress: false
         ) {
-            HStack(spacing: GranaTheme.Spacing.sm) {
+            HStack(spacing: AppUI.Theme.Spacing.sm) {
                 Button("Fechar") {
                     onClose()
                 }
@@ -163,14 +164,14 @@ private struct FailedStepView: View {
 }
 
 private struct ImportWizardStatusView<Actions: View>: View {
-    let icon: AppIcon
+    let icon: AppUI.Icon
     let title: String
     let message: String
     let showsProgress: Bool
     let actions: Actions
 
     init(
-        icon: AppIcon,
+        icon: AppUI.Icon,
         title: String,
         message: String,
         showsProgress: Bool,
@@ -185,18 +186,18 @@ private struct ImportWizardStatusView<Actions: View>: View {
 
     var body: some View {
         AppUI.Wizard.Shell {
-            VStack(spacing: GranaTheme.Spacing.md) {
+            VStack(spacing: AppUI.Theme.Spacing.md) {
                 Image(systemName: icon.systemImage)
-                    .font(.system(size: GranaTheme.IconSize.hero, weight: .regular))
-                    .foregroundStyle(GranaTheme.Palette.tealDeep)
+                    .font(.system(size: AppUI.Theme.IconSize.hero, weight: .regular))
+                    .foregroundStyle(AppUI.Theme.Palette.tealDeep)
 
-                VStack(spacing: GranaTheme.Spacing.xs) {
+                VStack(spacing: AppUI.Theme.Spacing.xs) {
                     Text(title)
-                        .font(GranaTheme.Typography.title3)
-                        .foregroundStyle(GranaTheme.Palette.ink)
+                        .font(AppUI.Theme.Typography.title3)
+                        .foregroundStyle(AppUI.Theme.Palette.ink)
                     Text(message)
-                        .font(GranaTheme.Typography.callout)
-                        .foregroundStyle(GranaTheme.Palette.muted)
+                        .font(AppUI.Theme.Typography.callout)
+                        .foregroundStyle(AppUI.Theme.Palette.muted)
                         .multilineTextAlignment(.center)
                 }
 
@@ -204,13 +205,13 @@ private struct ImportWizardStatusView<Actions: View>: View {
                     ProgressView()
                         .progressViewStyle(.linear)
                         .frame(maxWidth: 320)
-                        .tint(GranaTheme.Palette.teal)
+                        .tint(AppUI.Theme.Palette.teal)
                 }
 
                 actions
             }
-            .padding(.horizontal, GranaTheme.Spacing.xxxl)
-            .padding(.vertical, GranaTheme.Spacing.xxl)
+            .padding(.horizontal, AppUI.Theme.Spacing.xxxl)
+            .padding(.vertical, AppUI.Theme.Spacing.xxl)
             .frame(maxWidth: .infinity, maxHeight: .infinity)
         }
     }

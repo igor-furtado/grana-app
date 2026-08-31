@@ -1,43 +1,44 @@
 import SwiftUI
+import AppUI
 
 struct DesignSystemView: View {
     @State private var selectedSection: AtlasSection = .foundations
 
     private let paletteTokens: [TokenRowModel] = [
-        TokenRowModel(name: "background", value: "#f4f0e8", swatch: GranaTheme.Palette.background),
-        TokenRowModel(name: "backgroundStart", value: "#f8f3e8", swatch: GranaTheme.Palette.backgroundStart),
-        TokenRowModel(name: "backgroundEnd", value: "#edf4ef", swatch: GranaTheme.Palette.backgroundEnd),
-        TokenRowModel(name: "ink", value: "#17231f", swatch: GranaTheme.Palette.ink),
-        TokenRowModel(name: "muted", value: "ink 62%", swatch: GranaTheme.Palette.muted),
-        TokenRowModel(name: "line", value: "ink 13%", swatch: GranaTheme.Palette.line),
-        TokenRowModel(name: "paper", value: "#fffcf5", swatch: GranaTheme.Palette.paper),
-        TokenRowModel(name: "paperSolid", value: "#fffaf0", swatch: GranaTheme.Palette.paperSolid),
-        TokenRowModel(name: "teal", value: "#117a68", swatch: GranaTheme.Palette.teal),
-        TokenRowModel(name: "tealDeep", value: "#0c5f53", swatch: GranaTheme.Palette.tealDeep),
-        TokenRowModel(name: "green", value: "#147c56", swatch: GranaTheme.Palette.green),
-        TokenRowModel(name: "red", value: "#c9413a", swatch: GranaTheme.Palette.red),
-        TokenRowModel(name: "amber", value: "#d8912b", swatch: GranaTheme.Palette.amber),
-        TokenRowModel(name: "gold", value: "#edb85f", swatch: GranaTheme.Palette.gold),
-        TokenRowModel(name: "creamText", value: "#fff9ed", swatch: GranaTheme.Palette.creamText),
+        TokenRowModel(name: "background", value: "#f4f0e8", swatch: AppUI.Theme.Palette.background),
+        TokenRowModel(name: "backgroundStart", value: "#f8f3e8", swatch: AppUI.Theme.Palette.backgroundStart),
+        TokenRowModel(name: "backgroundEnd", value: "#edf4ef", swatch: AppUI.Theme.Palette.backgroundEnd),
+        TokenRowModel(name: "ink", value: "#17231f", swatch: AppUI.Theme.Palette.ink),
+        TokenRowModel(name: "muted", value: "ink 62%", swatch: AppUI.Theme.Palette.muted),
+        TokenRowModel(name: "line", value: "ink 13%", swatch: AppUI.Theme.Palette.line),
+        TokenRowModel(name: "paper", value: "#fffcf5", swatch: AppUI.Theme.Palette.paper),
+        TokenRowModel(name: "paperSolid", value: "#fffaf0", swatch: AppUI.Theme.Palette.paperSolid),
+        TokenRowModel(name: "teal", value: "#117a68", swatch: AppUI.Theme.Palette.teal),
+        TokenRowModel(name: "tealDeep", value: "#0c5f53", swatch: AppUI.Theme.Palette.tealDeep),
+        TokenRowModel(name: "green", value: "#147c56", swatch: AppUI.Theme.Palette.green),
+        TokenRowModel(name: "red", value: "#c9413a", swatch: AppUI.Theme.Palette.red),
+        TokenRowModel(name: "amber", value: "#d8912b", swatch: AppUI.Theme.Palette.amber),
+        TokenRowModel(name: "gold", value: "#edb85f", swatch: AppUI.Theme.Palette.gold),
+        TokenRowModel(name: "creamText", value: "#fff9ed", swatch: AppUI.Theme.Palette.creamText),
     ]
 
     private let radiusTokens: [RadiusToken] = [
-        RadiusToken(name: "control", radius: GranaTheme.Radius.control, usage: "Botões e controles compactos"),
-        RadiusToken(name: "pill", radius: GranaTheme.Radius.pill, usage: "Inputs e badges"),
-        RadiusToken(name: "card", radius: GranaTheme.Radius.card, usage: "Cards de conteúdo"),
-        RadiusToken(name: "rail", radius: GranaTheme.Radius.rail, usage: "Shell lateral autenticado"),
-        RadiusToken(name: "hero", radius: GranaTheme.Radius.hero, usage: "Header e agrupamentos amplos"),
+        RadiusToken(name: "control", radius: AppUI.Theme.Radius.control, usage: "Botões e controles compactos"),
+        RadiusToken(name: "pill", radius: AppUI.Theme.Radius.pill, usage: "Inputs e badges"),
+        RadiusToken(name: "card", radius: AppUI.Theme.Radius.card, usage: "Cards de conteúdo"),
+        RadiusToken(name: "rail", radius: AppUI.Theme.Radius.rail, usage: "Shell lateral autenticado"),
+        RadiusToken(name: "hero", radius: AppUI.Theme.Radius.hero, usage: "Header e agrupamentos amplos"),
     ]
 
     var body: some View {
-        VStack(spacing: GranaTheme.Spacing.sm) {
+        VStack(spacing: AppUI.Theme.Spacing.sm) {
             AppUI.Layout.ScreenHeader(
                 title: "Design System",
                 subtitle: "Mapa vivo de tokens, componentes e exemplos para consultar o sistema sem perder a visão do todo."
             )
 
             ScrollViewReader { proxy in
-                HStack(alignment: .top, spacing: GranaTheme.Spacing.md) {
+                HStack(alignment: .top, spacing: AppUI.Theme.Spacing.md) {
                     AtlasNavigationCard(
                         selectedSection: $selectedSection,
                         sections: AtlasSection.allCases
@@ -48,7 +49,7 @@ struct DesignSystemView: View {
 
                     ScrollView {
                         atlasSections
-                            .padding(.bottom, GranaTheme.Spacing.lg)
+                            .padding(.bottom, AppUI.Theme.Spacing.lg)
                     }
                 }
             }
@@ -59,7 +60,7 @@ struct DesignSystemView: View {
     }
 
     private var atlasSections: some View {
-        VStack(alignment: .leading, spacing: GranaTheme.Spacing.xl) {
+        VStack(alignment: .leading, spacing: AppUI.Theme.Spacing.xl) {
             foundationsSection
                 .id(AtlasSection.foundations)
             basicComponentsSection
@@ -83,7 +84,7 @@ struct DesignSystemView: View {
                 CompactPaletteGrid(tokens: paletteTokens)
             }
             DesignSystemCard(title: "Fontes") {
-                HStack(alignment: .top, spacing: GranaTheme.Spacing.md) {
+                HStack(alignment: .top, spacing: AppUI.Theme.Spacing.md) {
                     TypographyColumn(
                         title: "Texto",
                         tokens: textTypographyTokens
@@ -95,7 +96,7 @@ struct DesignSystemView: View {
                 }
             }
             DesignSystemCard(title: "Espaçamentos") {
-                SpacingTable(tokens: GranaTheme.Spacing.tokens)
+                SpacingTable(tokens: AppUI.Theme.Spacing.tokens)
             }
             DesignSystemCard(title: "Sombras") {
                 SurfaceDepthLayers()
@@ -116,14 +117,14 @@ struct DesignSystemView: View {
                 ButtonsShowcase()
             }
             DesignSystemCard(title: "Formulário") {
-                VStack(spacing: GranaTheme.Spacing.sm) {
+                VStack(spacing: AppUI.Theme.Spacing.sm) {
                     BasicTextFieldShowcase()
                     CurrencyFieldShowcase()
                     SelectorShowcase()
                     ToggleShowcase()
                     DatePickerShowcase()
                 }
-                .padding(GranaTheme.Spacing.md)
+                .padding(AppUI.Theme.Spacing.md)
                 .tableSurface()
             }
             DesignSystemCard(title: "Ícone") {
@@ -177,15 +178,15 @@ struct DesignSystemView: View {
         }
     }
 
-    private var visibleTypographyTokens: [GranaTheme.Typography.Token] {
-        GranaTheme.Typography.tokens.filter { $0.family != .code }
+    private var visibleTypographyTokens: [AppUI.Theme.Typography.Token] {
+        AppUI.Theme.Typography.tokens.filter { $0.family != .code }
     }
 
-    private var textTypographyTokens: [GranaTheme.Typography.Token] {
+    private var textTypographyTokens: [AppUI.Theme.Typography.Token] {
         visibleTypographyTokens.filter { $0.family == .text }
     }
 
-    private var moneyTypographyTokens: [GranaTheme.Typography.Token] {
+    private var moneyTypographyTokens: [AppUI.Theme.Typography.Token] {
         visibleTypographyTokens.filter { $0.family == .money }
     }
 
@@ -216,14 +217,14 @@ private struct DesignSystemCard<Content: View>: View {
     }
 
     var body: some View {
-        VStack(alignment: .leading, spacing: GranaTheme.Spacing.md) {
+        VStack(alignment: .leading, spacing: AppUI.Theme.Spacing.md) {
             Text(title)
-                .font(GranaTheme.Typography.headline)
-                .foregroundStyle(GranaTheme.Palette.ink)
+                .font(AppUI.Theme.Typography.headline)
+                .foregroundStyle(AppUI.Theme.Palette.ink)
             content()
         }
-        .padding(.top, GranaTheme.Spacing.md)
-        .padding(.trailing, GranaTheme.Spacing.xs)
+        .padding(.top, AppUI.Theme.Spacing.md)
+        .padding(.trailing, AppUI.Theme.Spacing.xs)
         .frame(maxWidth: .infinity, alignment: .topLeading)
     }
 }
@@ -247,13 +248,13 @@ private struct AtlasSectionContainer<Content: View>: View {
     }
 
     var body: some View {
-        VStack(alignment: .leading, spacing: GranaTheme.Spacing.md) {
+        VStack(alignment: .leading, spacing: AppUI.Theme.Spacing.md) {
             DesignSystemSectionHeader(
                 eyebrow: eyebrow,
                 title: title,
                 subtitle: subtitle
             )
-            VStack(alignment: .leading, spacing: GranaTheme.Spacing.md) {
+            VStack(alignment: .leading, spacing: AppUI.Theme.Spacing.md) {
                 content()
             }
         }
@@ -267,16 +268,16 @@ private struct DesignSystemSectionHeader: View {
     let subtitle: String
 
     var body: some View {
-        VStack(alignment: .leading, spacing: GranaTheme.Spacing.xs) {
+        VStack(alignment: .leading, spacing: AppUI.Theme.Spacing.xs) {
             Text(eyebrow)
-                .font(GranaTheme.Typography.caption1Emphasis)
-                .foregroundStyle(GranaTheme.Palette.tealDeep)
+                .font(AppUI.Theme.Typography.caption1Emphasis)
+                .foregroundStyle(AppUI.Theme.Palette.tealDeep)
             Text(title)
-                .font(GranaTheme.Typography.title3)
-                .foregroundStyle(GranaTheme.Palette.ink)
+                .font(AppUI.Theme.Typography.title3)
+                .foregroundStyle(AppUI.Theme.Palette.ink)
             Text(subtitle)
-                .font(GranaTheme.Typography.subheadline)
-                .foregroundStyle(GranaTheme.Palette.muted)
+                .font(AppUI.Theme.Typography.subheadline)
+                .foregroundStyle(AppUI.Theme.Palette.muted)
                 .fixedSize(horizontal: false, vertical: true)
         }
     }
@@ -290,24 +291,24 @@ private struct DesignSystemPrinciplesSummary: View {
     ]
 
     var body: some View {
-        VStack(alignment: .leading, spacing: GranaTheme.Spacing.sm) {
+        VStack(alignment: .leading, spacing: AppUI.Theme.Spacing.sm) {
             ForEach(rows, id: \.0) { row in
-                VStack(alignment: .leading, spacing: GranaTheme.Spacing.xxs) {
+                VStack(alignment: .leading, spacing: AppUI.Theme.Spacing.xxs) {
                     Text(row.0)
-                        .font(GranaTheme.Typography.subheadlineEmphasis)
-                        .foregroundStyle(GranaTheme.Palette.ink)
+                        .font(AppUI.Theme.Typography.subheadlineEmphasis)
+                        .foregroundStyle(AppUI.Theme.Palette.ink)
                     Text(row.1)
-                        .font(GranaTheme.Typography.caption1)
-                        .foregroundStyle(GranaTheme.Palette.muted)
+                        .font(AppUI.Theme.Typography.caption1)
+                        .foregroundStyle(AppUI.Theme.Palette.muted)
                         .fixedSize(horizontal: false, vertical: true)
                 }
                 if row.0 != rows.last?.0 {
                     TableDivider()
-                        .padding(.leading, GranaTheme.Spacing.none)
+                        .padding(.leading, AppUI.Theme.Spacing.none)
                 }
             }
         }
-        .padding(GranaTheme.Spacing.md)
+        .padding(AppUI.Theme.Spacing.md)
         .tableSurface()
     }
 }
@@ -318,20 +319,20 @@ private struct AtlasNavigationCard: View {
     let onSelect: (AtlasSection) -> Void
 
     var body: some View {
-        VStack(alignment: .leading, spacing: GranaTheme.Spacing.md) {
-            VStack(alignment: .leading, spacing: GranaTheme.Spacing.xs) {
+        VStack(alignment: .leading, spacing: AppUI.Theme.Spacing.md) {
+            VStack(alignment: .leading, spacing: AppUI.Theme.Spacing.xs) {
                 Text("Mapa")
-                    .font(GranaTheme.Typography.caption1Emphasis)
-                    .foregroundStyle(GranaTheme.Palette.tealDeep)
+                    .font(AppUI.Theme.Typography.caption1Emphasis)
+                    .foregroundStyle(AppUI.Theme.Palette.tealDeep)
                 Text("Atlas da tela")
-                    .font(GranaTheme.Typography.headline)
-                    .foregroundStyle(GranaTheme.Palette.ink)
+                    .font(AppUI.Theme.Typography.headline)
+                    .foregroundStyle(AppUI.Theme.Palette.ink)
                 Text("Use como índice: cada bloco responde uma pergunta diferente sobre o sistema.")
-                    .font(GranaTheme.Typography.caption1)
-                    .foregroundStyle(GranaTheme.Palette.muted)
+                    .font(AppUI.Theme.Typography.caption1)
+                    .foregroundStyle(AppUI.Theme.Palette.muted)
                     .fixedSize(horizontal: false, vertical: true)
             }
-            VStack(alignment: .leading, spacing: GranaTheme.Spacing.xs) {
+            VStack(alignment: .leading, spacing: AppUI.Theme.Spacing.xs) {
                 ForEach(sections) { section in
                     Button {
                         onSelect(section)
@@ -345,9 +346,9 @@ private struct AtlasNavigationCard: View {
                 }
             }
         }
-        .padding(GranaTheme.Spacing.md)
+        .padding(AppUI.Theme.Spacing.md)
         .frame(maxWidth: .infinity, alignment: .leading)
-        .granaSurface(.solid, cornerRadius: GranaTheme.Radius.card)
+        .granaSurface(.solid, cornerRadius: AppUI.Theme.Radius.card)
     }
 }
 
@@ -356,28 +357,28 @@ private struct AtlasNavigationRow: View {
     let isSelected: Bool
 
     var body: some View {
-        HStack(alignment: .top, spacing: GranaTheme.Spacing.sm) {
+        HStack(alignment: .top, spacing: AppUI.Theme.Spacing.sm) {
             Circle()
-                .fill(isSelected ? GranaTheme.Palette.teal : GranaTheme.Palette.line)
+                .fill(isSelected ? AppUI.Theme.Palette.teal : AppUI.Theme.Palette.line)
                 .frame(width: 10, height: 10)
-                .padding(.top, GranaTheme.Spacing.xxs)
+                .padding(.top, AppUI.Theme.Spacing.xxs)
 
-            VStack(alignment: .leading, spacing: GranaTheme.Spacing.xxs) {
+            VStack(alignment: .leading, spacing: AppUI.Theme.Spacing.xxs) {
                 Text(section.eyebrow)
-                    .font(GranaTheme.Typography.subheadlineEmphasis)
-                    .foregroundStyle(isSelected ? GranaTheme.Palette.ink : GranaTheme.Palette.muted)
+                    .font(AppUI.Theme.Typography.subheadlineEmphasis)
+                    .foregroundStyle(isSelected ? AppUI.Theme.Palette.ink : AppUI.Theme.Palette.muted)
                 Text(section.summary)
-                    .font(GranaTheme.Typography.caption1)
-                    .foregroundStyle(GranaTheme.Palette.muted)
+                    .font(AppUI.Theme.Typography.caption1)
+                    .foregroundStyle(AppUI.Theme.Palette.muted)
                     .fixedSize(horizontal: false, vertical: true)
             }
-            Spacer(minLength: GranaTheme.Spacing.none)
+            Spacer(minLength: AppUI.Theme.Spacing.none)
         }
-        .padding(.horizontal, GranaTheme.Spacing.sm)
-        .padding(.vertical, GranaTheme.Spacing.sm)
+        .padding(.horizontal, AppUI.Theme.Spacing.sm)
+        .padding(.vertical, AppUI.Theme.Spacing.sm)
         .background(
-            isSelected ? GranaTheme.Palette.teal.opacity(0.10) : GranaTheme.Palette.soft,
-            in: RoundedRectangle(cornerRadius: GranaTheme.Radius.control, style: .continuous)
+            isSelected ? AppUI.Theme.Palette.teal.opacity(0.10) : AppUI.Theme.Palette.soft,
+            in: RoundedRectangle(cornerRadius: AppUI.Theme.Radius.control, style: .continuous)
         )
     }
 }
@@ -453,7 +454,7 @@ private struct TokenTable: View {
     let tokens: [TokenRowModel]
 
     var body: some View {
-        VStack(spacing: GranaTheme.Spacing.none) {
+        VStack(spacing: AppUI.Theme.Spacing.none) {
             ForEach(Array(tokens.enumerated()), id: \.element.id) { index, token in
                 TokenTableRow(token: token)
                 if index < tokens.count - 1 {
@@ -469,32 +470,32 @@ private struct CompactPaletteGrid: View {
     let tokens: [TokenRowModel]
 
     private var columns: [GridItem] {
-        [GridItem(.adaptive(minimum: 150), spacing: GranaTheme.Spacing.sm)]
+        [GridItem(.adaptive(minimum: 150), spacing: AppUI.Theme.Spacing.sm)]
     }
 
     var body: some View {
-        LazyVGrid(columns: columns, alignment: .leading, spacing: GranaTheme.Spacing.sm) {
+        LazyVGrid(columns: columns, alignment: .leading, spacing: AppUI.Theme.Spacing.sm) {
             ForEach(tokens) { token in
-                VStack(alignment: .leading, spacing: GranaTheme.Spacing.xs) {
+                VStack(alignment: .leading, spacing: AppUI.Theme.Spacing.xs) {
                     RoundedRectangle(cornerRadius: 12, style: .continuous)
                         .fill(token.swatch)
                         .frame(height: 32)
                         .overlay {
                             RoundedRectangle(cornerRadius: 12, style: .continuous)
-                                .strokeBorder(GranaTheme.Palette.line, lineWidth: 1)
+                                .strokeBorder(AppUI.Theme.Palette.line, lineWidth: 1)
                         }
 
                     Text(token.name)
-                        .font(GranaTheme.Typography.caption1Emphasis)
-                        .foregroundStyle(GranaTheme.Palette.ink)
+                        .font(AppUI.Theme.Typography.caption1Emphasis)
+                        .foregroundStyle(AppUI.Theme.Palette.ink)
 
                     Text(token.value)
-                        .font(GranaTheme.Typography.caption1)
-                        .foregroundStyle(GranaTheme.Palette.muted)
+                        .font(AppUI.Theme.Typography.caption1)
+                        .foregroundStyle(AppUI.Theme.Palette.muted)
                         .lineLimit(1)
                         .minimumScaleFactor(0.85)
                 }
-                .padding(GranaTheme.Spacing.sm)
+                .padding(AppUI.Theme.Spacing.sm)
                 .frame(maxWidth: .infinity, alignment: .leading)
                 .tableSurface()
             }
@@ -506,13 +507,13 @@ private struct TokenTableRow: View {
     let token: TokenRowModel
 
     var body: some View {
-        HStack(spacing: GranaTheme.Spacing.sm) {
+        HStack(spacing: AppUI.Theme.Spacing.sm) {
             RoundedRectangle(cornerRadius: 10, style: .continuous)
                 .fill(token.swatch)
                 .frame(width: 34, height: 34)
                 .overlay {
                     RoundedRectangle(cornerRadius: 10, style: .continuous)
-                        .strokeBorder(GranaTheme.Palette.line, lineWidth: 1)
+                        .strokeBorder(AppUI.Theme.Palette.line, lineWidth: 1)
                 }
 
             TableText(primary: token.name, secondary: token.value)
@@ -523,13 +524,13 @@ private struct TokenTableRow: View {
 
 private struct TypographyColumn: View {
     let title: String
-    let tokens: [GranaTheme.Typography.Token]
+    let tokens: [AppUI.Theme.Typography.Token]
 
     var body: some View {
-        VStack(alignment: .leading, spacing: GranaTheme.Spacing.sm) {
+        VStack(alignment: .leading, spacing: AppUI.Theme.Spacing.sm) {
             Text(title)
-                .font(GranaTheme.Typography.caption1Emphasis)
-                .foregroundStyle(GranaTheme.Palette.tealDeep)
+                .font(AppUI.Theme.Typography.caption1Emphasis)
+                .foregroundStyle(AppUI.Theme.Palette.tealDeep)
 
             TypographyTable(tokens: tokens)
         }
@@ -538,15 +539,15 @@ private struct TypographyColumn: View {
 }
 
 private struct TypographyTable: View {
-    let tokens: [GranaTheme.Typography.Token]
+    let tokens: [AppUI.Theme.Typography.Token]
 
     var body: some View {
-        VStack(spacing: GranaTheme.Spacing.none) {
+        VStack(spacing: AppUI.Theme.Spacing.none) {
             ForEach(Array(tokens.enumerated()), id: \.element.id) { index, token in
-                HStack(spacing: GranaTheme.Spacing.sm) {
+                HStack(spacing: AppUI.Theme.Spacing.sm) {
                     Text(sampleText(for: token))
                         .font(token.font)
-                        .foregroundStyle(GranaTheme.Palette.ink)
+                        .foregroundStyle(AppUI.Theme.Palette.ink)
                         .frame(width: 112, alignment: .leading)
 
                     TableText(
@@ -564,11 +565,11 @@ private struct TypographyTable: View {
         .tableSurface()
     }
 
-    private func resolvedValue(for token: GranaTheme.Typography.Token) -> String {
+    private func resolvedValue(for token: AppUI.Theme.Typography.Token) -> String {
         "\(token.value) · \(token.category)"
     }
 
-    private func sampleText(for token: GranaTheme.Typography.Token) -> String {
+    private func sampleText(for token: AppUI.Theme.Typography.Token) -> String {
         switch token.family {
         case .text:
             "AaB"
@@ -584,19 +585,19 @@ private struct RadiusTable: View {
     let tokens: [RadiusToken]
 
     var body: some View {
-        VStack(spacing: GranaTheme.Spacing.none) {
+        VStack(spacing: AppUI.Theme.Spacing.none) {
             ForEach(Array(tokens.enumerated()), id: \.element.id) { index, token in
-                HStack(spacing: GranaTheme.Spacing.sm) {
+                HStack(spacing: AppUI.Theme.Spacing.sm) {
                     RadiusPreview(radius: token.radius)
                     TableText(primary: token.name, secondary: "\(token.value) · \(token.usage)")
 
                     if let note = token.note {
                         Text(note)
-                            .font(GranaTheme.Typography.caption2Emphasis)
-                            .foregroundStyle(GranaTheme.Palette.tealDeep)
-                            .padding(.horizontal, GranaTheme.Spacing.xs)
-                            .padding(.vertical, GranaTheme.Spacing.xxs)
-                            .background(GranaTheme.Palette.teal.opacity(0.10), in: Capsule())
+                            .font(AppUI.Theme.Typography.caption2Emphasis)
+                            .foregroundStyle(AppUI.Theme.Palette.tealDeep)
+                            .padding(.horizontal, AppUI.Theme.Spacing.xs)
+                            .padding(.vertical, AppUI.Theme.Spacing.xxs)
+                            .background(AppUI.Theme.Palette.teal.opacity(0.10), in: Capsule())
                     }
                 }
                 .tableRowContent()
@@ -611,12 +612,12 @@ private struct RadiusTable: View {
 }
 
 private struct SpacingTable: View {
-    let tokens: [GranaTheme.Spacing.Token]
+    let tokens: [AppUI.Theme.Spacing.Token]
 
     var body: some View {
-        VStack(spacing: GranaTheme.Spacing.none) {
+        VStack(spacing: AppUI.Theme.Spacing.none) {
             ForEach(Array(tokens.enumerated()), id: \.element.id) { index, token in
-                HStack(spacing: GranaTheme.Spacing.sm) {
+                HStack(spacing: AppUI.Theme.Spacing.sm) {
                     SpacingPreview(value: token.value)
 
                     TableText(
@@ -641,10 +642,10 @@ private struct SpacingPreview: View {
     var body: some View {
         HStack(spacing: value) {
             RoundedRectangle(cornerRadius: 4, style: .continuous)
-                .fill(GranaTheme.Palette.teal.opacity(0.82))
+                .fill(AppUI.Theme.Palette.teal.opacity(0.82))
                 .frame(width: 18, height: 28)
             RoundedRectangle(cornerRadius: 4, style: .continuous)
-                .fill(GranaTheme.Palette.gold.opacity(0.82))
+                .fill(AppUI.Theme.Palette.gold.opacity(0.82))
                 .frame(width: 18, height: 28)
         }
         .frame(width: 92, alignment: .leading)
@@ -657,16 +658,16 @@ private struct RadiusPreview: View {
     var body: some View {
         ZStack(alignment: .topLeading) {
             RoundedRectangle(cornerRadius: radius, style: .continuous)
-                .fill(GranaTheme.Palette.teal.opacity(0.14))
+                .fill(AppUI.Theme.Palette.teal.opacity(0.14))
             RoundedRectangle(cornerRadius: radius, style: .continuous)
-                .strokeBorder(GranaTheme.Palette.teal.opacity(0.82), lineWidth: 1.3)
+                .strokeBorder(AppUI.Theme.Palette.teal.opacity(0.82), lineWidth: 1.3)
             Path { path in
                 path.move(to: CGPoint(x: radius, y: 0))
                 path.addLine(to: CGPoint(x: radius, y: radius))
                 path.addLine(to: CGPoint(x: 0, y: radius))
             }
             .stroke(
-                GranaTheme.Palette.tealDeep.opacity(0.46),
+                AppUI.Theme.Palette.tealDeep.opacity(0.46),
                 style: StrokeStyle(lineWidth: 1, dash: [4, 4])
             )
         }
@@ -713,31 +714,31 @@ private struct DepthSample: View {
     let offset: CGSize
 
     var body: some View {
-        VStack(alignment: .leading, spacing: GranaTheme.Spacing.xs) {
+        VStack(alignment: .leading, spacing: AppUI.Theme.Spacing.xs) {
             Text(title)
-                .font(GranaTheme.Typography.code)
-                .foregroundStyle(GranaTheme.Palette.ink)
+                .font(AppUI.Theme.Typography.code)
+                .foregroundStyle(AppUI.Theme.Palette.ink)
             Text(subtitle)
-                .font(GranaTheme.Typography.caption1)
-                .foregroundStyle(GranaTheme.Palette.muted)
+                .font(AppUI.Theme.Typography.caption1)
+                .foregroundStyle(AppUI.Theme.Palette.muted)
             Capsule()
-                .fill(GranaTheme.Palette.teal)
+                .fill(AppUI.Theme.Palette.teal)
                 .frame(width: 160, height: 8)
             Capsule()
-                .fill(GranaTheme.Palette.line)
+                .fill(AppUI.Theme.Palette.line)
                 .frame(width: 220, height: 8)
         }
-        .padding(GranaTheme.Spacing.lg)
+        .padding(AppUI.Theme.Spacing.lg)
         .frame(width: width, height: 132, alignment: .topLeading)
-        .granaSurface(prominence, cornerRadius: GranaTheme.Radius.card)
+        .granaSurface(prominence, cornerRadius: AppUI.Theme.Radius.card)
         .offset(offset)
     }
 }
 
 private struct ButtonsShowcase: View {
     var body: some View {
-        VStack(alignment: .leading, spacing: GranaTheme.Spacing.sm) {
-            HStack(spacing: GranaTheme.Spacing.xs) {
+        VStack(alignment: .leading, spacing: AppUI.Theme.Spacing.sm) {
+            HStack(spacing: AppUI.Theme.Spacing.xs) {
                 Button("Primário") {}
                     .buttonStyle(GranaPrimaryButtonStyle())
                 Button("Secundário") {}
@@ -753,7 +754,7 @@ private struct ButtonsShowcase: View {
                 .buttonStyle(GranaSecondaryButtonStyle())
             }
 
-            HStack(spacing: GranaTheme.Spacing.xs) {
+            HStack(spacing: AppUI.Theme.Spacing.xs) {
                 Button("Sistema") {}
                     .buttonStyle(.bordered)
                 Button("Destrutivo") {}
@@ -769,7 +770,7 @@ private struct BasicTextFieldShowcase: View {
     @State private var email = ""
 
     var body: some View {
-        VStack(alignment: .leading, spacing: GranaTheme.Spacing.sm) {
+        VStack(alignment: .leading, spacing: AppUI.Theme.Spacing.sm) {
             AppUI.TextField(
                 label: "Campo de texto",
                 text: $email,
@@ -782,7 +783,7 @@ private struct BasicTextFieldShowcase: View {
 }
 
 private struct IconShowcase: View {
-    private let icons: [(AppIcon, String)] = [
+    private let icons: [(AppUI.Icon, String)] = [
         (.sidebarDashboard, "Dashboard"),
         (.sidebarTransactions, "Transações"),
         (.add, "Adicionar"),
@@ -790,15 +791,15 @@ private struct IconShowcase: View {
     ]
 
     var body: some View {
-        VStack(spacing: GranaTheme.Spacing.none) {
+        VStack(spacing: AppUI.Theme.Spacing.none) {
             ForEach(Array(icons.enumerated()), id: \.offset) { index, row in
-                HStack(spacing: GranaTheme.Spacing.sm) {
+                HStack(spacing: AppUI.Theme.Spacing.sm) {
                     Image(systemName: row.0.systemImage)
-                        .font(.system(size: GranaTheme.IconSize.medium, weight: .semibold))
-                        .foregroundStyle(GranaTheme.Palette.tealDeep)
+                        .font(.system(size: AppUI.Theme.IconSize.medium, weight: .semibold))
+                        .foregroundStyle(AppUI.Theme.Palette.tealDeep)
                         .frame(width: 32, height: 32)
                         .background(
-                            GranaTheme.Palette.teal.opacity(0.10),
+                            AppUI.Theme.Palette.teal.opacity(0.10),
                             in: RoundedRectangle(cornerRadius: 10, style: .continuous)
                         )
                     TableText(primary: row.1, secondary: row.0.systemImage)
@@ -831,7 +832,7 @@ private struct DatePickerShowcase: View {
     @State private var time = Date.now
 
     var body: some View {
-        VStack(alignment: .leading, spacing: GranaTheme.Spacing.sm) {
+        VStack(alignment: .leading, spacing: AppUI.Theme.Spacing.sm) {
             AppUI.DatePicker(
                 label: "Data",
                 selection: $date,
@@ -932,10 +933,10 @@ private struct HeaderShowcase: View {
 
 private struct DashboardExample: View {
     var body: some View {
-        VStack(alignment: .leading, spacing: GranaTheme.Spacing.sm) {
+        VStack(alignment: .leading, spacing: AppUI.Theme.Spacing.sm) {
             LazyVGrid(
-                columns: [GridItem(.adaptive(minimum: 210), spacing: GranaTheme.Spacing.sm)],
-                spacing: GranaTheme.Spacing.sm
+                columns: [GridItem(.adaptive(minimum: 210), spacing: AppUI.Theme.Spacing.sm)],
+                spacing: AppUI.Theme.Spacing.sm
             ) {
                 TypographyMetricCard(
                     title: "Receitas",
@@ -964,7 +965,7 @@ private struct DashboardExample: View {
                 )
             }
 
-            HStack(alignment: .top, spacing: GranaTheme.Spacing.sm) {
+            HStack(alignment: .top, spacing: AppUI.Theme.Spacing.sm) {
                 MiniChartPanel()
                 CategoryRankingPanel()
             }
@@ -975,55 +976,55 @@ private struct DashboardExample: View {
 private struct TypographyMetricCard: View {
     let title: String
     let value: Decimal
-    let icon: AppIcon?
+    let icon: AppUI.Icon?
     let accent: Color
     var placeholder = false
 
     var body: some View {
-        VStack(alignment: .leading, spacing: GranaTheme.Spacing.sm) {
-            HStack(spacing: GranaTheme.Spacing.xxs) {
+        VStack(alignment: .leading, spacing: AppUI.Theme.Spacing.sm) {
+            HStack(spacing: AppUI.Theme.Spacing.xxs) {
                 if let icon {
                     Image(systemName: icon.systemImage)
-                        .font(.system(size: GranaTheme.IconSize.small, weight: .bold))
+                        .font(.system(size: AppUI.Theme.IconSize.small, weight: .bold))
                         .foregroundStyle(accent)
                 }
 
                 Text(title)
-                    .font(GranaTheme.Typography.subheadlineEmphasis)
-                    .foregroundStyle(GranaTheme.Palette.muted)
+                    .font(AppUI.Theme.Typography.subheadlineEmphasis)
+                    .foregroundStyle(AppUI.Theme.Palette.muted)
             }
 
             Text(placeholder ? "—" : value.formatted(.currency(code: "BRL")))
-                .font(GranaTheme.Typography.moneyTitle2)
-                .foregroundStyle(placeholder ? GranaTheme.Palette.muted : GranaTheme.Palette.ink)
+                .font(AppUI.Theme.Typography.moneyTitle2)
+                .foregroundStyle(placeholder ? AppUI.Theme.Palette.muted : AppUI.Theme.Palette.ink)
                 .lineLimit(1)
                 .minimumScaleFactor(0.7)
         }
-        .padding(GranaTheme.Spacing.lg)
+        .padding(AppUI.Theme.Spacing.lg)
         .frame(maxWidth: .infinity, minHeight: 132, alignment: .leading)
-        .granaSurface(.subtle, cornerRadius: GranaTheme.Radius.card)
+        .granaSurface(.subtle, cornerRadius: AppUI.Theme.Radius.card)
     }
 }
 
 private struct MiniChartPanel: View {
     var body: some View {
-        VStack(alignment: .leading, spacing: GranaTheme.Spacing.sm) {
+        VStack(alignment: .leading, spacing: AppUI.Theme.Spacing.sm) {
             Text("Fluxo do mês")
-                .font(GranaTheme.Typography.subheadlineEmphasis)
-                .foregroundStyle(GranaTheme.Palette.muted)
+                .font(AppUI.Theme.Typography.subheadlineEmphasis)
+                .foregroundStyle(AppUI.Theme.Palette.muted)
 
-            HStack(alignment: .bottom, spacing: GranaTheme.Spacing.xs) {
+            HStack(alignment: .bottom, spacing: AppUI.Theme.Spacing.xs) {
                 ForEach([0.42, 0.74, 0.56, 0.88, 0.63, 0.92], id: \.self) { value in
                     RoundedRectangle(cornerRadius: 8, style: .continuous)
-                        .fill(GranaTheme.Palette.teal.opacity(0.24 + value * 0.42))
+                        .fill(AppUI.Theme.Palette.teal.opacity(0.24 + value * 0.42))
                         .frame(width: 28, height: 120 * value)
                 }
             }
             .frame(maxWidth: .infinity, minHeight: 130, alignment: .bottomLeading)
         }
-        .padding(GranaTheme.Spacing.md)
+        .padding(AppUI.Theme.Spacing.md)
         .frame(maxWidth: .infinity, alignment: .leading)
-        .granaSurface(.subtle, cornerRadius: GranaTheme.Radius.card)
+        .granaSurface(.subtle, cornerRadius: AppUI.Theme.Radius.card)
     }
 }
 
@@ -1035,20 +1036,20 @@ private struct CategoryRankingPanel: View {
     ]
 
     var body: some View {
-        VStack(alignment: .leading, spacing: GranaTheme.Spacing.sm) {
+        VStack(alignment: .leading, spacing: AppUI.Theme.Spacing.sm) {
             Text("Categorias")
-                .font(GranaTheme.Typography.subheadlineEmphasis)
-                .foregroundStyle(GranaTheme.Palette.muted)
+                .font(AppUI.Theme.Typography.subheadlineEmphasis)
+                .foregroundStyle(AppUI.Theme.Palette.muted)
 
             ForEach(rows, id: \.0) { row in
-                VStack(alignment: .leading, spacing: GranaTheme.Spacing.xxs) {
+                VStack(alignment: .leading, spacing: AppUI.Theme.Spacing.xxs) {
                     HStack {
                         Text(row.0)
-                            .font(GranaTheme.Typography.subheadlineEmphasis)
+                            .font(AppUI.Theme.Typography.subheadlineEmphasis)
                         Spacer()
                         Text(row.1)
-                            .font(GranaTheme.Typography.moneyFootnote)
-                            .foregroundStyle(GranaTheme.Palette.muted)
+                            .font(AppUI.Theme.Typography.moneyFootnote)
+                            .foregroundStyle(AppUI.Theme.Palette.muted)
                     }
                     GeometryReader { proxy in
                         RoundedRectangle(cornerRadius: 6, style: .continuous)
@@ -1063,9 +1064,9 @@ private struct CategoryRankingPanel: View {
                 }
             }
         }
-        .padding(GranaTheme.Spacing.md)
+        .padding(AppUI.Theme.Spacing.md)
         .frame(maxWidth: .infinity, minHeight: 210, alignment: .topLeading)
-        .granaSurface(.subtle, cornerRadius: GranaTheme.Radius.card)
+        .granaSurface(.subtle, cornerRadius: AppUI.Theme.Radius.card)
     }
 }
 
@@ -1114,37 +1115,37 @@ private struct TransactionsTableExample: View {
     var body: some View {
         AppUI.Table(filteredRows, selection: $selectedRows, sortOrder: $sortOrder) {
             TableColumn("Instituição", value: \.institutionName) { (row: TransactionPreview) in
-                HStack(spacing: GranaTheme.Spacing.sm) {
+                HStack(spacing: AppUI.Theme.Spacing.sm) {
                     InstitutionIcon(kind: row.institution, size: 24)
                     Text(row.institutionName)
-                        .font(GranaTheme.Typography.subheadlineEmphasis)
-                        .foregroundStyle(GranaTheme.Palette.ink)
+                        .font(AppUI.Theme.Typography.subheadlineEmphasis)
+                        .foregroundStyle(AppUI.Theme.Palette.ink)
                 }
             }
             .width(min: 160, ideal: 180, max: 220)
 
             TableColumn("Transação", value: \.description) { (row: TransactionPreview) in
-                VStack(alignment: .leading, spacing: GranaTheme.Spacing.xxs) {
+                VStack(alignment: .leading, spacing: AppUI.Theme.Spacing.xxs) {
                     Text(row.description)
-                        .font(GranaTheme.Typography.subheadlineEmphasis)
-                        .foregroundStyle(GranaTheme.Palette.ink)
+                        .font(AppUI.Theme.Typography.subheadlineEmphasis)
+                        .foregroundStyle(AppUI.Theme.Palette.ink)
                     Text(row.memo)
-                        .font(GranaTheme.Typography.caption1)
-                        .foregroundStyle(GranaTheme.Palette.muted)
+                        .font(AppUI.Theme.Typography.caption1)
+                        .foregroundStyle(AppUI.Theme.Palette.muted)
                 }
             }
             .width(min: 220, ideal: 280)
 
             TableColumn("Status", value: \.statusRank) { (row: TransactionPreview) in
                 Text(row.statusLabel)
-                    .font(GranaTheme.Typography.caption1Emphasis)
+                    .font(AppUI.Theme.Typography.caption1Emphasis)
                     .foregroundStyle(row.statusColor)
             }
             .width(min: 92, ideal: 110, max: 132)
 
             TableColumn("Valor", value: \.amount) { (row: TransactionPreview) in
                 Text(row.amount.formatted(.currency(code: "BRL")))
-                    .font(GranaTheme.Typography.moneySubheadline)
+                    .font(AppUI.Theme.Typography.moneySubheadline)
                     .foregroundStyle(row.amountColor)
                     .frame(maxWidth: .infinity, alignment: .trailing)
             }
@@ -1157,7 +1158,7 @@ private struct TransactionsTableExample: View {
                     placeholder: "Buscar descrição",
                     leadingSystemImage: "magnifyingglass",
                     showsClearButton: true,
-                    font: GranaTheme.Typography.footnoteEmphasis,
+                    font: AppUI.Theme.Typography.footnoteEmphasis,
                     textAlignment: .leading
                 )
                 .frame(width: 240)
@@ -1209,22 +1210,22 @@ private struct TransactionPreview: Identifiable {
 
     var statusColor: Color {
         switch status?.tint {
-        case .success?: GranaTheme.Palette.green
-        case .warning?: GranaTheme.Palette.amber
-        case .info?: GranaTheme.Palette.tealDeep
-        case .neutral?: GranaTheme.Palette.muted
-        case nil: GranaTheme.Palette.muted
+        case .success?: AppUI.Theme.Palette.green
+        case .warning?: AppUI.Theme.Palette.amber
+        case .info?: AppUI.Theme.Palette.tealDeep
+        case .neutral?: AppUI.Theme.Palette.muted
+        case nil: AppUI.Theme.Palette.muted
         }
     }
 
     var amountColor: Color {
         switch amountKind {
         case .incoming:
-            GranaTheme.Palette.green
+            AppUI.Theme.Palette.green
         case .outgoing:
-            GranaTheme.Palette.red
+            AppUI.Theme.Palette.red
         case .transfer:
-            GranaTheme.Palette.tealDeep
+            AppUI.Theme.Palette.tealDeep
         }
     }
 }
@@ -1232,9 +1233,9 @@ private struct TransactionPreview: Identifiable {
 private struct TableDivider: View {
     var body: some View {
         Rectangle()
-            .fill(GranaTheme.Palette.line)
+            .fill(AppUI.Theme.Palette.line)
             .frame(height: 1)
-            .padding(.leading, GranaTheme.Spacing.sm)
+            .padding(.leading, AppUI.Theme.Spacing.sm)
     }
 }
 
@@ -1243,13 +1244,13 @@ private struct TableText: View {
     let secondary: String
 
     var body: some View {
-        VStack(alignment: .leading, spacing: GranaTheme.Spacing.xxs) {
+        VStack(alignment: .leading, spacing: AppUI.Theme.Spacing.xxs) {
             Text(primary)
-                .font(GranaTheme.Typography.code)
-                .foregroundStyle(GranaTheme.Palette.ink)
+                .font(AppUI.Theme.Typography.code)
+                .foregroundStyle(AppUI.Theme.Palette.ink)
             Text(secondary)
-                .font(GranaTheme.Typography.caption1)
-                .foregroundStyle(GranaTheme.Palette.muted)
+                .font(AppUI.Theme.Typography.caption1)
+                .foregroundStyle(AppUI.Theme.Palette.muted)
                 .lineLimit(1)
                 .minimumScaleFactor(0.82)
         }
@@ -1259,12 +1260,12 @@ private struct TableText: View {
 
 private extension View {
     func tableRowContent() -> some View {
-        padding(GranaTheme.Spacing.sm)
+        padding(AppUI.Theme.Spacing.sm)
             .frame(maxWidth: .infinity, alignment: .leading)
     }
 
     func tableSurface() -> some View {
         frame(maxWidth: .infinity, alignment: .leading)
-            .granaSurface(.solid, cornerRadius: GranaTheme.Radius.control)
+            .granaSurface(.solid, cornerRadius: AppUI.Theme.Radius.control)
     }
 }

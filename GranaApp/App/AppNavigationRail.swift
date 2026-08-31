@@ -1,4 +1,5 @@
 import SwiftUI
+import AppUI
 
 struct AppNavigationRail: View {
     let selection: AppSection
@@ -20,21 +21,21 @@ struct AppNavigationRail: View {
     ]
 
     var body: some View {
-        VStack(spacing: GranaTheme.Spacing.xs) {
+        VStack(spacing: AppUI.Theme.Spacing.xs) {
             ForEach(Self.primaryItems) { section in
                 railButton(for: section)
             }
 
-            Spacer(minLength: GranaTheme.Spacing.md)
+            Spacer(minLength: AppUI.Theme.Spacing.md)
 
             ForEach(Self.bottomItems) { section in
                 railButton(for: section)
             }
         }
-        .padding(GranaTheme.Spacing.sm)
+        .padding(AppUI.Theme.Spacing.sm)
         .frame(width: 70)
         .frame(maxHeight: .infinity)
-        .granaSurface(.glass, cornerRadius: GranaTheme.Radius.rail)
+        .granaSurface(.glass, cornerRadius: AppUI.Theme.Radius.rail)
     }
 
     private func railButton(for section: AppSection) -> some View {
@@ -43,14 +44,14 @@ struct AppNavigationRail: View {
             onSelect(section)
         } label: {
             Image(systemName: section.icon.systemImage)
-                .font(.system(size: GranaTheme.IconSize.medium, weight: .semibold))
-                .foregroundStyle(isSelected ? GranaTheme.Palette.creamText : GranaTheme.Palette.muted)
+                .font(.system(size: AppUI.Theme.IconSize.medium, weight: .semibold))
+                .foregroundStyle(isSelected ? AppUI.Theme.Palette.creamText : AppUI.Theme.Palette.muted)
                 .frame(width: 48, height: 48)
                 .background {
                     if isSelected {
-                        GranaTheme.brandGradient()
+                        AppUI.Theme.brandGradient()
                             .clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
-                            .shadow(color: GranaTheme.Shadow.accentColor, radius: 17, y: 8)
+                            .shadow(color: AppUI.Theme.Shadow.accentColor, radius: 17, y: 8)
                     }
                 }
                 .contentShape(RoundedRectangle(cornerRadius: 18, style: .continuous))

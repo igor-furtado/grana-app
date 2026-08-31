@@ -1,6 +1,7 @@
 import ComposableArchitecture
 import Foundation
 import SwiftUI
+import AppUI
 
 /// Lista de lançamentos da fatura selecionada. Faz snapshot remoto explícito
 /// quando o `statementId` muda, em linha com a direção online-only da fatia.
@@ -15,32 +16,32 @@ struct StatementListView: View {
     ]
 
     var body: some View {
-        VStack(spacing: GranaTheme.Spacing.none) {
+        VStack(spacing: AppUI.Theme.Spacing.none) {
             if store.isLoading, store.rows.isEmpty {
                 ProgressView()
-                    .padding(.vertical, GranaTheme.Spacing.lg)
+                    .padding(.vertical, AppUI.Theme.Spacing.lg)
             } else if store.rows.isEmpty {
                 emptyView
             } else {
                 table
             }
         }
-        .granaSurface(.solid, cornerRadius: GranaTheme.Radius.card)
+        .granaSurface(.solid, cornerRadius: AppUI.Theme.Radius.card)
         .task(id: store.statementId) {
             await store.send(.task).finish()
         }
     }
 
     private var emptyView: some View {
-        VStack(spacing: GranaTheme.Spacing.xs) {
+        VStack(spacing: AppUI.Theme.Spacing.xs) {
             Image(systemName: "tray")
-                .font(.system(size: GranaTheme.IconSize.medium))
-                .foregroundStyle(GranaTheme.Palette.muted)
+                .font(.system(size: AppUI.Theme.IconSize.medium))
+                .foregroundStyle(AppUI.Theme.Palette.muted)
             Text("Sem lançamentos nesta fatura")
-                .font(GranaTheme.Typography.callout)
-                .foregroundStyle(GranaTheme.Palette.muted)
+                .font(AppUI.Theme.Typography.callout)
+                .foregroundStyle(AppUI.Theme.Palette.muted)
         }
-        .padding(.vertical, GranaTheme.Spacing.xxl)
+        .padding(.vertical, AppUI.Theme.Spacing.xxl)
         .frame(maxWidth: .infinity)
     }
 
@@ -48,8 +49,8 @@ struct StatementListView: View {
         AppUI.Table(sortedRows, sortOrder: $sortOrder) {
             TableColumn("Data", value: \.occurredAt) { row in
                 Text(GranaDateFormat.fullDate(row.occurredAt))
-                    .font(GranaTheme.Typography.caption1)
-                    .foregroundStyle(GranaTheme.Palette.muted)
+                    .font(AppUI.Theme.Typography.caption1)
+                    .foregroundStyle(AppUI.Theme.Palette.muted)
             }
             .width(min: 128, ideal: 148, max: 172)
 
@@ -71,11 +72,11 @@ struct StatementListView: View {
 
             TableColumn("Subcategoria", value: \.subcategorySortLabel) { row in
                 Text(row.subcategoryDisplayName)
-                    .font(GranaTheme.Typography.caption1)
+                    .font(AppUI.Theme.Typography.caption1)
                     .foregroundStyle(
                         row.subcategoryName == nil
-                            ? GranaTheme.Palette.muted
-                            : GranaTheme.Palette.ink
+                            ? AppUI.Theme.Palette.muted
+                            : AppUI.Theme.Palette.ink
                     )
                     .lineLimit(1)
             }
@@ -83,19 +84,19 @@ struct StatementListView: View {
 
             TableColumn("Descrição", value: \.description) { row in
                 Text(row.description)
-                    .font(GranaTheme.Typography.subheadlineEmphasis)
-                    .foregroundStyle(GranaTheme.Palette.ink)
+                    .font(AppUI.Theme.Typography.subheadlineEmphasis)
+                    .foregroundStyle(AppUI.Theme.Palette.ink)
                     .lineLimit(1)
             }
             .width(min: 220, ideal: 360)
 
             TableColumn("Valor", value: \.signedAmount) { row in
                 Text(row.signedAmount.formatted(.currency(code: currency)))
-                    .font(GranaTheme.Typography.moneySubheadline)
+                    .font(AppUI.Theme.Typography.moneySubheadline)
                     .foregroundStyle(
                         row.signedAmount < 0
-                            ? GranaTheme.Palette.ink
-                            : GranaTheme.Palette.green
+                            ? AppUI.Theme.Palette.ink
+                            : AppUI.Theme.Palette.green
                     )
                     .frame(maxWidth: .infinity, alignment: .trailing)
             }
@@ -110,12 +111,12 @@ struct StatementListView: View {
 
     private var placeholderIcon: some View {
         Circle()
-            .fill(GranaTheme.Palette.soft)
+            .fill(AppUI.Theme.Palette.soft)
             .frame(width: 28, height: 28)
             .overlay {
                 Image(systemName: "questionmark")
-                    .font(.system(size: GranaTheme.IconSize.small))
-                    .foregroundStyle(GranaTheme.Palette.muted)
+                    .font(.system(size: AppUI.Theme.IconSize.small))
+                    .foregroundStyle(AppUI.Theme.Palette.muted)
             }
     }
 }
@@ -183,7 +184,7 @@ struct CategoryIconBubble: View {
             .frame(width: size, height: size)
             .overlay {
                 Image(systemName: icon.systemImage)
-                    .font(.system(size: GranaTheme.IconSize.categoryGlyph(in: size)))
+                    .font(.system(size: AppUI.Theme.IconSize.categoryGlyph(in: size)))
                     .symbolRenderingMode(.hierarchical)
                     .foregroundStyle(icon.color.gradient)
             }

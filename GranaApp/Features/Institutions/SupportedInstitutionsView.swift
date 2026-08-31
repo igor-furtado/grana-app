@@ -1,5 +1,6 @@
 import ComposableArchitecture
 import SwiftUI
+import AppUI
 
 /// Catálogo read-only das instituições com suporte nativo no app — auto-detect
 /// via código FEBRABAN no import OFX, ícone canônico e cor da marca. O
@@ -9,7 +10,7 @@ import SwiftUI
 struct SupportedInstitutionsView: View {
     @Bindable var store: StoreOf<SupportedInstitutionsFeature>
     private let columns = [
-        GridItem(.adaptive(minimum: 240, maximum: 360), spacing: GranaTheme.Spacing.md),
+        GridItem(.adaptive(minimum: 240, maximum: 360), spacing: AppUI.Theme.Spacing.md),
     ]
 
     var body: some View {
@@ -24,7 +25,7 @@ private struct SupportedInstitutionsLoadedView: View {
     let columns: [GridItem]
 
     var body: some View {
-        VStack(spacing: GranaTheme.Spacing.sm) {
+        VStack(spacing: AppUI.Theme.Spacing.sm) {
             AppUI.Layout.ScreenHeader(
                 title: "Bancos suportados",
                 subtitle: store.subtitle
@@ -56,18 +57,18 @@ private struct SupportedInstitutionsLoadedView: View {
                     )
                 } else {
                     ScrollView {
-                        VStack(alignment: .leading, spacing: GranaTheme.Spacing.md) {
+                        VStack(alignment: .leading, spacing: AppUI.Theme.Spacing.md) {
                             Text(
                                 """
                                 Catálogo global das instituições suportadas pelo produto. Tipos de conta
                                 e formatos de importação vêm do backend e definem o que a UI pode oferecer.
                                 """
                             )
-                            .font(GranaTheme.Typography.callout)
+                            .font(AppUI.Theme.Typography.callout)
                             .foregroundStyle(.secondary)
                             .fixedSize(horizontal: false, vertical: true)
 
-                            LazyVGrid(columns: columns, spacing: GranaTheme.Spacing.md) {
+                            LazyVGrid(columns: columns, spacing: AppUI.Theme.Spacing.md) {
                                 ForEach(store.institutions) { institution in
                                     InstitutionCatalogCard(institution: institution)
                                 }
@@ -87,14 +88,14 @@ private struct InstitutionCatalogCard: View {
     let institution: Institution
 
     var body: some View {
-        HStack(spacing: GranaTheme.Spacing.md) {
+        HStack(spacing: AppUI.Theme.Spacing.md) {
             InstitutionIcon(kind: institution.kind, size: 48)
 
-            VStack(alignment: .leading, spacing: GranaTheme.Spacing.xs) {
+            VStack(alignment: .leading, spacing: AppUI.Theme.Spacing.xs) {
                 Text(institution.name)
-                    .font(GranaTheme.Typography.bodyEmphasis)
+                    .font(AppUI.Theme.Typography.bodyEmphasis)
                 Text("FEBRABAN \(institution.code)")
-                    .font(GranaTheme.Typography.code)
+                    .font(AppUI.Theme.Typography.code)
                     .foregroundStyle(.secondary)
 
                 capabilityRow(
@@ -110,9 +111,9 @@ private struct InstitutionCatalogCard: View {
                         .map(\.displayName)
                 )
             }
-            Spacer(minLength: GranaTheme.Spacing.none)
+            Spacer(minLength: AppUI.Theme.Spacing.none)
         }
-        .padding(GranaTheme.Spacing.md)
+        .padding(AppUI.Theme.Spacing.md)
         .background(
             RoundedRectangle(cornerRadius: 12, style: .continuous)
                 .fill(Color(nsColor: .controlBackgroundColor))
@@ -124,12 +125,12 @@ private struct InstitutionCatalogCard: View {
     }
 
     private func capabilityRow(title: String, values: [String]) -> some View {
-        VStack(alignment: .leading, spacing: GranaTheme.Spacing.xxs) {
+        VStack(alignment: .leading, spacing: AppUI.Theme.Spacing.xxs) {
             Text(title)
-                .font(GranaTheme.Typography.caption2Emphasis)
+                .font(AppUI.Theme.Typography.caption2Emphasis)
                 .foregroundStyle(.secondary)
             Text(values.joined(separator: " · "))
-                .font(GranaTheme.Typography.caption1)
+                .font(AppUI.Theme.Typography.caption1)
                 .foregroundStyle(.primary)
                 .fixedSize(horizontal: false, vertical: true)
         }

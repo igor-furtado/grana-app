@@ -1,5 +1,6 @@
 import ComposableArchitecture
 import SwiftUI
+import AppUI
 
 struct ImportHistoryView: View {
     @Bindable var store: StoreOf<ImportFeature>
@@ -33,7 +34,7 @@ private struct ImportHistoryContentView: View {
     }
 
     var body: some View {
-        VStack(spacing: GranaTheme.Spacing.sm) {
+        VStack(spacing: AppUI.Theme.Spacing.sm) {
             header
 
             if historyStore.snapshot.batches.isEmpty {
@@ -85,7 +86,7 @@ private struct ImportHistoryContentView: View {
             Button {
                 historyStore.send(.importButtonTapped(nil))
             } label: {
-                Label("Nova importação", systemImage: AppIcon.add.systemImage)
+                Label("Nova importação", systemImage: AppUI.Icon.add.systemImage)
             }
             .buttonStyle(GranaPrimaryButtonStyle())
             .help("Importar extrato bancário (OFX ou CSV)")
@@ -180,19 +181,19 @@ private struct ImportHistoryMainPanel: View {
     let onUndo: (ImportHistoryBatchPresentation) -> Void
 
     var body: some View {
-        VStack(alignment: .leading, spacing: GranaTheme.Spacing.none) {
+        VStack(alignment: .leading, spacing: AppUI.Theme.Spacing.none) {
             AppUI.Table(rows, sortOrder: $sortOrder) {
                 TableColumn("Instituição", value: \.institutionName) { row in
-                    HStack(spacing: GranaTheme.Spacing.sm) {
+                    HStack(spacing: AppUI.Theme.Spacing.sm) {
                         InstitutionIcon(kind: row.institutionKind, size: 24)
-                        VStack(alignment: .leading, spacing: GranaTheme.Spacing.xxs) {
+                        VStack(alignment: .leading, spacing: AppUI.Theme.Spacing.xxs) {
                             Text(row.institutionName)
-                                .font(GranaTheme.Typography.subheadlineEmphasis)
-                                .foregroundStyle(GranaTheme.Palette.ink)
+                                .font(AppUI.Theme.Typography.subheadlineEmphasis)
+                                .foregroundStyle(AppUI.Theme.Palette.ink)
                                 .lineLimit(1)
                             Text(row.accountName)
-                                .font(GranaTheme.Typography.caption1)
-                                .foregroundStyle(GranaTheme.Palette.muted)
+                                .font(AppUI.Theme.Typography.caption1)
+                                .foregroundStyle(AppUI.Theme.Palette.muted)
                                 .lineLimit(1)
                         }
                     }
@@ -201,30 +202,30 @@ private struct ImportHistoryMainPanel: View {
 
                 TableColumn("Importado", value: \.importedAt) { row in
                     Text(row.importedAtText)
-                        .font(GranaTheme.Typography.footnote)
-                        .foregroundStyle(GranaTheme.Palette.muted)
+                        .font(AppUI.Theme.Typography.footnote)
+                        .foregroundStyle(AppUI.Theme.Palette.muted)
                         .frame(maxWidth: .infinity, alignment: .trailing)
                 }
                 .width(min: 125, ideal: 140, max: 140)
 
                 TableColumn("Arquivo", value: \.sourceFilename) { row in
-                    VStack(alignment: .leading, spacing: GranaTheme.Spacing.xxs) {
+                    VStack(alignment: .leading, spacing: AppUI.Theme.Spacing.xxs) {
                         Text(row.batch.sourceFilename)
-                            .font(GranaTheme.Typography.subheadlineEmphasis)
-                            .foregroundStyle(GranaTheme.Palette.ink)
+                            .font(AppUI.Theme.Typography.subheadlineEmphasis)
+                            .foregroundStyle(AppUI.Theme.Palette.ink)
                             .lineLimit(1)
                             .truncationMode(.middle)
                         Text(row.formatName)
-                            .font(GranaTheme.Typography.caption2Emphasis)
-                            .foregroundStyle(GranaTheme.Palette.tealDeep)
+                            .font(AppUI.Theme.Typography.caption2Emphasis)
+                            .foregroundStyle(AppUI.Theme.Palette.tealDeep)
                     }
                     .help(row.batch.sourceFilename)
                 }
 
                 TableColumn("Linhas", value: \.rowCount) { row in
                     Text("\(row.batch.rowCount)")
-                        .font(GranaTheme.Typography.subheadlineEmphasis)
-                        .foregroundStyle(GranaTheme.Palette.ink)
+                        .font(AppUI.Theme.Typography.subheadlineEmphasis)
+                        .foregroundStyle(AppUI.Theme.Palette.ink)
                         .frame(maxWidth: .infinity, alignment: .trailing)
                 }
                 .width(min: 70, ideal: 80, max: 80)
@@ -233,7 +234,7 @@ private struct ImportHistoryMainPanel: View {
                     Button(role: .destructive) {
                         onUndo(row)
                     } label: {
-                        Label("Desfazer", systemImage: AppIcon.undo.systemImage)
+                        Label("Desfazer", systemImage: AppUI.Icon.undo.systemImage)
                     }
                     .buttonStyle(.borderless)
                     .help("Desfazer lote")
@@ -277,7 +278,7 @@ private struct ImportHistoryFilterBar: View {
                 placeholder: "Buscar arquivo",
                 leadingSystemImage: "magnifyingglass",
                 showsClearButton: true,
-                font: GranaTheme.Typography.footnoteEmphasis,
+                font: AppUI.Theme.Typography.footnoteEmphasis,
                 textAlignment: .leading
             )
             .frame(maxWidth: .infinity, alignment: .leading)
@@ -288,7 +289,7 @@ private struct ImportHistoryFilterBar: View {
                 placeholder: "Buscar conta",
                 leadingSystemImage: "magnifyingglass",
                 showsClearButton: true,
-                font: GranaTheme.Typography.footnoteEmphasis,
+                font: AppUI.Theme.Typography.footnoteEmphasis,
                 textAlignment: .leading
             )
             .frame(maxWidth: .infinity, alignment: .leading)
@@ -300,35 +301,35 @@ private struct EmptyStateDropZone: View {
     let isHighlighted: Bool
 
     var body: some View {
-        VStack(spacing: GranaTheme.Spacing.xl) {
+        VStack(spacing: AppUI.Theme.Spacing.xl) {
             ZStack {
                 Circle()
-                    .fill(GranaTheme.Palette.teal.opacity(isHighlighted ? 0.18 : 0.12))
+                    .fill(AppUI.Theme.Palette.teal.opacity(isHighlighted ? 0.18 : 0.12))
                     .frame(width: 92, height: 92)
-                Image(systemName: AppIcon.importFile.systemImage)
-                    .font(.system(size: GranaTheme.IconSize.hero, weight: .regular))
-                    .foregroundStyle(GranaTheme.Palette.tealDeep)
+                Image(systemName: AppUI.Icon.importFile.systemImage)
+                    .font(.system(size: AppUI.Theme.IconSize.hero, weight: .regular))
+                    .foregroundStyle(AppUI.Theme.Palette.tealDeep)
                     .symbolEffect(.bounce, value: isHighlighted)
             }
-            VStack(spacing: GranaTheme.Spacing.sm) {
+            VStack(spacing: AppUI.Theme.Spacing.sm) {
                 Text(isHighlighted ? "Solte o extrato para revisar" : "Importe o primeiro extrato")
-                    .font(GranaTheme.Typography.title2)
-                    .foregroundStyle(GranaTheme.Palette.ink)
+                    .font(AppUI.Theme.Typography.title2)
+                    .foregroundStyle(AppUI.Theme.Palette.ink)
                     .multilineTextAlignment(.center)
                 Text("Arraste um arquivo para a tela ou selecione manualmente. O fluxo revisa OFX e CSV antes do commit definitivo.")
-                    .font(GranaTheme.Typography.callout)
-                    .foregroundStyle(GranaTheme.Palette.muted)
+                    .font(AppUI.Theme.Typography.callout)
+                    .foregroundStyle(AppUI.Theme.Palette.muted)
                     .multilineTextAlignment(.center)
                     .frame(maxWidth: 520)
             }
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
-        .padding(GranaTheme.Spacing.xxxl)
+        .padding(AppUI.Theme.Spacing.xxxl)
       
         .overlay {
-            RoundedRectangle(cornerRadius: GranaTheme.Radius.hero, style: .continuous)
+            RoundedRectangle(cornerRadius: AppUI.Theme.Radius.hero, style: .continuous)
                 .strokeBorder(
-                    GranaTheme.Palette.teal.opacity(0.40),
+                    AppUI.Theme.Palette.teal.opacity(0.40),
                     style: StrokeStyle(lineWidth: 2, dash: [10, 8])
                 )
         }

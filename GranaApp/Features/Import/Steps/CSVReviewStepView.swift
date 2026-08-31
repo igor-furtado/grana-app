@@ -1,5 +1,6 @@
 import ComposableArchitecture
 import SwiftUI
+import AppUI
 
 struct CSVReviewStepView: View {
     @Bindable var store: StoreOf<CSVImportFeature>
@@ -13,7 +14,7 @@ struct CSVReviewStepView: View {
     var body: some View {
         AppUI.Wizard.Shell {
             AppUI.Wizard.Layout(steps: ImportWizardStage.presentedSteps(currentStage: .triage)) {
-                VStack(spacing: GranaTheme.Spacing.md) {
+                VStack(spacing: AppUI.Theme.Spacing.md) {
                     CSVTransactionsListCard(
                         resolution: Binding(
                             get: { store.state.resolution },
@@ -127,26 +128,26 @@ private struct CSVTransactionsListCard: View {
 
                 TableColumn("Data") { row in
                     Text(GranaDateFormat.fullDate(row.date))
-                        .font(GranaTheme.Typography.caption1)
-                        .foregroundStyle(GranaTheme.Palette.muted)
+                        .font(AppUI.Theme.Typography.caption1)
+                        .foregroundStyle(AppUI.Theme.Palette.muted)
                 }
                 .width(min: 128, ideal: 148, max: 172)
 
                 TableColumn("Descrição") { row in
-                    HStack(spacing: GranaTheme.Spacing.sm) {
+                    HStack(spacing: AppUI.Theme.Spacing.sm) {
                         if let institutionKind {
                             InstitutionIcon(kind: institutionKind, size: 22)
                         }
 
-                        VStack(alignment: .leading, spacing: GranaTheme.Spacing.xxs) {
+                        VStack(alignment: .leading, spacing: AppUI.Theme.Spacing.xxs) {
                             Text(row.description)
-                                .font(GranaTheme.Typography.subheadlineEmphasis)
-                                .foregroundStyle(GranaTheme.Palette.ink)
+                                .font(AppUI.Theme.Typography.subheadlineEmphasis)
+                                .foregroundStyle(AppUI.Theme.Palette.ink)
                                 .lineLimit(1)
                             if let memo = row.memo {
                                 Text(memo)
-                                    .font(GranaTheme.Typography.caption1)
-                                    .foregroundStyle(GranaTheme.Palette.muted)
+                                    .font(AppUI.Theme.Typography.caption1)
+                                    .foregroundStyle(AppUI.Theme.Palette.muted)
                                     .lineLimit(1)
                             }
                         }
@@ -160,8 +161,8 @@ private struct CSVTransactionsListCard: View {
 
                 TableColumn("Valor") { row in
                     Text(row.amount.formatted(.currency(code: "BRL")))
-                        .font(GranaTheme.Typography.moneySubheadline)
-                        .foregroundStyle(GranaTheme.Palette.ink)
+                        .font(AppUI.Theme.Typography.moneySubheadline)
+                        .foregroundStyle(AppUI.Theme.Palette.ink)
                         .frame(maxWidth: .infinity, alignment: .trailing)
                 }
                 .width(min: 100, ideal: 100, max: 120)
@@ -189,13 +190,13 @@ private struct CSVTransactionsListCard: View {
 
     @ViewBuilder
     private func statusCell(for row: CSVTransactionTableRow) -> some View {
-        VStack(alignment: .leading, spacing: GranaTheme.Spacing.xxs) {
+        VStack(alignment: .leading, spacing: AppUI.Theme.Spacing.xxs) {
             if let status = row.status {
                 ImportWizardTableStatusBadge(status: status)
             } else {
                 Text("Importar")
-                    .font(GranaTheme.Typography.caption1Emphasis)
-                    .foregroundStyle(GranaTheme.Palette.tealDeep)
+                    .font(AppUI.Theme.Typography.caption1Emphasis)
+                    .foregroundStyle(AppUI.Theme.Palette.tealDeep)
             }
         }
     }

@@ -1,6 +1,6 @@
 # 0011 - Remover previews de primitives AppUI
 
-- Status: substituido
+- Status: substituido por 0013
 - Data: 2026-08-28
 
 ## Contexto

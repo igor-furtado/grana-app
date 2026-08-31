@@ -1,5 +1,6 @@
 import ComposableArchitecture
 import SwiftUI
+import AppUI
 
 struct OFXReviewStepView: View {
     @Bindable var store: StoreOf<OFXImportFeature>
@@ -26,7 +27,7 @@ struct OFXReviewStepView: View {
     var body: some View {
         AppUI.Wizard.Shell {
             AppUI.Wizard.Layout(steps: ImportWizardStage.presentedSteps(currentStage: .triage)) {
-                VStack(spacing: GranaTheme.Spacing.md) {
+                VStack(spacing: AppUI.Theme.Spacing.md) {
                     OFXTransactionsListCard(
                         resolutions: Binding(
                             get: { store.state.resolutions },
@@ -96,7 +97,7 @@ private struct OFXAccountInfoCard: View {
             )
         ) {
             if let resolution {
-                HStack(spacing: GranaTheme.Spacing.md) {
+                HStack(spacing: AppUI.Theme.Spacing.md) {
                     ImportWizardInfoRow(label: "Banco") {
                         Text(resolution.ofxBankLabel)
                     }
@@ -105,12 +106,30 @@ private struct OFXAccountInfoCard: View {
                         Text(resolution.ofxAccountLabel)
                     }
                 }
-                .padding(.horizontal, GranaTheme.Spacing.md)
-                .padding(.bottom, GranaTheme.Spacing.md)
+                .padding(.horizontal, AppUI.Theme.Spacing.md)
+                .padding(.bottom, AppUI.Theme.Spacing.md)
             }
         }
     }
 }
+
+private struct ImportWizardInfoRow<Content: View>: View {
+    let label: String
+    @ViewBuilder var content: () -> Content
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: AppUI.Theme.Spacing.xxs) {
+            Text(label)
+                .font(AppUI.Theme.Typography.caption1)
+                .foregroundStyle(AppUI.Theme.Palette.muted)
+            content()
+                .font(AppUI.Theme.Typography.callout)
+                .foregroundStyle(AppUI.Theme.Palette.ink)
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+    }
+}
+
 
 private struct OFXTransactionsListCard: View {
     @Binding var resolutions: [OFXStatementResolution]
@@ -181,13 +200,13 @@ private struct OFXTransactionsListCard: View {
 
                 TableColumn("Data") { row in
                     Text(GranaDateFormat.fullDate(row.date))
-                        .font(GranaTheme.Typography.caption1)
-                        .foregroundStyle(GranaTheme.Palette.muted)
+                        .font(AppUI.Theme.Typography.caption1)
+                        .foregroundStyle(AppUI.Theme.Palette.muted)
                 }
                 .width(min: 128, ideal: 148, max: 172)
 
                 TableColumn("Descrição") { row in
-                    HStack(spacing: GranaTheme.Spacing.sm) {
+                    HStack(spacing: AppUI.Theme.Spacing.sm) {
                         if let currentResolution {
                             InstitutionIcon(
                                 kind: bankKind(currentResolution.accountId) ?? .other,
@@ -195,8 +214,8 @@ private struct OFXTransactionsListCard: View {
                             )
                         }
                         Text(row.description)
-                            .font(GranaTheme.Typography.subheadlineEmphasis)
-                            .foregroundStyle(GranaTheme.Palette.ink)
+                            .font(AppUI.Theme.Typography.subheadlineEmphasis)
+                            .foregroundStyle(AppUI.Theme.Palette.ink)
                             .lineLimit(1)
                     }
                 }
@@ -206,21 +225,21 @@ private struct OFXTransactionsListCard: View {
                         ImportWizardTableStatusBadge(status: status)
                     } else {
                         Text("Importar")
-                            .font(GranaTheme.Typography.caption1Emphasis)
-                            .foregroundStyle(GranaTheme.Palette.tealDeep)
+                            .font(AppUI.Theme.Typography.caption1Emphasis)
+                            .foregroundStyle(AppUI.Theme.Palette.tealDeep)
                     }
                 }
                 .width(min: 120, ideal: 146, max: 180)
 
                 TableColumn("Valor") { row in
                     Text(row.amount.formatted(.currency(code: "BRL")))
-                        .font(GranaTheme.Typography.moneySubheadline)
+                        .font(AppUI.Theme.Typography.moneySubheadline)
                         .foregroundStyle(amountColor(for: row.amountKind))
                         .frame(maxWidth: .infinity, alignment: .trailing)
                 }
                 .width(min: 120, ideal: 140, max: 160)
             } filterBar: {
-                VStack(alignment: .leading, spacing: GranaTheme.Spacing.sm) {
+                VStack(alignment: .leading, spacing: AppUI.Theme.Spacing.sm) {
                     if resolutions.count > 1 {
                         AppUI.Selector(
                             label: "Extrato",
@@ -279,7 +298,7 @@ private struct OFXTransactionsListCard: View {
         case .transfer:
             .transfer
         case .outgoing:
-            GranaTheme.Palette.ink
+            AppUI.Theme.Palette.ink
         }
     }
 }

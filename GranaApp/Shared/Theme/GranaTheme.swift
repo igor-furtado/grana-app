@@ -1,96 +1,96 @@
 import AppKit
 import SwiftUI
 
-enum GranaTheme {
-    enum Palette {
-        static let background = Color(red: 0.957, green: 0.941, blue: 0.910)
-        static let backgroundStart = Color(red: 0.973, green: 0.953, blue: 0.910)
-        static let backgroundEnd = Color(red: 0.929, green: 0.957, blue: 0.937)
-        static let ink = Color(red: 0.090, green: 0.137, blue: 0.122)
-        static let paper = Color(red: 1.000, green: 0.988, blue: 0.961)
-        static let paperSolid = Color(red: 1.000, green: 0.980, blue: 0.941)
-        static let teal = Color(red: 0.067, green: 0.478, blue: 0.408)
-        static let tealDeep = Color(red: 0.047, green: 0.373, blue: 0.325)
-        static let green = Color(red: 0.078, green: 0.486, blue: 0.337)
-        static let red = Color(red: 0.788, green: 0.255, blue: 0.227)
-        static let amber = Color(red: 0.847, green: 0.569, blue: 0.169)
-        static let gold = Color(red: 0.929, green: 0.722, blue: 0.373)
-        static let creamText = Color(red: 1.000, green: 0.976, blue: 0.929)
+public enum Theme {
+    public enum Palette {
+        public static let background = Color(red: 0.957, green: 0.941, blue: 0.910)
+        public static let backgroundStart = Color(red: 0.973, green: 0.953, blue: 0.910)
+        public static let backgroundEnd = Color(red: 0.929, green: 0.957, blue: 0.937)
+        public static let ink = Color(red: 0.090, green: 0.137, blue: 0.122)
+        public static let paper = Color(red: 1.000, green: 0.988, blue: 0.961)
+        public static let paperSolid = Color(red: 1.000, green: 0.980, blue: 0.941)
+        public static let teal = Color(red: 0.067, green: 0.478, blue: 0.408)
+        public static let tealDeep = Color(red: 0.047, green: 0.373, blue: 0.325)
+        public static let green = Color(red: 0.078, green: 0.486, blue: 0.337)
+        public static let red = Color(red: 0.788, green: 0.255, blue: 0.227)
+        public static let amber = Color(red: 0.847, green: 0.569, blue: 0.169)
+        public static let gold = Color(red: 0.929, green: 0.722, blue: 0.373)
+        public static let creamText = Color(red: 1.000, green: 0.976, blue: 0.929)
 
-        static var muted: Color {
+        public static var muted: Color {
             ink.opacity(0.62)
         }
 
-        static var soft: Color {
+        public static var soft: Color {
             ink.opacity(0.07)
         }
 
-        static var line: Color {
+        public static var line: Color {
             ink.opacity(0.13)
         }
     }
 
-    enum Radius {
-        static let control: CGFloat = 15
-        static let pill: CGFloat = 48
-        static let card: CGFloat = 22
-        static let hero: CGFloat = 32
-        static let rail: CGFloat = 27
+    public enum Radius {
+        public static let control: CGFloat = 15
+        public static let pill: CGFloat = 48
+        public static let card: CGFloat = 22
+        public static let hero: CGFloat = 32
+        public static let rail: CGFloat = 27
     }
 
-    enum Shadow {
-        static let glassColor = Color(red: 0.161, green: 0.129, blue: 0.086).opacity(0.14)
-        static let cardColor = Palette.ink.opacity(0.07)
-        static let rowColor = Palette.ink.opacity(0.04)
-        static let accentColor = Palette.teal.opacity(0.22)
+    public enum Shadow {
+        public static let glassColor = Color(red: 0.161, green: 0.129, blue: 0.086).opacity(0.14)
+        public static let cardColor = Palette.ink.opacity(0.07)
+        public static let rowColor = Palette.ink.opacity(0.04)
+        public static let accentColor = Palette.teal.opacity(0.22)
     }
 
-    enum Layout {
-        static let pageInsets = EdgeInsets(
-            top: GranaTheme.Spacing.none,
-            leading: GranaTheme.Spacing.none,
-            bottom: GranaTheme.Spacing.lg,
-            trailing: GranaTheme.Spacing.lg
+    public enum Layout {
+        public static let pageInsets = EdgeInsets(
+            top: Theme.Spacing.none,
+            leading: Theme.Spacing.none,
+            bottom: Theme.Spacing.lg,
+            trailing: Theme.Spacing.lg
         )
-        static let railInsets = EdgeInsets(
-            top: GranaTheme.Spacing.none,
-            leading: GranaTheme.Spacing.lg,
-            bottom: GranaTheme.Spacing.lg,
-            trailing: GranaTheme.Spacing.lg
+        public static let railInsets = EdgeInsets(
+            top: Theme.Spacing.none,
+            leading: Theme.Spacing.lg,
+            bottom: Theme.Spacing.lg,
+            trailing: Theme.Spacing.lg
         )
     }
 
-    enum Typography {
-        struct Token: Identifiable {
-            let name: String
-            let family: Family
-            let size: CGFloat
-            let weight: Weight
-            let usage: String
+    public enum Typography {
+        public struct Token: Identifiable {
+            public let name: String
+            public let family: Family
+            public let size: CGFloat
+            public let weight: Weight
+            public let usage: String
 
-            var id: String {
+            public var id: String {
                 name
             }
 
-            var category: String {
+            public var category: String {
                 family.category
             }
 
-            var font: Font {
+            public var font: Font {
                 Font.system(size: size, weight: weight.fontWeight, design: family.design)
             }
 
-            var value: String {
+            public var value: String {
                 "\(family.displayName) \(Int(size)) \(weight.displayName)"
             }
         }
 
-        enum Family {
+        public enum Family {
             case text
             case money
             case code
 
-            var category: String {
+            public var category: String {
                 switch self {
                 case .text:
                     "Texto"
@@ -101,7 +101,7 @@ enum GranaTheme {
                 }
             }
 
-            var design: Font.Design {
+            public var design: Font.Design {
                 switch self {
                 case .text:
                     .default
@@ -110,7 +110,7 @@ enum GranaTheme {
                 }
             }
 
-            var displayName: String {
+            public var displayName: String {
                 switch self {
                 case .text:
                     "SF Pro"
@@ -120,14 +120,14 @@ enum GranaTheme {
             }
         }
 
-        enum Weight {
+        public enum Weight {
             case regular
             case medium
             case semibold
             case bold
             case black
 
-            var fontWeight: Font.Weight {
+            public var fontWeight: Font.Weight {
                 switch self {
                 case .regular:
                     .regular
@@ -142,7 +142,7 @@ enum GranaTheme {
                 }
             }
 
-            var nsFontWeight: NSFont.Weight {
+            public var nsFontWeight: NSFont.Weight {
                 switch self {
                 case .regular:
                     .regular
@@ -157,7 +157,7 @@ enum GranaTheme {
                 }
             }
 
-            var displayName: String {
+            public var displayName: String {
                 switch self {
                 case .regular:
                     "regular"
@@ -363,41 +363,41 @@ enum GranaTheme {
             usage: "IDs, slugs e tokens"
         )
 
-        static let title1 = title1Token.font
-        static let title2 = title2Token.font
-        static let title3 = title3Token.font
-        static let headline = headlineToken.font
-        static let body = bodyToken.font
-        static let bodyEmphasis = bodyEmphasisToken.font
-        static let callout = calloutToken.font
-        static let calloutEmphasis = calloutEmphasisToken.font
-        static let subheadline = subheadlineToken.font
-        static let subheadlineEmphasis = subheadlineEmphasisToken.font
-        static let footnote = footnoteToken.font
-        static let footnoteEmphasis = footnoteEmphasisToken.font
-        static let caption1 = caption1Token.font
-        static let caption1Emphasis = caption1EmphasisToken.font
-        static let caption2 = caption2Token.font
-        static let caption2Emphasis = caption2EmphasisToken.font
+        public static let title1 = title1Token.font
+        public static let title2 = title2Token.font
+        public static let title3 = title3Token.font
+        public static let headline = headlineToken.font
+        public static let body = bodyToken.font
+        public static let bodyEmphasis = bodyEmphasisToken.font
+        public static let callout = calloutToken.font
+        public static let calloutEmphasis = calloutEmphasisToken.font
+        public static let subheadline = subheadlineToken.font
+        public static let subheadlineEmphasis = subheadlineEmphasisToken.font
+        public static let footnote = footnoteToken.font
+        public static let footnoteEmphasis = footnoteEmphasisToken.font
+        public static let caption1 = caption1Token.font
+        public static let caption1Emphasis = caption1EmphasisToken.font
+        public static let caption2 = caption2Token.font
+        public static let caption2Emphasis = caption2EmphasisToken.font
 
-        static let moneyTitle1 = moneyTitle1Token.font
-        static let moneyTitle2 = moneyTitle2Token.font
-        static let moneyTitle3 = moneyTitle3Token.font
-        static let moneyHeadline = moneyHeadlineToken.font
-        static let moneyBody = moneyBodyToken.font
-        static let moneyBodyNSFont = NSFont.monospacedSystemFont(
+        public static let moneyTitle1 = moneyTitle1Token.font
+        public static let moneyTitle2 = moneyTitle2Token.font
+        public static let moneyTitle3 = moneyTitle3Token.font
+        public static let moneyHeadline = moneyHeadlineToken.font
+        public static let moneyBody = moneyBodyToken.font
+        public static let moneyBodyNSFont = NSFont.monospacedSystemFont(
             ofSize: moneyBodyToken.size,
             weight: moneyBodyToken.weight.nsFontWeight
         )
-        static let moneyCallout = moneyCalloutToken.font
-        static let moneySubheadline = moneySubheadlineToken.font
-        static let moneyFootnote = moneyFootnoteToken.font
-        static let moneyCaption1 = moneyCaption1Token.font
-        static let moneyCaption2 = moneyCaption2Token.font
+        public static let moneyCallout = moneyCalloutToken.font
+        public static let moneySubheadline = moneySubheadlineToken.font
+        public static let moneyFootnote = moneyFootnoteToken.font
+        public static let moneyCaption1 = moneyCaption1Token.font
+        public static let moneyCaption2 = moneyCaption2Token.font
 
-        static let code = codeToken.font
+        public static let code = codeToken.font
 
-        static let tokens: [Token] = [
+        public static let tokens: [Token] = [
             title1Token,
             title2Token,
             title3Token,
@@ -428,19 +428,19 @@ enum GranaTheme {
         ]
     }
 
-    enum IconSize {
-        static let micro: CGFloat = 10
-        static let small: CGFloat = 12
-        static let medium: CGFloat = 20
-        static let large: CGFloat = 32
-        static let hero: CGFloat = 56
+    public enum IconSize {
+        public static let micro: CGFloat = 10
+        public static let small: CGFloat = 12
+        public static let medium: CGFloat = 20
+        public static let large: CGFloat = 32
+        public static let hero: CGFloat = 56
 
-        static func categoryGlyph(in bubbleSize: CGFloat) -> CGFloat {
+        public static func categoryGlyph(in bubbleSize: CGFloat) -> CGFloat {
             bubbleSize * 0.45
         }
     }
 
-    static func brandGradient(pressed: Bool = false) -> LinearGradient {
+    public static func brandGradient(pressed: Bool = false) -> LinearGradient {
         LinearGradient(
             colors: [
                 Palette.ink,
@@ -452,13 +452,15 @@ enum GranaTheme {
     }
 }
 
-struct GranaBackground: View {
-    var body: some View {
+public struct GranaBackground: View {
+    public init() {}
+
+    public var body: some View {
         ZStack {
             LinearGradient(
                 colors: [
-                    GranaTheme.Palette.backgroundStart,
-                    GranaTheme.Palette.backgroundEnd,
+                    Theme.Palette.backgroundStart,
+                    Theme.Palette.backgroundEnd,
                 ],
                 startPoint: .topLeading,
                 endPoint: .bottomTrailing
@@ -466,7 +468,7 @@ struct GranaBackground: View {
 
             RadialGradient(
                 colors: [
-                    GranaTheme.Palette.gold.opacity(0.28),
+                    Theme.Palette.gold.opacity(0.28),
                     .clear,
                 ],
                 center: UnitPoint(x: 0.08, y: 0.08),
@@ -476,7 +478,7 @@ struct GranaBackground: View {
 
             RadialGradient(
                 colors: [
-                    GranaTheme.Palette.teal.opacity(0.20),
+                    Theme.Palette.teal.opacity(0.20),
                     .clear,
                 ],
                 center: UnitPoint(x: 0.88, y: 0.0),
@@ -488,7 +490,7 @@ struct GranaBackground: View {
     }
 }
 
-enum GranaSurfaceProminence {
+public enum GranaSurfaceProminence {
     case glass
     case solid
     case subtle
@@ -530,90 +532,96 @@ private struct GranaSurfaceModifier: ViewModifier {
                 RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
                     .fill(.regularMaterial)
                 RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
-                    .fill(GranaTheme.Palette.paper.opacity(0.64))
+                    .fill(Theme.Palette.paper.opacity(0.64))
             }
         case .glass:
             RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
-                .fill(GranaTheme.Palette.paperSolid)
+                .fill(Theme.Palette.paperSolid)
         case .solid:
             RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
-                .fill(GranaTheme.Palette.paperSolid.opacity(0.94))
+                .fill(Theme.Palette.paperSolid.opacity(0.94))
         case .subtle:
             RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
-                .fill(GranaTheme.Palette.paper.opacity(0.72))
+                .fill(Theme.Palette.paper.opacity(0.72))
         }
     }
 
     private var borderColor: Color {
-        contrast == .increased ? GranaTheme.Palette.ink.opacity(0.28) : GranaTheme.Palette.line
+        contrast == .increased ? Theme.Palette.ink.opacity(0.28) : Theme.Palette.line
     }
 
     private var surfaceShadow: (color: Color, radius: CGFloat, y: CGFloat) {
         switch prominence {
         case .glass:
-            (GranaTheme.Shadow.glassColor, 30, 14)
+            (Theme.Shadow.glassColor, 30, 14)
         case .subtle:
-            (GranaTheme.Shadow.cardColor, 14, 6)
+            (Theme.Shadow.cardColor, 14, 6)
         case .solid:
-            (GranaTheme.Shadow.rowColor, 7, 3)
+            (Theme.Shadow.rowColor, 7, 3)
         }
     }
 }
 
-struct GranaPrimaryButtonStyle: ButtonStyle {
-    func makeBody(configuration: Configuration) -> some View {
+public struct GranaPrimaryButtonStyle: ButtonStyle {
+    public init() {}
+
+    public func makeBody(configuration: Configuration) -> some View {
         configuration.label
-            .font(GranaTheme.Typography.calloutEmphasis)
-            .foregroundStyle(GranaTheme.Palette.creamText)
-            .padding(.horizontal, GranaTheme.Spacing.lg)
+            .font(Theme.Typography.calloutEmphasis)
+            .foregroundStyle(Theme.Palette.creamText)
+            .padding(.horizontal, Theme.Spacing.lg)
             .frame(minHeight: 48)
             .background(
-                GranaTheme.brandGradient(pressed: configuration.isPressed),
-                in: RoundedRectangle(cornerRadius: GranaTheme.Radius.control, style: .continuous)
+                Theme.brandGradient(pressed: configuration.isPressed),
+                in: RoundedRectangle(cornerRadius: Theme.Radius.control, style: .continuous)
             )
-            .shadow(color: GranaTheme.Shadow.accentColor, radius: configuration.isPressed ? 8 : 17, y: 8)
+            .shadow(color: Theme.Shadow.accentColor, radius: configuration.isPressed ? 8 : 17, y: 8)
             .opacity(configuration.isPressed ? 0.92 : 1)
     }
 }
 
-struct GranaSecondaryButtonStyle: ButtonStyle {
-    func makeBody(configuration: Configuration) -> some View {
+public struct GranaSecondaryButtonStyle: ButtonStyle {
+    public init() {}
+
+    public func makeBody(configuration: Configuration) -> some View {
         configuration.label
-            .font(GranaTheme.Typography.calloutEmphasis)
-            .foregroundStyle(GranaTheme.Palette.ink)
-            .padding(.horizontal, GranaTheme.Spacing.lg)
+            .font(Theme.Typography.calloutEmphasis)
+            .foregroundStyle(Theme.Palette.ink)
+            .padding(.horizontal, Theme.Spacing.lg)
             .frame(minHeight: 48)
             .background(
                 configuration.isPressed
-                    ? GranaTheme.Palette.ink.opacity(0.11)
-                    : GranaTheme.Palette.soft,
-                in: RoundedRectangle(cornerRadius: GranaTheme.Radius.control, style: .continuous)
+                    ? Theme.Palette.ink.opacity(0.11)
+                    : Theme.Palette.soft,
+                in: RoundedRectangle(cornerRadius: Theme.Radius.control, style: .continuous)
             )
     }
 }
 
-struct GranaDestructiveButtonStyle: ButtonStyle {
-    func makeBody(configuration: Configuration) -> some View {
+public struct GranaDestructiveButtonStyle: ButtonStyle {
+    public init() {}
+
+    public func makeBody(configuration: Configuration) -> some View {
         configuration.label
-            .font(GranaTheme.Typography.calloutEmphasis)
-            .foregroundStyle(GranaTheme.Palette.creamText)
-            .padding(.horizontal, GranaTheme.Spacing.lg)
+            .font(Theme.Typography.calloutEmphasis)
+            .foregroundStyle(Theme.Palette.creamText)
+            .padding(.horizontal, Theme.Spacing.lg)
             .frame(minHeight: 48)
             .background(
                 configuration.isPressed
-                    ? GranaTheme.Palette.red.opacity(0.86)
-                    : GranaTheme.Palette.red,
-                in: RoundedRectangle(cornerRadius: GranaTheme.Radius.control, style: .continuous)
+                    ? Theme.Palette.red.opacity(0.86)
+                    : Theme.Palette.red,
+                in: RoundedRectangle(cornerRadius: Theme.Radius.control, style: .continuous)
             )
-            .shadow(color: GranaTheme.Palette.red.opacity(0.20), radius: configuration.isPressed ? 8 : 14, y: 8)
+            .shadow(color: Theme.Palette.red.opacity(0.20), radius: configuration.isPressed ? 8 : 14, y: 8)
             .opacity(configuration.isPressed ? 0.92 : 1)
     }
 }
 
-extension View {
+public extension View {
     func granaSurface(
         _ prominence: GranaSurfaceProminence = .subtle,
-        cornerRadius: CGFloat = GranaTheme.Radius.card
+        cornerRadius: CGFloat = Theme.Radius.card
     ) -> some View {
         modifier(GranaSurfaceModifier(prominence: prominence, cornerRadius: cornerRadius))
     }

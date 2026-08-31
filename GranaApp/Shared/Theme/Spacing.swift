@@ -17,18 +17,18 @@ import CoreGraphics
 /// **Quando nao usar**: tamanhos de elementos, larguras de colunas, alturas de
 /// cards, bolinhas, barras ou icones. Esses valores pertencem a tokens de size
 /// ou constantes especificas.
-extension GranaTheme {
+public extension Theme {
     enum Spacing {
-        struct Token: Identifiable {
-            let name: String
-            let value: CGFloat
-            let usage: String
+        public struct Token: Identifiable {
+            public let name: String
+            public let value: CGFloat
+            public let usage: String
 
-            var id: String {
+            public var id: String {
                 name
             }
 
-            var displayValue: String {
+            public var displayValue: String {
                 "\(Int(value)) pt"
             }
         }
@@ -79,17 +79,17 @@ extension GranaTheme {
             usage: "Respiro maximo de pagina ou estado vazio"
         )
 
-        static let none = noneToken.value
-        static let xxs = xxsToken.value
-        static let xs = xsToken.value
-        static let sm = smToken.value
-        static let md = mdToken.value
-        static let lg = lgToken.value
-        static let xl = xlToken.value
-        static let xxl = xxlToken.value
-        static let xxxl = xxxlToken.value
+        public static let none = noneToken.value
+        public static let xxs = xxsToken.value
+        public static let xs = xsToken.value
+        public static let sm = smToken.value
+        public static let md = mdToken.value
+        public static let lg = lgToken.value
+        public static let xl = xlToken.value
+        public static let xxl = xxlToken.value
+        public static let xxxl = xxxlToken.value
 
-        static let tokens = [
+        public static let tokens = [
             noneToken,
             xxsToken,
             xsToken,
