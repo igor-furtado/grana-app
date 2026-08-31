@@ -49,7 +49,7 @@ struct TransactionListView: View {
             AppUI.Table(tableRows, sortOrder: $sortOrder) {
                 TableColumn("Instituição", value: \.institutionName) { row in
                     HStack(spacing: GranaTheme.Spacing.sm) {
-                        InstitutionIcon(kind: row.institutionKind, size: 22)
+                        InstitutionIcon(kind: row.institutionKind, size: 24)
                         VStack(alignment: .leading, spacing: GranaTheme.Spacing.xxs) {
                             Text(row.institutionName)
                                 .font(GranaTheme.Typography.subheadlineEmphasis)
@@ -62,14 +62,14 @@ struct TransactionListView: View {
                         }
                     }
                 }
-                .width(min: 210, ideal: 240, max: 300)
+                .width(min: 210, ideal: 240, max: 240)
 
                 TableColumn("Data", value: \.occurredAt) { row in
                     Text(GranaDateFormat.fullDate(row.occurredAt))
                         .font(GranaTheme.Typography.caption1)
                         .foregroundStyle(GranaTheme.Palette.muted)
                 }
-                .width(min: 128, ideal: 148, max: 172)
+                .width(min: 110, ideal: 140, max: 140)
 
                 TableColumn("Descrição", value: \.description) { row in
                     Text(row.description)
@@ -85,32 +85,33 @@ struct TransactionListView: View {
                             icon: store.state.icon(for: row.transaction.categoryId),
                             iconOnly: true
                         )
-                        Text(row.categorySummary)
+                        Text(row.categoryDisplayName)
                             .font(GranaTheme.Typography.footnoteEmphasis)
                             .foregroundStyle(GranaTheme.Palette.muted)
                             .lineLimit(1)
                     }
+                    .help(row.categoryName)
                 }
-                .width(min: 170, ideal: 220, max: 260)
+                .width(min: 170, ideal: 220, max: 220)
 
                 TableColumn("Valor", value: \.amount) { row in
                     accountingAmount(row.amount)
                         .foregroundStyle(amountColor(for: row.transaction))
                         .frame(maxWidth: .infinity, alignment: .trailing)
                 }
-                .width(min: 132, ideal: 148, max: 180)
+                .width(min: 140, ideal: 140, max: 180)
 
                 TableColumn("Ações") { row in
                     rowActions(row.transaction)
                 }
-                .width(min: 76, ideal: 92, max: 112)
+                .width(min: 70, ideal: 70, max: 70)
             } filterBar: {
                 TransactionsFilterBar(
                     searchText: $store.searchText,
-                    bankFilterName: store.bankFilterName,
-                    categoryFilterName: store.categoryFilterName,
-                    periodFilterName: store.periodFilter.name,
-                    kindFilterName: store.kindFilter.name,
+                    bankFilter: store.bankFilter,
+                    categoryFilter: store.categoryFilter,
+                    periodFilter: store.periodFilter,
+                    kindFilter: store.kindFilter,
                     availableBanks: store.availableBanks,
                     categories: store.sortedRootCategories,
                     onBankSelected: { store.send(.bankFilterSelected($0)) },
@@ -131,6 +132,9 @@ struct TransactionListView: View {
                 accountName: store.state.accountName(for: transaction),
                 occurredAt: transaction.occurredAt,
                 description: transaction.description,
+                categoryName: store.state.categoryName(for: transaction),
+                categoryDisplayName: store.state.subcategoryName(for: transaction)
+                    ?? store.state.categoryName(for: transaction),
                 categorySummary: store.state.categorySummary(for: transaction),
                 amount: transaction.amount
             )
@@ -206,6 +210,8 @@ private struct TransactionTableRow: Identifiable {
     let accountName: String
     let occurredAt: Date
     let description: String
+    let categoryName: String
+    let categoryDisplayName: String
     let categorySummary: String
     let amount: Decimal
 
@@ -262,10 +268,10 @@ private enum TransactionsSortMapper {
 
 private struct TransactionsFilterBar: View {
     @Binding var searchText: String
-    let bankFilterName: String
-    let categoryFilterName: String
-    let periodFilterName: String
-    let kindFilterName: String
+    let bankFilter: TransactionBankFilter
+    let categoryFilter: TransactionCategoryFilter
+    let periodFilter: TransactionPeriodFilter
+    let kindFilter: TransactionKindFilter
     let availableBanks: [Institution]
     let categories: [Category]
     let onBankSelected: (TransactionBankFilter) -> Void
@@ -278,61 +284,41 @@ private struct TransactionsFilterBar: View {
             searchField
 
             HStack(alignment: .top, spacing: GranaTheme.Spacing.sm) {
-                filterMenu(
-                    title: "Banco",
-                    value: bankFilterName,
+                AppUI.Selector(
+                    label: "Banco",
+                    options: availableBanks.map { .init(id: $0.id, title: $0.name) },
+                    selection: bankSelection,
+                    includesNoneOption: true,
+                    noneOptionTitle: "Todos bancos",
                     icon: AppIcon.sidebarAccounts.systemImage
-                ) {
-                    Button("Todos bancos") {
-                        onBankSelected(.all)
-                    }
-                    Divider()
-                    ForEach(availableBanks) { institution in
-                        Button(institution.name) {
-                            onBankSelected(.bank(institution.id))
-                        }
-                    }
-                }
+                )
+                .frame(maxWidth: .infinity, alignment: .leading)
 
-                filterMenu(
-                    title: "Categoria",
-                    value: categoryFilterName,
-                    icon: "tag"
-                ) {
-                    Button("Todas categorias") {
-                        onCategorySelected(.all)
-                    }
-                    Divider()
-                    ForEach(categories) { category in
-                        Button(category.name) {
-                            onCategorySelected(.category(category.id))
-                        }
-                    }
-                }
+                AppUI.Selector(
+                    label: "Categoria",
+                    options: categories.map { .init(id: $0.id, title: $0.name) },
+                    selection: categorySelection,
+                    includesNoneOption: true,
+                    noneOptionTitle: "Todas categorias",
+                    icon: AppIcon.sidebarCategories.systemImage
+                )
+                .frame(maxWidth: .infinity, alignment: .leading)
 
-                filterMenu(
-                    title: "Período",
-                    value: periodFilterName,
-                    icon: "calendar"
-                ) {
-                    ForEach(TransactionPeriodFilter.allCases) { filter in
-                        Button(filter.name) {
-                            onPeriodSelected(filter)
-                        }
-                    }
-                }
+                AppUI.Selector(
+                    label: "Período",
+                    options: TransactionPeriodFilter.allCases.map { .init(id: $0, title: $0.name) },
+                    selection: periodSelection,
+                    icon: AppIcon.sidebarAccounts.systemImage
+                )
+                .frame(maxWidth: .infinity, alignment: .leading)
 
-                filterMenu(
-                    title: "Tipo",
-                    value: kindFilterName,
-                    icon: "arrow.left.arrow.right.circle"
-                ) {
-                    ForEach(TransactionKindFilter.allCases) { filter in
-                        Button(filter.name) {
-                            onKindSelected(filter)
-                        }
-                    }
-                }
+                AppUI.Selector(
+                    label: "Tipo",
+                    options: TransactionKindFilter.allCases.map { .init(id: $0, title: $0.name) },
+                    selection: kindSelection,
+                    icon: "line.3.horizontal.decrease.circle"
+                )
+                .frame(maxWidth: .infinity, alignment: .leading)
 
                 Spacer(minLength: GranaTheme.Spacing.none)
             }
@@ -351,48 +337,45 @@ private struct TransactionsFilterBar: View {
         )
     }
 
-    private func filterMenu<Content: View>(
-        title: String,
-        value: String,
-        icon: String,
-        @ViewBuilder content: () -> Content
-    ) -> some View {
-        VStack(alignment: .leading, spacing: GranaTheme.Spacing.xxs) {
-            Text(title)
-                .font(GranaTheme.Typography.caption2Emphasis)
-                .foregroundStyle(GranaTheme.Palette.muted)
-
-            Menu {
-                content()
-            } label: {
-                HStack(spacing: GranaTheme.Spacing.sm) {
-                    Image(systemName: icon)
-                        .font(.system(size: GranaTheme.IconSize.small, weight: .semibold))
-                        .foregroundStyle(GranaTheme.Palette.tealDeep)
-
-                    Text(value)
-                        .font(GranaTheme.Typography.footnoteEmphasis)
-                        .foregroundStyle(GranaTheme.Palette.ink)
-                        .lineLimit(1)
-
-                    Spacer(minLength: GranaTheme.Spacing.none)
-
-                    Image(systemName: "chevron.down")
-                        .font(.system(size: GranaTheme.IconSize.micro, weight: .semibold))
-                        .foregroundStyle(GranaTheme.Palette.muted)
+    private var bankSelection: Binding<UUID?> {
+        Binding(
+            get: {
+                if case let .bank(id) = bankFilter {
+                    return id
                 }
-                .padding(.horizontal, GranaTheme.Spacing.sm)
-                .frame(minWidth: 180, minHeight: 40, alignment: .leading)
-                .background(
-                    RoundedRectangle(cornerRadius: 14, style: .continuous)
-                        .fill(GranaTheme.Palette.paper.opacity(0.92))
-                )
-                .overlay {
-                    RoundedRectangle(cornerRadius: 14, style: .continuous)
-                        .stroke(GranaTheme.Palette.line, lineWidth: 1)
-                }
+                return nil
+            },
+            set: { id in
+                onBankSelected(id.map(TransactionBankFilter.bank) ?? .all)
             }
-            .buttonStyle(.plain)
-        }
+        )
+    }
+
+    private var categorySelection: Binding<UUID?> {
+        Binding(
+            get: {
+                if case let .category(id) = categoryFilter {
+                    return id
+                }
+                return nil
+            },
+            set: { id in
+                onCategorySelected(id.map(TransactionCategoryFilter.category) ?? .all)
+            }
+        )
+    }
+
+    private var periodSelection: Binding<TransactionPeriodFilter> {
+        Binding(
+            get: { periodFilter },
+            set: { onPeriodSelected($0) }
+        )
+    }
+
+    private var kindSelection: Binding<TransactionKindFilter> {
+        Binding(
+            get: { kindFilter },
+            set: { onKindSelected($0) }
+        )
     }
 }

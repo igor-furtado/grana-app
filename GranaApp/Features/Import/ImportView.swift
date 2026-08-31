@@ -3,8 +3,8 @@ import SwiftUI
 import UniformTypeIdentifiers
 
 struct ImportView: View {
-    @Environment(\.dismiss) private var dismiss
     @Bindable var store: StoreOf<ImportWizardFeature>
+    let onClose: () -> Void
     @State private var fileImporterShown = false
     @State private var fileWasPicked = false
     @State private var didTriggerPicker = false
@@ -35,13 +35,13 @@ struct ImportView: View {
                 Task { @MainActor in
                     try? await Task.sleep(for: .milliseconds(80))
                     if !fileWasPicked {
-                        dismiss()
+                        onClose()
                     }
                 }
             }
             .onChange(of: store.phase) { _, phase in
                 if case .done = phase {
-                    dismiss()
+                    onClose()
                 }
             }
             .task {
@@ -55,10 +55,7 @@ struct ImportView: View {
                 fileImporterShown = true
             }
         .toolbar(.hidden, for: .windowToolbar)
-        .frame(
-            minWidth: 1080, idealWidth: 1240, maxWidth: 1440,
-            minHeight: 620, idealHeight: 760, maxHeight: 920
-        )
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
         .background(GranaBackground())
     }
 
@@ -90,7 +87,7 @@ struct ImportView: View {
             if let ofxStore = store.scope(state: \.ofx, action: \.ofx) {
                 OFXReviewStepView(
                     store: ofxStore,
-                    onClose: { dismiss() },
+                    onClose: onClose,
                     onConfirm: { store.send(.confirmOFXImport) }
                 )
             }
@@ -98,7 +95,7 @@ struct ImportView: View {
             if let csvStore = store.scope(state: \.csv, action: \.csv) {
                 CSVReviewStepView(
                     store: csvStore,
-                    onClose: { dismiss() },
+                    onClose: onClose,
                     onConfirm: { store.send(.confirmCSVImport) }
                 )
             }
@@ -113,7 +110,7 @@ struct ImportView: View {
                 mode: .wizard(
                     onImport: { store.send(.finalizeImport) },
                     onBack: { store.send(.backToPreview) },
-                    onClose: { dismiss() }
+                    onClose: onClose
                 )
             )
         case .confirming:
@@ -132,7 +129,7 @@ struct ImportView: View {
                     store.send(.cancel)
                     fileImporterShown = true
                 },
-                onClose: { dismiss() }
+                onClose: onClose
             )
         }
     }

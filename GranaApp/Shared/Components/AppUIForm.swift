@@ -2,6 +2,7 @@ import SwiftUI
 
 extension AppUI {
     enum Form {}
+    enum Modal {}
 }
 
 extension AppUI.Form {
@@ -120,6 +121,59 @@ extension AppUI.Form {
             } icon: {
                 Image(systemName: "exclamationmark.triangle.fill")
                     .foregroundStyle(.danger)
+            }
+        }
+    }
+}
+
+extension AppUI.Modal {
+    struct Workspace<Content: View>: View {
+        @ViewBuilder private let content: () -> Content
+        @FocusState private var isModalFocused: Bool
+        private let width: CGFloat
+        private let height: CGFloat
+        private let onDismiss: (() -> Void)?
+
+        init(
+            width: CGFloat,
+            height: CGFloat,
+            onDismiss: (() -> Void)? = nil,
+            @ViewBuilder content: @escaping () -> Content
+        ) {
+            self.width = width
+            self.height = height
+            self.onDismiss = onDismiss
+            self.content = content
+        }
+
+        var body: some View {
+            ZStack {
+                Rectangle()
+                    .fill(.regularMaterial)
+                    .opacity(0.62)
+
+                content()
+                    .frame(width: width, height: height)
+                    .background {
+                        RoundedRectangle(cornerRadius: GranaTheme.Radius.hero, style: .continuous)
+                            .fill(GranaTheme.Palette.paper.opacity(0.94))
+                    }
+                    .overlay {
+                        RoundedRectangle(cornerRadius: GranaTheme.Radius.hero, style: .continuous)
+                            .strokeBorder(GranaTheme.Palette.line.opacity(0.55), lineWidth: 1)
+                    }
+                    .clipShape(RoundedRectangle(cornerRadius: GranaTheme.Radius.hero, style: .continuous))
+                    .shadow(color: GranaTheme.Shadow.glassColor, radius: 30, y: 16)
+                    .padding(GranaTheme.Spacing.xl)
+                    .focusable()
+                    .focused($isModalFocused)
+            }
+            .frame(maxWidth: .infinity, maxHeight: .infinity)
+            .onAppear {
+                isModalFocused = true
+            }
+            .onExitCommand {
+                onDismiss?()
             }
         }
     }

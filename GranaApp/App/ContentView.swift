@@ -188,6 +188,8 @@ private struct AuthenticatedShellView: View {
     }
 
     var body: some View {
+        let isWorkspaceModalPresented = environment.importFeatureStore.wizard != nil
+
         ZStack {
             GranaBackground()
             HStack(spacing: GranaTheme.Spacing.none) {
@@ -200,6 +202,8 @@ private struct AuthenticatedShellView: View {
                     .padding(GranaTheme.Layout.pageInsets)
                     .frame(maxWidth: .infinity, maxHeight: .infinity)
             }
+            .allowsHitTesting(!isWorkspaceModalPresented)
+            .accessibilityHidden(isWorkspaceModalPresented)
         }
         .dropDestination(for: URL.self, action: handleImportDrop, isTargeted: setImportDropTargeted)
         .overlay {
@@ -209,21 +213,19 @@ private struct AuthenticatedShellView: View {
                     .allowsHitTesting(false)
             }
         }
-        .animation(.easeOut(duration: 0.18), value: isImportDropTargeted)
-        .sheet(
-            isPresented: Binding(
-                get: { environment.importFeatureStore.wizard != nil },
-                set: { isPresented in
-                    if !isPresented {
+        .overlay {
+            if let wizardStore = environment.importFeatureStore.scope(state: \.wizard, action: \.wizard) {
+                ImportOverlayContainer(
+                    onClose: { environment.importFeatureStore.send(.wizard(.cancel)) }
+                ) {
+                    ImportView(store: wizardStore) {
                         environment.importFeatureStore.send(.wizard(.cancel))
                     }
                 }
-            )
-        ) {
-            if let wizardStore = environment.importFeatureStore.scope(state: \.wizard, action: \.wizard) {
-                ImportView(store: wizardStore)
+                .transition(.opacity.combined(with: .scale(scale: 0.98)))
             }
         }
+        .animation(.easeOut(duration: 0.18), value: isImportDropTargeted)
         .onReceive(NotificationCenter.default.publisher(for: .appSectionNavigationRequested)) { notification in
             guard let rawValue = notification.object as? String,
                   let section = AppSection(rawValue: rawValue)
@@ -289,5 +291,40 @@ private struct AuthenticatedShellView: View {
     private func activate(_ section: AppSection) {
         shellStore.activate(section)
         selectionRaw = section.rawValue
+    }
+}
+
+private struct ImportOverlayContainer<Content: View>: View {
+    let onClose: () -> Void
+    @ViewBuilder let content: () -> Content
+
+    private let minimumWidth: CGFloat = 1080
+    private let minimumHeight: CGFloat = 620
+    private let widthRatio: CGFloat = 0.82
+    private let heightRatio: CGFloat = 0.84
+
+    var body: some View {
+        GeometryReader { proxy in
+            let width = overlayWidth(for: proxy.size.width)
+            let height = overlayHeight(for: proxy.size.height)
+
+            AppUI.Modal.Workspace(width: width, height: height, onDismiss: onClose) {
+                content()
+            }
+        }
+    }
+
+    private func overlayWidth(for containerWidth: CGFloat) -> CGFloat {
+        let horizontalInset = GranaTheme.Spacing.xl * 2
+        let availableWidth = max(minimumWidth, containerWidth - horizontalInset)
+        let proportionalWidth = max(minimumWidth, containerWidth * widthRatio)
+        return min(availableWidth, proportionalWidth)
+    }
+
+    private func overlayHeight(for containerHeight: CGFloat) -> CGFloat {
+        let verticalInset = GranaTheme.Spacing.xl * 2
+        let availableHeight = max(minimumHeight, containerHeight - verticalInset)
+        let proportionalHeight = max(minimumHeight, containerHeight * heightRatio)
+        return min(availableHeight, proportionalHeight)
     }
 }

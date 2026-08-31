@@ -123,22 +123,12 @@ private struct AccountListFilterBar: View {
 
     var body: some View {
         HStack(alignment: .top, spacing: GranaTheme.Spacing.sm) {
-            VStack(alignment: .leading, spacing: GranaTheme.Spacing.xxs) {
-                Text("Instituição")
-                    .font(GranaTheme.Typography.caption2Emphasis)
-                    .foregroundStyle(GranaTheme.Palette.muted)
-
-                Menu {
-                    ForEach(store.availableInstitutionNames, id: \.self) { option in
-                        Button(option) {
-                            store.send(.binding(.set(\.institutionFilter, option)))
-                        }
-                    }
-                } label: {
-                    filterChip(value: store.institutionFilter, icon: "building.columns")
-                }
-                .buttonStyle(.plain)
-            }
+            AppUI.Selector(
+                label: "Instituição",
+                options: store.availableInstitutionNames.map { .init(id: $0, title: $0) },
+                selection: $store.institutionFilter,
+                icon: "building.columns"
+            )
             .frame(width: 220, alignment: .leading)
 
             AppUI.TextField(
@@ -152,57 +142,13 @@ private struct AccountListFilterBar: View {
             )
             .frame(maxWidth: .infinity, alignment: .leading)
 
-            VStack(alignment: .leading, spacing: GranaTheme.Spacing.xxs) {
-                Text("Status")
-                    .font(GranaTheme.Typography.caption2Emphasis)
-                    .foregroundStyle(GranaTheme.Palette.muted)
-
-                AppUI.Toggle(
-                    label: "Mostrar arquivadas",
-                    isOn: $store.showArchived
-                )
-                .toggleStyle(.switch)
-                .frame(width: 180, alignment: .leading)
-                .padding(.horizontal, GranaTheme.Spacing.sm)
-                .frame(height: 40)
-                .background(
-                    RoundedRectangle(cornerRadius: 14, style: .continuous)
-                        .fill(GranaTheme.Palette.paper.opacity(0.92))
-                )
-                .overlay {
-                    RoundedRectangle(cornerRadius: 14, style: .continuous)
-                        .stroke(GranaTheme.Palette.line, lineWidth: 1)
-                }
-            }
-        }
-    }
-
-    private func filterChip(value: String, icon: String) -> some View {
-        HStack(spacing: GranaTheme.Spacing.sm) {
-            Image(systemName: icon)
-                .font(.system(size: GranaTheme.IconSize.small, weight: .semibold))
-                .foregroundStyle(GranaTheme.Palette.tealDeep)
-
-            Text(value)
-                .font(GranaTheme.Typography.footnoteEmphasis)
-                .foregroundStyle(GranaTheme.Palette.ink)
-                .lineLimit(1)
-
-            Spacer(minLength: GranaTheme.Spacing.none)
-
-            Image(systemName: "chevron.down")
-                .font(.system(size: GranaTheme.IconSize.micro, weight: .semibold))
-                .foregroundStyle(GranaTheme.Palette.muted)
-        }
-        .padding(.horizontal, GranaTheme.Spacing.sm)
-        .frame(height: 40)
-        .background(
-            RoundedRectangle(cornerRadius: 14, style: .continuous)
-                .fill(GranaTheme.Palette.paper.opacity(0.92))
-        )
-        .overlay {
-            RoundedRectangle(cornerRadius: 14, style: .continuous)
-                .stroke(GranaTheme.Palette.line, lineWidth: 1)
+            AppUI.Toggle(
+                label: "Mostrar arquivadas",
+                isOn: $store.showArchived
+            )
+            .toggleStyle(.switch)
+            .frame(width: 180, alignment: .leading)
+            .frame(height: 40)
         }
     }
 }

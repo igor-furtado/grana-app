@@ -39,7 +39,6 @@ private struct ImportHistoryContentView: View {
             if historyStore.snapshot.batches.isEmpty {
                 EmptyStateDropZone(
                     isHighlighted: false,
-                    onBrowse: { historyStore.send(.importButtonTapped(nil)) }
                 )
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
             } else {
@@ -83,22 +82,13 @@ private struct ImportHistoryContentView: View {
             title: "Importar transações",
             subtitle: historyStore.summarySubtitle
         ) {
-            HStack(spacing: GranaTheme.Spacing.sm) {
-                Button {
-                    historyStore.send(.importButtonTapped(nil))
-                } label: {
-                    Label("Selecionar arquivo", systemImage: AppIcon.importFile.systemImage)
-                }
-                .buttonStyle(GranaSecondaryButtonStyle())
-
-                Button {
-                    historyStore.send(.importButtonTapped(nil))
-                } label: {
-                    Label("Nova importação", systemImage: AppIcon.add.systemImage)
-                }
-                .buttonStyle(GranaPrimaryButtonStyle())
-                .help("Importar extrato bancário (OFX ou CSV)")
+            Button {
+                historyStore.send(.importButtonTapped(nil))
+            } label: {
+                Label("Nova importação", systemImage: AppIcon.add.systemImage)
             }
+            .buttonStyle(GranaPrimaryButtonStyle())
+            .help("Importar extrato bancário (OFX ou CSV)")
         }
     }
 
@@ -195,14 +185,27 @@ private struct ImportHistoryMainPanel: View {
                 TableColumn("Instituição", value: \.institutionName) { row in
                     HStack(spacing: GranaTheme.Spacing.sm) {
                         InstitutionIcon(kind: row.institutionKind, size: 24)
-                        Text(row.institutionName)
-                            .font(GranaTheme.Typography.subheadlineEmphasis)
-                            .foregroundStyle(GranaTheme.Palette.ink)
-                            .lineLimit(1)
+                        VStack(alignment: .leading, spacing: GranaTheme.Spacing.xxs) {
+                            Text(row.institutionName)
+                                .font(GranaTheme.Typography.subheadlineEmphasis)
+                                .foregroundStyle(GranaTheme.Palette.ink)
+                                .lineLimit(1)
+                            Text(row.accountName)
+                                .font(GranaTheme.Typography.caption1)
+                                .foregroundStyle(GranaTheme.Palette.muted)
+                                .lineLimit(1)
+                        }
                     }
-                    .help(row.institutionName)
                 }
-                .width(min: 180, ideal: 220, max: 260)
+                .width(min: 210, ideal: 240, max: 240)
+
+                TableColumn("Importado", value: \.importedAt) { row in
+                    Text(row.importedAtText)
+                        .font(GranaTheme.Typography.footnote)
+                        .foregroundStyle(GranaTheme.Palette.muted)
+                        .frame(maxWidth: .infinity, alignment: .trailing)
+                }
+                .width(min: 125, ideal: 140, max: 140)
 
                 TableColumn("Arquivo", value: \.sourceFilename) { row in
                     VStack(alignment: .leading, spacing: GranaTheme.Spacing.xxs) {
@@ -217,16 +220,6 @@ private struct ImportHistoryMainPanel: View {
                     }
                     .help(row.batch.sourceFilename)
                 }
-                .width(min: 220, ideal: 320)
-
-                TableColumn("Conta", value: \.accountName) { row in
-                    Text(row.accountName)
-                        .font(GranaTheme.Typography.subheadline)
-                        .foregroundStyle(GranaTheme.Palette.muted)
-                        .lineLimit(1)
-                        .help(row.accountName)
-                }
-                .width(min: 180, ideal: 220)
 
                 TableColumn("Linhas", value: \.rowCount) { row in
                     Text("\(row.batch.rowCount)")
@@ -234,15 +227,7 @@ private struct ImportHistoryMainPanel: View {
                         .foregroundStyle(GranaTheme.Palette.ink)
                         .frame(maxWidth: .infinity, alignment: .trailing)
                 }
-                .width(min: 72, ideal: 86, max: 96)
-
-                TableColumn("Importado", value: \.importedAt) { row in
-                    Text(row.importedAtText)
-                        .font(GranaTheme.Typography.footnote)
-                        .foregroundStyle(GranaTheme.Palette.muted)
-                        .frame(maxWidth: .infinity, alignment: .trailing)
-                }
-                .width(min: 170, ideal: 190, max: 220)
+                .width(min: 70, ideal: 80, max: 80)
 
                 TableColumn("Ações") { row in
                     Button(role: .destructive) {
@@ -253,7 +238,7 @@ private struct ImportHistoryMainPanel: View {
                     .buttonStyle(.borderless)
                     .help("Desfazer lote")
                 }
-                .width(min: 110, ideal: 128, max: 144)
+                .width(min: 70, ideal: 80, max: 90)
             } filterBar: {
                 ImportHistoryFilterBar(
                     institutionOptions: institutionOptions,
@@ -278,88 +263,41 @@ private struct ImportHistoryFilterBar: View {
 
     var body: some View {
         HStack(alignment: .top, spacing: GranaTheme.Spacing.sm) {
-            importFilterMenu(
-                title: "Instituição",
-                value: institutionFilter,
-                options: institutionOptions,
-                selection: $institutionFilter
+            AppUI.Selector(
+                label: "Instituição",
+                options: institutionOptions.map { .init(id: $0, title: $0) },
+                selection: $institutionFilter,
+                icon: "building.columns"
             )
-            filterSearchField(title: "Arquivo", prompt: "Buscar arquivo", text: $filenameFilter)
-            filterSearchField(title: "Conta", prompt: "Buscar conta", text: $accountFilter)
-        }
-    }
+            .frame(width: 220, alignment: .leading)
 
-    private func importFilterMenu(
-        title: String,
-        value: String,
-        options: [String],
-        selection: Binding<String>
-    ) -> some View {
-        VStack(alignment: .leading, spacing: GranaTheme.Spacing.xxs) {
-            Text(title)
-                .font(GranaTheme.Typography.caption2Emphasis)
-                .foregroundStyle(GranaTheme.Palette.muted)
-            Menu {
-                ForEach(options, id: \.self) { option in
-                    Button(option) {
-                        selection.wrappedValue = option
-                    }
-                }
-            } label: {
-                filterChip(value: value, icon: "building.columns")
-            }
-            .buttonStyle(.plain)
-        }
-        .frame(width: 220, alignment: .leading)
-    }
+            AppUI.TextField(
+                label: "Arquivo",
+                text: $filenameFilter,
+                placeholder: "Buscar arquivo",
+                leadingSystemImage: "magnifyingglass",
+                showsClearButton: true,
+                font: GranaTheme.Typography.footnoteEmphasis,
+                textAlignment: .leading
+            )
+            .frame(maxWidth: .infinity, alignment: .leading)
 
-    private func filterSearchField(
-        title: String,
-        prompt: String,
-        text: Binding<String>
-    ) -> some View {
-        AppUI.TextField(
-            label: title,
-            text: text,
-            placeholder: prompt,
-            leadingSystemImage: "magnifyingglass",
-            showsClearButton: true,
-            font: GranaTheme.Typography.footnoteEmphasis,
-            textAlignment: .leading
-        )
-        .frame(maxWidth: .infinity, alignment: .leading)
-    }
-
-    private func filterChip(value: String, icon: String) -> some View {
-        HStack(spacing: GranaTheme.Spacing.sm) {
-            Image(systemName: icon)
-                .font(.system(size: GranaTheme.IconSize.small, weight: .semibold))
-                .foregroundStyle(GranaTheme.Palette.tealDeep)
-            Text(value)
-                .font(GranaTheme.Typography.footnoteEmphasis)
-                .foregroundStyle(GranaTheme.Palette.ink)
-                .lineLimit(1)
-            Spacer(minLength: GranaTheme.Spacing.none)
-            Image(systemName: "chevron.down")
-                .font(.system(size: GranaTheme.IconSize.micro, weight: .semibold))
-                .foregroundStyle(GranaTheme.Palette.muted)
-        }
-        .padding(.horizontal, GranaTheme.Spacing.sm)
-        .frame(height: 40)
-        .background(
-            RoundedRectangle(cornerRadius: 14, style: .continuous)
-                .fill(GranaTheme.Palette.paper.opacity(0.92))
-        )
-        .overlay {
-            RoundedRectangle(cornerRadius: 14, style: .continuous)
-                .stroke(GranaTheme.Palette.line, lineWidth: 1)
+            AppUI.TextField(
+                label: "Conta",
+                text: $accountFilter,
+                placeholder: "Buscar conta",
+                leadingSystemImage: "magnifyingglass",
+                showsClearButton: true,
+                font: GranaTheme.Typography.footnoteEmphasis,
+                textAlignment: .leading
+            )
+            .frame(maxWidth: .infinity, alignment: .leading)
         }
     }
 }
 
 private struct EmptyStateDropZone: View {
     let isHighlighted: Bool
-    let onBrowse: () -> Void
 
     var body: some View {
         VStack(spacing: GranaTheme.Spacing.xl) {
@@ -383,52 +321,16 @@ private struct EmptyStateDropZone: View {
                     .multilineTextAlignment(.center)
                     .frame(maxWidth: 520)
             }
-            HStack(spacing: GranaTheme.Spacing.sm) {
-                ImportEmptyStateInfoPill(icon: AppIcon.sidebarAccounts.systemImage, title: "OFX bancário")
-                ImportEmptyStateInfoPill(icon: AppIcon.sidebarCreditCards.systemImage, title: "CSV de fatura")
-                ImportEmptyStateInfoPill(icon: AppIcon.completedSeal.systemImage, title: "Revisão antes do commit")
-            }
-            Button {
-                onBrowse()
-            } label: {
-                Label("Selecionar arquivo", systemImage: AppIcon.importFile.systemImage)
-            }
-            .buttonStyle(GranaPrimaryButtonStyle())
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
         .padding(GranaTheme.Spacing.xxxl)
-        .background {
-            RoundedRectangle(cornerRadius: GranaTheme.Radius.hero, style: .continuous)
-                .fill(GranaTheme.Palette.paper.opacity(0.62))
-        }
+      
         .overlay {
             RoundedRectangle(cornerRadius: GranaTheme.Radius.hero, style: .continuous)
                 .strokeBorder(
-                    GranaTheme.Palette.teal.opacity(isHighlighted ? 0.46 : 0.24),
-                    style: StrokeStyle(lineWidth: isHighlighted ? 2 : 1.4, dash: [10, 8])
+                    GranaTheme.Palette.teal.opacity(0.40),
+                    style: StrokeStyle(lineWidth: 2, dash: [10, 8])
                 )
         }
-        .shadow(color: GranaTheme.Shadow.cardColor, radius: 18, y: 8)
-        .scaleEffect(isHighlighted ? 1.01 : 1.0)
-        .animation(.easeOut(duration: 0.18), value: isHighlighted)
-    }
-}
-
-private struct ImportEmptyStateInfoPill: View {
-    let icon: String
-    let title: String
-
-    var body: some View {
-        HStack(spacing: GranaTheme.Spacing.xs) {
-            Image(systemName: icon)
-                .font(.system(size: GranaTheme.IconSize.small, weight: .semibold))
-                .foregroundStyle(GranaTheme.Palette.tealDeep)
-            Text(title)
-                .font(GranaTheme.Typography.caption1Emphasis)
-                .foregroundStyle(GranaTheme.Palette.ink)
-        }
-        .padding(.horizontal, GranaTheme.Spacing.sm)
-        .padding(.vertical, GranaTheme.Spacing.xs)
-        .background(GranaTheme.Palette.paperSolid.opacity(0.84), in: Capsule())
     }
 }

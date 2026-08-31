@@ -92,15 +92,6 @@ O design system já determina três pontos que orientam a leitura: `AppUI.Table`
 
 ## 2. Customizações fora de `GranaApp/Shared` com boa chance de virar componente reutilizável
 
-### 2.1 Família de filter bars e controls de filtro
-
-Forte candidato. Hoje existem três implementações paralelas de barra de filtros, todas fora de `Shared`, com a mesma semântica base: label pequena, `Menu` estilizado como chip, `TextField` com ícone de busca, botão de limpar e mesmo shell visual com `RoundedRectangle(cornerRadius: 14)`.
-
-- `AccountListFilterBar` repete `filterChip`, campo de busca e shell de toggle dentro do mesmo dialeto visual. (`GranaApp/Features/Accounts/AccountListView.swift:121-239`)
-- `TransactionsFilterBar` repete o mesmo chip de menu e o mesmo campo de busca customizado, mudando apenas o conjunto de filtros. (`GranaApp/Features/Transactions/TransactionListView.swift:263-418`)
-- `ImportHistoryFilterBar` repete `filterChip` e `filterSearchField` quase literalmente. (`GranaApp/Features/Import/ImportHistoryView.swift:273-380`)
-
-Leitura: isso já passou do ponto de “estilo local”. O reaproveitamento provável é alto porque o padrão é estrutural, não de domínio.
 
 ### 2.2 Infra de wizard multi-etapa ainda confinada à feature de importação
 
@@ -141,25 +132,6 @@ Bom candidato. `CSVTransactionsListCard` e `OFXTransactionsListCard` repetem a m
 - `TransactionsSelectionRow` no filter/header bar. (`GranaApp/Features/Import/Steps/CSVReviewStepView.swift:172-176`; `GranaApp/Features/Import/Steps/OFXReviewStepView.swift:235-239`)
 
 Leitura: ainda existe diferença de domínio suficiente para não virar um único componente pronto, mas já existe base para um scaffold compartilhado de “triage table card”.
-
-### 2.6 Família de sheets simples de decisão administrativa
-
-Bom candidato. Há duplicação quase literal entre contas e cartões, e uma terceira variante próxima em transações.
-
-- `AccountArchiveView` e `CreditCardArchiveView` são praticamente idênticas: título, mensagem, erro opcional e `BottomActionBar`. (`GranaApp/Features/Accounts/AccountArchiveView.swift:4-36`; `GranaApp/Features/CreditCards/CreditCardArchiveView.swift:4-36`)
-- `AccountDeleteView` e `CreditCardDeleteView` repetem a mesma estrutura, mudando apenas o texto. (`GranaApp/Features/Accounts/AccountDeleteView.swift:4-37`; `GranaApp/Features/CreditCards/CreditCardDeleteView.swift:4-37`)
-- `TransactionDeleteView` usa shell próprio, mas pertence à mesma família semântica de sheet administrativa destrutiva com header, mensagem de impacto, erro opcional e botões de confirmação/cancelamento. (`GranaApp/Features/Transactions/TransactionDeleteView.swift:7-80`)
-
-Leitura: há espaço claro para um `ConfirmationSheetScaffold` ou `EntityActionSheet` com slots para ícone, mensagem e severidade.
-
-### 2.7 Dropzone e overlays de importação por arraste
-
-Bom candidato. O app mantém duas implementações diferentes da mesma semântica de drag-and-drop/import:
-
-- `GlobalImportDropOverlay` cobre qualquer tela quando há drop global ativo. (`GranaApp/App/ContentView.swift:93-131`; `GranaApp/App/ContentView.swift:210-218`)
-- `EmptyStateDropZone` faz o mesmo papel no vazio do histórico de importação e ainda usa `ImportEmptyStateInfoPill` como microcomponente auxiliar. (`GranaApp/Features/Import/ImportHistoryView.swift:383-456`)
-
-Leitura: as duas variam em densidade e contexto, mas compartilham affordances demais para continuarem totalmente separadas.
 
 ### 2.8 Indicador de utilização de limite
 

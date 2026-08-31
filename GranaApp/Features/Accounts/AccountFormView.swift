@@ -10,7 +10,10 @@ struct AccountFormView: View {
             GranaBackground()
 
             AppUI.Form.Shell {
-                header
+                AppUI.Form.Header(
+                    title: title, 
+                    subtitle: subtitle
+                )
 
                 Form {
                     identitySection
@@ -57,7 +60,7 @@ struct AccountFormView: View {
                 icon: "building.columns"
             )
         } header: {
-            sectionHeader("Identidade")
+            AppUI.Form.SectionHeader(title: "Identidade")
         }
     }
 
@@ -109,7 +112,7 @@ struct AccountFormView: View {
                     .foregroundStyle(.danger)
             }
         } header: {
-            sectionHeader("Erro ao salvar")
+            AppUI.Form.SectionHeader(title: "Erro ao salvar")
         }
     }
 
@@ -123,10 +126,6 @@ struct AccountFormView: View {
 
     private var subtitle: String {
         "Conta corrente com dados bancários e saldo inicial."
-    }
-
-    private var header: some View {
-        AppUI.Form.Header(title: title, subtitle: subtitle)
     }
 
     private func sectionHeader(_ title: String) -> some View {

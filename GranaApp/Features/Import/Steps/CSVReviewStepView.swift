@@ -123,7 +123,7 @@ private struct CSVTransactionsListCard: View {
                 TableColumn("") { row in
                     selectionCell(for: row)
                 }
-                .width(min: 38, ideal: 44, max: 48)
+                .width(min: 35, ideal: 35, max: 48)
 
                 TableColumn("Data") { row in
                     Text(GranaDateFormat.fullDate(row.date))
@@ -156,7 +156,7 @@ private struct CSVTransactionsListCard: View {
                 TableColumn("Situação") { row in
                     statusCell(for: row)
                 }
-                .width(min: 180, ideal: 240, max: 320)
+                .width(min: 80, ideal: 80, max: 100)
 
                 TableColumn("Valor") { row in
                     Text(row.amount.formatted(.currency(code: "BRL")))
@@ -164,7 +164,7 @@ private struct CSVTransactionsListCard: View {
                         .foregroundStyle(GranaTheme.Palette.ink)
                         .frame(maxWidth: .infinity, alignment: .trailing)
                 }
-                .width(min: 120, ideal: 140, max: 160)
+                .width(min: 100, ideal: 100, max: 120)
             } filterBar: {
                 TransactionsSelectionRow(
                     summary: selectionSummary,

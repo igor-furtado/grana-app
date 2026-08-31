@@ -14,6 +14,8 @@ struct AccountArchiveView: View {
                     subtitle: store.message
                 )
 
+                Spacer(minLength: GranaTheme.Spacing.none)
+
                 if let saveError = store.saveError {
                     AppUI.Form.ErrorMessage(message: saveError)
                         .padding(.horizontal, GranaTheme.Spacing.lg)

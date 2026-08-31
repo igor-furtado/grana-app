@@ -13,12 +13,14 @@ struct AccountDeleteView: View {
                     title: "Apagar conta",
                     subtitle: "A conta só será apagada se não houver transações, faturas ou lotes de importação vinculados."
                 )
+                
+                Spacer(minLength: GranaTheme.Spacing.none)
 
                 if let saveError = store.saveError {
                     AppUI.Form.ErrorMessage(message: saveError)
                         .padding(.horizontal, GranaTheme.Spacing.lg)
                 }
-
+                
                 AppUI.Form.Actions {
                     Button("Cancelar") {
                         store.send(.cancelButtonTapped)

@@ -5,13 +5,10 @@ struct ImportWizardStageScaffold<Content: View>: View {
 
     var body: some View {
         VStack(spacing: GranaTheme.Spacing.lg) {
-            HStack(alignment: .top, spacing: GranaTheme.Spacing.md) {
-                content()
-                    .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
-            }
+            content()
+                .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
         }
-        .padding(.horizontal, GranaTheme.Spacing.xl)
-        .padding(.bottom, GranaTheme.Spacing.xl)
+        .padding(GranaTheme.Spacing.sm)
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
         .background(GranaBackground())
     }
@@ -50,14 +47,14 @@ struct ImportWizardSplitLayout<MainContent: View, SidebarActions: View>: View {
     }
 
     var body: some View {
-        HStack(alignment: .top, spacing: GranaTheme.Spacing.md) {
+        HStack(alignment: .top, spacing: GranaTheme.Spacing.sm) {
             mainContent
                 .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
 
             ImportWizardSidebar(currentStage: currentStage) {
                 sidebarActions
             }
-            .frame(width: 280)
+            .frame(width: 210)
         }
     }
 }
@@ -84,7 +81,7 @@ private struct ImportWizardSidebar<Actions: View>: View {
 
             Spacer(minLength: GranaTheme.Spacing.none)
 
-            HStack(spacing: GranaTheme.Spacing.sm) {
+            VStack(spacing: GranaTheme.Spacing.sm) {
                 actions
                     .controlSize(.large)
             }

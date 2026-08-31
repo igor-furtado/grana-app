@@ -9,29 +9,40 @@ struct TransactionDeleteView: View {
             GranaBackground()
 
             AppUI.Form.Shell {
-                header
-
+                AppUI.Form.Header(
+                    title: "Apagar transação?",
+                    subtitle: transactionSummary
+                )
+                                
                 if !store.impactMessage.isEmpty {
                     messageBlock
+                }
+                else {
+                    Spacer(minLength: GranaTheme.Spacing.none)
                 }
 
                 if let saveError = store.saveError {
                     AppUI.Form.ErrorMessage(message: saveError)
                         .padding(.horizontal, GranaTheme.Spacing.lg)
                 }
+                
+                AppUI.Form.Actions {
+                    Button("Cancelar") {
+                        store.send(.cancelButtonTapped)
+                    }
+                    .buttonStyle(GranaSecondaryButtonStyle())
+                    .disabled(store.isSaving)
 
-                actions
+                    Button("Apagar") {
+                        store.send(.confirmButtonTapped)
+                    }
+                    .buttonStyle(GranaDestructiveButtonStyle())
+                    .disabled(store.isSaving)
+                }
             }
         }
         .toolbar(.hidden, for: .windowToolbar)
         .frame(minWidth: 460, idealWidth: 460, maxWidth: 460, minHeight: 280)
-    }
-
-    private var header: some View {
-        AppUI.Form.Header(
-            title: "Apagar transação?",
-            subtitle: transactionSummary
-        )
     }
 
     private var messageBlock: some View {
@@ -46,24 +57,7 @@ struct TransactionDeleteView: View {
                 .foregroundStyle(GranaTheme.Palette.muted)
                 .fixedSize(horizontal: false, vertical: true)
         }
-        .padding(GranaTheme.Spacing.md)
-        .granaSurface(.solid, cornerRadius: GranaTheme.Radius.card)
-    }
-
-    private var actions: some View {
-        AppUI.Form.Actions {
-            Button("Cancelar") {
-                store.send(.cancelButtonTapped)
-            }
-            .buttonStyle(GranaSecondaryButtonStyle())
-            .disabled(store.isSaving)
-
-            Button("Apagar") {
-                store.send(.confirmButtonTapped)
-            }
-            .buttonStyle(GranaDestructiveButtonStyle())
-            .disabled(store.isSaving)
-        }
+        .padding(GranaTheme.Spacing.lg)
     }
 
     private var transactionSummary: String {
