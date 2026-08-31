@@ -184,7 +184,7 @@ private struct ImportWizardStatusView<Actions: View>: View {
     }
 
     var body: some View {
-        ImportWizardStageScaffold {
+        AppUI.Wizard.Shell {
             VStack(spacing: GranaTheme.Spacing.md) {
                 Image(systemName: icon.systemImage)
                     .font(.system(size: GranaTheme.IconSize.hero, weight: .regular))

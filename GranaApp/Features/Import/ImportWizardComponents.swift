@@ -1,19 +1,5 @@
 import SwiftUI
 
-struct ImportWizardStageScaffold<Content: View>: View {
-    @ViewBuilder var content: () -> Content
-
-    var body: some View {
-        VStack(spacing: GranaTheme.Spacing.lg) {
-            content()
-                .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
-        }
-        .padding(GranaTheme.Spacing.sm)
-        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
-        .background(GranaBackground())
-    }
-}
-
 enum ImportWizardStage: Int, CaseIterable {
     case triage
     case classification
@@ -29,163 +15,24 @@ enum ImportWizardStage: Int, CaseIterable {
             "Revisão"
         }
     }
-}
 
-struct ImportWizardSplitLayout<MainContent: View, SidebarActions: View>: View {
-    let currentStage: ImportWizardStage
-    let mainContent: MainContent
-    let sidebarActions: SidebarActions
-
-    init(
-        currentStage: ImportWizardStage,
-        @ViewBuilder mainContent: () -> MainContent,
-        @ViewBuilder sidebarActions: () -> SidebarActions
-    ) {
-        self.currentStage = currentStage
-        self.mainContent = mainContent()
-        self.sidebarActions = sidebarActions()
-    }
-
-    var body: some View {
-        HStack(alignment: .top, spacing: GranaTheme.Spacing.sm) {
-            mainContent
-                .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
-
-            ImportWizardSidebar(currentStage: currentStage) {
-                sidebarActions
-            }
-            .frame(width: 210)
-        }
-    }
-}
-
-private struct ImportWizardSidebar<Actions: View>: View {
-    let currentStage: ImportWizardStage
-    let actions: Actions
-
-    init(
-        currentStage: ImportWizardStage,
-        @ViewBuilder actions: () -> Actions
-    ) {
-        self.currentStage = currentStage
-        self.actions = actions()
-    }
-
-    var body: some View {
-        VStack(alignment: .leading, spacing: GranaTheme.Spacing.lg) {
-            VStack(alignment: .leading, spacing: GranaTheme.Spacing.none) {
-                ForEach(ImportWizardStage.allCases, id: \.rawValue) { stage in
-                    stepRow(for: stage)
-                }
-            }
-
-            Spacer(minLength: GranaTheme.Spacing.none)
-
-            VStack(spacing: GranaTheme.Spacing.sm) {
-                actions
-                    .controlSize(.large)
-            }
-        }
-        .padding(GranaTheme.Spacing.md)
-        .frame(maxHeight: .infinity, alignment: .top)
-        .granaSurface(.solid, cornerRadius: GranaTheme.Radius.card)
-    }
-
-    @ViewBuilder
-    private func stepRow(for stage: ImportWizardStage) -> some View {
-        let visualState = visualState(for: stage)
-
-        HStack(alignment: .center, spacing: GranaTheme.Spacing.sm) {
-            ZStack {
-                Circle()
-                    .fill(fillColor(for: visualState))
-                    .frame(width: 24, height: 24)
-                Circle()
-                    .strokeBorder(strokeColor(for: visualState), lineWidth: 1.5)
-                    .frame(width: 24, height: 24)
-
-                if visualState == .completed {
-                    Image(systemName: "checkmark")
-                        .font(.system(size: GranaTheme.IconSize.micro, weight: .bold))
-                        .foregroundStyle(GranaTheme.Palette.creamText)
-                } else {
-                    Text("\(stage.rawValue + 1)")
-                        .font(GranaTheme.Typography.footnoteEmphasis)
-                        .foregroundStyle(numberColor(for: visualState))
-                }
-            }
-
-            Text(stage.title)
-                .font(visualState == .current ? GranaTheme.Typography.calloutEmphasis : GranaTheme.Typography.callout)
-                .foregroundStyle(labelColor(for: visualState))
-
-            Spacer(minLength: GranaTheme.Spacing.none)
-        }
-        .padding(.vertical, GranaTheme.Spacing.sm)
-        .overlay(alignment: .bottomLeading) {
-            if stage != .review {
-                Rectangle()
-                    .fill(connectorColor(for: stage))
-                    .frame(width: 1.5, height: 18)
-                    .offset(x: 11, y: GranaTheme.Spacing.lg)
-            }
+    static func presentedSteps(currentStage: Self) -> [AppUI.Wizard.Step] {
+        allCases.map { stage in
+            AppUI.Wizard.Step(
+                title: stage.title,
+                state: stage.stepState(relativeTo: currentStage)
+            )
         }
     }
 
-    private enum VisualState {
-        case completed
-        case current
-        case pending
-    }
-
-    private func visualState(for stage: ImportWizardStage) -> VisualState {
-        if stage.rawValue < currentStage.rawValue {
+    private func stepState(relativeTo currentStage: Self) -> AppUI.Wizard.Step.State {
+        if rawValue < currentStage.rawValue {
             return .completed
         }
-        if stage == currentStage {
+        if self == currentStage {
             return .current
         }
         return .pending
-    }
-
-    private func fillColor(for state: VisualState) -> Color {
-        switch state {
-        case .completed, .current:
-            GranaTheme.Palette.teal
-        case .pending:
-            .clear
-        }
-    }
-
-    private func strokeColor(for state: VisualState) -> Color {
-        switch state {
-        case .completed, .current:
-            GranaTheme.Palette.teal
-        case .pending:
-            GranaTheme.Palette.line
-        }
-    }
-
-    private func numberColor(for state: VisualState) -> Color {
-        switch state {
-        case .current:
-            GranaTheme.Palette.creamText
-        case .completed, .pending:
-            GranaTheme.Palette.muted
-        }
-    }
-
-    private func labelColor(for state: VisualState) -> Color {
-        switch state {
-        case .completed, .current:
-            GranaTheme.Palette.ink
-        case .pending:
-            GranaTheme.Palette.muted
-        }
-    }
-
-    private func connectorColor(for stage: ImportWizardStage) -> Color {
-        stage.rawValue < currentStage.rawValue ? GranaTheme.Palette.teal : GranaTheme.Palette.line
     }
 }
 

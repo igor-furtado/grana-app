@@ -24,8 +24,8 @@ struct OFXReviewStepView: View {
     }
 
     var body: some View {
-        ImportWizardStageScaffold {
-            ImportWizardSplitLayout(currentStage: .triage) {
+        AppUI.Wizard.Shell {
+            AppUI.Wizard.Layout(steps: ImportWizardStage.presentedSteps(currentStage: .triage)) {
                 VStack(spacing: GranaTheme.Spacing.md) {
                     OFXTransactionsListCard(
                         resolutions: Binding(

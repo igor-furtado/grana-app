@@ -35,8 +35,8 @@ struct CategorizationReviewView: View {
             .toolbar(.hidden, for: .windowToolbar)
             .frame(minWidth: 700, minHeight: 600)
         case let .wizard(onImport, onBack, _):
-            ImportWizardStageScaffold {
-                ImportWizardSplitLayout(currentStage: .review) {
+            AppUI.Wizard.Shell {
+                AppUI.Wizard.Layout(steps: ImportWizardStage.presentedSteps(currentStage: .review)) {
                     content
                 } sidebarActions: {
                     Button("Voltar") { onBack() }

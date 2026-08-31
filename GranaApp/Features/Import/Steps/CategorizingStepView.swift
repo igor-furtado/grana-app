@@ -11,8 +11,8 @@ struct CategorizingStepView: View {
     }
 
     var body: some View {
-        ImportWizardStageScaffold {
-            ImportWizardSplitLayout(currentStage: .classification) {
+        AppUI.Wizard.Shell {
+            AppUI.Wizard.Layout(steps: ImportWizardStage.presentedSteps(currentStage: .classification)) {
                 loadingCard
             } sidebarActions: {
                 Button("Cancelar") { onCancel() }
