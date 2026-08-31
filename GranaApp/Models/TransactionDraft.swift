@@ -20,6 +20,10 @@ struct TransactionDraft: Identifiable, Hashable {
     let signedAmount: Decimal
     let isSignReliable: Bool
     let occurredAt: Date
+    let originOccurredAt: Date
+    let purchaseType: TransactionPurchaseType?
+    let installmentIndex: Int?
+    let installmentCount: Int?
     let description: String
     let notes: String?
     /// FITID do OFX, quando existir. CSV/XLSX = nil.
@@ -36,6 +40,10 @@ struct TransactionDraft: Identifiable, Hashable {
         signedAmount: Decimal,
         isSignReliable: Bool = true,
         occurredAt: Date,
+        originOccurredAt: Date? = nil,
+        purchaseType: TransactionPurchaseType? = nil,
+        installmentIndex: Int? = nil,
+        installmentCount: Int? = nil,
         description: String,
         notes: String?,
         externalId: String?,
@@ -48,6 +56,10 @@ struct TransactionDraft: Identifiable, Hashable {
         self.signedAmount = signedAmount
         self.isSignReliable = isSignReliable
         self.occurredAt = occurredAt
+        self.originOccurredAt = originOccurredAt ?? occurredAt
+        self.purchaseType = purchaseType
+        self.installmentIndex = installmentIndex
+        self.installmentCount = installmentCount
         self.description = description
         self.notes = notes
         self.externalId = externalId

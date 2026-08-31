@@ -109,10 +109,7 @@ as $$
         left join lateral (
             select
                 category.kind,
-                case
-                    when txn.refund_of_transaction_id is null then txn.amount_cents
-                    else -txn.amount_cents
-                end as signed_amount
+                txn.amount_cents as signed_amount
             from app_private.transactions txn
             join app_private.category_catalog category
                 on category.id = txn.category_id
@@ -136,10 +133,7 @@ as $$
         left join lateral (
             select
                 category.kind,
-                case
-                    when txn.refund_of_transaction_id is null then txn.amount_cents
-                    else -txn.amount_cents
-                end as signed_amount
+                txn.amount_cents as signed_amount
             from app_private.transactions txn
             join app_private.category_catalog category
                 on category.id = txn.category_id
@@ -197,10 +191,7 @@ as $$
             coalesce(root.id, category.id) as category_id,
             coalesce(root.name, category.name) as category_name,
             coalesce(root.slug, category.slug) as category_slug,
-            case
-                when txn.refund_of_transaction_id is null then txn.amount_cents
-                else -txn.amount_cents
-            end as signed_amount
+            txn.amount_cents as signed_amount
         from context
         cross join bounds
         join app_private.transactions txn
@@ -252,10 +243,7 @@ as $$
     )
     select
         (extract(dow from txn.occurred_at at time zone bounds.timezone_name)::integer + 1) as weekday,
-        sum(case
-            when txn.refund_of_transaction_id is null then txn.amount_cents
-            else -txn.amount_cents
-        end) as total_cents,
+        sum(txn.amount_cents) as total_cents,
         count(*)::bigint as count
     from context
     cross join bounds
@@ -306,10 +294,7 @@ as $$
                 )::date
             ) as month_start,
             category.kind,
-            case
-                when txn.refund_of_transaction_id is null then txn.amount_cents
-                else -txn.amount_cents
-            end as signed_amount
+            txn.amount_cents as signed_amount
         from context
         cross join bounds
         join app_private.transactions txn

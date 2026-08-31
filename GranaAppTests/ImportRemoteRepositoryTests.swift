@@ -80,6 +80,7 @@ struct ImportClientAndCommitBuilderTests {
         let fallbackId = UUID()
         let key = UUID()
         let occurredAt = Date()
+        let originOccurredAt = occurredAt.addingTimeInterval(-86_400)
         let categories = [
             makeCategory(
                 id: fallbackId,
@@ -108,6 +109,10 @@ struct ImportClientAndCommitBuilderTests {
                     importBatchId: batchId,
                     signedAmount: Decimal(string: "-42.50") ?? 0,
                     occurredAt: occurredAt,
+                    originOccurredAt: originOccurredAt,
+                    purchaseType: .installment,
+                    installmentIndex: 3,
+                    installmentCount: 10,
                     description: "Mercado",
                     notes: "Compra",
                     externalId: "FIT-123"
@@ -144,8 +149,16 @@ struct ImportClientAndCommitBuilderTests {
         #expect(input.rows.first?.categorySlug == "alimentacao")
         #expect(input.rows.first?.subcategoryId == subcategoryId)
         #expect(input.rows.first?.amount == Decimal(string: "42.50"))
+        #expect(input.rows.first?.originOccurredAt == originOccurredAt)
+        #expect(input.rows.first?.purchaseType == .installment)
+        #expect(input.rows.first?.installmentIndex == 3)
+        #expect(input.rows.first?.installmentCount == 10)
         #expect(request.pIdempotencyKey == key)
         #expect(request.pTransactions.first?.amountCents == 4250)
+        #expect(request.pTransactions.first?.originOccurredAt == originOccurredAt)
+        #expect(request.pTransactions.first?.purchaseType == "installment")
+        #expect(request.pTransactions.first?.installmentIndex == 3)
+        #expect(request.pTransactions.first?.installmentCount == 10)
     }
 
     @Test("ImportClient.live propaga resultado do commit remoto")

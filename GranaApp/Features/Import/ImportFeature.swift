@@ -298,6 +298,7 @@ struct ImportWizardFeature {
                             importBatchId: batchId,
                             signedAmount: row.derived.amount,
                             occurredAt: row.derived.occurredAt,
+                            originOccurredAt: row.derived.occurredAt,
                             description: row.derived.description,
                             notes: row.derived.notes,
                             externalId: row.raw.fitid
@@ -347,6 +348,10 @@ struct ImportWizardFeature {
                         importBatchId: batchId,
                         signedAmount: row.raw.amount,
                         occurredAt: row.derived.occurredAt,
+                        originOccurredAt: row.raw.date,
+                        purchaseType: row.raw.purchaseType,
+                        installmentIndex: row.raw.installmentIndex,
+                        installmentCount: row.raw.installmentCount,
                         description: row.derived.description,
                         notes: row.derived.notes,
                         externalId: row.externalId,
@@ -360,13 +365,16 @@ struct ImportWizardFeature {
                         importBatchId: batchId,
                         signedAmount: abs(row.raw.amount),
                         occurredAt: row.raw.date,
+                        originOccurredAt: row.raw.date,
                         description: row.raw.description,
                         notes: "Saldo importado do CSV Inter",
                         externalId: InterCreditCardCSVReader.makeExternalId(
                             date: row.raw.date,
                             description: row.raw.description,
                             amount: abs(row.raw.amount),
-                            tipo: "Saldo"
+                            purchaseType: nil,
+                            installmentIndex: nil,
+                            installmentCount: nil
                         )
                     )
                 })

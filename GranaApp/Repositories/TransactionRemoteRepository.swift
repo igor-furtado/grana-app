@@ -119,9 +119,41 @@ nonisolated struct TransactionMutationInput: Hashable {
     var subcategoryId: UUID?
     var amount: Decimal
     var occurredAt: Date
+    var originOccurredAt: Date
+    var purchaseType: TransactionPurchaseType?
+    var installmentIndex: Int?
+    var installmentCount: Int?
     var description: String
     var notes: String?
     var destinationAccountId: UUID?
+
+    init(
+        accountId: UUID,
+        categoryId: UUID,
+        subcategoryId: UUID?,
+        amount: Decimal,
+        occurredAt: Date,
+        originOccurredAt: Date? = nil,
+        purchaseType: TransactionPurchaseType? = nil,
+        installmentIndex: Int? = nil,
+        installmentCount: Int? = nil,
+        description: String,
+        notes: String?,
+        destinationAccountId: UUID?
+    ) {
+        self.accountId = accountId
+        self.categoryId = categoryId
+        self.subcategoryId = subcategoryId
+        self.amount = amount
+        self.occurredAt = occurredAt
+        self.originOccurredAt = originOccurredAt ?? occurredAt
+        self.purchaseType = purchaseType
+        self.installmentIndex = installmentIndex
+        self.installmentCount = installmentCount
+        self.description = description
+        self.notes = notes
+        self.destinationAccountId = destinationAccountId
+    }
 }
 
 nonisolated struct TransactionRecordRow: Decodable {
@@ -131,6 +163,10 @@ nonisolated struct TransactionRecordRow: Decodable {
     let subcategoryId: UUID?
     let amountCents: Int64
     let occurredAt: Date
+    let originOccurredAt: Date
+    let purchaseType: TransactionPurchaseType?
+    let installmentIndex: Int?
+    let installmentCount: Int?
     let description: String
     let notes: String?
     let importBatchId: UUID?
@@ -140,6 +176,46 @@ nonisolated struct TransactionRecordRow: Decodable {
     let createdAt: Date
     let updatedAt: Date
 
+    init(
+        id: UUID,
+        accountId: UUID,
+        categoryId: UUID,
+        subcategoryId: UUID?,
+        amountCents: Int64,
+        occurredAt: Date,
+        originOccurredAt: Date? = nil,
+        purchaseType: TransactionPurchaseType? = nil,
+        installmentIndex: Int? = nil,
+        installmentCount: Int? = nil,
+        description: String,
+        notes: String?,
+        importBatchId: UUID?,
+        externalId: String?,
+        destinationAccountId: UUID?,
+        statementId: UUID?,
+        createdAt: Date,
+        updatedAt: Date
+    ) {
+        self.id = id
+        self.accountId = accountId
+        self.categoryId = categoryId
+        self.subcategoryId = subcategoryId
+        self.amountCents = amountCents
+        self.occurredAt = occurredAt
+        self.originOccurredAt = originOccurredAt ?? occurredAt
+        self.purchaseType = purchaseType
+        self.installmentIndex = installmentIndex
+        self.installmentCount = installmentCount
+        self.description = description
+        self.notes = notes
+        self.importBatchId = importBatchId
+        self.externalId = externalId
+        self.destinationAccountId = destinationAccountId
+        self.statementId = statementId
+        self.createdAt = createdAt
+        self.updatedAt = updatedAt
+    }
+
     enum CodingKeys: String, CodingKey {
         case id
         case accountId = "account_id"
@@ -147,6 +223,10 @@ nonisolated struct TransactionRecordRow: Decodable {
         case subcategoryId = "subcategory_id"
         case amountCents = "amount_cents"
         case occurredAt = "occurred_at"
+        case originOccurredAt = "origin_occurred_at"
+        case purchaseType = "purchase_type"
+        case installmentIndex = "installment_index"
+        case installmentCount = "installment_count"
         case description
         case notes
         case importBatchId = "import_batch_id"
@@ -306,6 +386,10 @@ final class TransactionRemoteRepository: TransactionRemoteRepositoryProtocol, Se
             subcategoryId: row.subcategoryId,
             amount: Converters.centsToDecimal(row.amountCents),
             occurredAt: row.occurredAt,
+            originOccurredAt: row.originOccurredAt,
+            purchaseType: row.purchaseType,
+            installmentIndex: row.installmentIndex,
+            installmentCount: row.installmentCount,
             description: row.description,
             notes: row.notes,
             importBatchId: row.importBatchId,
@@ -383,8 +467,12 @@ nonisolated struct CreateTransactionRequest: Encodable {
     let pSubcategoryId: UUID?
     let pAmountCents: Int64
     let pOccurredAt: Date
+    let pOriginOccurredAt: Date
     let pDescription: String
     let pNotes: String?
+    let pPurchaseType: String?
+    let pInstallmentIndex: Int?
+    let pInstallmentCount: Int?
     let pDestinationAccountId: UUID?
 
     init(input: TransactionMutationInput) {
@@ -393,8 +481,12 @@ nonisolated struct CreateTransactionRequest: Encodable {
         self.pSubcategoryId = input.subcategoryId
         self.pAmountCents = Converters.decimalToCents(input.amount)
         self.pOccurredAt = input.occurredAt
+        self.pOriginOccurredAt = input.originOccurredAt
         self.pDescription = input.description
         self.pNotes = input.notes
+        self.pPurchaseType = input.purchaseType?.rawValue
+        self.pInstallmentIndex = input.installmentIndex
+        self.pInstallmentCount = input.installmentCount
         self.pDestinationAccountId = input.destinationAccountId
     }
 
@@ -404,8 +496,12 @@ nonisolated struct CreateTransactionRequest: Encodable {
         case pSubcategoryId = "p_subcategory_id"
         case pAmountCents = "p_amount_cents"
         case pOccurredAt = "p_occurred_at"
+        case pOriginOccurredAt = "p_origin_occurred_at"
         case pDescription = "p_description"
         case pNotes = "p_notes"
+        case pPurchaseType = "p_purchase_type"
+        case pInstallmentIndex = "p_installment_index"
+        case pInstallmentCount = "p_installment_count"
         case pDestinationAccountId = "p_destination_account_id"
     }
 
@@ -416,8 +512,12 @@ nonisolated struct CreateTransactionRequest: Encodable {
         try container.encode(pSubcategoryId, forKey: .pSubcategoryId)
         try container.encode(pAmountCents, forKey: .pAmountCents)
         try container.encode(pOccurredAt, forKey: .pOccurredAt)
+        try container.encode(pOriginOccurredAt, forKey: .pOriginOccurredAt)
         try container.encode(pDescription, forKey: .pDescription)
         try container.encode(pNotes, forKey: .pNotes)
+        try container.encode(pPurchaseType, forKey: .pPurchaseType)
+        try container.encode(pInstallmentIndex, forKey: .pInstallmentIndex)
+        try container.encode(pInstallmentCount, forKey: .pInstallmentCount)
         try container.encode(pDestinationAccountId, forKey: .pDestinationAccountId)
     }
 }
@@ -429,8 +529,12 @@ nonisolated struct UpdateTransactionRequest: Encodable {
     let pSubcategoryId: UUID?
     let pAmountCents: Int64
     let pOccurredAt: Date
+    let pOriginOccurredAt: Date
     let pDescription: String
     let pNotes: String?
+    let pPurchaseType: String?
+    let pInstallmentIndex: Int?
+    let pInstallmentCount: Int?
     let pDestinationAccountId: UUID?
 
     init(transactionId: UUID, input: TransactionMutationInput) {
@@ -440,8 +544,12 @@ nonisolated struct UpdateTransactionRequest: Encodable {
         self.pSubcategoryId = input.subcategoryId
         self.pAmountCents = Converters.decimalToCents(input.amount)
         self.pOccurredAt = input.occurredAt
+        self.pOriginOccurredAt = input.originOccurredAt
         self.pDescription = input.description
         self.pNotes = input.notes
+        self.pPurchaseType = input.purchaseType?.rawValue
+        self.pInstallmentIndex = input.installmentIndex
+        self.pInstallmentCount = input.installmentCount
         self.pDestinationAccountId = input.destinationAccountId
     }
 
@@ -452,8 +560,12 @@ nonisolated struct UpdateTransactionRequest: Encodable {
         case pSubcategoryId = "p_subcategory_id"
         case pAmountCents = "p_amount_cents"
         case pOccurredAt = "p_occurred_at"
+        case pOriginOccurredAt = "p_origin_occurred_at"
         case pDescription = "p_description"
         case pNotes = "p_notes"
+        case pPurchaseType = "p_purchase_type"
+        case pInstallmentIndex = "p_installment_index"
+        case pInstallmentCount = "p_installment_count"
         case pDestinationAccountId = "p_destination_account_id"
     }
 
@@ -465,8 +577,12 @@ nonisolated struct UpdateTransactionRequest: Encodable {
         try container.encode(pSubcategoryId, forKey: .pSubcategoryId)
         try container.encode(pAmountCents, forKey: .pAmountCents)
         try container.encode(pOccurredAt, forKey: .pOccurredAt)
+        try container.encode(pOriginOccurredAt, forKey: .pOriginOccurredAt)
         try container.encode(pDescription, forKey: .pDescription)
         try container.encode(pNotes, forKey: .pNotes)
+        try container.encode(pPurchaseType, forKey: .pPurchaseType)
+        try container.encode(pInstallmentIndex, forKey: .pInstallmentIndex)
+        try container.encode(pInstallmentCount, forKey: .pInstallmentCount)
         try container.encode(pDestinationAccountId, forKey: .pDestinationAccountId)
     }
 }

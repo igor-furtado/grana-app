@@ -169,6 +169,10 @@ enum ImportCommitBuilder {
                     subcategoryId: row.subcategoryId,
                     amount: abs(row.draft.signedAmount),
                     occurredAt: row.draft.occurredAt,
+                    originOccurredAt: row.draft.originOccurredAt,
+                    purchaseType: row.draft.purchaseType,
+                    installmentIndex: row.draft.installmentIndex,
+                    installmentCount: row.draft.installmentCount,
                     description: row.draft.description,
                     notes: row.draft.notes,
                     externalId: row.draft.externalId
@@ -294,7 +298,9 @@ private extension ImportClient {
                         date: raw.date,
                         description: raw.description,
                         amount: raw.amount,
-                        tipo: raw.tipo
+                        purchaseType: raw.purchaseType,
+                        installmentIndex: raw.installmentIndex,
+                        installmentCount: raw.installmentCount
                     ),
                     isDuplicate: false,
                     selected: true

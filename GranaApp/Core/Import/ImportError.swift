@@ -13,6 +13,7 @@ enum ImportError: LocalizedError {
     case templateInvalidJSON
     case csvHeaderMismatch(expected: [String], got: [String])
     case csvRowFieldCount(row: Int, expected: Int, got: Int)
+    case csvPurchaseTypeInvalid(row: Int, raw: String)
     /// Usuário tentou avançar sem escolher conta de destino pro statement OFX
     /// ou pra fatura CSV.
     case accountNotSelected
@@ -45,6 +46,8 @@ enum ImportError: LocalizedError {
             return "Cabeçalho do CSV não bate. Esperado: \(expected.joined(separator: ", ")). Encontrado: \(got.joined(separator: ", "))."
         case let .csvRowFieldCount(row, expected, got):
             return "Linha \(row): número de campos inesperado (esperava \(expected), encontrou \(got))."
+        case let .csvPurchaseTypeInvalid(row, raw):
+            return "Linha \(row): tipo de compra inválido (\"\(raw)\")."
         case .accountNotSelected:
             return "Selecione a conta de destino antes de avançar."
         case .noCreditCardAccount:

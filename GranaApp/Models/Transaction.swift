@@ -1,5 +1,10 @@
 import Foundation
 
+enum TransactionPurchaseType: String, Codable, Hashable, Sendable {
+    case cash
+    case installment
+}
+
 /// Um movimento financeiro: gasto, receita ou transferência.
 ///
 /// **Por que `Decimal` em vez de `Double` para valor monetário:**
@@ -16,6 +21,10 @@ struct Transaction: Identifiable, Codable, Hashable {
     var subcategoryId: UUID?
     var amount: Decimal
     var occurredAt: Date
+    var originOccurredAt: Date
+    var purchaseType: TransactionPurchaseType?
+    var installmentIndex: Int?
+    var installmentCount: Int?
     var description: String
     var notes: String?
     /// Fase 3: NULL para entradas manuais; preenchido pelo commit de import.
@@ -47,6 +56,10 @@ struct Transaction: Identifiable, Codable, Hashable {
         subcategoryId: UUID? = nil,
         amount: Decimal,
         occurredAt: Date,
+        originOccurredAt: Date? = nil,
+        purchaseType: TransactionPurchaseType? = nil,
+        installmentIndex: Int? = nil,
+        installmentCount: Int? = nil,
         description: String,
         notes: String? = nil,
         importBatchId: UUID? = nil,
@@ -62,6 +75,10 @@ struct Transaction: Identifiable, Codable, Hashable {
         self.subcategoryId = subcategoryId
         self.amount = amount
         self.occurredAt = occurredAt
+        self.originOccurredAt = originOccurredAt ?? occurredAt
+        self.purchaseType = purchaseType
+        self.installmentIndex = installmentIndex
+        self.installmentCount = installmentCount
         self.description = description
         self.notes = notes
         self.importBatchId = importBatchId

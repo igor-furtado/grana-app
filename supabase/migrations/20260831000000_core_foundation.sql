@@ -138,13 +138,16 @@ create table if not exists app_private.transactions (
     subcategory_id uuid,
     amount_cents bigint not null check (amount_cents > 0),
     occurred_at timestamptz not null,
+    origin_occurred_at timestamptz not null,
+    purchase_type text,
+    installment_index integer,
+    installment_count integer,
     description text not null check (length(trim(description)) > 0),
     notes text,
     import_batch_id uuid,
     external_id text,
     destination_account_id uuid,
     statement_id uuid,
-    refund_of_transaction_id uuid,
     created_at timestamptz not null default timezone('utc', now()),
     updated_at timestamptz not null default timezone('utc', now()),
     unique (user_id, id),
@@ -160,9 +163,27 @@ create table if not exists app_private.transactions (
     foreign key (user_id, statement_id)
         references app_private.statements (user_id, id)
         on delete set null,
-    foreign key (user_id, refund_of_transaction_id)
-        references app_private.transactions (user_id, id)
-        on delete set null
+    constraint transactions_purchase_shape_check
+    check (
+        (
+            purchase_type is null
+            and installment_index is null
+            and installment_count is null
+        )
+        or (
+            purchase_type = 'cash'
+            and installment_index is null
+            and installment_count is null
+        )
+        or (
+            purchase_type = 'installment'
+            and installment_index is not null
+            and installment_count is not null
+            and installment_index >= 1
+            and installment_count >= 2
+            and installment_index <= installment_count
+        )
+    )
 );
 
 create unique index if not exists transactions_user_account_external_id_idx
@@ -186,22 +207,6 @@ create table if not exists app_private.statement_payments (
         on delete cascade
 );
 
-create table if not exists app_private.statement_credit_applications (
-    id uuid primary key default gen_random_uuid(),
-    user_id uuid not null references app_private.user_profiles (user_id) on delete cascade,
-    source_statement_id uuid not null,
-    destination_statement_id uuid not null,
-    applied_amount_cents bigint not null check (applied_amount_cents > 0),
-    created_at timestamptz not null default timezone('utc', now()),
-    unique (user_id, id),
-    foreign key (user_id, source_statement_id)
-        references app_private.statements (user_id, id)
-        on delete cascade,
-    foreign key (user_id, destination_statement_id)
-        references app_private.statements (user_id, id)
-        on delete cascade
-);
-
 do $$
 declare
     table_name text;
@@ -216,7 +221,6 @@ begin
         'import_batches',
         'transactions',
         'statement_payments',
-        'statement_credit_applications'
     ]
     loop
         execute format('alter table app_private.%I enable row level security', table_name);
@@ -256,7 +260,6 @@ begin
         'import_batches',
         'transactions',
         'statement_payments',
-        'statement_credit_applications'
     ]
     loop
         execute format(
@@ -282,51 +285,3 @@ begin
     end loop;
 end;
 $$;
-
-create or replace function api.v1_ensure_profile()
-returns table (
-    user_id uuid,
-    default_currency text,
-    timezone text,
-    created_at timestamptz,
-    updated_at timestamptz
-)
-language plpgsql
-security definer
-set search_path = ''
-as $$
-declare
-    target_user_id uuid := auth.uid();
-begin
-    if target_user_id is null then
-        raise exception using
-            errcode = '42501',
-            message = 'Authentication required';
-    end if;
-
-    return query
-    insert into app_private.user_profiles as profile (
-        user_id,
-        default_currency,
-        timezone
-    )
-    values (
-        target_user_id,
-        'BRL',
-        'UTC'
-    )
-    on conflict on constraint user_profiles_pkey do update
-    set updated_at = profile.updated_at
-    returning
-        profile.user_id,
-        profile.default_currency,
-        profile.timezone,
-        profile.created_at,
-        profile.updated_at;
-end;
-$$;
-
-revoke all on function api.v1_ensure_profile() from public;
-revoke all on function api.v1_ensure_profile() from anon;
-revoke all on function api.v1_ensure_profile() from authenticated;
-grant execute on function api.v1_ensure_profile() to authenticated;

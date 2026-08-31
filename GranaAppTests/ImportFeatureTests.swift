@@ -178,4 +178,24 @@ struct ImportFeatureTests {
         #expect(statement.skippedNegatives.first?.kind == .balance)
         #expect(statement.skippedNegatives.last?.kind == .payment)
     }
+
+    @Test("CSV extrai compra à vista e compra parcelada como metadados estruturados")
+    func csvReaderExtractsStructuredPurchaseMetadata() throws {
+        let csv = """
+        Data,Lançamento,Categoria,Tipo,Valor
+        31/08/2026,RESTAURANTE,ALIMENTACAO,Compra à vista,"R$ 50,00"
+        31/01/2026,VIAGEM,VIAGEM,Parcela 8/10,"R$ 300,00"
+        """
+        let data = csv.data(using: .utf8) ?? Data()
+
+        let statement = try InterCreditCardCSVReader().read(data: data)
+
+        #expect(statement.rows.count == 2)
+        #expect(statement.rows[0].purchaseType == .cash)
+        #expect(statement.rows[0].installmentIndex == nil)
+        #expect(statement.rows[0].installmentCount == nil)
+        #expect(statement.rows[1].purchaseType == .installment)
+        #expect(statement.rows[1].installmentIndex == 8)
+        #expect(statement.rows[1].installmentCount == 10)
+    }
 }

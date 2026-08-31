@@ -88,6 +88,10 @@ nonisolated struct ImportTransactionCommitInput: Hashable, Sendable {
     var subcategoryId: UUID?
     var amount: Decimal
     var occurredAt: Date
+    var originOccurredAt: Date
+    var purchaseType: TransactionPurchaseType?
+    var installmentIndex: Int?
+    var installmentCount: Int?
     var description: String
     var notes: String?
     var externalId: String?
@@ -377,6 +381,10 @@ nonisolated struct CommitImportTransactionRequest: Encodable, Hashable, Sendable
     let subcategoryId: UUID?
     let amountCents: Int64
     let occurredAt: Date
+    let originOccurredAt: Date
+    let purchaseType: String?
+    let installmentIndex: Int?
+    let installmentCount: Int?
     let description: String
     let notes: String?
     let externalId: String?
@@ -388,6 +396,10 @@ nonisolated struct CommitImportTransactionRequest: Encodable, Hashable, Sendable
         subcategoryId = input.subcategoryId
         amountCents = Converters.decimalToCents(input.amount)
         occurredAt = input.occurredAt
+        originOccurredAt = input.originOccurredAt
+        purchaseType = input.purchaseType?.rawValue
+        installmentIndex = input.installmentIndex
+        installmentCount = input.installmentCount
         description = input.description
         notes = input.notes
         externalId = input.externalId
@@ -400,6 +412,10 @@ nonisolated struct CommitImportTransactionRequest: Encodable, Hashable, Sendable
         case subcategoryId = "subcategory_id"
         case amountCents = "amount_cents"
         case occurredAt = "occurred_at"
+        case originOccurredAt = "origin_occurred_at"
+        case purchaseType = "purchase_type"
+        case installmentIndex = "installment_index"
+        case installmentCount = "installment_count"
         case description
         case notes
         case externalId = "external_id"

@@ -90,6 +90,10 @@ struct TransactionRemoteRepositoryTests {
             subcategoryId: nil,
             amount: Decimal(string: "123.45") ?? 0,
             occurredAt: Date(),
+            originOccurredAt: Date().addingTimeInterval(-86_400),
+            purchaseType: .installment,
+            installmentIndex: 2,
+            installmentCount: 5,
             description: "Mercado",
             notes: "Sem observações",
             destinationAccountId: nil
@@ -103,6 +107,12 @@ struct TransactionRemoteRepositoryTests {
 
         #expect(createRequest.pAmountCents == 12345)
         #expect(updateRequest.pAmountCents == 12345)
+        #expect(createRequest.pPurchaseType == "installment")
+        #expect(createRequest.pInstallmentIndex == 2)
+        #expect(createRequest.pInstallmentCount == 5)
+        #expect(updateRequest.pPurchaseType == "installment")
+        #expect(updateRequest.pInstallmentIndex == 2)
+        #expect(updateRequest.pInstallmentCount == 5)
     }
 
     @Test("Payload de create preserva parâmetros opcionais nulos para RPC")
@@ -113,6 +123,9 @@ struct TransactionRemoteRepositoryTests {
 
         #expect(payload["p_subcategory_id"] is NSNull)
         #expect(payload["p_notes"] is NSNull)
+        #expect(payload["p_purchase_type"] is NSNull)
+        #expect(payload["p_installment_index"] is NSNull)
+        #expect(payload["p_installment_count"] is NSNull)
         #expect(payload["p_destination_account_id"] is NSNull)
     }
 
@@ -127,6 +140,9 @@ struct TransactionRemoteRepositoryTests {
 
         #expect(payload["p_subcategory_id"] is NSNull)
         #expect(payload["p_notes"] is NSNull)
+        #expect(payload["p_purchase_type"] is NSNull)
+        #expect(payload["p_installment_index"] is NSNull)
+        #expect(payload["p_installment_count"] is NSNull)
         #expect(payload["p_destination_account_id"] is NSNull)
     }
 }
@@ -320,6 +336,10 @@ private func makeTransactionRecordRow(
         subcategoryId: nil,
         amountCents: amountCents,
         occurredAt: occurredAt,
+        originOccurredAt: occurredAt,
+        purchaseType: nil,
+        installmentIndex: nil,
+        installmentCount: nil,
         description: "Item \(id.uuidString.prefix(4))",
         notes: nil,
         importBatchId: nil,

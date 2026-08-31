@@ -35,6 +35,9 @@ struct InterCreditCardCSVReader {
         /// "Compra à vista" ou "Parcela N/M". Vai pra `notes` também e entra
         /// no `external_id` sintético pra distinguir parcelas do mesmo mês.
         let tipo: String
+        let purchaseType: TransactionPurchaseType
+        let installmentIndex: Int?
+        let installmentCount: Int?
         /// Magnitude positiva (decimal). Negativos foram filtrados antes.
         let amount: Decimal
     }
@@ -100,7 +103,6 @@ struct InterCreditCardCSVReader {
             guard let amount = Self.parseAmount(valueStr) else {
                 throw ImportError.amountParseFailed(row: rowNumber, raw: valueStr)
             }
-
             if amount < 0 {
                 skippedNegatives.append(SkippedRow(
                     date: date,
@@ -110,12 +112,18 @@ struct InterCreditCardCSVReader {
                 ))
                 continue
             }
+            guard let purchaseMetadata = Self.parsePurchaseMetadata(tipo) else {
+                throw ImportError.csvPurchaseTypeInvalid(row: rowNumber, raw: tipo)
+            }
 
             parsed.append(Row(
                 date: date,
                 description: description,
                 interCategory: interCategory,
                 tipo: tipo,
+                purchaseType: purchaseMetadata.type,
+                installmentIndex: purchaseMetadata.installmentIndex,
+                installmentCount: purchaseMetadata.installmentCount,
                 amount: amount
             ))
         }
@@ -248,6 +256,36 @@ struct InterCreditCardCSVReader {
 
     // MARK: - Date / amount
 
+    private static func parsePurchaseMetadata(_ raw: String) -> (
+        type: TransactionPurchaseType,
+        installmentIndex: Int?,
+        installmentCount: Int?
+    )? {
+        let normalized = raw
+            .trimmingCharacters(in: .whitespacesAndNewlines)
+            .folding(options: [.diacriticInsensitive, .caseInsensitive], locale: .current)
+            .lowercased()
+
+        if normalized == "compra a vista" {
+            return (.cash, nil, nil)
+        }
+
+        let parts = normalized.split(separator: " ")
+        guard parts.count == 2,
+              parts[0] == "parcela"
+        else {
+            return nil
+        }
+        let installments = parts[1].split(separator: "/")
+        guard installments.count == 2,
+              let installmentIndex = Int(installments[0]),
+              let installmentCount = Int(installments[1])
+        else {
+            return nil
+        }
+        return (.installment, installmentIndex, installmentCount)
+    }
+
     /// `dd/MM/yyyy` em pt_BR. Timezone do usuário — a fatura traz só o dia,
     /// então usar local evita drift por UTC.
     private static let dateFormatter: DateFormatter = {
@@ -304,16 +342,26 @@ struct InterCreditCardCSVReader {
     }
 
     /// `external_id` sintético pra dedup. O CSV do Inter não tem ID único
-    /// por linha, então construímos a chave a partir de (data + descrição +
-    /// valor + tipo). `tipo` no hash diferencia parcelas (Parcela 1/3 vs
-    /// 2/3) que apareceriam idênticas senão.
+    /// por linha, então construímos a chave canônica a partir da data de
+    /// origem, descrição normalizada, valor e metadados estruturais da compra.
     ///
     /// Prefixo `inter-cc:` distingue do `FITID` do OFX caso descrição/valor
     /// coincidam por acaso entre fontes distintas.
-    static func makeExternalId(date: Date, description: String, amount: Decimal, tipo: String) -> String {
+    static func makeExternalId(
+        date: Date,
+        description: String,
+        amount: Decimal,
+        purchaseType: TransactionPurchaseType?,
+        installmentIndex: Int?,
+        installmentCount: Int?
+    ) -> String {
         let dateStr = isoDayFormatter.string(from: date)
         let amountStr = NSDecimalNumber(decimal: amount).stringValue
-        return "inter-cc:\(dateStr)|\(description)|\(amountStr)|\(tipo)"
+        let normalizedDescription = normalizeDescription(description).lowercased()
+        let purchaseTypeValue = purchaseType?.rawValue ?? "unknown"
+        let installmentPart = installmentIndex.map(String.init) ?? "-"
+        let countPart = installmentCount.map(String.init) ?? "-"
+        return "inter-cc:\(dateStr)|\(normalizedDescription)|\(amountStr)|\(purchaseTypeValue)|\(installmentPart)|\(countPart)"
     }
 
     private static let isoDayFormatter: DateFormatter = {

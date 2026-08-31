@@ -48,8 +48,28 @@ _Evite_: Saldo atual, patrimônio
 ## Movimentações
 
 **Transação**:
-Movimento financeiro ocorrido em uma conta, classificado como receita, despesa ou transferência. Seu valor é sempre expresso como magnitude positiva; a classificação determina seu efeito financeiro.
+Movimento financeiro ocorrido em uma conta, classificado como receita, despesa ou transferência. Seu valor é sempre expresso como magnitude positiva; a classificação determina seu efeito financeiro. Toda transação carrega data de competência e data de origem.
 _Evite_: Lançamento, movimentação, operação
+
+**Tipo de compra**:
+Classificação estrutural de uma compra de cartão usada para auditoria e deduplicação. Pode ser à vista ou parcelada.
+_Evite_: Texto bruto do banco, modalidade informal
+
+**Índice da parcela**:
+Posição ordinal de uma compra parcelada dentro da sua série, contada a partir de 1. Não se aplica a compras à vista.
+_Evite_: Número solto da parcela, quando faltar a noção de ordem na série
+
+**Quantidade total de parcelas**:
+Total de parcelas previsto para uma compra parcelada. Não se aplica a compras à vista.
+_Evite_: Última parcela, duração, quando o sentido for o total contratado
+
+**Data de competência**:
+Data principal de uma transação para efeitos de filtros, dashboards, ordenação e vínculo com faturas. Em compras parceladas importadas, pode ser derivada pelo produto para representar o ciclo correto de cada parcela.
+_Evite_: Data real, quando estiver distinguindo da data informada pela fonte
+
+**Data de origem**:
+Data usada para identificar duplicações de transações e, quando a transação vem de uma fonte externa, preserva a data informada pela origem para auditoria. Em compras parceladas de certas instituições, serve como âncora da primeira parcela da série e o produto deriva as parcelas seguintes somando meses a partir dela.
+_Evite_: Data principal, data de competência
 
 **Receita**:
 Transação que representa ganho ou entrada de dinheiro reconhecida na análise financeira.
