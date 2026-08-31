@@ -74,17 +74,15 @@ private struct CreditCardSelectorCard: View {
                 }
 
                 if let limit = card.details?.creditLimit, limit > 0 {
+                    let progress = usagePercent(limit: limit)
                     VStack(alignment: .leading, spacing: GranaTheme.Spacing.xs) {
-                        CreditCardUsageBar(
-                            percent: usagePercent(limit: limit),
-                            tint: barTint(limit: limit)
-                        )
+                        AppUI.UsageMeterBar(progress: progress)
                         HStack {
                             Text("Limite \(limit.formatted(.currency(code: card.account.currency)))")
                                 .font(GranaTheme.Typography.caption1)
                                 .foregroundStyle(GranaTheme.Palette.muted)
                             Spacer(minLength: GranaTheme.Spacing.none)
-                            Text("\(Int(usagePercent(limit: limit) * 100))%")
+                            Text("\(Int(progress * 100))%")
                                 .font(GranaTheme.Typography.caption1Emphasis)
                                 .foregroundStyle(GranaTheme.Palette.ink)
                         }
@@ -133,35 +131,10 @@ private struct CreditCardSelectorCard: View {
             }
     }
 
-    private func barTint(limit: Decimal) -> Color {
-        let percent = usagePercent(limit: limit)
-        if percent < 0.30 { return .success }
-        if percent < 0.70 { return .warning }
-        return .danger
-    }
-
     private func usagePercent(limit: Decimal) -> Double {
         let total = NSDecimalNumber(decimal: limit).doubleValue
         guard total > 0 else { return 0 }
         let used = NSDecimalNumber(decimal: card.currentBalance.magnitude).doubleValue
         return max(0, min(1, used / total))
-    }
-}
-
-private struct CreditCardUsageBar: View {
-    let percent: Double
-    let tint: Color
-
-    var body: some View {
-        GeometryReader { geometry in
-            ZStack(alignment: .leading) {
-                RoundedRectangle(cornerRadius: 999, style: .continuous)
-                    .fill(GranaTheme.Palette.soft)
-                RoundedRectangle(cornerRadius: 999, style: .continuous)
-                    .fill(tint)
-                    .frame(width: max(6, geometry.size.width * percent))
-            }
-        }
-        .frame(height: 8)
     }
 }

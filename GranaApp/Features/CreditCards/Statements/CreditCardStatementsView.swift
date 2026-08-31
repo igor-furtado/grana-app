@@ -150,9 +150,7 @@ private struct LimitGaugeBlock: View {
     }
 
     private var color: Color {
-        if percent < 0.30 { return .success }
-        if percent < 0.70 { return .warning }
-        return .danger
+        AppUI.UsageMeterBar.fill(for: percent)
     }
 
     private var available: Decimal {
@@ -183,16 +181,12 @@ private struct LimitGaugeBlock: View {
                 }
             }
 
-            GeometryReader { geo in
-                ZStack(alignment: .leading) {
-                    Capsule()
-                        .fill(Color.secondary.opacity(0.18))
-                    Capsule()
-                        .fill(color)
-                        .frame(width: max(4, geo.size.width * percent))
-                }
-            }
-            .frame(height: 8)
+            AppUI.UsageMeterBar(
+                progress: percent,
+                fill: color,
+                track: Color.secondary.opacity(0.18),
+                minimumFillWidth: 4
+            )
 
             HStack(spacing: GranaTheme.Spacing.md) {
                 HStack(spacing: GranaTheme.Spacing.xs) {
