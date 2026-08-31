@@ -1,58 +1,77 @@
-# 0012 - Formularios densos com Form nativo em sheet
+# 0012 - Fluxos modais principais com modal de workspace proporcional
 
 - Status: aceito
-- Data: 2026-08-29
+- Data: 2026-08-31
 
 ## Contexto
 
-Os formularios principais do GranaApp passaram a divergir entre si. Algumas
-telas usavam `Form(.grouped)` com pouca adaptacao visual, enquanto
-`TransactionFormView` evoluiu para um drawer proprio com shell e composicao
-customizados.
+Os fluxos modais principais do GranaApp passaram a divergir entre si. Parte do
+app dependia de `sheet` com comportamento nativo quase sem adaptacao, enquanto
+outros fluxos exigiam composicao mais ampla, sidebar propria e area de trabalho
+proporcional ao tamanho atual da janela.
 
 Essa divergencia criou dois problemas:
 
-- o app perdeu um padrao claro para formularios densos;
-- a vertical de transacoes passou a depender de uma infraestrutura de drawer que
-  nao representava mais a direcao visual escolhida para o produto.
+- o app perdeu um padrao claro para fluxos modais principais;
+- `sheet` deixou de atender bem fluxos multi-etapa e formularios densos que
+  precisam acompanhar o resize da janela e preservar proporcao util de
+  workspace.
 
 Ao mesmo tempo, a linguagem visual do app ja tinha tokens suficientes para
-ajustar formularios nativos sem abandonar o comportamento padrao do macOS.
+sustentar um modal inline do proprio app, com backdrop materializado e
+superficie interna alinhada ao tema, sem depender de drawers legados nem das
+limitacoes geometricas de `sheet`.
 
 ## Decisao
 
-Adotamos o seguinte padrao para formularios densos do app:
+Adotamos `modal de workspace` como padrao arquitetural para os fluxos modais
+principais do app.
 
-- formularios densos usam `Form(.grouped)` como base de comportamento nativo;
-- a apresentacao canonica desses formularios passa a ser `sheet`;
-- o drawer de transacoes e sua infraestrutura associada deixam de ser usados;
-- `AppUI.Form` passa a concentrar apenas a casca estrutural compartilhada dos
-  formularios, como shell, header, footer de acoes, headers/footers de secao e
-  mensagem de erro.
+- fluxos modais principais usam apresentacao inline sobre a janela atual, com
+  dimensoes proporcionais ao viewport e resize responsivo;
+- o `modal de workspace` bloqueia interacao com o shell autenticado, centraliza
+  o conteudo, mantem foco modal e fecha por acoes explicitas, com suporte
+  opcional a `Esc`;
+- `sheet` deixa de ser apresentacao canonica para formularios densos e fica
+  restrito a confirmacoes curtas e utilitarios pequenos;
+- formularios densos podem continuar usando `Form(.grouped)` quando a semantica
+  e o comportamento nativo do container fizerem sentido, mas o contrato de
+  apresentacao principal passa a ser o `modal de workspace`;
+- glass e backdrop com material passam a ser permitidos nesse contexto modal;
+  as superficies internas permanecem alinhadas aos tokens quentes e opacos do
+  app;
+- drawers legados e outras infraestruturas modais paralelas devem convergir
+  para o mesmo padrao comportamental e visual.
 
-O padrao se aplica aos formularios principais e seus parentes proximos de mesma
-familia visual, incluindo formularios de contas, cartoes, transacoes, edicao de
-datas de fatura, login e modais curtos de confirmacao.
+O padrao se aplica imediatamente aos fluxos modais principais novos e tambem
+estabelece meta explicita de migracao para os fluxos modais principais ja
+existentes. Confirmacoes curtas, pickers e utilitarios pequenos permanecem em
+`sheet` quando esse comportamento for suficiente.
 
 ## Consequencias
 
 Positivas:
 
-- o app volta a ter um padrao unico e reconhecivel para formularios;
-- os formularios preservam navegacao e comportamento nativos do macOS;
-- a vertical de transacoes deixa de depender de uma infraestrutura de drawer
-  paralela;
-- evolucoes futuras da casca de formularios passam a ter um ponto unico em
-  `AppUI.Form`.
+- o app volta a ter um padrao unico e reconhecivel para fluxos modais
+  principais;
+- fluxos densos e multi-etapa passam a responder ao tamanho real da janela sem
+  perder protagonismo visual;
+- a infraestrutura modal deixa de oscilar entre `sheet`, drawer e composicoes
+  ad hoc;
+- migracoes futuras podem convergir comportamento e linguagem visual em torno do
+  mesmo contrato de modal.
 
 Negativas:
 
-- formularios mais complexos, especialmente o de transacoes, perdem parte da
-  liberdade de layout do shell totalmente customizado;
-- a migracao exige reorganizar views existentes e remover infraestrutura
-  associada ao drawer.
+- a equipe passa a ser responsavel por preservar manualmente invariantes que o
+  `sheet` entregava de forma nativa, como bloqueio modal, foco e fechamento
+  previsivel;
+- a migracao exige revisar fluxos existentes e eliminar usos de `sheet` que hoje
+  representam modais principais do produto.
 
 Neutras:
 
-- `AppUI.Form` nao substitui a composicao semantica de cada tela nem absorve
-  regras de negocio especificas de um formulario.
+- `AppUI.Form` continua sem substituir a composicao semantica de cada tela nem
+  absorver regras de negocio especificas de um formulario;
+- `Form(.grouped)` continua disponivel como primitive de composicao, nao como
+  escolha obrigatoria de apresentacao modal.

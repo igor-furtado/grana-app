@@ -29,9 +29,10 @@ teal nao substitui automaticamente receita, despesa ou transferencia.
 
 ## Superficies
 
-Use glass apenas no shell estrutural, como o rail autenticado. Glass e material
-nativo com overlay quente, sem contorno aparente e com sombra mais ampla para
-separar o chrome da tela.
+Use glass no shell estrutural, como o rail autenticado, e tambem no backdrop de
+`modal de workspace`. Glass e material nativo recebem overlay quente, sem
+contorno aparente e com sombra ampla para separar o chrome ou o plano modal da
+tela base.
 
 Cards de conteudo usam superficie `subtle`: preenchimento quente sem blur,
 sem borda externa e com sombra baixa para separar grupos analiticos.
@@ -39,6 +40,12 @@ sem borda externa e com sombra baixa para separar grupos analiticos.
 Listas densas, tabelas, formularios e rows repetidas usam `solid`: preenchimento
 quente solido, sombra baixa e linha `line`. `solid` e a unica superficie base
 com contorno de linha aparente.
+
+`Modal de workspace` e o padrao para fluxos modais principais do app. Ele
+ocupa area proporcional ao viewport atual, acompanha resize da janela, bloqueia
+interacao com o shell, centraliza o conteudo e preserva foco modal. A camada
+externa pode usar material; a superficie interna do modal continua seguindo os
+tokens quentes do app.
 
 Quando uma feature precisar de primitive visual reutilizavel, use `AppUI.*` como
 fachada oficial. `AppUI.Table` encapsula o shell visual padrao das tabelas do
@@ -62,7 +69,12 @@ Nao desenhe controles falsos de janela macOS dentro do conteudo do app real.
 Feature screens podem ocultar a window toolbar nativa quando tiverem header
 visual proprio integrado ao tema. Nesses casos, o header inline substitui o
 titulo e as acoes primarias da tela, e o primeiro bloco util passa a ser esse
-header. Modais e sheets tambem podem ocultar a toolbar nativa. O rail lateral continua alinhado ao topo da area util, sem margem superior externa, mantendo respiro interno proprio.
+header. `Modal de workspace` e `sheet` tambem podem ocultar a toolbar nativa. O
+rail lateral continua alinhado ao topo da area util, sem margem superior
+externa, mantendo respiro interno proprio.
+
+`Sheet` deixa de ser o padrao modal principal e fica restrito a confirmacoes
+curtas, pickers e utilitarios pequenos.
 
 ## Tipografia
 
@@ -122,6 +134,6 @@ especificas ou tokens de `Size` quando essa escala existir.
 ## Aplicacao Inicial
 
 A primeira fase cobre `GranaTheme`, light-only global, rail customizado,
-`LoginView`, `EmptyStateView`, `MetricCard` e containers do dashboard. Telas
-densas existentes devem receber apenas ajustes minimos de fundo/superficie ate
-que sejam redesenhadas explicitamente.
+`LoginView`, `EmptyStateView`, `MetricCard`, containers do dashboard e a
+convergencia dos fluxos modais principais para `modal de workspace`. Confirmacoes
+curtas e utilitarios pequenos podem continuar em `sheet`.

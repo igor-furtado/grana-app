@@ -27,8 +27,13 @@ Leia `docs/design-system.md` antes de alterar UI SwiftUI no GranaApp.
   primarias da tela.
 - Use o rail icon-only como shell autenticado. Todos os itens precisam de
   tooltip e label de acessibilidade.
-- Reserve glass para o shell estrutural. Cards de conteudo usam `subtle` sem
-  contorno; rows/listas/tabelas usam `solid`, a unica superficie com linha.
+- Reserve glass para o shell estrutural e para o backdrop de `modal de
+  workspace`. Cards de conteudo usam `subtle` sem contorno; rows/listas/tabelas
+  usam `solid`, a unica superficie com linha.
+- `Modal de workspace` e o padrao para fluxos modais principais. Ele precisa
+  acompanhar resize da janela, bloquear interacao com o shell, centralizar o
+  conteudo e manter foco modal.
+- Use `sheet` apenas para confirmacoes curtas e utilitarios pequenos.
 - Quando uma tela precisar de primitive visual reutilizavel, prefira `AppUI.*`
   em vez de instanciar `SwiftUI` direto. Isso inclui `AppUI.Table`,
   `AppUI.TextField`, `AppUI.Toggle`, `AppUI.DatePicker`,
