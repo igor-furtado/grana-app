@@ -310,3 +310,57 @@ extension Table where Sort == Never, FilterBar == EmptyView {
         }
     }
 }
+
+private struct TablePreviewRow: Identifiable {
+    let id = UUID()
+    let title: String
+    let detail: String
+    let amount: String
+}
+
+private struct TablePreview: View {
+    @State private var selection = Set<TablePreviewRow.ID>()
+
+    private let rows = [
+        TablePreviewRow(title: "Conta principal", detail: "Banco Inter", amount: "R$ 2.430,00"),
+        TablePreviewRow(title: "Cartão de crédito", detail: "Fechamento dia 10", amount: "R$ 890,14"),
+        TablePreviewRow(title: "Reserva", detail: "Caixinha", amount: "R$ 12.300,00"),
+    ]
+
+    var body: some View {
+        AppUIPreviewSurface(title: "Table") {
+            Table(rows, selection: $selection) {
+                TableColumn("Nome") { row in
+                    VStack(alignment: .leading, spacing: Theme.Spacing.xxs) {
+                        Text(row.title)
+                            .font(Theme.Typography.subheadlineEmphasis)
+                            .foregroundStyle(Theme.Palette.ink)
+                        Text(row.detail)
+                            .font(Theme.Typography.caption1)
+                            .foregroundStyle(Theme.Palette.muted)
+                    }
+                }
+                TableColumn("Saldo") { row in
+                    Text(row.amount)
+                        .font(Theme.Typography.moneySubheadline)
+                        .foregroundStyle(Theme.Palette.ink)
+                }
+            } filterBar: {
+                TableFilterBar {
+                    Text("3 itens")
+                        .font(Theme.Typography.caption1Emphasis)
+                        .foregroundStyle(Theme.Palette.tealDeep)
+                    Spacer()
+                    Text("Filter bar do AppUI")
+                        .font(Theme.Typography.caption1)
+                        .foregroundStyle(Theme.Palette.muted)
+                }
+            }
+            .frame(height: 260)
+        }
+    }
+}
+
+#Preview("AppUI.Table") {
+    TablePreview()
+}

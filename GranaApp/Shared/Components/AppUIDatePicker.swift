@@ -41,3 +41,29 @@ public struct DatePicker: View {
         }
     }
 }
+
+private struct DatePickerPreview: View {
+    @State private var invoiceDate = Date.now
+    @State private var dueDate = Date.now.addingTimeInterval(86_400 * 5)
+
+    var body: some View {
+        AppUIPreviewSurface(title: "DatePicker") {
+            VStack(alignment: .leading, spacing: Theme.Spacing.md) {
+                DatePicker(
+                    label: "Fechamento",
+                    selection: $invoiceDate
+                )
+
+                DatePicker(
+                    label: "Vencimento",
+                    selection: $dueDate,
+                    errorMessage: "A data precisa ser posterior ao fechamento."
+                )
+            }
+        }
+    }
+}
+
+#Preview("AppUI.DatePicker") {
+    DatePickerPreview()
+}

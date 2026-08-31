@@ -115,3 +115,25 @@ private struct CurrencyTextField: NSViewRepresentable {
         }
     }
 }
+
+private struct CurrencyFieldPreview: View {
+    @State private var cents = 249990
+
+    var body: some View {
+        AppUIPreviewSurface(title: "CurrencyField") {
+            VStack(alignment: .leading, spacing: Theme.Spacing.md) {
+                CurrencyField(label: "Limite disponível", cents: $cents)
+
+                CurrencyField(
+                    label: "Valor inválido",
+                    cents: $cents,
+                    errorMessage: "Revise o valor antes de continuar."
+                )
+            }
+        }
+    }
+}
+
+#Preview("AppUI.CurrencyField") {
+    CurrencyFieldPreview()
+}

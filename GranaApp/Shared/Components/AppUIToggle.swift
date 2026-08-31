@@ -49,3 +49,26 @@ public struct Toggle: View {
         }
     }
 }
+
+private struct TogglePreview: View {
+    @State private var archivedOnly = false
+    @State private var notificationsEnabled = true
+
+    var body: some View {
+        AppUIPreviewSurface(title: "Toggle") {
+            VStack(alignment: .leading, spacing: Theme.Spacing.md) {
+                Toggle(label: "Mostrar arquivadas", isOn: $archivedOnly)
+
+                Toggle(
+                    label: "Notificações",
+                    isOn: $notificationsEnabled,
+                    errorMessage: "Exemplo de mensagem auxiliar para o controle."
+                )
+            }
+        }
+    }
+}
+
+#Preview("AppUI.Toggle") {
+    TogglePreview()
+}

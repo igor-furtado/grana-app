@@ -58,3 +58,23 @@ public enum Layout {
         }
     }
 }
+
+private struct ScreenHeaderPreview: View {
+    var body: some View {
+        AppUIPreviewSurface(title: "Layout.ScreenHeader") {
+            Layout.ScreenHeader(
+                title: "Categorias",
+                subtitle: "Header inline para telas autenticadas."
+            ) {
+                Button("Nova categoria") {}
+                    .buttonStyle(GranaPrimaryButtonStyle())
+                Button("Exportar") {}
+                    .buttonStyle(GranaSecondaryButtonStyle())
+            }
+        }
+    }
+}
+
+#Preview("AppUI.Layout.ScreenHeader") {
+    ScreenHeaderPreview()
+}

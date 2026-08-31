@@ -626,3 +626,95 @@ public extension View {
         modifier(GranaSurfaceModifier(prominence: prominence, cornerRadius: cornerRadius))
     }
 }
+
+private struct ThemePreview: View {
+    private let paletteSwatches: [(String, Color)] = [
+        ("Background", Theme.Palette.background),
+        ("Paper", Theme.Palette.paper),
+        ("Ink", Theme.Palette.ink),
+        ("Teal", Theme.Palette.teal),
+        ("Gold", Theme.Palette.gold),
+        ("Green", Theme.Palette.green),
+        ("Red", Theme.Palette.red),
+        ("Amber", Theme.Palette.amber),
+    ]
+
+    private let sampleTokens = Array(Theme.Typography.tokens.prefix(6))
+
+    private let spacingTokens = Array(Theme.Spacing.tokens.prefix(5))
+
+    var body: some View {
+        AppUIPreviewSurface(title: "Theme") {
+            VStack(alignment: .leading, spacing: Theme.Spacing.xl) {
+                VStack(alignment: .leading, spacing: Theme.Spacing.sm) {
+                    Text("Palette")
+                        .font(Theme.Typography.headline)
+                        .foregroundStyle(Theme.Palette.ink)
+
+                    LazyVGrid(
+                        columns: [GridItem(.adaptive(minimum: 120), spacing: Theme.Spacing.sm)],
+                        alignment: .leading,
+                        spacing: Theme.Spacing.sm
+                    ) {
+                        ForEach(paletteSwatches, id: \.0) { name, color in
+                            VStack(alignment: .leading, spacing: Theme.Spacing.xs) {
+                                RoundedRectangle(cornerRadius: Theme.Radius.control, style: .continuous)
+                                    .fill(color)
+                                    .frame(height: 56)
+                                    .overlay {
+                                        RoundedRectangle(cornerRadius: Theme.Radius.control, style: .continuous)
+                                            .strokeBorder(Theme.Palette.line, lineWidth: 1)
+                                    }
+                                Text(name)
+                                    .font(Theme.Typography.caption1Emphasis)
+                                    .foregroundStyle(Theme.Palette.ink)
+                            }
+                        }
+                    }
+                }
+
+                VStack(alignment: .leading, spacing: Theme.Spacing.sm) {
+                    Text("Typography")
+                        .font(Theme.Typography.headline)
+                        .foregroundStyle(Theme.Palette.ink)
+
+                    ForEach(sampleTokens) { token in
+                        VStack(alignment: .leading, spacing: Theme.Spacing.xxs) {
+                            Text(token.name)
+                                .font(Theme.Typography.caption1Emphasis)
+                                .foregroundStyle(Theme.Palette.tealDeep)
+                            Text("Amostra visual do token \(token.name)")
+                                .font(token.font)
+                                .foregroundStyle(Theme.Palette.ink)
+                        }
+                    }
+                }
+
+                VStack(alignment: .leading, spacing: Theme.Spacing.sm) {
+                    Text("Spacing")
+                        .font(Theme.Typography.headline)
+                        .foregroundStyle(Theme.Palette.ink)
+
+                    ForEach(spacingTokens) { token in
+                        HStack(spacing: Theme.Spacing.sm) {
+                            Text(token.name)
+                                .font(Theme.Typography.caption1Emphasis)
+                                .foregroundStyle(Theme.Palette.ink)
+                                .frame(width: 72, alignment: .leading)
+                            RoundedRectangle(cornerRadius: Theme.Radius.pill, style: .continuous)
+                                .fill(Theme.Palette.teal.opacity(0.18))
+                                .frame(width: max(token.value * 6, 12), height: 12)
+                            Text(token.displayValue)
+                                .font(Theme.Typography.caption1)
+                                .foregroundStyle(Theme.Palette.muted)
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
+#Preview("AppUI.Theme") {
+    ThemePreview()
+}

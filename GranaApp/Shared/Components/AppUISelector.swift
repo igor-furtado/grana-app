@@ -174,3 +174,46 @@ public struct Selector<ID: Hashable>: View {
             placeholder.nilIfBlank
         }
 }
+
+private struct SelectorPreview: View {
+    @State private var selectedCategory: String? = "alimentacao"
+    @State private var selectedScope = "mes"
+
+    private let categoryOptions = [
+        SelectorOption(id: "alimentacao", title: "Alimentação", badge: "42"),
+        SelectorOption(id: "moradia", title: "Moradia", badge: "8"),
+        SelectorOption(id: "lazer", title: "Lazer", badge: "13"),
+    ]
+
+    private let scopeOptions = [
+        SelectorOption(id: "semana", title: "Semana"),
+        SelectorOption(id: "mes", title: "Mês"),
+        SelectorOption(id: "ano", title: "Ano"),
+    ]
+
+    var body: some View {
+        AppUIPreviewSurface(title: "Selector") {
+            VStack(alignment: .leading, spacing: Theme.Spacing.md) {
+                Selector(
+                    label: "Categoria",
+                    placeholder: "Selecione uma categoria",
+                    options: categoryOptions,
+                    selection: $selectedCategory,
+                    includesNoneOption: true,
+                    icon: Icon.sidebarCategories.systemImage
+                )
+
+                Selector(
+                    label: "Período",
+                    options: scopeOptions,
+                    selection: $selectedScope,
+                    style: .segmented
+                )
+            }
+        }
+    }
+}
+
+#Preview("AppUI.Selector") {
+    SelectorPreview()
+}

@@ -89,3 +89,32 @@ public struct UsageMeterBar: View {
         max(0, min(1, progress))
     }
 }
+
+private struct UsageMeterBarPreview: View {
+    var body: some View {
+        AppUIPreviewSurface(title: "UsageMeterBar") {
+            VStack(alignment: .leading, spacing: Theme.Spacing.lg) {
+                VStack(alignment: .leading, spacing: Theme.Spacing.xs) {
+                    Text("Faixas padrão")
+                        .font(Theme.Typography.subheadlineEmphasis)
+                        .foregroundStyle(Theme.Palette.ink)
+                    UsageMeterBar(progress: 0.18)
+                    UsageMeterBar(progress: 0.56)
+                    UsageMeterBar(progress: 0.92)
+                }
+
+                VStack(alignment: .leading, spacing: Theme.Spacing.xs) {
+                    Text("Fill explícito")
+                        .font(Theme.Typography.subheadlineEmphasis)
+                        .foregroundStyle(Theme.Palette.ink)
+                    UsageMeterBar(progress: 0.72, fill: Theme.Palette.tealDeep, height: 12)
+                }
+            }
+            .frame(maxWidth: 360)
+        }
+    }
+}
+
+#Preview("AppUI.UsageMeterBar") {
+    UsageMeterBarPreview()
+}

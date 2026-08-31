@@ -177,3 +177,51 @@ private extension Wizard {
         }
     }
 }
+
+private struct WizardPreview: View {
+    var body: some View {
+        AppUIPreviewSurface(title: "Wizard") {
+            Wizard.Shell {
+                Wizard.Layout(
+                    steps: [
+                        .init(title: "Origem", state: .completed),
+                        .init(title: "Revisão", state: .current),
+                        .init(title: "Confirmação", state: .pending),
+                    ]
+                ) {
+                    Form.Shell {
+                        Form.Header(
+                            title: "Revisar dados",
+                            subtitle: "Preview do shell principal do wizard."
+                        )
+
+                        VStack(alignment: .leading, spacing: Theme.Spacing.md) {
+                            Text("O conteúdo principal continua livre para a feature.")
+                                .font(Theme.Typography.body)
+                                .foregroundStyle(Theme.Palette.ink)
+                            UsageMeterBar(progress: 0.54)
+                        }
+                        .padding(.horizontal, Theme.Spacing.lg)
+
+                        Form.Actions(caption: "Ações laterais vivem na sidebar.") {
+                            Button("Voltar") {}
+                                .buttonStyle(GranaSecondaryButtonStyle())
+                            Button("Continuar") {}
+                                .buttonStyle(GranaPrimaryButtonStyle())
+                        }
+                    }
+                } sidebarActions: {
+                    Button("Cancelar") {}
+                        .buttonStyle(GranaSecondaryButtonStyle())
+                    Button("Salvar rascunho") {}
+                        .buttonStyle(GranaPrimaryButtonStyle())
+                }
+            }
+            .frame(height: 420)
+        }
+    }
+}
+
+#Preview("AppUI.Wizard") {
+    WizardPreview()
+}

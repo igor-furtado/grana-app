@@ -84,3 +84,34 @@ extension String {
         trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ? nil : self
     }
 }
+
+private struct FieldPreview: View {
+    var body: some View {
+        AppUIPreviewSurface(title: "Field") {
+            VStack(alignment: .leading, spacing: Theme.Spacing.md) {
+                Field(
+                    label: "Instituição",
+                    leadingSystemImage: Icon.sidebarInstitutions.systemImage
+                ) {
+                    Text("Banco Inter")
+                        .font(Theme.Typography.bodyEmphasis)
+                        .foregroundStyle(Theme.Palette.ink)
+                }
+
+                Field(
+                    label: "Descrição",
+                    leadingSystemImage: Icon.edit.systemImage,
+                    errorMessage: "O campo não pode ficar vazio."
+                ) {
+                    Text("Compra do mês")
+                        .font(Theme.Typography.body)
+                        .foregroundStyle(Theme.Palette.muted)
+                }
+            }
+        }
+    }
+}
+
+#Preview("AppUI.Field") {
+    FieldPreview()
+}

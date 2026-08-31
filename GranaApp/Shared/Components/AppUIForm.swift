@@ -193,3 +193,74 @@ public enum Modal {
         }
     }
 }
+
+private struct FormPreview: View {
+    @State private var title = "Assinatura"
+    @State private var amount = 3590
+    @State private var isRecurring = true
+
+    var body: some View {
+        AppUIPreviewSurface(title: "Form + Modal") {
+            VStack(alignment: .leading, spacing: Theme.Spacing.xl) {
+                Form.Shell {
+                    Form.Header(
+                        title: "Nova transação",
+                        subtitle: "Exemplo semântico mínimo para inspecionar o shell."
+                    ) {
+                        Button("Salvar") {}
+                            .buttonStyle(GranaPrimaryButtonStyle())
+                    }
+
+                    VStack(alignment: .leading, spacing: Theme.Spacing.md) {
+                        Form.SectionHeader(title: "Detalhes")
+
+                        TextField(
+                            label: "Título",
+                            text: $title,
+                            placeholder: "Descreva a despesa"
+                        )
+
+                        CurrencyField(label: "Valor", cents: $amount)
+
+                        Toggle(label: "Recorrente", isOn: $isRecurring)
+
+                        Form.SectionFooter(text: "Os campos aqui existem só para demonstrar o shell.")
+                    }
+                    .padding(.horizontal, Theme.Spacing.lg)
+
+                    Form.ErrorMessage(message: "Erro de exemplo para a seção.")
+
+                    Form.Actions(caption: "As ações ficam ancoradas no rodapé visual.") {
+                        Button("Cancelar") {}
+                            .buttonStyle(GranaSecondaryButtonStyle())
+                        Button("Salvar") {}
+                            .buttonStyle(GranaPrimaryButtonStyle())
+                    }
+                }
+
+                Modal.Workspace(width: 520, height: 280) {
+                    VStack(alignment: .leading, spacing: Theme.Spacing.md) {
+                        Text("Modal de workspace")
+                            .font(Theme.Typography.title3)
+                            .foregroundStyle(Theme.Palette.ink)
+                        Text("Preview local do shell modal do AppUI.")
+                            .font(Theme.Typography.subheadline)
+                            .foregroundStyle(Theme.Palette.muted)
+                        Spacer(minLength: Theme.Spacing.none)
+                        HStack {
+                            Spacer()
+                            Button("Fechar") {}
+                                .buttonStyle(GranaSecondaryButtonStyle())
+                        }
+                    }
+                    .padding(Theme.Spacing.xl)
+                }
+                .frame(height: 360)
+            }
+        }
+    }
+}
+
+#Preview("AppUI.Form") {
+    FormPreview()
+}

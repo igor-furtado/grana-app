@@ -69,3 +69,33 @@ public struct TextField: View {
         .buttonStyle(.plain)
     }
 }
+
+private struct TextFieldPreview: View {
+    @State private var name = "Conta principal"
+    @State private var notes = ""
+
+    var body: some View {
+        AppUIPreviewSurface(title: "TextField") {
+            VStack(alignment: .leading, spacing: Theme.Spacing.md) {
+                TextField(
+                    label: "Nome",
+                    text: $name,
+                    placeholder: "Ex.: Nubank",
+                    leadingSystemImage: Icon.sidebarAccounts.systemImage,
+                    showsClearButton: true
+                )
+
+                TextField(
+                    label: "Observações",
+                    text: $notes,
+                    placeholder: "Opcional",
+                    errorMessage: "Use uma descrição curta."
+                )
+            }
+        }
+    }
+}
+
+#Preview("AppUI.TextField") {
+    TextFieldPreview()
+}

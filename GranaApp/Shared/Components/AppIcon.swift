@@ -121,3 +121,47 @@ public enum Icon {
         }
     }
 }
+
+private struct IconPreview: View {
+    private let icons: [Icon] = [
+        .add,
+        .edit,
+        .delete,
+        .importFile,
+        .success,
+        .warning,
+        .sidebarDashboard,
+        .sidebarTransactions,
+        .sidebarCreditCards,
+        .sidebarProfile,
+    ]
+
+    private let columns = [
+        GridItem(.adaptive(minimum: 92), spacing: Theme.Spacing.sm),
+    ]
+
+    var body: some View {
+        AppUIPreviewSurface(title: "Icon") {
+            LazyVGrid(columns: columns, alignment: .leading, spacing: Theme.Spacing.sm) {
+                ForEach(icons, id: \.systemImage) { icon in
+                    VStack(spacing: Theme.Spacing.xs) {
+                        Image(systemName: icon.systemImage)
+                            .font(.system(size: Theme.IconSize.large, weight: .semibold))
+                            .foregroundStyle(Theme.Palette.tealDeep)
+                        Text(icon.systemImage)
+                            .font(Theme.Typography.caption2)
+                            .foregroundStyle(Theme.Palette.muted)
+                            .multilineTextAlignment(.center)
+                    }
+                    .padding(Theme.Spacing.md)
+                    .frame(maxWidth: .infinity)
+                    .granaSurface(.solid, cornerRadius: Theme.Radius.control)
+                }
+            }
+        }
+    }
+}
+
+#Preview("AppUI.Icon") {
+    IconPreview()
+}
