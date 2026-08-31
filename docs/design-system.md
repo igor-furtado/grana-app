@@ -47,10 +47,12 @@ interacao com o shell, centraliza o conteudo e preserva foco modal. A camada
 externa pode usar material; a superficie interna do modal continua seguindo os
 tokens quentes do app.
 
-Quando uma feature precisar de primitive visual reutilizavel, use `AppUI.*` como
+Quando uma feature precisar de fundacao visual reutilizavel, use `AppUI.*` como
 fachada oficial. `AppUI.Table` encapsula o shell visual padrao das tabelas do
 app sobre `SwiftUI.Table`; `AppUI.TextField`, `AppUI.Toggle`, `AppUI.DatePicker`, `AppUI.CurrencyField` e
-`AppUI.Selector` concentram os controles de entrada e selecao.
+`AppUI.Selector` concentram os controles de entrada e selecao. `AppUI.Layout.*`
+abriga shells estruturais recorrentes da tela, como headers inline que
+substituem a toolbar nativa.
 
 Estado de selecao, ordenacao, filtros e qualquer `load()`/`refresh()` continua
 na tela ou store; `AppUI.Table` nao possui estado de dados. `Section`,
@@ -67,11 +69,11 @@ rodape. Cada item deve ter tooltip e label de acessibilidade.
 
 Nao desenhe controles falsos de janela macOS dentro do conteudo do app real.
 Feature screens podem ocultar a window toolbar nativa quando tiverem header
-visual proprio integrado ao tema. Nesses casos, o header inline substitui o
-titulo e as acoes primarias da tela, e o primeiro bloco util passa a ser esse
-header. `Modal de workspace` e `sheet` tambem podem ocultar a toolbar nativa. O
-rail lateral continua alinhado ao topo da area util, sem margem superior
-externa, mantendo respiro interno proprio.
+visual proprio integrado ao tema. Nesses casos, o header inline via
+`AppUI.Layout.ScreenHeader` substitui o titulo e as acoes primarias da tela, e
+o primeiro bloco util passa a ser esse header. `Modal de workspace` e `sheet`
+tambem podem ocultar a toolbar nativa. O rail lateral continua alinhado ao topo
+da area util, sem margem superior externa, mantendo respiro interno proprio.
 
 `Sheet` deixa de ser o padrao modal principal e fica restrito a confirmacoes
 curtas, pickers e utilitarios pequenos.

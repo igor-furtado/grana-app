@@ -73,7 +73,7 @@ private struct CategoriesLoadedView: View {
     }
 
     private var header: some View {
-        FeatureScreenHeader(
+        AppUI.Layout.ScreenHeader(
             title: "Categorias",
             subtitle: "\(store.sortedRootCategories.count) categorias raiz no catálogo global"
         ) {

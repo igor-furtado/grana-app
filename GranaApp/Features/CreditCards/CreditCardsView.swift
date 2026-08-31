@@ -6,7 +6,7 @@ struct CreditCardsView: View {
 
     var body: some View {
         VStack(spacing: GranaTheme.Spacing.sm) {
-            FeatureScreenHeader(
+            AppUI.Layout.ScreenHeader(
                 title: "Cartões de crédito",
                 subtitle: store.list.summarySubtitle
             ) {

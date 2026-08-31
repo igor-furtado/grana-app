@@ -25,7 +25,7 @@ private struct SupportedInstitutionsLoadedView: View {
 
     var body: some View {
         VStack(spacing: GranaTheme.Spacing.sm) {
-            FeatureScreenHeader(
+            AppUI.Layout.ScreenHeader(
                 title: "Bancos suportados",
                 subtitle: store.subtitle
             ) {

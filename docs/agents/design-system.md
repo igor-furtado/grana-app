@@ -34,10 +34,11 @@ Leia `docs/design-system.md` antes de alterar UI SwiftUI no GranaApp.
   acompanhar resize da janela, bloquear interacao com o shell, centralizar o
   conteudo e manter foco modal.
 - Use `sheet` apenas para confirmacoes curtas e utilitarios pequenos.
-- Quando uma tela precisar de primitive visual reutilizavel, prefira `AppUI.*`
+- Quando uma tela precisar de fundacao visual reutilizavel, prefira `AppUI.*`
   em vez de instanciar `SwiftUI` direto. Isso inclui `AppUI.Table`,
   `AppUI.TextField`, `AppUI.Toggle`, `AppUI.DatePicker`,
-  `AppUI.CurrencyField` e `AppUI.Selector`.
+  `AppUI.CurrencyField` e `AppUI.Selector`. Use `AppUI.Layout.*` para shells
+  estruturais recorrentes, como o header inline das feature screens.
 - `AppUI.Table` e o ponto de entrada para tabelas.
   O wrapper concentra o shell visual; estado de dados, selecao, ordenacao,
   filtros e refresh continuam fora dele.

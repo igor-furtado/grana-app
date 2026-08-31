@@ -32,7 +32,7 @@ struct TransactionListView: View {
 
     private var mainContent: some View {
         VStack(spacing: GranaTheme.Spacing.sm) {
-            FeatureScreenHeader(
+            AppUI.Layout.ScreenHeader(
                 title: "Transações",
                 subtitle: store.state.transactionsCountText(calendar: calendar)
             ) {

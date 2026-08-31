@@ -6,7 +6,7 @@ struct AccountsView: View {
 
     var body: some View {
         VStack(spacing: GranaTheme.Spacing.sm) {
-            FeatureScreenHeader(
+            AppUI.Layout.ScreenHeader(
                 title: "Contas",
                 subtitle: store.list.summarySubtitle
             ) {

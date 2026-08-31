@@ -31,7 +31,7 @@ struct DesignSystemView: View {
 
     var body: some View {
         VStack(spacing: GranaTheme.Spacing.sm) {
-            FeatureScreenHeader(
+            AppUI.Layout.ScreenHeader(
                 title: "Design System",
                 subtitle: "Mapa vivo de tokens, componentes e exemplos para consultar o sistema sem perder a visão do todo."
             )
@@ -918,7 +918,7 @@ private struct RailShowcase: View {
 
 private struct HeaderShowcase: View {
     var body: some View {
-        FeatureScreenHeader(
+        AppUI.Layout.ScreenHeader(
             title: "Transações",
             subtitle: "Leitura compacta do contexto da tela e das ações principais."
         ) {

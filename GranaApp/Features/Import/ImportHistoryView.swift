@@ -78,7 +78,7 @@ private struct ImportHistoryContentView: View {
     }
 
     private var header: some View {
-        FeatureScreenHeader(
+        AppUI.Layout.ScreenHeader(
             title: "Importar transações",
             subtitle: historyStore.summarySubtitle
         ) {

@@ -33,7 +33,7 @@ struct ProfileView: View {
 
     private func authenticatedContent(_ session: AuthSessionContext) -> some View {
         VStack(spacing: GranaTheme.Spacing.sm) {
-            FeatureScreenHeader(
+            AppUI.Layout.ScreenHeader(
                 title: "Perfil",
                 subtitle: headerSubtitle(for: session)
             ) {
