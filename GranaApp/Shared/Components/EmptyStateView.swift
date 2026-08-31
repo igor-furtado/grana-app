@@ -12,28 +12,34 @@ private enum EmptyStateMetrics {
 /// **Use isto em vez de `ContentUnavailableView` direto.** O wrapper centraliza
 /// a linguagem visual e permite trocar o look ou adicionar variantes em um
 /// único lugar.
-struct EmptyStateView<Actions: View>: View {
+struct EmptyStateView<Icon: View, Actions: View>: View {
     private let title: String
-    private let icon: AppIcon
     private let descriptionText: String?
+    private let icon: Icon
+    private let showsIcon: Bool
     private let actions: Actions
+    private let showsActions: Bool
 
     init(
         _ title: String,
-        icon: AppIcon,
         description: String? = nil,
+        @ViewBuilder icon: () -> Icon,
         @ViewBuilder actions: () -> Actions
     ) {
         self.title = title
-        self.icon = icon
         self.descriptionText = description
+        self.icon = icon()
+        self.showsIcon = true
         self.actions = actions()
+        self.showsActions = true
     }
 
     var body: some View {
         VStack(spacing: GranaTheme.Spacing.none) {
-            iconView
-                .padding(.bottom, GranaTheme.Spacing.lg)
+            if showsIcon {
+                icon
+                    .padding(.bottom, GranaTheme.Spacing.lg)
+            }
 
             Text(title)
                 .font(GranaTheme.Typography.title2)
@@ -53,45 +59,17 @@ struct EmptyStateView<Actions: View>: View {
                     .padding(.top, GranaTheme.Spacing.md)
             }
 
-            actions
-                .controlSize(.large)
-                .frame(maxWidth: .infinity, alignment: .center)
-                .padding(.top, GranaTheme.Spacing.xxl)
+            if showsActions {
+                actions
+                    .controlSize(.large)
+                    .frame(maxWidth: .infinity, alignment: .center)
+                    .padding(.top, GranaTheme.Spacing.xxl)
+            }
         }
         .frame(maxWidth: EmptyStateMetrics.maxContentWidth)
         .frame(maxWidth: .infinity, maxHeight: .infinity)
         .padding(.horizontal, GranaTheme.Spacing.xl)
         .padding(.vertical, GranaTheme.Spacing.xxxl)
-    }
-
-    /// Ícone unificado dos empty states. Dois tratamentos sempre aplicados:
-    /// — resolve pro variant `.circle.fill` do símbolo quando existe no SF
-    ///   Symbols (presença confirmada via `NSImage(systemSymbolName:)`); senão
-    ///   mantém o nome original.
-    /// — `symbolRenderingMode(.hierarchical)` produz tiers de opacidade na
-    ///   camada do símbolo, dando profundidade sem precisar de cores múltiplas.
-    /// — `foregroundStyle` usa `ink`, mantendo o empty state no mesmo eixo do
-    ///   protótipo warm/teal.
-    private var iconView: some View {
-        Image(systemName: Self.resolveSymbol(icon.systemImage))
-            .symbolRenderingMode(.hierarchical)
-            .font(.system(size: EmptyStateMetrics.iconSize, weight: .bold))
-            .foregroundStyle(GranaTheme.Palette.ink)
-            .shadow(color: GranaTheme.Shadow.accentColor.opacity(0.64), radius: 18, y: 12)
-    }
-
-    /// Procura o variant `.circle.fill` do símbolo. Estratégia em ordem:
-    /// 1. Se já termina em `.circle.fill`, é o variant — usa direto.
-    /// 2. Tenta `<nome>.circle.fill`.
-    /// 3. Se o nome termina em `.fill`, tenta `<base>.circle.fill`.
-    /// 4. Sem variant disponível, devolve o nome original.
-    /// `NSImage(systemSymbolName:)` valida a existência em tempo de execução —
-    /// sem ele, símbolos inexistentes renderizariam vazios silenciosamente.
-    /// Resultado é memoizado por nome em `SymbolResolver` — o universo é
-    /// finito (`AppIcon`) e a resposta não muda em runtime, então uma única
-    /// probe por símbolo basta.
-    private static func resolveSymbol(_ name: String) -> String {
-        SymbolResolver.resolve(name)
     }
 }
 
@@ -132,14 +110,74 @@ private enum SymbolResolver {
 
 // MARK: - Conveniência sem actions
 
+extension EmptyStateView where Icon == EmptyView {
+    init(
+        _ title: String,
+        description: String? = nil,
+        @ViewBuilder actions: () -> Actions
+    ) {
+        self.title = title
+        self.descriptionText = description
+        self.icon = EmptyView()
+        self.showsIcon = false
+        self.actions = actions()
+        self.showsActions = true
+    }
+}
+
 extension EmptyStateView where Actions == EmptyView {
     init(
         _ title: String,
-        icon: AppIcon,
+        description: String? = nil,
+        @ViewBuilder icon: () -> Icon
+    ) {
+        self.title = title
+        self.descriptionText = description
+        self.icon = icon()
+        self.showsIcon = true
+        self.actions = EmptyView()
+        self.showsActions = false
+    }
+}
+
+extension EmptyStateView where Icon == EmptyView, Actions == EmptyView {
+    init(
+        _ title: String,
         description: String? = nil
     ) {
-        self.init(title, icon: icon, description: description) {
-            EmptyView()
-        }
+        self.title = title
+        self.descriptionText = description
+        self.icon = EmptyView()
+        self.showsIcon = false
+        self.actions = EmptyView()
+        self.showsActions = false
+    }
+}
+
+/// Tratamento visual padrão para SF Symbols usados em empty states.
+struct EmptyStateSymbolIcon: View {
+    private let systemName: String
+
+    init(systemName: String) {
+        self.systemName = systemName
+    }
+
+    var body: some View {
+        Image(systemName: Self.resolveSymbol(systemName))
+            .symbolRenderingMode(.hierarchical)
+            .font(.system(size: EmptyStateMetrics.iconSize, weight: .bold))
+            .foregroundStyle(GranaTheme.Palette.ink)
+            .shadow(color: GranaTheme.Shadow.accentColor.opacity(0.64), radius: 18, y: 12)
+    }
+
+    /// Procura o variant `.circle.fill` do símbolo. Estratégia em ordem:
+    /// 1. Se já termina em `.circle.fill`, é o variant — usa direto.
+    /// 2. Tenta `<nome>.circle.fill`.
+    /// 3. Se o nome termina em `.fill`, tenta `<base>.circle.fill`.
+    /// 4. Sem variant disponível, devolve o nome original.
+    /// `NSImage(systemSymbolName:)` valida a existência em tempo de execução —
+    /// sem ele, símbolos inexistentes renderizariam vazios silenciosamente.
+    private static func resolveSymbol(_ name: String) -> String {
+        SymbolResolver.resolve(name)
     }
 }
