@@ -33,8 +33,8 @@ struct AuthServiceTests {
     }
 
     @MainActor
-    @Test("Processa callback do magic link e autentica a sessão")
-    func handlesMagicLinkCallback() async throws {
+    @Test("Processa callback antigo e autentica a sessão")
+    func handlesLegacyCallback() async throws {
         let callbackURL = try #require(URL(string: "com.igorfurtado.GranaApp://auth-callback?code=abc"))
         let restoredSession = AuthSessionContext(
             userID: UUID(),
@@ -51,6 +51,96 @@ struct AuthServiceTests {
 
         #expect(service.state == .authenticated(restoredSession))
         #expect(await authClient.handledURL() == callbackURL)
+    }
+
+    @MainActor
+    @Test("Autentica com Apple e guarda sessão")
+    func signsInWithAppleAndStoresSession() async throws {
+        let session = AuthSessionContext(
+            userID: UUID(),
+            email: "pessoa@exemplo.com",
+            accessToken: "jwt-apple"
+        )
+        let credentials = AppleSignInCredentials(
+            identityToken: "apple-id-token",
+            authorizationCode: "apple-code",
+            fullName: "Pessoa Exemplo",
+            nonce: "nonce"
+        )
+        let authClient = FakeAuthClient(
+            validSession: nil,
+            appleSession: session
+        )
+        let service = AuthService(client: authClient)
+
+        try await service.signInWithApple(credentials)
+
+        #expect(service.state == .authenticated(session))
+        #expect(service.loginState == .authenticated)
+        #expect(await authClient.appleCredentials() == credentials)
+    }
+
+    @MainActor
+    @Test("Falha de Apple não autentica e expõe erro")
+    func appleFailureDoesNotAuthenticate() async throws {
+        let authClient = FakeAuthClient(
+            validSession: nil,
+            appleError: URLError(.userAuthenticationRequired)
+        )
+        let service = AuthService(client: authClient)
+
+        await #expect(throws: URLError.self) {
+            try await service.signInWithApple(AppleSignInCredentials(
+                identityToken: "apple-id-token",
+                authorizationCode: nil,
+                fullName: nil,
+                nonce: nil
+            ))
+        }
+
+        #expect(service.state == .restoring)
+        if case .failure = service.loginState {
+            #expect(true)
+        } else {
+            Issue.record("Falha de Apple deveria registrar estado de erro")
+        }
+    }
+
+    @MainActor
+    @Test("Pedir código por e-mail não autentica ainda")
+    func requestingEmailOTPDoesNotAuthenticateYet() async throws {
+        let authClient = FakeAuthClient(validSession: nil)
+        let service = AuthService(client: authClient)
+
+        try await service.requestEmailOTP(email: "pessoa@exemplo.com")
+
+        #expect(service.state == .restoring)
+        #expect(service.loginState == .awaitingOTP(email: "pessoa@exemplo.com"))
+        #expect(await authClient.requestedEmailOTP() == "pessoa@exemplo.com")
+    }
+
+    @MainActor
+    @Test("Verificar código por e-mail autentica")
+    func verifyingEmailOTPAuthenticates() async throws {
+        let session = AuthSessionContext(
+            userID: UUID(),
+            email: "pessoa@exemplo.com",
+            accessToken: "jwt-email"
+        )
+        let authClient = FakeAuthClient(
+            validSession: nil,
+            emailOTPSession: session
+        )
+        let service = AuthService(client: authClient)
+
+        try await service.verifyEmailOTP(email: "pessoa@exemplo.com", code: "123456")
+
+        #expect(service.state == .authenticated(session))
+        #expect(service.loginState == .authenticated)
+        #expect(await authClient.verifiedEmailOTP() == EmailOTPVerification(
+            email: "pessoa@exemplo.com",
+            code: "123456"
+        ))
     }
 
     @MainActor
@@ -193,8 +283,8 @@ struct AppEnvironmentTests {
     }
 
     @MainActor
-    @Test("Inicializa o perfil após callback mesmo se o boot inicial caiu em login")
-    func bootstrapsProfileAfterMagicLinkCallback() async throws {
+    @Test("Inicializa o perfil após callback antigo mesmo se o boot inicial caiu em login")
+    func bootstrapsProfileAfterLegacyCallback() async throws {
         let callbackURL = try #require(URL(string: "com.igorfurtado.GranaApp://auth-callback?code=abc"))
         let restoredSession = AuthSessionContext(
             userID: UUID(),
@@ -314,7 +404,7 @@ struct SupabaseAuthClientTests {
         )
 
         await #expect(throws: AppConfigurationError.self) {
-            try await client.requestMagicLink(email: "pessoa@exemplo.com")
+            try await client.requestEmailOTP(email: "pessoa@exemplo.com")
         }
     }
 
@@ -326,13 +416,13 @@ struct SupabaseAuthClientTests {
         )
 
         await #expect(throws: AppConfigurationError.self) {
-            try await client.requestMagicLink(email: "pessoa@exemplo.com")
+            try await client.requestEmailOTP(email: "pessoa@exemplo.com")
         }
     }
 
     @Test("Traduz invalid API key para erro de configuração acionável")
     func mapsInvalidAPIKeyToConfigurationError() {
-        let mapped = SupabaseAuthClient.normalizedRequestMagicLinkError(
+        let mapped = SupabaseAuthClient.normalizedAuthRequestError(
             NSError(domain: "Auth", code: 401, userInfo: [
                 NSLocalizedDescriptionKey: "Invalid API key",
             ])
@@ -359,13 +449,25 @@ struct AppErrorPresentationTests {
     }
 }
 
+private struct EmailOTPVerification: Equatable {
+    let email: String
+    let code: String
+}
+
 private actor FakeAuthClient: AuthClientProtocol {
     private let validSession: AuthSessionContext?
     private let validSessionError: (any Error)?
     private let storedSessionContext: AuthSessionContext?
     private let callbackSession: AuthSessionContext?
+    private let appleSession: AuthSessionContext?
+    private let appleError: (any Error)?
+    private let emailOTPSession: AuthSessionContext?
+    private let emailOTPError: (any Error)?
     private let signOutError: (any Error)?
     private(set) var lastHandledURL: URL?
+    private(set) var lastAppleCredentials: AppleSignInCredentials?
+    private(set) var lastRequestedEmailOTP: String?
+    private(set) var lastVerifiedEmailOTP: EmailOTPVerification?
     private var signOutCount = 0
 
     init(
@@ -373,12 +475,20 @@ private actor FakeAuthClient: AuthClientProtocol {
         validSessionError: (any Error)? = nil,
         storedSession: AuthSessionContext? = nil,
         callbackSession: AuthSessionContext? = nil,
+        appleSession: AuthSessionContext? = nil,
+        appleError: (any Error)? = nil,
+        emailOTPSession: AuthSessionContext? = nil,
+        emailOTPError: (any Error)? = nil,
         signOutError: (any Error)? = nil
     ) {
         self.validSession = validSession
         self.validSessionError = validSessionError
         self.storedSessionContext = storedSession ?? validSession
         self.callbackSession = callbackSession ?? validSession
+        self.appleSession = appleSession ?? validSession
+        self.appleError = appleError
+        self.emailOTPSession = emailOTPSession ?? validSession
+        self.emailOTPError = emailOTPError
         self.signOutError = signOutError
     }
 
@@ -393,7 +503,28 @@ private actor FakeAuthClient: AuthClientProtocol {
         storedSessionContext
     }
 
-    func requestMagicLink(email _: String) async throws {}
+    func signInWithApple(_ credentials: AppleSignInCredentials) async throws -> AuthSessionContext {
+        lastAppleCredentials = credentials
+        if let appleError {
+            throw appleError
+        }
+        return try #require(appleSession)
+    }
+
+    func requestEmailOTP(email: String) async throws {
+        lastRequestedEmailOTP = email
+        if let emailOTPError {
+            throw emailOTPError
+        }
+    }
+
+    func verifyEmailOTP(email: String, code: String) async throws -> AuthSessionContext {
+        lastVerifiedEmailOTP = EmailOTPVerification(email: email, code: code)
+        if let emailOTPError {
+            throw emailOTPError
+        }
+        return try #require(emailOTPSession)
+    }
 
     func session(from callbackURL: URL) async throws -> AuthSessionContext {
         lastHandledURL = callbackURL
@@ -409,6 +540,18 @@ private actor FakeAuthClient: AuthClientProtocol {
 
     func handledURL() -> URL? {
         lastHandledURL
+    }
+
+    func appleCredentials() -> AppleSignInCredentials? {
+        lastAppleCredentials
+    }
+
+    func requestedEmailOTP() -> String? {
+        lastRequestedEmailOTP
+    }
+
+    func verifiedEmailOTP() -> EmailOTPVerification? {
+        lastVerifiedEmailOTP
     }
 
     func signOutCallCount() -> Int {

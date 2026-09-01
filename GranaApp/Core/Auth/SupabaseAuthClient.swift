@@ -67,7 +67,24 @@ actor SupabaseAuthClient: AuthClientProtocol {
         return AuthSessionContext(session: session)
     }
 
-    func requestMagicLink(email: String) async throws {
+    func signInWithApple(_ credentials: AppleSignInCredentials) async throws -> AuthSessionContext {
+        let client = try resolvedClient()
+        do {
+            let session = try await client.auth.signInWithIdToken(
+                credentials: .init(
+                    provider: .apple,
+                    idToken: credentials.identityToken,
+                    nonce: credentials.nonce
+                )
+            )
+
+            return AuthSessionContext(session: session)
+        } catch {
+            throw Self.normalizedAuthRequestError(error)
+        }
+    }
+
+    func requestEmailOTP(email: String) async throws {
         let client = try resolvedClient()
         do {
             try await client.auth.signInWithOTP(
@@ -75,7 +92,25 @@ actor SupabaseAuthClient: AuthClientProtocol {
                 redirectTo: AuthCallback.redirectURL
             )
         } catch {
-            throw Self.normalizedRequestMagicLinkError(error)
+            throw Self.normalizedAuthRequestError(error)
+        }
+    }
+
+    func verifyEmailOTP(email: String, code: String) async throws -> AuthSessionContext {
+        let client = try resolvedClient()
+        do {
+            let response = try await client.auth.verifyOTP(
+                email: email,
+                token: code,
+                type: .email,
+                redirectTo: AuthCallback.redirectURL
+            )
+            guard let session = response.session else {
+                throw AuthFlowError.missingSessionAfterVerification
+            }
+            return AuthSessionContext(session: session)
+        } catch {
+            throw Self.normalizedAuthRequestError(error)
         }
     }
 
@@ -91,12 +126,23 @@ actor SupabaseAuthClient: AuthClientProtocol {
         try await client.auth.signOut(scope: .local)
     }
 
-    nonisolated static func normalizedRequestMagicLinkError(_ error: any Error) -> any Error {
+    nonisolated static func normalizedAuthRequestError(_ error: any Error) -> any Error {
         let message = (error as NSError).localizedDescription
         if message.localizedCaseInsensitiveContains("Invalid API key") {
             return AppConfigurationError.invalidAPIKey("Config.supabaseAnonKey")
         }
         return error
+    }
+}
+
+enum AuthFlowError: LocalizedError, Equatable {
+    case missingSessionAfterVerification
+
+    var errorDescription: String? {
+        switch self {
+        case .missingSessionAfterVerification:
+            "O código foi verificado, mas o servidor não retornou uma sessão ativa."
+        }
     }
 }
 
