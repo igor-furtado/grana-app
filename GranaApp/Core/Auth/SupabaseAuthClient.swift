@@ -39,7 +39,6 @@ actor SupabaseAuthClient: AuthClientProtocol {
         let validatedURL = try AppConfigurationValidator.supabaseURL(supabaseURL)
         let validatedAnonKey = try AppConfigurationValidator.supabaseAnonKey(supabaseAnonKey)
         let options = SupabaseClientOptions(auth: .init(
-            redirectToURL: AuthCallback.redirectURL,
             emitLocalSessionAsInitialSession: true
         ))
         return SupabaseClient(
@@ -88,8 +87,7 @@ actor SupabaseAuthClient: AuthClientProtocol {
         let client = try resolvedClient()
         do {
             try await client.auth.signInWithOTP(
-                email: email,
-                redirectTo: AuthCallback.redirectURL
+                email: email
             )
         } catch {
             throw Self.normalizedAuthRequestError(error)
@@ -102,8 +100,7 @@ actor SupabaseAuthClient: AuthClientProtocol {
             let response = try await client.auth.verifyOTP(
                 email: email,
                 token: code,
-                type: .email,
-                redirectTo: AuthCallback.redirectURL
+                type: .email
             )
             guard let session = response.session else {
                 throw AuthFlowError.missingSessionAfterVerification
