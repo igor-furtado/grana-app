@@ -4,7 +4,7 @@ import Testing
 
 @Suite("StatementListFeature")
 struct StatementListFeatureTests {
-    @Test("Tabela de lançamentos deriva categoria, subcategoria e valor localmente")
+    @Test("Tabela de lançamentos deriva tipo, categoria exibida e valor localmente")
     func statementListBuildsTableRows() throws {
         let rootCategoryId = UUID()
         let subcategoryId = UUID()
@@ -44,13 +44,13 @@ struct StatementListFeatureTests {
         let tableRow = try #require(state.tableRows.first)
 
         #expect(tableRow.occurredAt == occurredAt)
+        #expect(tableRow.purchaseDisplayName == "À vista")
         #expect(tableRow.categoryName == "Alimentação")
-        #expect(tableRow.categorySortLabel == "Alimentação")
+        #expect(tableRow.categoryDisplayName == "Delivery")
+        #expect(tableRow.categorySortLabel == "Delivery")
         #expect(tableRow.categoryIcon == .food)
         #expect(tableRow.subcategoryName == "Delivery")
-        #expect(tableRow.subcategoryDisplayName == "Delivery")
-        #expect(tableRow.subcategorySortLabel == "Delivery")
         #expect(tableRow.description == "ifood *IFD*Rosa Chur")
-        #expect(tableRow.signedAmount == -27.98)
+        #expect(tableRow.amount == 27.98)
     }
 }

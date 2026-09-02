@@ -220,7 +220,7 @@ begin
         'statements',
         'import_batches',
         'transactions',
-        'statement_payments',
+        'statement_payments'
     ]
     loop
         execute format('alter table app_private.%I enable row level security', table_name);
@@ -259,7 +259,7 @@ begin
         'statements',
         'import_batches',
         'transactions',
-        'statement_payments',
+        'statement_payments'
     ]
     loop
         execute format(

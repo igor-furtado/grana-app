@@ -81,6 +81,96 @@ struct AuthServiceTests {
     }
 
     @MainActor
+    @Test("Apple em sessão autenticada pede confirmação antes de vincular")
+    func appleAccessInAuthenticatedSessionRequiresExplicitConfirmation() async throws {
+        let currentSession = AuthSessionContext(
+            userID: UUID(),
+            email: "pessoa@exemplo.com",
+            accessToken: "jwt-email",
+            providers: ["email"]
+        )
+        let credentials = AppleSignInCredentials(
+            identityToken: "apple-id-token",
+            authorizationCode: "apple-code",
+            fullName: nil,
+            nonce: "nonce"
+        )
+        let authClient = FakeAuthClient(validSession: currentSession)
+        let service = AuthService(client: authClient)
+
+        try await service.restoreSession()
+        try await service.signInWithApple(credentials)
+
+        #expect(service.state == .authenticated(currentSession))
+        #expect(service.loginState == .linkingPrompt(method: .apple, email: "pessoa@exemplo.com"))
+        #expect(await authClient.appleCredentials() == nil)
+        #expect(await authClient.linkedAppleCredentials() == nil)
+    }
+
+    @MainActor
+    @Test("Confirma vinculação Apple usando contrato explícito")
+    func confirmsAppleAccessLink() async throws {
+        let currentSession = AuthSessionContext(
+            userID: UUID(),
+            email: "pessoa@exemplo.com",
+            accessToken: "jwt-email",
+            providers: ["email"]
+        )
+        let linkedSession = AuthSessionContext(
+            userID: currentSession.userID,
+            email: "pessoa@exemplo.com",
+            accessToken: "jwt-linked",
+            providers: ["apple", "email"]
+        )
+        let credentials = AppleSignInCredentials(
+            identityToken: "apple-id-token",
+            authorizationCode: "apple-code",
+            fullName: nil,
+            nonce: "nonce"
+        )
+        let authClient = FakeAuthClient(
+            validSession: currentSession,
+            linkedAppleSession: linkedSession
+        )
+        let service = AuthService(client: authClient)
+
+        try await service.restoreSession()
+        try await service.signInWithApple(credentials)
+        try await service.confirmAccessLink()
+
+        #expect(service.state == .authenticated(linkedSession))
+        #expect(service.loginState == .authenticated)
+        #expect(await authClient.linkedAppleCredentials() == credentials)
+    }
+
+    @MainActor
+    @Test("Cancelamento descarta vinculação Apple pendente")
+    func cancelsPendingAppleAccessLink() async throws {
+        let currentSession = AuthSessionContext(
+            userID: UUID(),
+            email: "pessoa@exemplo.com",
+            accessToken: "jwt-email",
+            providers: ["email"]
+        )
+        let credentials = AppleSignInCredentials(
+            identityToken: "apple-id-token",
+            authorizationCode: nil,
+            fullName: nil,
+            nonce: nil
+        )
+        let authClient = FakeAuthClient(validSession: currentSession)
+        let service = AuthService(client: authClient)
+
+        try await service.restoreSession()
+        try await service.signInWithApple(credentials)
+        service.cancelAccessLink()
+
+        #expect(service.state == .authenticated(currentSession))
+        #expect(service.loginState == .authenticated)
+        #expect(await authClient.linkedAppleCredentials() == nil)
+    }
+
+    @MainActor
     @Test("Falha de Apple não autentica e expõe erro")
     func appleFailureDoesNotAuthenticate() async throws {
         let authClient = FakeAuthClient(
@@ -460,12 +550,14 @@ private actor FakeAuthClient: AuthClientProtocol {
     private let storedSessionContext: AuthSessionContext?
     private let callbackSession: AuthSessionContext?
     private let appleSession: AuthSessionContext?
+    private let linkedAppleSession: AuthSessionContext?
     private let appleError: (any Error)?
     private let emailOTPSession: AuthSessionContext?
     private let emailOTPError: (any Error)?
     private let signOutError: (any Error)?
     private(set) var lastHandledURL: URL?
     private(set) var lastAppleCredentials: AppleSignInCredentials?
+    private(set) var lastLinkedAppleCredentials: AppleSignInCredentials?
     private(set) var lastRequestedEmailOTP: String?
     private(set) var lastVerifiedEmailOTP: EmailOTPVerification?
     private var signOutCount = 0
@@ -476,6 +568,7 @@ private actor FakeAuthClient: AuthClientProtocol {
         storedSession: AuthSessionContext? = nil,
         callbackSession: AuthSessionContext? = nil,
         appleSession: AuthSessionContext? = nil,
+        linkedAppleSession: AuthSessionContext? = nil,
         appleError: (any Error)? = nil,
         emailOTPSession: AuthSessionContext? = nil,
         emailOTPError: (any Error)? = nil,
@@ -486,6 +579,7 @@ private actor FakeAuthClient: AuthClientProtocol {
         self.storedSessionContext = storedSession ?? validSession
         self.callbackSession = callbackSession ?? validSession
         self.appleSession = appleSession ?? validSession
+        self.linkedAppleSession = linkedAppleSession ?? appleSession ?? validSession
         self.appleError = appleError
         self.emailOTPSession = emailOTPSession ?? validSession
         self.emailOTPError = emailOTPError
@@ -509,6 +603,14 @@ private actor FakeAuthClient: AuthClientProtocol {
             throw appleError
         }
         return try #require(appleSession)
+    }
+
+    func linkAppleIdentity(_ credentials: AppleSignInCredentials) async throws -> AuthSessionContext {
+        lastLinkedAppleCredentials = credentials
+        if let appleError {
+            throw appleError
+        }
+        return try #require(linkedAppleSession)
     }
 
     func requestEmailOTP(email: String) async throws {
@@ -544,6 +646,10 @@ private actor FakeAuthClient: AuthClientProtocol {
 
     func appleCredentials() -> AppleSignInCredentials? {
         lastAppleCredentials
+    }
+
+    func linkedAppleCredentials() -> AppleSignInCredentials? {
+        lastLinkedAppleCredentials
     }
 
     func requestedEmailOTP() -> String? {

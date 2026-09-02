@@ -1,6 +1,6 @@
+import AppUI
 import ComposableArchitecture
 import SwiftUI
-import AppUI
 
 /// Catálogo read-only das instituições com suporte nativo no app — auto-detect
 /// via código FEBRABAN no import OFX, ícone canônico e cor da marca. O
@@ -40,15 +40,15 @@ private struct SupportedInstitutionsLoadedView: View {
             }
 
             Group {
-                if let loadErrorMessage = store.loadErrorMessage {
+                if store.isLoading {
+                    SupportedInstitutionsSkeletonView(columns: columns)
+                        .frame(maxWidth: .infinity, maxHeight: .infinity)
+                } else if let loadErrorMessage = store.loadErrorMessage {
                     EmptyStateView(
                         "Não foi possível carregar",
                         icon: .warning,
                         description: loadErrorMessage
                     )
-                } else if store.isLoading, !store.hasLoaded {
-                    ProgressView()
-                        .frame(maxWidth: .infinity, maxHeight: .infinity)
                 } else if store.institutions.isEmpty {
                     EmptyStateView(
                         "Nenhuma instituição disponível",

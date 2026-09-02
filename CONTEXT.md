@@ -12,6 +12,14 @@ _Evite_: Household, perfil compartilhado, titular secundário
 Estado de autenticação remota que permite ao app identificar um usuário e acessar seus dados financeiros. Pode estar ausente ou válida; sem sessão remota válida, o app não exibe dados financeiros.
 _Evite_: Conta, perfil
 
+**Método de acesso**:
+Forma de autenticação remota aceita pelo produto para criar conta nova ou recuperar acesso, como Sign in with Apple e Email OTP. Um método de acesso não define a identidade canônica do usuário.
+_Evite_: Usuário, conta, provedor
+
+**Vinculação de acesso**:
+Decisão explícita do usuário de associar um novo método de acesso a uma conta existente. A vinculação não acontece automaticamente apenas por coincidência ou semelhança entre atributos de login.
+_Evite_: Merge automático, dedução de identidade
+
 ## Estrutura financeira
 
 **Instituição financeira**:

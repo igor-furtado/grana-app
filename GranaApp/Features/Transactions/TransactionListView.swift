@@ -1,6 +1,6 @@
+import AppUI
 import ComposableArchitecture
 import SwiftUI
-import AppUI
 
 struct TransactionListView: View {
     private static let numberLocale = Locale(identifier: "pt_BR")
@@ -72,13 +72,6 @@ struct TransactionListView: View {
                 }
                 .width(min: 110, ideal: 140, max: 140)
 
-                TableColumn("Descrição", value: \.description) { row in
-                    Text(row.description)
-                        .font(AppUI.Theme.Typography.subheadlineEmphasis)
-                        .foregroundStyle(AppUI.Theme.Palette.ink)
-                        .lineLimit(1)
-                }
-
                 TableColumn("Categoria", value: \.categorySummary) { row in
                     HStack(spacing: AppUI.Theme.Spacing.xs) {
                         CategoryBadge(
@@ -94,6 +87,13 @@ struct TransactionListView: View {
                     .help(row.categoryName)
                 }
                 .width(min: 170, ideal: 220, max: 220)
+
+                TableColumn("Descrição", value: \.description) { row in
+                    Text(row.description)
+                        .font(AppUI.Theme.Typography.subheadlineEmphasis)
+                        .foregroundStyle(AppUI.Theme.Palette.ink)
+                        .lineLimit(1)
+                }
 
                 TableColumn("Valor", value: \.amount) { row in
                     accountingAmount(row.amount)

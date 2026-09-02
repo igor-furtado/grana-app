@@ -22,7 +22,6 @@ public struct TableFilterBar<Content: View>: View {
                 .frame(height: 1)
         }
     }
-
 }
 
 public struct Table<RowValue: Identifiable, Sort: SortComparator, FilterBar: View, Columns: TableColumnContent>: View

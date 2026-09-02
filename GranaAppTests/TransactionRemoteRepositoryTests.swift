@@ -82,6 +82,36 @@ struct TransactionRemoteRepositoryTests {
         }
     }
 
+    @Test("Mapeia bloqueio legado de cartão sem resposta inválida")
+    func mapsLegacyCardUnsupportedCode() async {
+        let repository = TransactionRemoteRepository(
+            remoteStore: FakeTransactionRemoteStore(
+                deleteResponse: .init(
+                    ok: false,
+                    code: "credit_card_transactions_not_supported",
+                    transactionId: nil
+                )
+            )
+        )
+
+        await #expect(throws: TransactionRemoteRepositoryError.creditCardTransactionsUnsupported) {
+            try await repository.delete(transactionId: UUID())
+        }
+    }
+
+    @Test("RPC de exclusão permite compra vinculada a fatura")
+    func deleteRPCAllowsStatementTransactions() throws {
+        let repositoryRoot = URL(fileURLWithPath: #filePath)
+            .deletingLastPathComponent()
+            .deletingLastPathComponent()
+        let migrationURL = repositoryRoot
+            .appending(path: "supabase/migrations/20260831008000_transaction_api.sql")
+        let migration = try String(contentsOf: migrationURL, encoding: .utf8)
+
+        #expect(!migration.contains("credit_card_transactions_not_supported"))
+        #expect(!migration.contains("v_current.statement_id is not null"))
+    }
+
     @Test("Converte Decimal em centavos nas mutações")
     func mapsDecimalToCentsInMutationRequests() {
         let input = TransactionMutationInput(

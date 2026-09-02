@@ -490,6 +490,11 @@ struct ImportFeature {
         case history(ImportHistoryFeature.Action)
         case wizard(ImportWizardFeature.Action)
         case globalFileDrop([URL])
+        case delegate(Delegate)
+    }
+
+    enum Delegate: Equatable {
+        case financialDataChanged
     }
 
     @Dependency(\.noticeClient) private var noticeClient
@@ -546,12 +551,15 @@ struct ImportFeature {
 
             case .wizard(.delegate(.completed)):
                 state.wizard = nil
-                return .send(.history(.refresh))
+                return .merge(
+                    .send(.delegate(.financialDataChanged)),
+                    .send(.history(.refresh))
+                )
 
             case .wizard(.delegate(.presentFileImporter)):
                 return .none
 
-            case .history, .wizard:
+            case .history, .wizard, .delegate:
                 return .none
             }
         }

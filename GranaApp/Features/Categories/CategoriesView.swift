@@ -1,7 +1,7 @@
+import AppUI
 import ComposableArchitecture
 import Foundation
 import SwiftUI
-import AppUI
 
 /// Inspeção read-only da taxonomia de categorias (raízes + subcategorias).
 ///
@@ -42,15 +42,15 @@ private struct CategoriesLoadedView: View {
             header
 
             Group {
-                if let loadErrorMessage = store.loadErrorMessage, store.categories.isEmpty {
+                if store.isLoading {
+                    CategoriesSkeletonView()
+                        .frame(maxWidth: .infinity, maxHeight: .infinity)
+                } else if let loadErrorMessage = store.loadErrorMessage, store.categories.isEmpty {
                     EmptyStateView(
                         "Não foi possível carregar",
                         icon: .warning,
                         description: loadErrorMessage
                     )
-                } else if store.isLoading, !store.hasLoaded {
-                    ProgressView()
-                        .frame(maxWidth: .infinity, maxHeight: .infinity)
                 } else if store.categories.isEmpty {
                     EmptyStateView(
                         "Nenhuma categoria disponível",
@@ -156,7 +156,9 @@ private struct CategoriesLoadedView: View {
 
     @ViewBuilder
     private var inspector: some View {
-        if let group = selectedGroup {
+        if store.isLoading {
+            CategoryInspectorSkeletonView()
+        } else if let group = selectedGroup {
             CategoryInspector(group: group)
         } else {
             inspectorPlaceholder

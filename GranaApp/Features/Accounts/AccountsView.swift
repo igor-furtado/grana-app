@@ -1,6 +1,6 @@
+import AppUI
 import ComposableArchitecture
 import SwiftUI
-import AppUI
 
 struct AccountsView: View {
     @Bindable var store: StoreOf<AccountsFeature>
@@ -20,11 +20,11 @@ struct AccountsView: View {
             }
 
             Group {
-                if store.list.items.isEmpty, !store.isLoading {
-                    emptyState
+                if store.isLoading {
+                    AccountListSkeletonView()
                         .frame(maxWidth: .infinity, maxHeight: .infinity)
-                } else if store.isLoading, !store.hasLoaded {
-                    ProgressView()
+                } else if store.list.items.isEmpty {
+                    emptyState
                         .frame(maxWidth: .infinity, maxHeight: .infinity)
                 } else {
                     AccountListView(store: store.scope(state: \.list, action: \.list))

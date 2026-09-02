@@ -1,10 +1,12 @@
 import AppKit
-import SwiftUI
 import AppUI
+import AuthenticationServices
+import SwiftUI
 
 struct ProfileView: View {
     @Environment(AppEnvironment.self) private var environment
     @State private var isSigningOut = false
+    @State private var appleSignInClient = AppleSignInClient()
 
     var body: some View {
         Group {
@@ -62,6 +64,7 @@ struct ProfileView: View {
                         icon: "lock.shield",
                         rows: sessionRows(for: session)
                     )
+                    accessLinkingSection(session)
                     infoSection(
                         title: "Backend",
                         icon: AppUI.Icon.sidebarInstitutions.systemImage,
@@ -178,6 +181,65 @@ struct ProfileView: View {
         .granaSurface(.solid, cornerRadius: AppUI.Theme.Radius.card)
     }
 
+    private func accessLinkingSection(_ session: AuthSessionContext) -> some View {
+        VStack(alignment: .leading, spacing: AppUI.Theme.Spacing.md) {
+            HStack(spacing: AppUI.Theme.Spacing.xs) {
+                Image(systemName: "person.badge.key")
+                    .font(.system(size: AppUI.Theme.IconSize.medium))
+                    .foregroundStyle(AppUI.Theme.Palette.tealDeep)
+
+                Text("Métodos de acesso")
+                    .font(AppUI.Theme.Typography.headline)
+                    .foregroundStyle(AppUI.Theme.Palette.ink)
+            }
+
+            if case let .linkingPrompt(method, email) = environment.authService.loginState {
+                accessLinkingPrompt(method: method, email: email)
+            } else if isLinkingAccess {
+                ProgressView(accessLinkingProgressTitle)
+                    .foregroundStyle(AppUI.Theme.Palette.muted)
+                    .padding(AppUI.Theme.Spacing.md)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .granaSurface(.solid, cornerRadius: AppUI.Theme.Radius.card)
+            } else if hasProvider("apple", in: session) {
+                infoRow(ProfileRow(title: "Apple", value: "Vinculado", accent: AppUI.Theme.Palette.green))
+            } else {
+                Button {
+                    linkAppleAccess()
+                } label: {
+                    Label("Vincular Apple", systemImage: "apple.logo")
+                        .frame(maxWidth: .infinity)
+                }
+                .buttonStyle(GranaSecondaryButtonStyle())
+                .disabled(isAuthBusy)
+            }
+        }
+        .padding(AppUI.Theme.Spacing.md)
+        .granaSurface(.subtle, cornerRadius: AppUI.Theme.Radius.card)
+    }
+
+    private func accessLinkingPrompt(method: AuthService.AccessLinkingMethod, email: String?) -> some View {
+        VStack(alignment: .leading, spacing: AppUI.Theme.Spacing.sm) {
+            Text(accessLinkingPromptTitle(method: method, email: email))
+                .font(AppUI.Theme.Typography.subheadlineEmphasis)
+                .foregroundStyle(AppUI.Theme.Palette.ink)
+
+            HStack(spacing: AppUI.Theme.Spacing.sm) {
+                Button("Confirmar") {
+                    confirmAccessLink()
+                }
+                .buttonStyle(GranaPrimaryButtonStyle())
+
+                Button("Cancelar") {
+                    environment.authService.cancelAccessLink()
+                }
+                .buttonStyle(GranaSecondaryButtonStyle())
+            }
+        }
+        .padding(AppUI.Theme.Spacing.md)
+        .granaSurface(.solid, cornerRadius: AppUI.Theme.Radius.card)
+    }
+
     private func valueText(_ row: ProfileRow) -> some View {
         Text(row.value)
             .foregroundStyle(row.accent ?? AppUI.Theme.Palette.ink)
@@ -266,6 +328,32 @@ struct ProfileView: View {
         }
     }
 
+    private func linkAppleAccess() {
+        Task {
+            do {
+                let credentials = try await appleSignInClient.signIn(presentationAnchor: NSApp.keyWindow)
+                try await environment.authService.signInWithApple(credentials)
+            } catch {
+                if error is CancellationError || isAppleCancellation(error) {
+                    environment.authService.cancelAccessLink()
+                    return
+                }
+                NoticeCenter.shared.report(error, title: "Falha ao preparar vinculação")
+            }
+        }
+    }
+
+    private func confirmAccessLink() {
+        Task {
+            do {
+                try await environment.authService.confirmAccessLink()
+                NoticeCenter.shared.success(title: "Método vinculado")
+            } catch {
+                NoticeCenter.shared.report(error, title: "Falha ao vincular acesso")
+            }
+        }
+    }
+
     private func copyUserID(_ userID: UUID) {
         NSPasteboard.general.clearContents()
         NSPasteboard.general.setString(userID.uuidString.lowercased(), forType: .string)
@@ -301,6 +389,47 @@ struct ProfileView: View {
         case "apple": "Apple"
         default: provider.capitalized
         }
+    }
+
+    private var isAuthBusy: Bool {
+        switch environment.authService.loginState {
+        case .signingInWithApple, .sendingOTP, .verifyingOTP, .linkingAccess:
+            true
+        case .idle, .enteringEmail, .awaitingOTP, .authenticated, .linkingPrompt, .failure:
+            false
+        }
+    }
+
+    private var isLinkingAccess: Bool {
+        if case .linkingAccess = environment.authService.loginState {
+            true
+        } else {
+            false
+        }
+    }
+
+    private var accessLinkingProgressTitle: String {
+        if case let .linkingAccess(method) = environment.authService.loginState {
+            return "Vinculando \(method.displayName)..."
+        }
+        return "Vinculando..."
+    }
+
+    private func accessLinkingPromptTitle(method: AuthService.AccessLinkingMethod, email: String?) -> String {
+        if let email {
+            return "Confirmar vinculação com \(method.displayName) para \(email)?"
+        }
+        return "Confirmar vinculação com \(method.displayName)?"
+    }
+
+    private func hasProvider(_ provider: String, in session: AuthSessionContext) -> Bool {
+        session.providers.contains { $0.caseInsensitiveCompare(provider) == .orderedSame }
+    }
+
+    private func isAppleCancellation(_ error: any Error) -> Bool {
+        let nsError = error as NSError
+        return nsError.domain == ASAuthorizationError.errorDomain
+            && nsError.code == ASAuthorizationError.canceled.rawValue
     }
 
     private func displayDate(_ date: Date?) -> String {

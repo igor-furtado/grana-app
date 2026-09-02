@@ -80,6 +80,11 @@ struct TransactionsFeature {
         case postDeleteRefreshFailed
         case list(TransactionListFeature.Action)
         case destination(PresentationAction<Destination.Action>)
+        case delegate(Delegate)
+    }
+
+    enum Delegate: Equatable {
+        case financialDataChanged
     }
 
     @Dependency(\.transactionsClient) private var transactionsClient
@@ -156,22 +161,31 @@ struct TransactionsFeature {
 
             case .destination(.presented(.editForm(.delegate(.saved)))):
                 state.destination = nil
-                return .send(.refresh)
+                return .merge(
+                    .send(.refresh),
+                    .send(.delegate(.financialDataChanged))
+                )
 
             case .destination(.presented(.delete(.delegate(.confirmed)))):
                 state.destination = nil
                 state.list.isLoading = true
-                return .run { send in
-                    do {
-                        let snapshot = try await transactionsClient.loadSnapshot()
-                        await send(.postDeleteRefreshCompleted(snapshot))
-                    } catch {
-                        await noticeClient.report(error, "Transação apagada, mas falha ao atualizar lista")
-                        await send(.postDeleteRefreshFailed)
+                return .merge(
+                    .send(.delegate(.financialDataChanged)),
+                    .run { send in
+                        do {
+                            let snapshot = try await transactionsClient.loadSnapshot()
+                            await send(.postDeleteRefreshCompleted(snapshot))
+                        } catch {
+                            await noticeClient.report(error, "Transação apagada, mas falha ao atualizar lista")
+                            await send(.postDeleteRefreshFailed)
+                        }
                     }
-                }
+                )
 
             case .destination:
+                return .none
+
+            case .delegate:
                 return .none
             }
         }
@@ -203,7 +217,8 @@ extension TransactionsFeature.Action: Equatable {
              (.loadFailed, .loadFailed),
              (.postDeleteRefreshFailed, .postDeleteRefreshFailed),
              (.snapshotLoaded, .snapshotLoaded),
-             (.postDeleteRefreshCompleted, .postDeleteRefreshCompleted):
+             (.postDeleteRefreshCompleted, .postDeleteRefreshCompleted),
+             (.delegate, .delegate):
             true
         case let (.list(lhsAction), .list(rhsAction)):
             lhsAction == rhsAction

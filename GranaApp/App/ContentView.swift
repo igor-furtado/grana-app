@@ -83,7 +83,7 @@ struct ContentView: View {
     private var authenticatedContent: some View {
         AuthenticatedShellView(
             selectionRaw: $selectionRaw,
-            container: environment.container
+            store: environment.appFeatureStore
         )
         .id(ObjectIdentifier(environment.container))
         .environment(environment)
@@ -148,40 +148,15 @@ private struct AppShellBranchView<Root: View>: View {
 }
 
 private struct AuthenticatedShellView: View {
-    @Environment(AppEnvironment.self) private var environment
     @Binding var selectionRaw: String
+    @Bindable var store: StoreOf<AppFeature>
     @State private var isImportDropTargeted = false
     @State private var shellStore: AppShellStore
-    @State private var accountsFeatureStore: StoreOf<AccountsFeature>
-    @State private var categoriesFeatureStore: StoreOf<CategoriesFeature>
-    @State private var transactionsFeatureStore: StoreOf<TransactionsFeature>
-    @State private var supportedInstitutionsFeatureStore: StoreOf<SupportedInstitutionsFeature>
 
-    init(selectionRaw: Binding<String>, container: AppContainer) {
+    init(selectionRaw: Binding<String>, store: StoreOf<AppFeature>) {
         _selectionRaw = selectionRaw
+        self.store = store
         _shellStore = State(initialValue: AppShellStore())
-        _accountsFeatureStore = State(initialValue: Store(initialState: AccountsFeature.State()) {
-            AccountsFeature()
-        } withDependencies: {
-            $0.accountsClient = .live(container: container)
-        })
-        _categoriesFeatureStore = State(initialValue: Store(initialState: CategoriesFeature.State()) {
-            CategoriesFeature()
-        } withDependencies: {
-            $0.categoriesClient = .live(container: container)
-        })
-        _transactionsFeatureStore = State(initialValue: Store(initialState: TransactionsFeature.State()) {
-            TransactionsFeature()
-        } withDependencies: {
-            $0.transactionsClient = .live(container: container)
-        })
-        _supportedInstitutionsFeatureStore = State(
-            initialValue: Store(initialState: SupportedInstitutionsFeature.State()) {
-                SupportedInstitutionsFeature()
-            } withDependencies: {
-                $0.supportedInstitutionsClient = .live(container: container)
-            }
-        )
     }
 
     private var selection: AppSection {
@@ -189,7 +164,7 @@ private struct AuthenticatedShellView: View {
     }
 
     var body: some View {
-        let isWorkspaceModalPresented = environment.importFeatureStore.wizard != nil
+        let isWorkspaceModalPresented = store.importFeature.wizard != nil
 
         ZStack {
             GranaBackground()
@@ -208,19 +183,19 @@ private struct AuthenticatedShellView: View {
         }
         .dropDestination(for: URL.self, action: handleImportDrop, isTargeted: setImportDropTargeted)
         .overlay {
-            if isImportDropTargeted, environment.importFeatureStore.wizard == nil {
+            if isImportDropTargeted, store.importFeature.wizard == nil {
                 GlobalImportDropOverlay()
                     .transition(.opacity.combined(with: .scale(scale: 0.98)))
                     .allowsHitTesting(false)
             }
         }
         .overlay {
-            if let wizardStore = environment.importFeatureStore.scope(state: \.wizard, action: \.wizard) {
+            if let wizardStore = store.scope(state: \.importFeature.wizard, action: \.importFeature.wizard) {
                 ImportOverlayContainer(
-                    onClose: { environment.importFeatureStore.send(.wizard(.cancel)) }
+                    onClose: { store.send(.importFeature(.wizard(.cancel))) }
                 ) {
                     ImportView(store: wizardStore) {
-                        environment.importFeatureStore.send(.wizard(.cancel))
+                        store.send(.importFeature(.wizard(.cancel)))
                     }
                 }
                 .transition(.opacity.combined(with: .scale(scale: 0.98)))
@@ -257,17 +232,17 @@ private struct AuthenticatedShellView: View {
         case .dashboard:
             DashboardView()
         case .transactions:
-            TransactionsView(store: transactionsFeatureStore)
+            TransactionsView(store: store.scope(state: \.transactions, action: \.transactions))
         case .creditCards:
-            CreditCardsView(store: environment.creditCardsFeatureStore)
+            CreditCardsView(store: store.scope(state: \.creditCards, action: \.creditCards))
         case .accounts:
-            AccountsView(store: accountsFeatureStore)
+            AccountsView(store: store.scope(state: \.accounts, action: \.accounts))
         case .import:
-            ImportHistoryView(store: environment.importFeatureStore)
+            ImportHistoryView(store: store.scope(state: \.importFeature, action: \.importFeature))
         case .categories:
-            CategoriesView(store: categoriesFeatureStore)
+            CategoriesView(store: store.scope(state: \.categories, action: \.categories))
         case .institutions:
-            SupportedInstitutionsView(store: supportedInstitutionsFeatureStore)
+            SupportedInstitutionsView(store: store.scope(state: \.supportedInstitutions, action: \.supportedInstitutions))
         case .designSystem:
             DesignSystemView()
         case .profile:
@@ -279,9 +254,9 @@ private struct AuthenticatedShellView: View {
         let decision = ImportDropPolicy.evaluate(
             urls: urls,
             supportedExtensions: ImportWizardFeature.State.supportedExtensions,
-            isImportInProgress: environment.importFeatureStore.wizard != nil
+            isImportInProgress: store.importFeature.wizard != nil
         )
-        environment.importFeatureStore.send(.globalFileDrop(urls))
+        store.send(.importFeature(.globalFileDrop(urls)))
         return decision.acceptsDrop
     }
 

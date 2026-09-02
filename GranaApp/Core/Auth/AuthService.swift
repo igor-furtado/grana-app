@@ -5,6 +5,17 @@ import OSLog
 @MainActor
 @Observable
 final class AuthService {
+    enum AccessLinkingMethod: Equatable {
+        case apple
+
+        var displayName: String {
+            switch self {
+            case .apple:
+                "Apple"
+            }
+        }
+    }
+
     enum State: Equatable {
         case restoring
         case unavailable
@@ -20,11 +31,24 @@ final class AuthService {
         case awaitingOTP(email: String)
         case verifyingOTP(email: String)
         case authenticated
-        case linkingPrompt
+        case linkingPrompt(method: AccessLinkingMethod, email: String?)
+        case linkingAccess(method: AccessLinkingMethod)
         case failure(String)
     }
 
+    private enum PendingAccessLink {
+        case apple(AppleSignInCredentials)
+
+        var method: AccessLinkingMethod {
+            switch self {
+            case .apple:
+                .apple
+            }
+        }
+    }
+
     private let client: any AuthClientProtocol
+    private var pendingAccessLink: PendingAccessLink?
 
     private(set) var state: State = .restoring
     private(set) var loginState: LoginState = .idle
@@ -61,6 +85,12 @@ final class AuthService {
     }
 
     func signInWithApple(_ credentials: AppleSignInCredentials) async throws {
+        if let session = authenticatedSessionNeedingAppleLinking {
+            pendingAccessLink = .apple(credentials)
+            loginState = .linkingPrompt(method: .apple, email: session.email)
+            return
+        }
+
         loginState = .signingInWithApple
         do {
             let session = try await client.signInWithApple(credentials)
@@ -77,7 +107,34 @@ final class AuthService {
     }
 
     func resetLoginState() {
+        pendingAccessLink = nil
         loginState = .idle
+    }
+
+    func confirmAccessLink() async throws {
+        guard let pendingAccessLink else {
+            throw AuthFlowError.missingPendingAccessLink
+        }
+
+        loginState = .linkingAccess(method: pendingAccessLink.method)
+        do {
+            let session = try await link(pendingAccessLink)
+            state = .authenticated(session)
+            self.pendingAccessLink = nil
+            loginState = .authenticated
+        } catch {
+            loginState = .failure(AppErrorPresentation.from(error).message)
+            throw error
+        }
+    }
+
+    func cancelAccessLink() {
+        pendingAccessLink = nil
+        if case .authenticated = state {
+            loginState = .authenticated
+        } else {
+            loginState = .idle
+        }
     }
 
     func requestEmailOTP(email: String) async throws {
@@ -117,5 +174,25 @@ final class AuthService {
         }
         state = .unauthenticated
         loginState = .idle
+    }
+
+    private func link(_ pendingAccessLink: PendingAccessLink) async throws -> AuthSessionContext {
+        switch pendingAccessLink {
+        case let .apple(credentials):
+            try await client.linkAppleIdentity(credentials)
+        }
+    }
+
+    private func shouldConfirmAppleLinking(for session: AuthSessionContext) -> Bool {
+        !session.providers.contains { $0.caseInsensitiveCompare("apple") == .orderedSame }
+    }
+
+    private var authenticatedSessionNeedingAppleLinking: AuthSessionContext? {
+        guard case let .authenticated(session) = state,
+              shouldConfirmAppleLinking(for: session)
+        else {
+            return nil
+        }
+        return session
     }
 }

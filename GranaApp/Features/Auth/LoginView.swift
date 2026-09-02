@@ -4,6 +4,9 @@ import AuthenticationServices
 import SwiftUI
 
 struct LoginView: View {
+    private static let minimumOTPCodeLength = 6
+    private static let maximumOTPCodeLength = 8
+
     let authService: AuthService
 
     @State private var email = ""
@@ -77,6 +80,10 @@ struct LoginView: View {
 
             statusText
                 .frame(minHeight: 20, alignment: .leading)
+
+            if isLinkingPromptVisible {
+                linkingPromptControls
+            }
         }
         .frame(width: 390, alignment: .leading)
     }
@@ -103,7 +110,7 @@ struct LoginView: View {
                         textAlignment: .trailing
                     )
                     .onChange(of: code) { _, newValue in
-                        code = String(newValue.filter(\.isNumber).prefix(6))
+                        code = Self.normalizedCode(from: newValue)
                     }
                 }
 
@@ -160,6 +167,24 @@ struct LoginView: View {
             .foregroundStyle(statusColor)
     }
 
+    private var linkingPromptControls: some View {
+        HStack(spacing: AppUI.Theme.Spacing.sm) {
+            Button("Confirmar") {
+                Task {
+                    await confirmAccessLink()
+                }
+            }
+            .buttonStyle(GranaPrimaryButtonStyle())
+            .disabled(isBusy)
+
+            Button("Cancelar") {
+                authService.cancelAccessLink()
+            }
+            .buttonStyle(GranaSecondaryButtonStyle())
+            .disabled(isBusy)
+        }
+    }
+
     private var logoMark: some View {
         Text("G")
             .font(AppUI.Theme.Typography.title3)
@@ -177,12 +202,12 @@ struct LoginView: View {
     }
 
     private var normalizedCode: String {
-        String(code.filter(\.isNumber).prefix(6))
+        Self.normalizedCode(from: code)
     }
 
     private var isBusy: Bool {
         switch authService.loginState {
-        case .signingInWithApple, .sendingOTP, .verifyingOTP:
+        case .signingInWithApple, .sendingOTP, .verifyingOTP, .linkingAccess:
             true
         case .idle, .enteringEmail, .awaitingOTP, .authenticated, .linkingPrompt, .failure:
             false
@@ -193,7 +218,7 @@ struct LoginView: View {
         switch authService.loginState {
         case .enteringEmail, .sendingOTP, .awaitingOTP, .verifyingOTP, .failure:
             true
-        case .idle, .signingInWithApple, .authenticated, .linkingPrompt:
+        case .idle, .signingInWithApple, .authenticated, .linkingPrompt, .linkingAccess:
             false
         }
     }
@@ -203,7 +228,8 @@ struct LoginView: View {
             return true
         }
         if isAwaitingOTP || isVerifyingOTP {
-            return normalizedCode.count != 6
+            return normalizedCode.count < Self.minimumOTPCodeLength
+                || normalizedCode.count > Self.maximumOTPCodeLength
         }
         return false
     }
@@ -220,6 +246,8 @@ struct LoginView: View {
             "Verificar código"
         case .verifyingOTP:
             "Verificando..."
+        case .linkingAccess:
+            "Vinculando..."
         default:
             "Enviar código"
         }
@@ -237,8 +265,14 @@ struct LoginView: View {
             "Verificando código..."
         case .authenticated:
             "Sessão autenticada."
-        case .linkingPrompt:
-            "Confirme a vinculação."
+        case let .linkingPrompt(method, email):
+            if let email {
+                "Confirme a vinculação com \(method.displayName) para \(email)."
+            } else {
+                "Confirme a vinculação com \(method.displayName)."
+            }
+        case let .linkingAccess(method):
+            "Vinculando \(method.displayName)..."
         case let .failure(message):
             message
         case .idle, .enteringEmail:
@@ -264,6 +298,14 @@ struct LoginView: View {
 
     private var isVerifyingOTP: Bool {
         if case .verifyingOTP = authService.loginState {
+            true
+        } else {
+            false
+        }
+    }
+
+    private var isLinkingPromptVisible: Bool {
+        if case .linkingPrompt = authService.loginState {
             true
         } else {
             false
@@ -296,7 +338,7 @@ struct LoginView: View {
             try await authService.requestEmailOTP(email: normalizedEmail)
             NoticeCenter.shared.success(
                 title: "Código enviado",
-                message: "Informe o código de 6 dígitos recebido por e-mail."
+                message: "Informe o código recebido por e-mail."
             )
         } catch {
             NoticeCenter.shared.report(error, title: "Falha ao enviar código")
@@ -311,9 +353,22 @@ struct LoginView: View {
         }
     }
 
+    private func confirmAccessLink() async {
+        do {
+            try await authService.confirmAccessLink()
+            NoticeCenter.shared.success(title: "Método vinculado")
+        } catch {
+            NoticeCenter.shared.report(error, title: "Falha ao vincular acesso")
+        }
+    }
+
     private func isAppleCancellation(_ error: any Error) -> Bool {
         let nsError = error as NSError
         return nsError.domain == ASAuthorizationError.errorDomain
             && nsError.code == ASAuthorizationError.canceled.rawValue
+    }
+
+    private static func normalizedCode(from value: String) -> String {
+        String(value.filter(\.isNumber).prefix(maximumOTPCodeLength))
     }
 }

@@ -1,7 +1,7 @@
+import AppUI
 import ComposableArchitecture
 import Foundation
 import SwiftUI
-import AppUI
 
 /// Lista de lançamentos da fatura selecionada. Faz snapshot remoto explícito
 /// quando o `statementId` muda, em linha com a direção online-only da fatia.
@@ -9,6 +9,8 @@ import AppUI
 /// Mantém `[UUID: Category]` carregado uma vez (snapshot) pra resolver o
 /// nome + ícone da categoria de cada row sem segundo round-trip.
 struct StatementListView: View {
+    private static let numberLocale = Locale(identifier: "pt_BR")
+
     @Bindable var store: StoreOf<StatementListFeature>
     let currency: String
     @State private var sortOrder = [
@@ -50,15 +52,23 @@ struct StatementListView: View {
 
     private var table: some View {
         AppUI.Table(sortedRows, sortOrder: $sortOrder) {
+            TableColumn("Tipo", value: \.purchaseDisplayName) { row in
+                Text(row.purchaseDisplayName)
+                    .font(AppUI.Theme.Typography.caption1)
+                    .foregroundStyle(AppUI.Theme.Palette.muted)
+                    .lineLimit(1)
+            }
+            .width(min: 92, ideal: 116, max: 136)
+
             TableColumn("Data", value: \.occurredAt) { row in
                 Text(GranaDateFormat.fullDate(row.occurredAt))
                     .font(AppUI.Theme.Typography.caption1)
                     .foregroundStyle(AppUI.Theme.Palette.muted)
             }
-            .width(min: 128, ideal: 148, max: 172)
+            .width(min: 110, ideal: 140, max: 140)
 
             TableColumn("Categoria", value: \.categorySortLabel) { row in
-                Group {
+                HStack(spacing: AppUI.Theme.Spacing.xs) {
                     if let category = row.category {
                         CategoryBadge(
                             category: category,
@@ -68,22 +78,15 @@ struct StatementListView: View {
                     } else {
                         placeholderIcon
                     }
-                }
-                .accessibilityLabel(row.categoryName ?? "Sem categoria")
-            }
-            .width(min: 58, ideal: 64, max: 72)
 
-            TableColumn("Subcategoria", value: \.subcategorySortLabel) { row in
-                Text(row.subcategoryDisplayName)
-                    .font(AppUI.Theme.Typography.caption1)
-                    .foregroundStyle(
-                        row.subcategoryName == nil
-                            ? AppUI.Theme.Palette.muted
-                            : AppUI.Theme.Palette.ink
-                    )
-                    .lineLimit(1)
+                    Text(row.categoryDisplayName)
+                        .font(AppUI.Theme.Typography.footnoteEmphasis)
+                        .foregroundStyle(AppUI.Theme.Palette.muted)
+                        .lineLimit(1)
+                }
+                .help(row.categoryName ?? "Sem categoria")
             }
-            .width(min: 148, ideal: 180, max: 220)
+            .width(min: 170, ideal: 220, max: 220)
 
             TableColumn("Descrição", value: \.description) { row in
                 Text(row.description)
@@ -91,19 +94,13 @@ struct StatementListView: View {
                     .foregroundStyle(AppUI.Theme.Palette.ink)
                     .lineLimit(1)
             }
-            .width(min: 220, ideal: 360)
 
-            TableColumn("Valor", value: \.signedAmount) { row in
-                Text(row.signedAmount.formatted(.currency(code: currency)))
-                    .font(AppUI.Theme.Typography.moneySubheadline)
-                    .foregroundStyle(
-                        row.signedAmount < 0
-                            ? AppUI.Theme.Palette.ink
-                            : AppUI.Theme.Palette.green
-                    )
+            TableColumn("Valor", value: \.amount) { row in
+                accountingAmount(row.amount)
+                    .foregroundStyle(amountColor(for: row))
                     .frame(maxWidth: .infinity, alignment: .trailing)
             }
-            .width(min: 132, ideal: 148, max: 180)
+            .width(min: 140, ideal: 140, max: 180)
         }
         .frame(minHeight: 260, idealHeight: min(CGFloat(sortedRows.count) * 44 + 44, 520), maxHeight: 520)
     }
@@ -122,6 +119,38 @@ struct StatementListView: View {
                     .foregroundStyle(AppUI.Theme.Palette.muted)
             }
     }
+
+    private func accountingAmount(_ amount: Decimal) -> some View {
+        let number = amount.formatted(
+            .number
+                .precision(.fractionLength(2))
+                .locale(Self.numberLocale)
+        )
+        return HStack(spacing: AppUI.Theme.Spacing.xxs) {
+            Text(currencySymbol)
+                .foregroundStyle(AppUI.Theme.Palette.muted)
+            Spacer(minLength: AppUI.Theme.Spacing.xxs)
+            Text(number)
+        }
+        .font(AppUI.Theme.Typography.moneySubheadline)
+    }
+
+    private func amountColor(for row: StatementTransactionTableRow) -> Color {
+        switch row.category?.kind {
+        case .income:
+            return .income
+        case .transfer:
+            return .transfer
+        case .expense:
+            return .expense
+        case .none:
+            return .primary
+        }
+    }
+
+    private var currencySymbol: String {
+        currency == "BRL" ? "R$" : currency
+    }
 }
 
 struct StatementTransactionTableRow: Identifiable, Equatable {
@@ -135,6 +164,20 @@ struct StatementTransactionTableRow: Identifiable, Equatable {
         source.transaction.occurredAt
     }
 
+    var purchaseDisplayName: String {
+        switch source.transaction.purchaseType {
+        case .installment:
+            if let installmentIndex = source.transaction.installmentIndex,
+               let installmentCount = source.transaction.installmentCount
+            {
+                return "Parcela \(installmentIndex)/\(installmentCount)"
+            }
+            return "Parcelada"
+        case .cash, .none:
+            return "À vista"
+        }
+    }
+
     var category: Category? {
         source.category
     }
@@ -144,7 +187,7 @@ struct StatementTransactionTableRow: Identifiable, Equatable {
     }
 
     var categorySortLabel: String {
-        categoryName ?? ""
+        categoryDisplayName
     }
 
     var categoryIcon: CategoryIcon? {
@@ -155,23 +198,16 @@ struct StatementTransactionTableRow: Identifiable, Equatable {
         source.subcategory?.name
     }
 
-    var subcategoryDisplayName: String {
-        subcategoryName ?? "—"
-    }
-
-    var subcategorySortLabel: String {
-        subcategoryName ?? ""
+    var categoryDisplayName: String {
+        subcategoryName ?? categoryName ?? "Sem categoria"
     }
 
     var description: String {
         source.transaction.description
     }
 
-    var signedAmount: Decimal {
-        if source.category?.kind == .income {
-            return source.transaction.amount.magnitude
-        }
-        return -source.transaction.amount.magnitude
+    var amount: Decimal {
+        source.transaction.amount.magnitude
     }
 }
 

@@ -57,6 +57,7 @@ nonisolated enum TransactionRemoteRepositoryError: UserFacingError, Equatable {
     case invalidTransferDestination
     case unappliedPayment
     case transactionNotFound
+    case creditCardTransactionsUnsupported
     case unexpectedResponse
 
     var errorTitle: String {
@@ -86,6 +87,8 @@ nonisolated enum TransactionRemoteRepositoryError: UserFacingError, Equatable {
             return "O pagamento precisa ser integralmente aplicado às faturas elegíveis nessa data."
         case .transactionNotFound:
             return "A transação não foi encontrada para concluir a operação."
+        case .creditCardTransactionsUnsupported:
+            return "Atualize o backend para apagar transações de cartão de crédito."
         case .unexpectedResponse:
             return "A resposta do backend para transações veio inválida."
         }
@@ -107,6 +110,8 @@ nonisolated enum TransactionRemoteRepositoryError: UserFacingError, Equatable {
             return .unappliedPayment
         case "transaction_not_found":
             return .transactionNotFound
+        case "credit_card_transactions_not_supported":
+            return .creditCardTransactionsUnsupported
         default:
             return .unexpectedResponse
         }

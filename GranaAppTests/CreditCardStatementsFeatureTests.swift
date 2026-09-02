@@ -6,6 +6,92 @@ import Testing
 @MainActor
 @Suite("CreditCardStatementsFeature")
 struct CreditCardStatementsFeatureTests {
+    @Test("Janela do gráfico mostra 12 meses a partir da fatura selecionada")
+    func statementTimelineVisibleWindowUsesSelectedStatementMonthNearStart() throws {
+        let calendar = try Self.makeCalendar()
+        let items = (0 ..< 14).map { offset in
+            TimelineMonth(date: calendar.date(byAdding: .month, value: offset, to: Self.date(2023, 10, 6))!)
+        }
+
+        let visibleItems = StatementTimelineVisibleWindow(
+            selectedDate: Self.date(2023, 10, 6),
+            calendar: calendar
+        ).items(from: items, date: \.date)
+
+        #expect(visibleItems.count == 12)
+        #expect(visibleItems.first?.date == Self.date(2023, 10, 6))
+        #expect(visibleItems.last?.date == Self.date(2024, 9, 6))
+    }
+
+    @Test("Janela do gráfico centraliza a fatura selecionada quando há histórico antes e depois")
+    func statementTimelineVisibleWindowCentersSelectedStatementWhenPossible() throws {
+        let calendar = try Self.makeCalendar()
+        let items = (0 ..< 18).map { offset in
+            TimelineMonth(date: calendar.date(byAdding: .month, value: offset, to: Self.date(2024, 10, 6))!)
+        }
+
+        let visibleItems = StatementTimelineVisibleWindow(
+            selectedDate: Self.date(2025, 8, 6),
+            calendar: calendar
+        ).items(from: items, date: \.date)
+
+        #expect(visibleItems.count == 12)
+        #expect(visibleItems.first?.date == Self.date(2025, 3, 6))
+        #expect(visibleItems[5].date == Self.date(2025, 8, 6))
+        #expect(visibleItems.last?.date == Self.date(2026, 2, 6))
+    }
+
+    @Test("Janela do gráfico desloca para trás quando falta fatura futura")
+    func statementTimelineVisibleWindowShiftsBackWhenFutureIsShort() throws {
+        let calendar = try Self.makeCalendar()
+        let items = (0 ..< 18).map { offset in
+            TimelineMonth(date: calendar.date(byAdding: .month, value: offset, to: Self.date(2024, 10, 6))!)
+        }
+
+        let visibleItems = StatementTimelineVisibleWindow(
+            selectedDate: Self.date(2026, 2, 6),
+            calendar: calendar
+        ).items(from: items, date: \.date)
+
+        #expect(visibleItems.count == 12)
+        #expect(visibleItems.first?.date == Self.date(2025, 4, 6))
+        #expect(visibleItems.last?.date == Self.date(2026, 3, 6))
+    }
+
+    @Test("Janela do gráfico não fica vazia quando não há seleção nem fatura no mês real atual")
+    func statementTimelineVisibleWindowFallsBackToLoadedDataWhenSelectionIsAbsent() throws {
+        let calendar = try Self.makeCalendar()
+        let items = (0 ..< 14).map { offset in
+            TimelineMonth(date: calendar.date(byAdding: .month, value: offset, to: Self.date(2023, 10, 6))!)
+        }
+
+        let visibleItems = StatementTimelineVisibleWindow(
+            selectedDate: nil,
+            calendar: calendar
+        ).items(from: items, date: \.date)
+
+        #expect(visibleItems.count == 12)
+        #expect(visibleItems.first?.date == Self.date(2023, 10, 6))
+        #expect(visibleItems.last?.date == Self.date(2024, 9, 6))
+    }
+
+    @Test("Janela do gráfico não completa meses inexistentes quando há menos de 12 faturas")
+    func statementTimelineVisibleWindowKeepsAvailableCountWhenUnderLimit() throws {
+        let calendar = try Self.makeCalendar()
+        let items = (0 ..< 2).map { offset in
+            TimelineMonth(date: calendar.date(byAdding: .month, value: offset, to: Self.date(2023, 10, 6))!)
+        }
+
+        let visibleItems = StatementTimelineVisibleWindow(
+            selectedDate: Self.date(2023, 10, 6),
+            calendar: calendar
+        ).items(from: items, date: \.date)
+
+        #expect(visibleItems.count == 2)
+        #expect(visibleItems.first?.date == Self.date(2023, 10, 6))
+        #expect(visibleItems.last?.date == Self.date(2023, 11, 6))
+    }
+
     @Test("Selecionar fatura persistida dispara carregamento da lista de lançamentos")
     func statementsFeatureLoadsSelectedStatementTransactions() async {
         let card = CreditCardListItem(
@@ -181,5 +267,26 @@ struct CreditCardStatementsFeatureTests {
         #expect(update?.1 == updated.closingDate)
         #expect(update?.2 == updated.dueDate)
         #expect(notices.value.first?.0 == "Datas da fatura atualizadas")
+    }
+
+    private struct TimelineMonth: Equatable {
+        let date: Date
+    }
+
+    private static func makeCalendar() throws -> Calendar {
+        var calendar = Calendar(identifier: .gregorian)
+        let timeZone = try #require(TimeZone(identifier: "America/Fortaleza"))
+        calendar.timeZone = timeZone
+        return calendar
+    }
+
+    private static func date(_ year: Int, _ month: Int, _ day: Int) -> Date {
+        var components = DateComponents()
+        components.calendar = Calendar(identifier: .gregorian)
+        components.timeZone = TimeZone(identifier: "America/Fortaleza")
+        components.year = year
+        components.month = month
+        components.day = day
+        return components.date!
     }
 }

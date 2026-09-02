@@ -83,6 +83,22 @@ actor SupabaseAuthClient: AuthClientProtocol {
         }
     }
 
+    func linkAppleIdentity(_ credentials: AppleSignInCredentials) async throws -> AuthSessionContext {
+        let client = try resolvedClient()
+        do {
+            let session = try await client.auth.linkIdentityWithIdToken(
+                credentials: .init(
+                    provider: .apple,
+                    idToken: credentials.identityToken,
+                    nonce: credentials.nonce
+                )
+            )
+            return AuthSessionContext(session: session)
+        } catch {
+            throw Self.normalizedAuthRequestError(error)
+        }
+    }
+
     func requestEmailOTP(email: String) async throws {
         let client = try resolvedClient()
         do {
@@ -134,11 +150,14 @@ actor SupabaseAuthClient: AuthClientProtocol {
 
 enum AuthFlowError: LocalizedError, Equatable {
     case missingSessionAfterVerification
+    case missingPendingAccessLink
 
     var errorDescription: String? {
         switch self {
         case .missingSessionAfterVerification:
             "O código foi verificado, mas o servidor não retornou uma sessão ativa."
+        case .missingPendingAccessLink:
+            "Não há método de acesso aguardando confirmação."
         }
     }
 }

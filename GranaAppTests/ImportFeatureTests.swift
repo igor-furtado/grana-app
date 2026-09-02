@@ -91,6 +91,44 @@ struct ImportFeatureTests {
         await store.send(.globalFileDrop([incomingFile]))
     }
 
+    @Test("Conclusão do wizard sinaliza dados financeiros alterados")
+    func wizardCompletionSignalsFinancialDataChanged() async {
+        let initialState = ImportFeature.State(
+            history: ImportHistoryFeature.State(),
+            wizard: ImportWizardFeature.State(initialFile: URL(fileURLWithPath: "/tmp/fatura.csv"))
+        )
+        let store = TestStore(initialState: initialState) {
+            ImportFeature()
+        } withDependencies: {
+            $0.importClient.loadSnapshot = {
+                ImportSnapshot(
+                    batches: [],
+                    accounts: [],
+                    institutions: [],
+                    bankDetails: [],
+                    creditCards: [],
+                    categories: []
+                )
+            }
+        }
+
+        await store.send(.wizard(.delegate(.completed))) {
+            $0.wizard = nil
+        }
+
+        await store.receive(.delegate(.financialDataChanged))
+
+        await store.receive(.history(.refresh)) {
+            $0.history.isLoading = true
+        }
+
+        await store.receive(.history(.snapshotLoaded(.success(.empty)))) {
+            $0.history.snapshot = .empty
+            $0.history.isLoading = false
+            $0.history.hasLoaded = true
+        }
+    }
+
     @Test("Builder usa fallback não classificado quando revisão não escolhe categoria")
     func commitBuilderFallsBackToUnclassified() throws {
         let fallback = Category(

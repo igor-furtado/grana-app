@@ -43,10 +43,15 @@ public enum Skeleton {
         }
 
         public var body: some View {
+            let shape = RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
+
             RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
                 .fill(Theme.Palette.soft)
-                .appSkeletonShimmer(isAnimated: isAnimated)
                 .appSkeletonFrame(width: width, height: height)
+                .overlay {
+                    SkeletonShimmer(isAnimated: isAnimated)
+                }
+                .clipShape(shape)
                 .accessibilityHidden(true)
         }
     }
@@ -63,8 +68,11 @@ public enum Skeleton {
         public var body: some View {
             SwiftUI.Circle()
                 .fill(Theme.Palette.soft)
-                .appSkeletonShimmer(isAnimated: isAnimated)
                 .frame(width: size, height: size)
+                .overlay {
+                    SkeletonShimmer(isAnimated: isAnimated)
+                }
+                .clipShape(SwiftUI.Circle())
                 .accessibilityHidden(true)
         }
     }
@@ -79,46 +87,40 @@ private extension View {
             frame(width: width, height: height)
         }
     }
-
-    func appSkeletonShimmer(isAnimated: Bool) -> some View {
-        modifier(SkeletonShimmerModifier(isAnimated: isAnimated))
-    }
 }
 
-private struct SkeletonShimmerModifier: ViewModifier {
+private struct SkeletonShimmer: View {
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @State private var phase: CGFloat = -0.85
 
     let isAnimated: Bool
 
-    func body(content: Content) -> some View {
-        content
-            .overlay {
-                if isAnimated, !reduceMotion {
-                    GeometryReader { geometry in
-                        let width = max(geometry.size.width, 1)
-                        LinearGradient(
-                            colors: [
-                                .clear,
-                                Theme.Palette.paper.opacity(0.72),
-                                .clear,
-                            ],
-                            startPoint: .leading,
-                            endPoint: .trailing
-                        )
-                        .frame(width: width * 0.55)
-                        .offset(x: width * phase)
-                    }
-                    .clipped()
-                    .allowsHitTesting(false)
-                }
+    var body: some View {
+        GeometryReader { geometry in
+            if isAnimated, !reduceMotion {
+                let width = max(geometry.size.width, 1)
+
+                LinearGradient(
+                    colors: [
+                        .clear,
+                        Theme.Palette.paper.opacity(0.72),
+                        .clear,
+                    ],
+                    startPoint: .leading,
+                    endPoint: .trailing
+                )
+                .frame(width: width * 0.55)
+                .offset(x: width * phase)
             }
-            .onAppear {
-                guard isAnimated, !reduceMotion else { return }
-                withAnimation(.linear(duration: 1.35).repeatForever(autoreverses: false)) {
-                    phase = 1.35
-                }
+        }
+        .clipped()
+        .allowsHitTesting(false)
+        .onAppear {
+            guard isAnimated, !reduceMotion else { return }
+            withAnimation(.linear(duration: 1.35).repeatForever(autoreverses: false)) {
+                phase = 1.35
             }
+        }
     }
 }
 

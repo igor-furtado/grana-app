@@ -1,8 +1,8 @@
+import AppUI
 import Charts
 import ComposableArchitecture
 import Foundation
 import SwiftUI
-import AppUI
 
 /// Painel de detalhe do cartão selecionado.
 /// A view só renderiza o read model do reducer; seleção de fatura e
@@ -31,13 +31,6 @@ struct CreditCardStatementsView: View {
     private var content: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: AppUI.Theme.Spacing.lg) {
-                if let details = store.card.details, let limit = details.creditLimit, limit > 0 {
-                    LimitGaugeBlock(
-                        used: store.card.currentBalance.magnitude,
-                        limit: limit,
-                        currency: store.card.account.currency
-                    )
-                }
                 if !store.statements.isEmpty || !store.projections.isEmpty {
                     StatementTimelineChart(
                         statements: store.statements,
@@ -68,20 +61,11 @@ struct CreditCardStatementsView: View {
     }
 
     private var transactionsBlock: some View {
-        VStack(alignment: .leading, spacing: AppUI.Theme.Spacing.xs) {
-            HStack {
-                Text("Lançamentos")
-                    .font(AppUI.Theme.Typography.headline)
-                Spacer()
-                if let total = store.selectedStatementTotal {
-                    Text(total.formatted(.currency(code: store.card.account.currency)))
-                        .font(AppUI.Theme.Typography.moneySubheadline)
-                        .foregroundStyle(.secondary)
-                }
-            }
+        VStack(alignment: .leading, spacing: AppUI.Theme.Spacing.sm) {
+            Text("Lançamentos")
+                .font(AppUI.Theme.Typography.headline)
 
-            if let statement = store.selectedStatement {
-                statementSummary(statement)
+            if store.selectedStatement != nil {
                 if let statementListStore = store.scope(state: \.statementList, action: \.statementList) {
                     StatementListView(
                         store: statementListStore,
@@ -91,35 +75,6 @@ struct CreditCardStatementsView: View {
             } else {
                 emptyTransactions
             }
-        }
-    }
-
-    private func statementSummary(_ statement: Statement) -> some View {
-        Grid(alignment: .leading, horizontalSpacing: 24, verticalSpacing: 6) {
-            summaryRow("Compras menos créditos", value: statement.netAmount)
-            summaryRow("Pagamentos", value: statement.paymentApplied)
-            summaryRow("Total a quitar", value: statement.totalAmount)
-            if statement.remainingAmount > 0 {
-                summaryRow("Diferença pendente", value: statement.remainingAmount)
-            }
-            if statement.paymentExcess > 0 {
-                summaryRow("Pagamento excedente", value: statement.paymentExcess)
-            }
-            if statement.creditBalance > 0 {
-                summaryRow("Saldo", value: statement.creditBalance)
-            }
-        }
-        .padding(AppUI.Theme.Spacing.sm)
-        .granaSurface(.solid, cornerRadius: AppUI.Theme.Radius.control)
-    }
-
-    private func summaryRow(_ label: String, value: Decimal) -> some View {
-        GridRow {
-            Text(label)
-                .foregroundStyle(.secondary)
-            Text(value.formatted(.currency(code: store.card.account.currency)))
-                .font(AppUI.Theme.Typography.moneySubheadline)
-                .gridColumnAlignment(.trailing)
         }
     }
 
@@ -148,85 +103,11 @@ struct CreditCardStatementsView: View {
     }
 }
 
-private struct LimitGaugeBlock: View {
-    let used: Decimal
-    let limit: Decimal
-    let currency: String
-
-    private var percent: Double {
-        let l = NSDecimalNumber(decimal: limit).doubleValue
-        guard l > 0 else { return 0 }
-        let u = NSDecimalNumber(decimal: used).doubleValue
-        return max(0, min(1, u / l))
-    }
-
-    private var color: Color {
-        AppUI.UsageMeterBar.fill(for: percent)
-    }
-
-    private var available: Decimal {
-        max(0, limit - used)
-    }
-
-    var body: some View {
-        VStack(alignment: .leading, spacing: AppUI.Theme.Spacing.sm) {
-            HStack(alignment: .firstTextBaseline) {
-                VStack(alignment: .leading, spacing: AppUI.Theme.Spacing.xxs) {
-                    Text("LIMITE UTILIZADO")
-                        .font(AppUI.Theme.Typography.caption2Emphasis)
-                        .tracking(0.8)
-                        .foregroundStyle(.secondary)
-                    Text(used.formatted(.currency(code: currency)))
-                        .font(AppUI.Theme.Typography.moneyTitle2)
-                        .foregroundStyle(.primary)
-                }
-                Spacer()
-                VStack(alignment: .trailing, spacing: AppUI.Theme.Spacing.xxs) {
-                    Text("LIMITE TOTAL")
-                        .font(AppUI.Theme.Typography.caption2Emphasis)
-                        .tracking(0.8)
-                        .foregroundStyle(.secondary)
-                    Text(limit.formatted(.currency(code: currency)))
-                        .font(AppUI.Theme.Typography.moneyHeadline)
-                        .foregroundStyle(.secondary)
-                }
-            }
-
-            AppUI.UsageMeterBar(
-                progress: percent,
-                fill: color,
-                track: AppUI.Theme.Palette.line,
-                minimumFillWidth: 4
-            )
-
-            HStack(spacing: AppUI.Theme.Spacing.md) {
-                HStack(spacing: AppUI.Theme.Spacing.xs) {
-                    Circle().fill(color).frame(width: 8, height: 8)
-                    Text("Usado: \(used.formatted(.currency(code: currency)))")
-                        .font(AppUI.Theme.Typography.caption1)
-                        .foregroundStyle(.primary)
-                }
-                HStack(spacing: AppUI.Theme.Spacing.xs) {
-                    Circle().fill(Color.secondary.opacity(0.4)).frame(width: 8, height: 8)
-                    Text("Disponível: \(available.formatted(.currency(code: currency)))")
-                        .font(AppUI.Theme.Typography.caption1)
-                        .foregroundStyle(.secondary)
-                }
-                Spacer()
-                Text("\(Int(percent * 100))%")
-                    .font(AppUI.Theme.Typography.footnoteEmphasis)
-                    .foregroundStyle(color)
-            }
-        }
-        .padding(AppUI.Theme.Spacing.md)
-        .granaSurface(.solid, cornerRadius: AppUI.Theme.Radius.card)
-    }
-}
-
 private struct StatementTimelineChart: View {
     let statements: [Statement]
     let projections: [StatementWindow]
     let currency: String
+    var calendar = Calendar.autoupdatingCurrent
     @Binding var selectedId: UUID?
 
     private struct Bar: Identifiable, Hashable {
@@ -270,13 +151,20 @@ private struct StatementTimelineChart: View {
         return result.sorted { $0.dueDate < $1.dueDate }
     }
 
+    private var visibleBars: [Bar] {
+        StatementTimelineVisibleWindow(
+            selectedDate: bars.first { $0.id == selectedId }?.dueDate,
+            calendar: calendar
+        ).items(from: bars, date: \.dueDate)
+    }
+
     var body: some View {
-        VStack(alignment: .leading, spacing: AppUI.Theme.Spacing.xs) {
+        VStack(alignment: .leading, spacing: AppUI.Theme.Spacing.sm) {
             Text("Faturas")
                 .font(AppUI.Theme.Typography.headline)
 
             HStack(alignment: .bottom, spacing: AppUI.Theme.Spacing.md) {
-                ForEach(bars) { bar in
+                ForEach(visibleBars) { bar in
                     BarColumn(
                         bar: bar,
                         maxTotal: maxBarValue,
@@ -299,7 +187,7 @@ private struct StatementTimelineChart: View {
     }
 
     private var maxBarValue: Decimal {
-        let max = bars.map(\.total).max() ?? 0
+        let max = visibleBars.map(\.total).max() ?? 0
         return max > 0 ? max : 1
     }
 
@@ -356,6 +244,35 @@ private struct StatementTimelineChart: View {
             let ratio = total / max
             return CGFloat(ratio) * available
         }
+    }
+}
+
+struct StatementTimelineVisibleWindow {
+    static let monthCount = 12
+
+    var selectedDate: Date?
+    var calendar: Calendar
+
+    func items<Element>(from allItems: [Element], date: KeyPath<Element, Date>) -> [Element] {
+        let sortedItems = allItems.sorted { $0[keyPath: date] < $1[keyPath: date] }
+        guard sortedItems.count > Self.monthCount else {
+            return sortedItems
+        }
+
+        guard
+            let selectedDate,
+            let selectedIndex = sortedItems.firstIndex(where: {
+                calendar.isDate($0[keyPath: date], equalTo: selectedDate, toGranularity: .month)
+            })
+        else {
+            return Array(sortedItems.prefix(Self.monthCount))
+        }
+
+        let preferredPastCount = (Self.monthCount - 1) / 2
+        let maxStartIndex = sortedItems.count - Self.monthCount
+        let startIndex = min(max(selectedIndex - preferredPastCount, 0), maxStartIndex)
+        let endIndex = startIndex + Self.monthCount
+        return Array(sortedItems[startIndex ..< endIndex])
     }
 }
 
