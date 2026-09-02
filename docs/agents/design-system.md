@@ -39,6 +39,19 @@ Leia `docs/design-system.md` antes de alterar UI SwiftUI no GranaApp.
   `AppUI.TextField`, `AppUI.Toggle`, `AppUI.DatePicker`,
   `AppUI.CurrencyField` e `AppUI.Selector`. Use `AppUI.Layout.*` para shells
   estruturais recorrentes, como o header inline das feature screens.
+- Use `AppUI.Skeleton` para carregamentos de conteudo financeiro ou telas
+  densas. A fundacao deve expor somente primitivas visuais, como `Line`, `Block`
+  e `Circle`; skeletons compostos ficam nas features.
+- O skeleton aparece no menor escopo que possui `isLoading` proprio. Se apenas
+  a feature pai carrega, o skeleton cobre o conteudo da feature pai. Se uma
+  subfeature ou bloco TCA carrega, o skeleton cobre somente essa area. Para
+  loading granular, extraia estado/reducer granular em vez de inferir escopo na
+  view.
+- Prefira skeleton contextual enxuto: preserve a hierarquia e o formato da tela
+  real com poucos placeholders. Nao replique cada dado futuro nem use skeleton
+  generico centralizado quando a feature conhece melhor o layout.
+- Reserve `ProgressView` para tarefas pequenas, controles inline, progresso
+  real ou fluxos sem estrutura de conteudo suficiente para skeleton contextual.
 - `AppUI.Table` e o ponto de entrada para tabelas.
   O wrapper concentra o shell visual; estado de dados, selecao, ordenacao,
   filtros e refresh continuam fora dele.

@@ -24,6 +24,7 @@
 		30A00000000000000000000F /* Theme.swift in Sources */ = {isa = PBXBuildFile; fileRef = 30A000000000000000000110 /* Theme.swift */; };
 		30A000000000000000000010 /* Spacing.swift in Sources */ = {isa = PBXBuildFile; fileRef = 30A000000000000000000111 /* Spacing.swift */; };
 		30A000000000000000000011 /* AppUI.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 30A000000000000000000101 /* AppUI.framework */; };
+		30A000000000000000000014 /* AppUISkeleton.swift in Sources */ = {isa = PBXBuildFile; fileRef = 30A000000000000000000112 /* AppUISkeleton.swift */; };
 		28AC0A162FB3CA67008BAD35 /* Supabase in Frameworks */ = {isa = PBXBuildFile; productRef = 28AC0A152FB3CA67008BAD35 /* Supabase */; };
 		28ECA003303F000000000001 /* ComposableArchitecture in Frameworks */ = {isa = PBXBuildFile; productRef = 28ECA002303F000000000001 /* ComposableArchitecture */; };
 /* End PBXBuildFile section */
@@ -63,6 +64,7 @@
 		30A00000000000000000010F /* GranaTheme.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GranaApp/Shared/Theme/GranaTheme.swift; sourceTree = SOURCE_ROOT; };
 		30A000000000000000000110 /* Theme.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GranaApp/Shared/Theme/Theme.swift; sourceTree = SOURCE_ROOT; };
 		30A000000000000000000111 /* Spacing.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GranaApp/Shared/Theme/Spacing.swift; sourceTree = SOURCE_ROOT; };
+		30A000000000000000000112 /* AppUISkeleton.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GranaApp/Shared/Components/AppUISkeleton.swift; sourceTree = SOURCE_ROOT; };
 		2898A1B42FB3C58D0070C51B /* GranaApp.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = GranaApp.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		28B459FF2FB3EE7C00F3C562 /* GranaAppTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = GranaAppTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
@@ -321,6 +323,7 @@
 				30A00000000000000000000B /* AppUIUsageMeterBar.swift in Sources */,
 				30A00000000000000000000C /* AppUILayoutScreenHeader.swift in Sources */,
 				30A00000000000000000000D /* AppIcon.swift in Sources */,
+				30A000000000000000000014 /* AppUISkeleton.swift in Sources */,
 				30A00000000000000000000E /* GranaTheme.swift in Sources */,
 				30A00000000000000000000F /* Theme.swift in Sources */,
 				30A000000000000000000010 /* Spacing.swift in Sources */,

@@ -16,17 +16,20 @@ struct StatementListView: View {
     ]
 
     var body: some View {
-        VStack(spacing: AppUI.Theme.Spacing.none) {
-            if store.isLoading, store.rows.isEmpty {
-                ProgressView()
-                    .padding(.vertical, AppUI.Theme.Spacing.lg)
-            } else if store.rows.isEmpty {
-                emptyView
+        Group {
+            if store.isLoading {
+                StatementListSkeletonView()
             } else {
-                table
+                VStack(spacing: AppUI.Theme.Spacing.none) {
+                    if store.rows.isEmpty {
+                        emptyView
+                    } else {
+                        table
+                    }
+                }
+                .granaSurface(.solid, cornerRadius: AppUI.Theme.Radius.card)
             }
         }
-        .granaSurface(.solid, cornerRadius: AppUI.Theme.Radius.card)
         .task(id: store.statementId) {
             await store.send(.task).finish()
         }

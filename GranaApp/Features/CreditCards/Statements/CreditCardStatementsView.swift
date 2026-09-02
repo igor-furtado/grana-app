@@ -11,6 +11,24 @@ struct CreditCardStatementsView: View {
     @Bindable var store: StoreOf<CreditCardStatementsFeature>
 
     var body: some View {
+        Group {
+            if store.isLoading {
+                CreditCardStatementsSkeletonView()
+            } else {
+                content
+            }
+        }
+        .sheet(
+            item: $store.scope(\.$dateEditor, action: \.dateEditor)
+        ) { dateEditorStore in
+            StatementDateEditorView(store: dateEditorStore)
+        }
+        .task {
+            await store.send(.task).finish()
+        }
+    }
+
+    private var content: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: AppUI.Theme.Spacing.lg) {
                 if let details = store.card.details, let limit = details.creditLimit, limit > 0 {
@@ -47,14 +65,6 @@ struct CreditCardStatementsView: View {
             .padding(AppUI.Theme.Spacing.xl)
         }
         .granaSurface(.subtle, cornerRadius: AppUI.Theme.Radius.hero)
-        .sheet(
-            item: $store.scope(\.$dateEditor, action: \.dateEditor)
-        ) { dateEditorStore in
-            StatementDateEditorView(store: dateEditorStore)
-        }
-        .task {
-            await store.send(.task).finish()
-        }
     }
 
     private var transactionsBlock: some View {

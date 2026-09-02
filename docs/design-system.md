@@ -60,6 +60,30 @@ agrupamentos semanticos e composicao de formularios continuam na tela chamadora;
 os controles `AppUI.*` centralizam o shell visual e, quando cabivel,
 `label`, texto de apoio e erro local.
 
+## Estados de carregamento
+
+Use skeleton contextual para carregamentos de conteudo financeiro ou telas
+densas. O skeleton deve preservar a estrutura essencial da tela ou bloco que
+esta carregando, mas em versao enxuta: poucas linhas, blocos e circulos que
+indiquem hierarquia, sem simular todos os dados futuros.
+
+`AppUI.Skeleton` fornece apenas primitivas visuais reutilizaveis, como `Line`,
+`Block` e `Circle`. Skeletons compostos pertencem as features, porque conhecem
+a estrutura semantica da tela. Uma feature de cartoes, por exemplo, pode montar
+um skeleton de lista de cartoes, grafico de faturas, resumo e lancamentos usando
+essas primitivas; `AppUI` nao deve conhecer cartao, fatura ou transacao.
+
+O skeleton aparece no menor escopo que possui estado de carregamento proprio.
+Se apenas a feature pai possui `isLoading`, o skeleton cobre o conteudo da
+feature pai. Se uma subfeature possui `isLoading`, o skeleton cobre apenas a
+area dessa subfeature. Quando uma area precisa recarregar sem apagar o restante
+da tela, extraia estado/reducer proprio para essa area em vez de tentar inferir
+granularidade visual na view.
+
+`ProgressView` fica reservado para tarefas pequenas, controles inline,
+operacoes com progresso real ou fluxos em que nao ha estrutura de conteudo
+suficiente para um skeleton contextual.
+
 ## Navegacao
 
 No estado autenticado, use rail lateral compacto icon-only. Todas as secoes

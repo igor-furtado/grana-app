@@ -1,6 +1,6 @@
+import AppUI
 import ComposableArchitecture
 import SwiftUI
-import AppUI
 
 struct CreditCardsView: View {
     @Bindable var store: StoreOf<CreditCardsFeature>
@@ -37,18 +37,23 @@ struct CreditCardsView: View {
             }
 
             Group {
-                if store.list.visibleItems.isEmpty, !store.isLoading {
+                if store.isLoading {
+                    CreditCardsLoadingView()
+                        .frame(maxWidth: .infinity, maxHeight: .infinity)
+                } else if store.list.visibleItems.isEmpty {
                     emptyState
                         .frame(maxWidth: .infinity, maxHeight: .infinity)
-                } else if let statementsStore = store.scope(state: \.statements, action: \.statements) {
+                } else {
                     VStack(alignment: .leading, spacing: AppUI.Theme.Spacing.md) {
                         CreditCardListView(store: store.scope(state: \.list, action: \.list))
-                        CreditCardStatementsView(store: statementsStore)
-                            .frame(maxWidth: .infinity, maxHeight: .infinity)
+                        if let statementsStore = store.scope(state: \.statements, action: \.statements) {
+                            CreditCardStatementsView(store: statementsStore)
+                                .frame(maxWidth: .infinity, maxHeight: .infinity)
+                        } else {
+                            Color.clear
+                                .frame(maxWidth: .infinity, maxHeight: .infinity)
+                        }
                     }
-                } else {
-                    placeholderDetail
-                        .frame(maxWidth: .infinity, maxHeight: .infinity)
                 }
             }
         }
@@ -86,17 +91,5 @@ struct CreditCardsView: View {
             }
             .buttonStyle(GranaPrimaryButtonStyle())
         }
-    }
-
-    private var placeholderDetail: some View {
-        VStack(spacing: AppUI.Theme.Spacing.sm) {
-            ProgressView()
-            Text("Carregando cartões…")
-                .font(AppUI.Theme.Typography.callout)
-                .foregroundStyle(AppUI.Theme.Palette.muted)
-        }
-        .frame(maxWidth: .infinity, maxHeight: .infinity)
-        .padding(AppUI.Theme.Spacing.xxxl)
-        .granaSurface(.subtle, cornerRadius: AppUI.Theme.Radius.hero)
     }
 }
