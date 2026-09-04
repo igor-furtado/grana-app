@@ -288,36 +288,24 @@ stable
 security definer
 set search_path = app_private, extensions
 as $$
-    with expanded as (
-        select series.installment_index, p_installment_count as installment_count
-        from generate_series(1, p_installment_count) as series(installment_index)
-        where p_purchase_type = 'installment'
-          and app_private.v1_is_credit_card_account(p_user_id, p_account_id)
-        union all
-        select p_installment_index, p_installment_count
-        where not (
-            p_purchase_type = 'installment'
-            and app_private.v1_is_credit_card_account(p_user_id, p_account_id)
-        )
-    )
     select
         case
             when p_purchase_type = 'installment'
                  and app_private.v1_is_credit_card_account(p_user_id, p_account_id)
             then app_private.v1_project_installment_competence(
-                p_user_id, p_account_id, p_origin_occurred_at, expanded.installment_index
+                p_user_id, p_account_id, p_origin_occurred_at, p_installment_index
             )
             else p_occurred_at
         end,
         p_origin_occurred_at,
         p_purchase_type,
-        expanded.installment_index,
-        expanded.installment_count,
+        p_installment_index,
+        p_installment_count,
         case
             when p_purchase_type = 'installment'
                  and app_private.v1_is_credit_card_account(p_user_id, p_account_id)
             then app_private.v1_rebuild_inter_import_notes(
-                p_purchase_type, expanded.installment_index, expanded.installment_count, p_notes
+                p_purchase_type, p_installment_index, p_installment_count, p_notes
             )
             else p_notes
         end,
@@ -328,11 +316,10 @@ as $$
                 p_description,
                 p_amount_cents,
                 p_purchase_type,
-                expanded.installment_index,
-                expanded.installment_count,
+                p_installment_index,
+                p_installment_count,
                 p_external_id
             )
             else p_external_id
         end
-    from expanded
 $$;

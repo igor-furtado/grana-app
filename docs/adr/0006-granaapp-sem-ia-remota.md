@@ -1,16 +1,5 @@
 # GranaApp sem IA remota
 
-Status: accepted
-
-## Contexto
-
-O uso de APIs públicas de IA para categorizar transações criou dois problemas
-de produto: custo operacional e exposição de dados financeiros a provedores
-externos. O requisito atual é que inteligência de categorização rode localmente
-no macOS em um projeto/processo separado do app principal.
-
-## Decisão
-
 O GranaApp não chama provedores externos de IA, não chama Edge Functions de
 categorização e não mantém runtime config de provider/modelo.
 
@@ -33,15 +22,3 @@ essas confirmações.
 O backend continua sendo a fonte de verdade do histórico financeiro já
 importado, mas não conhece provider, modelo, prompt, cache de IA nem memória
 de classificação.
-
-## Consequências
-
-- O GranaApp fica livre de custos e dependências de IA remota.
-- O backend não precisa conhecer provider, modelo, prompt, cache de IA,
-  correções de categorização nem memória de classificação.
-- A revisão manual continua obrigatória antes do commit final.
-- O contrato com o processo local precisa validar a taxonomia atual enviada
-  pelo app tanto para classificar quanto para aprender.
-- Falha no aprendizado local impede a conclusão do commit final da importação.
-- A fronteira com o processo local permanece explícita, sem acoplar o app
-  principal à implementação interna da inteligência.

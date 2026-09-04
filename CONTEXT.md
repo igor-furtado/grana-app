@@ -72,11 +72,11 @@ Total de parcelas previsto para uma compra parcelada. Não se aplica a compras �
 _Evite_: Última parcela, duração, quando o sentido for o total contratado
 
 **Data de competência**:
-Data principal de uma transação para efeitos de filtros, dashboards, ordenação e vínculo com faturas. Em compras parceladas importadas, pode ser derivada pelo produto para representar o ciclo correto de cada parcela.
+Data principal de uma transação para efeitos de filtros, dashboards, ordenação e vínculo com faturas. Em compras parceladas importadas, representa a competência da parcela informada pela linha de origem, somando à data de origem a quantidade de meses equivalente ao índice da parcela menos um.
 _Evite_: Data real, quando estiver distinguindo da data informada pela fonte
 
 **Data de origem**:
-Data usada para identificar duplicações de transações e, quando a transação vem de uma fonte externa, preserva a data informada pela origem para auditoria. Em compras parceladas de certas instituições, serve como âncora da primeira parcela da série e o produto deriva as parcelas seguintes somando meses a partir dela.
+Data usada para identificar duplicações de transações e, quando a transação vem de uma fonte externa, preserva a data informada pela origem para auditoria. Em compras parceladas importadas, serve como base para determinar a data de competência da parcela informada.
 _Evite_: Data principal, data de competência
 
 **Receita**:
@@ -190,8 +190,12 @@ Registro emitido por uma instituição financeira com as transações de uma con
 _Evite_: Fatura, histórico do produto
 
 **Importação**:
-Entrada de transações provenientes de um arquivo financeiro para revisão e incorporação ao histórico.
+Entrada de transações provenientes de um arquivo financeiro para revisão e incorporação ao histórico. Cada linha real importada pode gerar no máximo uma transação no histórico.
 _Evite_: Sincronização, integração bancária
+
+**Linha importada**:
+Registro individual lido de um arquivo financeiro. Mesmo quando representa uma parcela de compra, não autoriza o produto a criar transações para parcelas ausentes do arquivo.
+_Evite_: Série parcelada, quando estiver falando da evidência importada
 
 **Triagem**:
 Primeira etapa do wizard de importação, imediatamente após a leitura do arquivo, em que o usuário distingue transações já importadas, transações que não serão importadas e transações prontas para importação, podendo selecionar ou desmarcar apenas as elegíveis.

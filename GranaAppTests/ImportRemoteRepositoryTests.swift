@@ -66,6 +66,26 @@ struct ImportRemoteRepositoryTests {
             )
         }
     }
+
+    @Test("Importação de parcela de cartão preserva apenas a linha importada")
+    func installmentImportKeepsOnlyImportedInstallment() throws {
+        let repositoryRoot = URL(fileURLWithPath: #filePath)
+            .deletingLastPathComponent()
+            .deletingLastPathComponent()
+        let migrationPaths = [
+            "supabase/migrations/20260831007000_transaction_helpers.sql",
+            "supabase/migrations/20260902191357_fix_future_installment_import.sql",
+        ]
+
+        for migrationPath in migrationPaths {
+            let migrationURL = repositoryRoot.appending(path: migrationPath)
+            let migration = try String(contentsOf: migrationURL, encoding: .utf8)
+
+            #expect(!migration.contains("generate_series"))
+            #expect(migration.contains("p_user_id, p_account_id, p_origin_occurred_at, p_installment_index"))
+            #expect(migration.contains("p_purchase_type, p_installment_index, p_installment_count, p_notes"))
+        }
+    }
 }
 
 @MainActor
@@ -80,7 +100,7 @@ struct ImportClientAndCommitBuilderTests {
         let fallbackId = UUID()
         let key = UUID()
         let occurredAt = Date()
-        let originOccurredAt = occurredAt.addingTimeInterval(-86_400)
+        let originOccurredAt = occurredAt.addingTimeInterval(-86400)
         let categories = [
             makeCategory(
                 id: fallbackId,

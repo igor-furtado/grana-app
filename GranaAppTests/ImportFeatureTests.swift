@@ -236,4 +236,33 @@ struct ImportFeatureTests {
         #expect(statement.rows[1].installmentIndex == 8)
         #expect(statement.rows[1].installmentCount == 10)
     }
+
+    @Test("CSV calcula competência de parcela a partir da data de origem")
+    func csvReaderProjectsInstallmentCompetenceFromOriginDate() throws {
+        var calendar = Calendar(identifier: .gregorian)
+        calendar.timeZone = try #require(TimeZone(secondsFromGMT: 0))
+        let origin = try #require(calendar.date(from: DateComponents(
+            calendar: calendar,
+            year: 2026,
+            month: 1,
+            day: 31
+        )))
+        let row = InterCreditCardCSVReader.Row(
+            date: origin,
+            description: "VIAGEM",
+            interCategory: "VIAGEM",
+            tipo: "Parcela 3/10",
+            purchaseType: .installment,
+            installmentIndex: 3,
+            installmentCount: 10,
+            amount: Decimal(300)
+        )
+
+        let competence = InterCreditCardCSVReader.competenceDate(for: row, calendar: calendar)
+        let components = calendar.dateComponents([.year, .month, .day], from: competence)
+
+        #expect(components.year == 2026)
+        #expect(components.month == 3)
+        #expect(components.day == 31)
+    }
 }

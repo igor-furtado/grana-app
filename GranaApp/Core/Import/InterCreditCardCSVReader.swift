@@ -364,6 +364,23 @@ struct InterCreditCardCSVReader {
         return "inter-cc:\(dateStr)|\(normalizedDescription)|\(amountStr)|\(purchaseTypeValue)|\(installmentPart)|\(countPart)"
     }
 
+    static func competenceDate(
+        for row: Row,
+        calendar: Calendar = .current
+    ) -> Date {
+        guard row.purchaseType == .installment,
+              let installmentIndex = row.installmentIndex,
+              installmentIndex > 1
+        else {
+            return row.date
+        }
+        return calendar.date(
+            byAdding: .month,
+            value: installmentIndex - 1,
+            to: row.date
+        ) ?? row.date
+    }
+
     private static let isoDayFormatter: DateFormatter = {
         let f = DateFormatter()
         f.dateFormat = "yyyy-MM-dd"

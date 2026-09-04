@@ -27,9 +27,14 @@ enum ImportLoadedFile: Equatable {
 struct ImportClient {
     var loadSnapshot: @Sendable () async throws -> ImportSnapshot
     var loadFile: @Sendable (_ url: URL, _ snapshot: ImportSnapshot) async throws -> ImportLoadedFile
-    var reloadOFXResolution: @Sendable (_ resolution: OFXStatementResolution, _ accountId: UUID?) async -> OFXStatementResolution
-    var reloadCSVResolution: @Sendable (_ resolution: CSVStatementResolution, _ accountId: UUID?) async -> CSVStatementResolution
-    var commit: @Sendable (_ input: ImportCommitInput, _ learnRequest: GranaAIClassificationLearningRequest?) async throws
+    var reloadOFXResolution: @Sendable (_ resolution: OFXStatementResolution, _ accountId: UUID?) async
+        -> OFXStatementResolution
+    var reloadCSVResolution: @Sendable (_ resolution: CSVStatementResolution, _ accountId: UUID?) async
+        -> CSVStatementResolution
+    var commit: @Sendable (
+        _ input: ImportCommitInput,
+        _ learnRequest: GranaAIClassificationLearningRequest?
+    ) async throws
         -> ImportCommitResult
     var undo: @Sendable (_ batchId: UUID) async throws -> Void
 
@@ -286,10 +291,11 @@ private extension ImportClient {
             sourceFilename: url.lastPathComponent,
             accountId: initialAccountId,
             rows: statement.rows.map { raw in
-                CSVPreviewRow(
+                let occurredAt = InterCreditCardCSVReader.competenceDate(for: raw)
+                return CSVPreviewRow(
                     raw: raw,
                     derived: DerivedTransaction(
-                        occurredAt: raw.date,
+                        occurredAt: occurredAt,
                         amount: raw.amount,
                         description: raw.description,
                         notes: "\(raw.tipo) · \(raw.interCategory)"
