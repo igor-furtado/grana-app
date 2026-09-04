@@ -78,14 +78,17 @@ public struct Selector<ID: Hashable>: View {
     public var body: some View {
         switch style {
         case .menu:
-            Field(
+            MenuField(
                 label: label,
-                leadingSystemImage: icon,
-                errorMessage: errorMessage
-            ) {
-                selectorMenu
-                    .frame(maxWidth: .infinity, alignment: .trailing)
-            }
+                icon: icon,
+                errorMessage: errorMessage,
+                options: allOptions,
+                selectedTitle: selectedTitle,
+                selectedBadge: selectedBadge,
+                isEmpty: allOptions.isEmpty,
+                emptyTitle: emptyTitle,
+                setSelectedID: setSelectedID
+            )
         case .segmented:
             Field(
                 label: label,
@@ -97,82 +100,115 @@ public struct Selector<ID: Hashable>: View {
         }
     }
 
-        private var selectorMenu: some View {
-            Menu {
-                ForEach(allOptions) { option in
+    private var segmentedSelector: some View {
+        SwiftUI.Picker("", selection: segmentedSelection) {
+            ForEach(options) { option in
+                Text(option.title).tag(Optional.some(option.id))
+            }
+        }
+        .pickerStyle(.segmented)
+        .labelsHidden()
+    }
+
+    private var segmentedSelection: Binding<ID?> {
+        Binding(
+            get: { selectedID() },
+            set: { setSelectedID($0) }
+        )
+    }
+
+    private var allOptions: [SelectorOption<ID?>] {
+        var items: [SelectorOption<ID?>] = []
+        if includesNoneOption {
+            items.append(.init(id: nil, title: noneOptionTitle, badge: nil))
+        }
+        items.append(contentsOf: options.map { .init(id: Optional($0.id), title: $0.title, badge: $0.badge) })
+        return items
+    }
+
+    private var selectedTitle: String {
+        allOptions.first(where: { $0.id == selectedID() })?.title
+            ?? normalizedPlaceholder
+            ?? noneOptionTitle
+    }
+
+    private var selectedBadge: String? {
+        allOptions.first(where: { $0.id == selectedID() })?.badge
+    }
+
+    private var normalizedPlaceholder: String? {
+        placeholder.nilIfBlank
+    }
+
+    private var emptyTitle: String {
+        "Nenhuma opção disponível"
+    }
+}
+
+private struct MenuField<ID: Hashable>: View {
+    let label: String?
+    let icon: String
+    let errorMessage: String?
+    let options: [SelectorOption<ID?>]
+    let selectedTitle: String
+    let selectedBadge: String?
+    let isEmpty: Bool
+    let emptyTitle: String
+    let setSelectedID: (ID?) -> Void
+
+    var body: some View {
+        Menu {
+            if isEmpty {
+                Button(emptyTitle) {}
+                    .disabled(true)
+            } else {
+                ForEach(options) { option in
                     Button(option.title) {
                         setSelectedID(option.id)
                     }
                 }
-            } label: {
-                HStack(spacing: Theme.Spacing.sm) {
-                    VStack(alignment: .trailing, spacing: Theme.Spacing.xxs) {
-                        Text(selectedTitle)
-                            .font(Theme.Typography.body)
-                            .foregroundStyle(Theme.Palette.ink)
-                            .lineLimit(1)
-                    }
-
-                    if let badge = selectedBadge {
-                        Text(badge)
-                            .font(Theme.Typography.caption2Emphasis)
-                            .foregroundStyle(Theme.Palette.tealDeep)
-                            .padding(.horizontal, Theme.Spacing.xs)
-                            .padding(.vertical, Theme.Spacing.xxs)
-                            .background(
-                                Theme.Palette.teal.opacity(0.10),
-                                in: RoundedRectangle(cornerRadius: Theme.Radius.pill, style: .continuous)
-                            )
-                    }
-
-                    Image(systemName: "chevron.down")
-                        .font(.system(size: Theme.IconSize.micro, weight: .semibold))
-                        .foregroundStyle(Theme.Palette.muted)
-                }
-                .frame(maxWidth: .infinity, alignment: .trailing)
             }
-            .buttonStyle(.plain)
-        }
-
-        private var segmentedSelector: some View {
-            SwiftUI.Picker("", selection: segmentedSelection) {
-                ForEach(options) { option in
-                    Text(option.title).tag(Optional.some(option.id))
-                }
+        } label: {
+            Field(
+                label: label,
+                leadingSystemImage: icon,
+                errorMessage: errorMessage
+            ) {
+                valueLabel
+                    .frame(maxWidth: .infinity, alignment: .trailing)
             }
-            .pickerStyle(.segmented)
-            .labelsHidden()
+            .contentShape(RoundedRectangle(cornerRadius: Theme.Radius.pill, style: .continuous))
         }
+        .buttonStyle(.plain)
+    }
 
-        private var segmentedSelection: Binding<ID?> {
-            Binding(
-                get: { selectedID() },
-                set: { setSelectedID($0) }
-            )
-        }
-
-        private var allOptions: [SelectorOption<ID?>] {
-            var items: [SelectorOption<ID?>] = []
-            if includesNoneOption {
-                items.append(.init(id: nil, title: noneOptionTitle, badge: nil))
+    private var valueLabel: some View {
+        HStack(spacing: Theme.Spacing.sm) {
+            VStack(alignment: .trailing, spacing: Theme.Spacing.xxs) {
+                Text(isEmpty ? emptyTitle : selectedTitle)
+                    .font(Theme.Typography.body)
+                    .foregroundStyle(isEmpty ? Theme.Palette.muted : Theme.Palette.ink)
+                    .lineLimit(1)
             }
-            items.append(contentsOf: options.map { .init(id: Optional($0.id), title: $0.title, badge: $0.badge) })
-            return items
-        }
 
-        private var selectedTitle: String {
-            allOptions.first(where: { $0.id == selectedID() })?.title
-                ?? normalizedPlaceholder
-                ?? noneOptionTitle
-        }
+            if let badge = selectedBadge, !isEmpty {
+                Text(badge)
+                    .font(Theme.Typography.caption2Emphasis)
+                    .foregroundStyle(Theme.Palette.tealDeep)
+                    .padding(.horizontal, Theme.Spacing.xs)
+                    .padding(.vertical, Theme.Spacing.xxs)
+                    .background(
+                        Theme.Palette.teal.opacity(0.10),
+                        in: RoundedRectangle(cornerRadius: Theme.Radius.pill, style: .continuous)
+                    )
+            }
 
-        private var selectedBadge: String? {
-            allOptions.first(where: { $0.id == selectedID() })?.badge
+            Image(systemName: "chevron.down")
+                .font(.system(size: Theme.IconSize.micro, weight: .semibold))
+                .foregroundStyle(Theme.Palette.muted)
         }
-
-        private var normalizedPlaceholder: String? {
-            placeholder.nilIfBlank
-        }
+        .frame(maxWidth: .infinity, alignment: .trailing)
+    }
 }
 
 private struct SelectorPreview: View {
