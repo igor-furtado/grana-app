@@ -1,6 +1,6 @@
+import AppUI
 import ComposableArchitecture
 import SwiftUI
-import AppUI
 
 struct TransactionFormView: View {
     @Bindable var store: StoreOf<TransactionFormFeature>
@@ -16,6 +16,10 @@ struct TransactionFormView: View {
                 Form {
                     detailsSection
                     classificationSection
+
+                    if showsInstallmentSection {
+                        installmentSection
+                    }
 
                     if showsStatementPaymentSection {
                         statementPaymentSection
@@ -34,35 +38,49 @@ struct TransactionFormView: View {
 
                 actions
             }
-
-            if store.showsDiscardConfirmation {
-                TransactionFormConfirmationOverlay(
-                    icon: AppUI.Icon.warning.systemImage,
-                    tint: AppUI.Theme.Palette.amber,
-                    title: "Descartar alterações?",
-                    message: "As mudanças desta transação serão perdidas.",
-                    cancelTitle: "Continuar editando",
-                    confirmTitle: "Descartar",
-                    confirmStyle: .destructive,
-                    onCancel: { store.send(.discardChangesDismissed) },
-                    onConfirm: { store.send(.discardChangesConfirmed) }
-                )
-            } else if store.showsRetroactivePreview {
-                TransactionFormConfirmationOverlay(
-                    icon: AppUI.Icon.invalidDate.systemImage,
-                    tint: AppUI.Theme.Palette.amber,
-                    title: "Prévia do recálculo",
-                    message: store.state.retroactivePreviewText,
-                    cancelTitle: "Cancelar",
-                    confirmTitle: "Confirmar alteração",
-                    confirmStyle: .primary,
-                    onCancel: { store.send(.retroactivePreviewCancelTapped) },
-                    onConfirm: { store.send(.retroactivePreviewConfirmTapped) }
-                )
-            }
         }
         .toolbar(.hidden, for: .windowToolbar)
         .frame(minWidth: 560, idealWidth: 560, maxWidth: 560, minHeight: 640)
+        .sheet(
+            isPresented: Binding(
+                get: { store.showsDiscardConfirmation },
+                set: { isPresented in
+                    if !isPresented {
+                        store.send(.discardChangesDismissed)
+                    }
+                }
+            )
+        ) {
+            TransactionFormConfirmationSheet(
+                title: "Descartar alterações?",
+                message: "As mudanças desta transação serão perdidas.",
+                cancelTitle: "Continuar editando",
+                confirmTitle: "Descartar",
+                confirmStyle: .destructive,
+                onCancel: { store.send(.discardChangesDismissed) },
+                onConfirm: { store.send(.discardChangesConfirmed) }
+            )
+        }
+        .sheet(
+            isPresented: Binding(
+                get: { store.showsRetroactivePreview },
+                set: { isPresented in
+                    if !isPresented {
+                        store.send(.retroactivePreviewCancelTapped)
+                    }
+                }
+            )
+        ) {
+            TransactionFormConfirmationSheet(
+                title: "Prévia do recálculo",
+                message: store.state.retroactivePreviewText,
+                cancelTitle: "Cancelar",
+                confirmTitle: "Confirmar alteração",
+                confirmStyle: .primary,
+                onCancel: { store.send(.retroactivePreviewCancelTapped) },
+                onConfirm: { store.send(.retroactivePreviewConfirmTapped) }
+            )
+        }
         .onAppear {
             if !store.isEditing {
                 focusedField = .description
@@ -156,6 +174,43 @@ struct TransactionFormView: View {
         }
     }
 
+    private var installmentSection: some View {
+        Section {
+            AppUI.Toggle(
+                label: "Compra parcelada",
+                isOn: Binding(
+                    get: { store.isInstallment },
+                    set: { store.send(.installmentToggled($0)) }
+                )
+            )
+
+            if store.isInstallment {
+                InstallmentStepperField(
+                    label: "Parcela atual",
+                    value: Binding(
+                        get: { store.installmentIndex },
+                        set: { store.send(.installmentIndexChanged($0)) }
+                    ),
+                    range: 1 ... max(1, store.installmentCount)
+                )
+                InstallmentStepperField(
+                    label: "Total de parcelas",
+                    value: Binding(
+                        get: { store.installmentCount },
+                        set: { store.send(.installmentCountChanged($0)) }
+                    ),
+                    range: 2 ... 60
+                )
+            }
+        } header: {
+            AppUI.Form.SectionHeader(title: "Parcelamento")
+        } footer: {
+            if store.isInstallment {
+                AppUI.Form.SectionFooter(text: "A data representa a competência da parcela atual.")
+            }
+        }
+    }
+
     private var scheduleSection: some View {
         Section {
             AppUI.DatePicker(
@@ -226,6 +281,10 @@ struct TransactionFormView: View {
         store.selectedCategoryKind == .transfer
     }
 
+    private var showsInstallmentSection: Bool {
+        store.showsInstallmentFields
+    }
+
     private var showsStatementPaymentSection: Bool {
         store.supportsAdvancedCardRules && store.isPayingCreditCard
     }
@@ -280,7 +339,7 @@ struct TransactionFormView: View {
     }
 
     private func statementPreviewTitle(for statement: Statement) -> String {
-        let monthYear = GranaDateFormat.monthYear(statement.dueDate)
+        let monthYear = GranaDateFormat.dateOnlyMonthYear(statement.dueDate)
         let remaining = store.state.remainingAmount(of: statement)
         let total = statement.totalAmount
         let remainingStr = remaining.formatted(.currency(code: "BRL"))
@@ -290,6 +349,27 @@ struct TransactionFormView: View {
 
     private enum Field: Hashable {
         case description
+    }
+}
+
+private struct InstallmentStepperField: View {
+    let label: String
+    @Binding var value: Int
+    let range: ClosedRange<Int>
+
+    var body: some View {
+        AppUI.Field(label: label, leadingSystemImage: "number") {
+            HStack(spacing: AppUI.Theme.Spacing.sm) {
+                Text("\(value)")
+                    .font(AppUI.Theme.Typography.bodyEmphasis)
+                    .foregroundStyle(AppUI.Theme.Palette.ink)
+                    .monospacedDigit()
+
+                Stepper("", value: $value, in: range)
+                    .labelsHidden()
+            }
+            .frame(maxWidth: 128)
+        }
     }
 }
 
@@ -377,14 +457,12 @@ private struct TransactionNotesField: View {
     }
 }
 
-private struct TransactionFormConfirmationOverlay: View {
+private struct TransactionFormConfirmationSheet: View {
     enum ConfirmStyle {
         case primary
         case destructive
     }
 
-    let icon: String
-    let tint: Color
     let title: String
     let message: String
     let cancelTitle: String
@@ -395,43 +473,25 @@ private struct TransactionFormConfirmationOverlay: View {
 
     var body: some View {
         ZStack {
-            Rectangle()
-                .fill(AppUI.Theme.Palette.ink.opacity(0.20))
-                .ignoresSafeArea()
+            GranaBackground()
 
-            VStack(alignment: .leading, spacing: AppUI.Theme.Spacing.lg) {
-                HStack(alignment: .top, spacing: AppUI.Theme.Spacing.sm) {
-                    Image(systemName: icon)
-                        .font(.system(size: AppUI.Theme.IconSize.medium, weight: .semibold))
-                        .foregroundStyle(tint)
-                        .padding(.top, AppUI.Theme.Spacing.xxs)
+            AppUI.Form.Shell {
+                AppUI.Form.Header(
+                    title: title,
+                    subtitle: message
+                )
 
-                    VStack(alignment: .leading, spacing: AppUI.Theme.Spacing.xs) {
-                        Text(title)
-                            .font(AppUI.Theme.Typography.title3)
-                            .foregroundStyle(AppUI.Theme.Palette.ink)
-
-                        Text(message)
-                            .font(AppUI.Theme.Typography.callout)
-                            .foregroundStyle(AppUI.Theme.Palette.muted)
-                            .fixedSize(horizontal: false, vertical: true)
-                    }
-                }
-
-                HStack(spacing: AppUI.Theme.Spacing.sm) {
-                    Spacer(minLength: AppUI.Theme.Spacing.none)
-
+                AppUI.Form.Actions {
                     Button(cancelTitle, action: onCancel)
                         .buttonStyle(GranaSecondaryButtonStyle())
 
                     confirmButton
                 }
             }
-            .padding(AppUI.Theme.Spacing.lg)
-            .frame(maxWidth: 420, alignment: .leading)
-            .granaSurface(.subtle, cornerRadius: AppUI.Theme.Radius.card)
-            .padding(AppUI.Theme.Spacing.lg)
         }
+        .toolbar(.hidden, for: .windowToolbar)
+        .frame(width: AppUI.Modal.SheetSize.compactWidth)
+        .presentationSizing(.fitted)
     }
 
     @ViewBuilder
