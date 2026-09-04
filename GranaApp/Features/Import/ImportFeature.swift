@@ -3,19 +3,12 @@ import Foundation
 
 @Reducer
 struct ImportHistoryFeature {
-    @CasePathable
-    enum ConfirmationDialog: Equatable {
-        case deleteConfirmed
-    }
-
     @ObservableState
     struct State: Equatable {
         var snapshot: ImportSnapshot = .empty
         var isLoading = false
         var hasLoaded = false
         var pendingDelete: ImportBatch?
-
-        @Presents var confirmationDialog: ConfirmationDialogState<ConfirmationDialog>?
 
         func account(for id: UUID) -> Account? {
             snapshot.accounts.first { $0.id == id }
@@ -27,7 +20,7 @@ struct ImportHistoryFeature {
 
         var summarySubtitle: String {
             if snapshot.batches.isEmpty {
-                return "OFX e CSV com revisão antes do commit"
+                return "Nenhuma importação ainda"
             }
             return "\(snapshot.batches.count) \(snapshot.batches.count == 1 ? "importação" : "importações") no histórico"
         }
@@ -46,7 +39,8 @@ struct ImportHistoryFeature {
         case snapshotLoaded(TaskResult<ImportSnapshot>)
         case importButtonTapped(URL?)
         case undoButtonTapped(ImportBatch)
-        case confirmationDialog(PresentationAction<ConfirmationDialog>)
+        case deleteConfirmationDismissed
+        case deleteConfirmed
         case delegate(Delegate)
     }
 
@@ -84,23 +78,13 @@ struct ImportHistoryFeature {
 
             case let .undoButtonTapped(batch):
                 state.pendingDelete = batch
-                state.confirmationDialog = ConfirmationDialogState {
-                    TextState("Desfazer importação?")
-                } actions: {
-                    ButtonState(role: .destructive, action: .deleteConfirmed) {
-                        TextState("Apagar lote (\(batch.rowCount) transações)")
-                    }
-                    ButtonState(role: .cancel) {
-                        TextState("Cancelar")
-                    }
-                } message: {
-                    TextState(
-                        "As \(batch.rowCount) transações de **\(batch.sourceFilename)** serão removidas permanentemente."
-                    )
-                }
                 return .none
 
-            case .confirmationDialog(.presented(.deleteConfirmed)):
+            case .deleteConfirmationDismissed:
+                state.pendingDelete = nil
+                return .none
+
+            case .deleteConfirmed:
                 guard let batch = state.pendingDelete else { return .none }
                 state.pendingDelete = nil
                 return .run { send in
@@ -112,14 +96,10 @@ struct ImportHistoryFeature {
                     }
                 }
 
-            case .confirmationDialog:
-                return .none
-
             case .delegate:
                 return .none
             }
         }
-        .ifLet(\.$confirmationDialog, action: \.confirmationDialog)
     }
 }
 

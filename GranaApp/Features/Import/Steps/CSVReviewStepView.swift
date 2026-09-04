@@ -165,7 +165,7 @@ private struct CSVTransactionsListCard: View {
                         .foregroundStyle(AppUI.Theme.Palette.ink)
                         .frame(maxWidth: .infinity, alignment: .trailing)
                 }
-                .width(min: 100, ideal: 100, max: 120)
+                .width(min: 140, ideal: 140, max: 160)
             } filterBar: {
                 TransactionsSelectionRow(
                     summary: selectionSummary,

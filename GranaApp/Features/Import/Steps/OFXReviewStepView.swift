@@ -237,7 +237,7 @@ private struct OFXTransactionsListCard: View {
                         .foregroundStyle(amountColor(for: row.amountKind))
                         .frame(maxWidth: .infinity, alignment: .trailing)
                 }
-                .width(min: 120, ideal: 140, max: 160)
+                .width(min: 140, ideal: 140, max: 160)
             } filterBar: {
                 VStack(alignment: .leading, spacing: AppUI.Theme.Spacing.sm) {
                     if resolutions.count > 1 {

@@ -62,6 +62,56 @@ struct ImportFeatureTests {
         }
     }
 
+    @Test("Histórico desfaz lote após confirmação")
+    func historyUndoBatchAfterConfirmation() async {
+        let batchId = UUID()
+        let accountId = UUID()
+        let importedAt = Date(timeIntervalSince1970: 1_787_970_600)
+        let batch = ImportBatch(
+            id: batchId,
+            sourceFilename: "fatura-inter-2024-08.csv",
+            accountId: accountId,
+            rowCount: 70,
+            importedAt: importedAt,
+            createdAt: importedAt,
+            updatedAt: importedAt
+        )
+        let store = TestStore(initialState: ImportHistoryFeature.State()) {
+            ImportHistoryFeature()
+        } withDependencies: {
+            $0.importClient.undo = { undoBatchId in
+                #expect(undoBatchId == batchId)
+            }
+            $0.importClient.loadSnapshot = { .empty }
+        }
+
+        await store.send(.undoButtonTapped(batch)) {
+            $0.pendingDelete = batch
+        }
+
+        await store.send(.deleteConfirmationDismissed) {
+            $0.pendingDelete = nil
+        }
+
+        await store.send(.undoButtonTapped(batch)) {
+            $0.pendingDelete = batch
+        }
+
+        await store.send(.deleteConfirmed) {
+            $0.pendingDelete = nil
+        }
+
+        await store.receive(.refresh) {
+            $0.isLoading = true
+        }
+
+        await store.receive(.snapshotLoaded(.success(.empty))) {
+            $0.snapshot = .empty
+            $0.isLoading = false
+            $0.hasLoaded = true
+        }
+    }
+
     @Test("Drop global abre o wizard com arquivo válido")
     func globalDropStartsWizardFromAnyScreen() async {
         let file = URL(fileURLWithPath: "/tmp/extrato.ofx")

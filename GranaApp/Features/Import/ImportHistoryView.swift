@@ -37,10 +37,11 @@ private struct ImportHistoryContentView: View {
         VStack(spacing: AppUI.Theme.Spacing.sm) {
             header
 
-            if historyStore.snapshot.batches.isEmpty {
-                EmptyStateDropZone(
-                    isHighlighted: false,
-                )
+            if historyStore.isLoading {
+                ImportHistorySkeletonView()
+                    .frame(maxWidth: .infinity, maxHeight: .infinity)
+            } else if historyStore.snapshot.batches.isEmpty {
+                EmptyStateDropZone()
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
             } else {
                 dashboard
@@ -49,28 +50,22 @@ private struct ImportHistoryContentView: View {
         }
         .navigationTitle("")
         .toolbar(.hidden, for: .windowToolbar)
-        .confirmationDialog(
-            "Desfazer importação?",
+        .sheet(
             isPresented: Binding(
                 get: { historyStore.pendingDelete != nil },
                 set: { isPresented in
                     if !isPresented {
-                        historyStore.send(.confirmationDialog(.dismiss))
+                        historyStore.send(.deleteConfirmationDismissed)
                     }
                 }
             )
         ) {
             if let batch = historyStore.pendingDelete {
-                Button("Apagar lote (\(batch.rowCount) transações)", role: .destructive) {
-                    historyStore.send(.confirmationDialog(.presented(.deleteConfirmed)))
-                }
-                Button("Cancelar", role: .cancel) {
-                    historyStore.send(.confirmationDialog(.dismiss))
-                }
-            }
-        } message: {
-            if let batch = historyStore.pendingDelete {
-                Text("As \(batch.rowCount) transações de **\(batch.sourceFilename)** serão removidas permanentemente.")
+                ImportHistoryRollbackView(
+                    batch: batch,
+                    onCancel: { historyStore.send(.deleteConfirmationDismissed) },
+                    onConfirm: { historyStore.send(.deleteConfirmed) }
+                )
             }
         }
         .task {
@@ -198,7 +193,7 @@ private struct ImportHistoryMainPanel: View {
                         }
                     }
                 }
-                .width(min: 210, ideal: 240, max: 240)
+                .width(min: 210, ideal: 210, max: 240)
 
                 TableColumn("Importado", value: \.importedAt) { row in
                     Text(row.importedAtText)
@@ -206,7 +201,7 @@ private struct ImportHistoryMainPanel: View {
                         .foregroundStyle(AppUI.Theme.Palette.muted)
                         .frame(maxWidth: .infinity, alignment: .trailing)
                 }
-                .width(min: 125, ideal: 140, max: 140)
+                .width(min: 140, ideal: 140, max: 140)
 
                 TableColumn("Arquivo", value: \.sourceFilename) { row in
                     VStack(alignment: .leading, spacing: AppUI.Theme.Spacing.xxs) {
@@ -228,7 +223,7 @@ private struct ImportHistoryMainPanel: View {
                         .foregroundStyle(AppUI.Theme.Palette.ink)
                         .frame(maxWidth: .infinity, alignment: .trailing)
                 }
-                .width(min: 70, ideal: 80, max: 80)
+                .width(min: 60, ideal: 60, max: 60)
 
                 TableColumn("Ações") { row in
                     Button(role: .destructive) {
@@ -239,7 +234,7 @@ private struct ImportHistoryMainPanel: View {
                     .buttonStyle(.borderless)
                     .help("Desfazer lote")
                 }
-                .width(min: 70, ideal: 80, max: 90)
+                .width(min: 80, ideal: 80, max: 80)
             } filterBar: {
                 ImportHistoryFilterBar(
                     institutionOptions: institutionOptions,
@@ -265,7 +260,6 @@ private struct ImportHistoryFilterBar: View {
     var body: some View {
         AppUI.TableFilterBar {
             AppUI.Selector(
-                label: "Instituição",
                 options: institutionOptions.map { .init(id: $0, title: $0) },
                 selection: $institutionFilter,
                 icon: "building.columns"
@@ -273,7 +267,6 @@ private struct ImportHistoryFilterBar: View {
             .frame(width: 220, alignment: .leading)
 
             AppUI.TextField(
-                label: "Arquivo",
                 text: $filenameFilter,
                 placeholder: "Buscar arquivo",
                 leadingSystemImage: "magnifyingglass",
@@ -284,7 +277,6 @@ private struct ImportHistoryFilterBar: View {
             .frame(maxWidth: .infinity, alignment: .leading)
 
             AppUI.TextField(
-                label: "Conta",
                 text: $accountFilter,
                 placeholder: "Buscar conta",
                 leadingSystemImage: "magnifyingglass",
@@ -298,25 +290,23 @@ private struct ImportHistoryFilterBar: View {
 }
 
 private struct EmptyStateDropZone: View {
-    let isHighlighted: Bool
-
     var body: some View {
         VStack(spacing: AppUI.Theme.Spacing.xl) {
             ZStack {
                 Circle()
-                    .fill(AppUI.Theme.Palette.teal.opacity(isHighlighted ? 0.18 : 0.12))
+                    .fill(AppUI.Theme.Palette.teal.opacity(0.12))
                     .frame(width: 92, height: 92)
                 Image(systemName: AppUI.Icon.importFile.systemImage)
                     .font(.system(size: AppUI.Theme.IconSize.hero, weight: .regular))
                     .foregroundStyle(AppUI.Theme.Palette.tealDeep)
-                    .symbolEffect(.bounce, value: isHighlighted)
+                    .symbolEffect(.bounce, value: false)
             }
             VStack(spacing: AppUI.Theme.Spacing.sm) {
-                Text(isHighlighted ? "Solte o extrato para revisar" : "Importe o primeiro extrato")
+                Text("Arraste e solte um arquivo CSV ou OFX")
                     .font(AppUI.Theme.Typography.title2)
                     .foregroundStyle(AppUI.Theme.Palette.ink)
                     .multilineTextAlignment(.center)
-                Text("Arraste um arquivo para a tela ou selecione manualmente. O fluxo revisa OFX e CSV antes do commit definitivo.")
+                Text("Solte o arquivo nesta tela ou use + Nova importação para escolher manualmente.")
                     .font(AppUI.Theme.Typography.callout)
                     .foregroundStyle(AppUI.Theme.Palette.muted)
                     .multilineTextAlignment(.center)
