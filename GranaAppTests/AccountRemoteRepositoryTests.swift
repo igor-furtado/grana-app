@@ -82,8 +82,8 @@ struct AccountRemoteRepositoryTests {
         }
     }
 
-    @Test("Mapeia bloqueio de apagar conta com histórico")
-    func mapsDeleteBlockedByHistoryCode() async {
+    @Test("Mapeia bloqueio de apagar conta com transações vinculadas")
+    func mapsDeleteBlockedByLinkedTransactionsCode() async {
         let repository = AccountRemoteRepository(
             remoteStore: FakeAccountRemoteStore(
                 deleteResponse: AccountMutationResponse(
@@ -316,8 +316,8 @@ struct AccountsClientTests {
         }
     }
 
-    @Test("Propaga erro estável de apagar conta com histórico")
-    func surfacesDeleteBlockedByHistoryError() async {
+    @Test("Propaga erro estável de apagar conta com transações vinculadas")
+    func surfacesDeleteBlockedByLinkedTransactionsError() async {
         let container = AppContainer.inMemoryForTesting(
             categoryCatalog: StaticCategoryCatalogRepository(categories: []),
             institutionCatalog: StaticInstitutionCatalogRepository(institutions: []),

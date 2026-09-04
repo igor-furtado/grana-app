@@ -32,6 +32,7 @@ _Evite_: Outra instituição, banco genérico
 
 **Conta**:
 Local financeiro no qual existe dinheiro ou dívida do usuário. Toda transação pertence a exatamente uma conta.
+Uma conta sem transações vinculadas pode ser removida mesmo que ainda existam artefatos organizacionais vazios associados a ela.
 _Evite_: Banco, instituição, carteira
 
 **Conta corrente**:
@@ -43,6 +44,7 @@ Conta que representa compras a crédito e a dívida associada a elas. Suas compr
 No modelo persistente atual, permanece sob o agregado central de conta com detalhes específicos de cartão. Na arquitetura
 do app, porém, a vertical de Cartões é autônoma e não depende da feature de contas bancárias.
 Mantém datas padrão atuais de fechamento e vencimento para criação automática de novas faturas.
+Um cartão sem transações vinculadas pode ser removido mesmo que existam faturas vazias associadas a ele.
 _Evite_: Cartão, conta-cartão, conta corrente
 
 **Datas padrão do cartão**:
@@ -117,6 +119,7 @@ _Evite_: Outros, desconhecido
 
 **Fatura**:
 Ciclo de compras de um cartão de crédito, identificado por suas próprias datas de fechamento e vencimento. Reúne as transações de cartão que pertencem ao intervalo encerrado por sua data de fechamento.
+É criada pelo backend quando uma transação de cartão precisa ser alocada em um ciclo; sua existência sem transações não representa, sozinha, histórico financeiro do cartão.
 _Evite_: Extrato, boleto, invoice
 
 **Mês da fatura**:
@@ -211,6 +214,7 @@ _Evite_: Triagem, quando estiver falando da conferência inicial do arquivo
 
 **Lote de importação**:
 Conjunto de transações incorporadas a partir de um mesmo extrato de conta, tratado como uma unidade reversível.
+Quando não possui transações associadas, não representa histórico financeiro suficiente para impedir a remoção da conta.
 _Evite_: Arquivo, upload
 
 **Classificação pré-commit**:

@@ -55,7 +55,7 @@ nonisolated enum AccountRemoteRepositoryError: UserFacingError, Equatable {
         case .invalidCurrency:
             return "A moeda informada não é suportada pelo app no momento."
         case .accountHasFinancialHistory:
-            return "Não é possível apagar uma conta com transações, faturas ou lotes de importação."
+            return "Não é possível apagar uma conta com transações vinculadas."
         case .unexpectedResponse:
             return "A resposta do backend para contas veio inválida."
         }
