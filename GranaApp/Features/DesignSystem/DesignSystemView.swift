@@ -11,6 +11,7 @@ struct DesignSystemView: View {
         TokenRowModel(name: "ink", value: "#17231f", swatch: AppUI.Theme.Palette.ink),
         TokenRowModel(name: "muted", value: "ink 62%", swatch: AppUI.Theme.Palette.muted),
         TokenRowModel(name: "line", value: "ink 13%", swatch: AppUI.Theme.Palette.line),
+        TokenRowModel(name: "overlayScrim", value: "ink 32%", swatch: AppUI.Theme.Palette.overlayScrim),
         TokenRowModel(name: "paper", value: "#fffcf5", swatch: AppUI.Theme.Palette.paper),
         TokenRowModel(name: "paperSolid", value: "#fffaf0", swatch: AppUI.Theme.Palette.paperSolid),
         TokenRowModel(name: "teal", value: "#117a68", swatch: AppUI.Theme.Palette.teal),
@@ -1149,7 +1150,7 @@ private struct TransactionsTableExample: View {
                     .foregroundStyle(row.amountColor)
                     .frame(maxWidth: .infinity, alignment: .trailing)
             }
-            .width(min: 120, ideal: 148, max: 180)
+            .width(min: 140, ideal: 140, max: 160)
         } filterBar: {
             AppUI.TableFilterBar {
                 AppUI.TextField(

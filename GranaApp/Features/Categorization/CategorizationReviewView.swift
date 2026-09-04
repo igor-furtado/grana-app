@@ -108,7 +108,7 @@ struct CategorizationReviewView: View {
                         .foregroundStyle(amountColor(for: row.categoryId))
                         .frame(maxWidth: .infinity, alignment: .trailing)
                 }
-                .width(min: 120, ideal: 140, max: 160)
+                .width(min: 140, ideal: 140, max: 160)
             }
             .frame(maxHeight: .infinity)
         }

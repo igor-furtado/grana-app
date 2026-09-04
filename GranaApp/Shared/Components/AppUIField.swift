@@ -90,7 +90,6 @@ private struct FieldPreview: View {
         AppUIPreviewSurface(title: "Field") {
             VStack(alignment: .leading, spacing: Theme.Spacing.md) {
                 Field(
-                    label: "Instituição",
                     leadingSystemImage: Icon.sidebarInstitutions.systemImage
                 ) {
                     Text("Banco Inter")
@@ -99,7 +98,6 @@ private struct FieldPreview: View {
                 }
 
                 Field(
-                    label: "Descrição",
                     leadingSystemImage: Icon.edit.systemImage,
                     errorMessage: "O campo não pode ficar vazio."
                 ) {

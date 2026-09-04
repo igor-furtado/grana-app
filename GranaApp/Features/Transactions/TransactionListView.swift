@@ -12,15 +12,6 @@ struct TransactionListView: View {
     var body: some View {
         VStack(spacing: AppUI.Theme.Spacing.none) {
             mainContent
-                .overlay {
-                    if tableRows.isEmpty && !store.isLoading {
-                        EmptyStateView(
-                            "Sem transações ainda",
-                            icon: .sidebarTransactions,
-                            description: "Adicione uma manualmente ou importe um extrato."
-                        )
-                    }
-                }
         }
         .navigationTitle("")
         .toolbar(.hidden, for: .windowToolbar)
@@ -47,79 +38,84 @@ struct TransactionListView: View {
                 }
             }
 
-            AppUI.Table(tableRows, sortOrder: $sortOrder) {
-                TableColumn("Instituição", value: \.institutionName) { row in
-                    HStack(spacing: AppUI.Theme.Spacing.sm) {
-                        InstitutionIcon(kind: row.institutionKind, size: 24)
-                        VStack(alignment: .leading, spacing: AppUI.Theme.Spacing.xxs) {
-                            Text(row.institutionName)
-                                .font(AppUI.Theme.Typography.subheadlineEmphasis)
-                                .foregroundStyle(AppUI.Theme.Palette.ink)
-                                .lineLimit(1)
-                            Text(row.accountName)
-                                .font(AppUI.Theme.Typography.caption1)
+            if store.isLoading {
+                TransactionsSkeletonView()
+                    .frame(maxWidth: .infinity, maxHeight: .infinity)
+            } else {
+                AppUI.Table(tableRows, sortOrder: $sortOrder) {
+                    TableColumn("Instituição", value: \.institutionName) { row in
+                        HStack(spacing: AppUI.Theme.Spacing.sm) {
+                            InstitutionIcon(kind: row.institutionKind, size: 24)
+                            VStack(alignment: .leading, spacing: AppUI.Theme.Spacing.xxs) {
+                                Text(row.institutionName)
+                                    .font(AppUI.Theme.Typography.subheadlineEmphasis)
+                                    .foregroundStyle(AppUI.Theme.Palette.ink)
+                                    .lineLimit(1)
+                                Text(row.accountName)
+                                    .font(AppUI.Theme.Typography.caption1)
+                                    .foregroundStyle(AppUI.Theme.Palette.muted)
+                                    .lineLimit(1)
+                            }
+                        }
+                    }
+                    .width(min: 210, ideal: 240, max: 240)
+
+                    TableColumn("Data", value: \.occurredAt) { row in
+                        Text(GranaDateFormat.fullDate(row.occurredAt))
+                            .font(AppUI.Theme.Typography.caption1)
+                            .foregroundStyle(AppUI.Theme.Palette.muted)
+                    }
+                    .width(min: 110, ideal: 140, max: 140)
+
+                    TableColumn("Categoria", value: \.categorySummary) { row in
+                        HStack(spacing: AppUI.Theme.Spacing.xs) {
+                            CategoryBadge(
+                                category: store.state.category(for: row.transaction.categoryId),
+                                icon: store.state.icon(for: row.transaction.categoryId),
+                                iconOnly: true
+                            )
+                            Text(row.categoryDisplayName)
+                                .font(AppUI.Theme.Typography.footnoteEmphasis)
                                 .foregroundStyle(AppUI.Theme.Palette.muted)
                                 .lineLimit(1)
                         }
+                        .help(row.categoryName)
                     }
-                }
-                .width(min: 210, ideal: 240, max: 240)
+                    .width(min: 170, ideal: 220, max: 220)
 
-                TableColumn("Data", value: \.occurredAt) { row in
-                    Text(GranaDateFormat.fullDate(row.occurredAt))
-                        .font(AppUI.Theme.Typography.caption1)
-                        .foregroundStyle(AppUI.Theme.Palette.muted)
-                }
-                .width(min: 110, ideal: 140, max: 140)
-
-                TableColumn("Categoria", value: \.categorySummary) { row in
-                    HStack(spacing: AppUI.Theme.Spacing.xs) {
-                        CategoryBadge(
-                            category: store.state.category(for: row.transaction.categoryId),
-                            icon: store.state.icon(for: row.transaction.categoryId),
-                            iconOnly: true
-                        )
-                        Text(row.categoryDisplayName)
-                            .font(AppUI.Theme.Typography.footnoteEmphasis)
-                            .foregroundStyle(AppUI.Theme.Palette.muted)
+                    TableColumn("Descrição", value: \.description) { row in
+                        Text(row.description)
+                            .font(AppUI.Theme.Typography.subheadlineEmphasis)
+                            .foregroundStyle(AppUI.Theme.Palette.ink)
                             .lineLimit(1)
                     }
-                    .help(row.categoryName)
-                }
-                .width(min: 170, ideal: 220, max: 220)
 
-                TableColumn("Descrição", value: \.description) { row in
-                    Text(row.description)
-                        .font(AppUI.Theme.Typography.subheadlineEmphasis)
-                        .foregroundStyle(AppUI.Theme.Palette.ink)
-                        .lineLimit(1)
-                }
+                    TableColumn("Valor", value: \.amount) { row in
+                        accountingAmount(row.amount)
+                            .foregroundStyle(amountColor(for: row.transaction))
+                            .frame(maxWidth: .infinity, alignment: .trailing)
+                    }
+                    .width(min: 140, ideal: 140, max: 160)
 
-                TableColumn("Valor", value: \.amount) { row in
-                    accountingAmount(row.amount)
-                        .foregroundStyle(amountColor(for: row.transaction))
-                        .frame(maxWidth: .infinity, alignment: .trailing)
+                    TableColumn("Ações") { row in
+                        rowActions(row.transaction)
+                    }
+                    .width(min: 80, ideal: 80, max: 80)
+                } filterBar: {
+                    TransactionsFilterBar(
+                        searchText: $store.searchText,
+                        bankFilter: store.bankFilter,
+                        categoryFilter: store.categoryFilter,
+                        periodFilter: store.periodFilter,
+                        kindFilter: store.kindFilter,
+                        availableBanks: store.availableBanks,
+                        categories: store.sortedRootCategories,
+                        onBankSelected: { store.send(.bankFilterSelected($0)) },
+                        onCategorySelected: { store.send(.categoryFilterSelected($0)) },
+                        onPeriodSelected: { store.send(.periodFilterSelected($0)) },
+                        onKindSelected: { store.send(.kindFilterSelected($0)) }
+                    )
                 }
-                .width(min: 140, ideal: 140, max: 180)
-
-                TableColumn("Ações") { row in
-                    rowActions(row.transaction)
-                }
-                .width(min: 70, ideal: 70, max: 70)
-            } filterBar: {
-                TransactionsFilterBar(
-                    searchText: $store.searchText,
-                    bankFilter: store.bankFilter,
-                    categoryFilter: store.categoryFilter,
-                    periodFilter: store.periodFilter,
-                    kindFilter: store.kindFilter,
-                    availableBanks: store.availableBanks,
-                    categories: store.sortedRootCategories,
-                    onBankSelected: { store.send(.bankFilterSelected($0)) },
-                    onCategorySelected: { store.send(.categoryFilterSelected($0)) },
-                    onPeriodSelected: { store.send(.periodFilterSelected($0)) },
-                    onKindSelected: { store.send(.kindFilterSelected($0)) }
-                )
             }
         }
     }
@@ -282,10 +278,17 @@ private struct TransactionsFilterBar: View {
 
     var body: some View {
         AppUI.TableFilterBar {
-            searchField
+            AppUI.TextField(
+                text: $searchText,
+                placeholder: "Descrição, categoria ou conta",
+                leadingSystemImage: "magnifyingglass",
+                showsClearButton: true,
+                font: AppUI.Theme.Typography.subheadlineEmphasis,
+                textAlignment: .leading
+            )
+            .frame(maxWidth: .infinity, alignment: .leading)
 
             AppUI.Selector(
-                label: "Banco",
                 options: availableBanks.map { .init(id: $0.id, title: $0.name) },
                 selection: bankSelection,
                 includesNoneOption: true,
@@ -295,7 +298,6 @@ private struct TransactionsFilterBar: View {
             .frame(maxWidth: .infinity, alignment: .leading)
 
             AppUI.Selector(
-                label: "Categoria",
                 options: categories.map { .init(id: $0.id, title: $0.name) },
                 selection: categorySelection,
                 includesNoneOption: true,
@@ -305,7 +307,6 @@ private struct TransactionsFilterBar: View {
             .frame(maxWidth: .infinity, alignment: .leading)
 
             AppUI.Selector(
-                label: "Período",
                 options: TransactionPeriodFilter.allCases.map { .init(id: $0, title: $0.name) },
                 selection: periodSelection,
                 icon: AppUI.Icon.sidebarAccounts.systemImage
@@ -313,7 +314,6 @@ private struct TransactionsFilterBar: View {
             .frame(maxWidth: .infinity, alignment: .leading)
 
             AppUI.Selector(
-                label: "Tipo",
                 options: TransactionKindFilter.allCases.map { .init(id: $0, title: $0.name) },
                 selection: kindSelection,
                 icon: "line.3.horizontal.decrease.circle"
@@ -322,19 +322,6 @@ private struct TransactionsFilterBar: View {
 
             Spacer(minLength: AppUI.Theme.Spacing.none)
         }
-    }
-
-    private var searchField: some View {
-        AppUI.TextField(
-            label: "Buscar transação",
-            text: $searchText,
-            placeholder: "Descrição, categoria ou conta",
-            leadingSystemImage: "magnifyingglass",
-            showsClearButton: true,
-            font: AppUI.Theme.Typography.subheadlineEmphasis,
-            textAlignment: .leading
-        )
-        .frame(maxWidth: .infinity, alignment: .leading)
     }
 
     private var bankSelection: Binding<UUID?> {

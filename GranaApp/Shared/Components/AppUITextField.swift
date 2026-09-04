@@ -1,7 +1,7 @@
 import SwiftUI
 
 public struct TextField: View {
-    private let label: String
+    private let label: String?
     @Binding private var text: String
     private let placeholder: String?
     private let errorMessage: String?
@@ -11,7 +11,7 @@ public struct TextField: View {
     private let textAlignment: TextAlignment
 
     public init(
-        label: String,
+        label: String? = nil,
         text: Binding<String>,
         placeholder: String? = nil,
         errorMessage: String? = nil,

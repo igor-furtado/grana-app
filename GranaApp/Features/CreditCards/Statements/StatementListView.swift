@@ -100,7 +100,7 @@ struct StatementListView: View {
                     .foregroundStyle(amountColor(for: row))
                     .frame(maxWidth: .infinity, alignment: .trailing)
             }
-            .width(min: 140, ideal: 140, max: 180)
+            .width(min: 140, ideal: 140, max: 160)
         }
         .frame(minHeight: 260, idealHeight: min(CGFloat(sortedRows.count) * 44 + 44, 520), maxHeight: 520)
     }
