@@ -42,6 +42,9 @@ struct AccountListFeature {
 
         var summarySubtitle: String {
             let totalCount = items.count
+            if totalCount == 0 {
+                return "Nenhuma conta ainda"
+            }
             if hasArchivedAccount {
                 return showArchived
                     ? "\(visibleCount) de \(totalCount) contas visíveis"
@@ -89,7 +92,6 @@ struct AccountListFeature {
         Reduce { state, action in
             switch action {
             case .binding:
-                state.reconcileSelection()
                 return .none
 
             case .addButtonTapped:

@@ -26,6 +26,9 @@ struct CreditCardListFeature {
 
         var summarySubtitle: String {
             let totalCount = items.count
+            if totalCount == 0 {
+                return "Nenhum cartão ainda"
+            }
             if hasArchivedCard {
                 return showArchived
                     ? "\(visibleCount) de \(totalCount) cartões visíveis"

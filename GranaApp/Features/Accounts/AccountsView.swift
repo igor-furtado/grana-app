@@ -11,12 +11,29 @@ struct AccountsView: View {
                 title: "Contas",
                 subtitle: store.list.summarySubtitle
             ) {
-                Button {
-                    store.send(.list(.addButtonTapped))
-                } label: {
-                    Label("Nova conta", systemImage: AppUI.Icon.add.systemImage)
+                HStack(spacing: AppUI.Theme.Spacing.sm) {
+                    Button {
+                        store.send(.list(.addButtonTapped))
+                    } label: {
+                        Label("Nova conta", systemImage: AppUI.Icon.add.systemImage)
+                    }
+                    .buttonStyle(GranaPrimaryButtonStyle())
+
+                    if store.list.hasArchivedAccount {
+                        Menu {
+                            AppUI.Toggle(
+                                label: "Mostrar arquivadas",
+                                isOn: Binding(
+                                    get: { store.list.showArchived },
+                                    set: { store.send(.list(.binding(.set(\.showArchived, $0)))) }
+                                )
+                            )
+                        } label: {
+                            Label("Mais", systemImage: AppUI.Icon.more.systemImage)
+                        }
+                        .buttonStyle(GranaSecondaryButtonStyle())
+                    }
                 }
-                .buttonStyle(GranaPrimaryButtonStyle())
             }
 
             Group {
@@ -54,9 +71,9 @@ struct AccountsView: View {
 
     private var emptyState: some View {
         EmptyStateView(
-            "Sem contas por aqui",
+            "Cadastre sua primeira conta",
             icon: .sidebarAccounts,
-            description: "Cadastre as contas correntes que você usa (Inter, Nubank, XP, etc.) pra vincular transações e organizar suas movimentações."
+            description: "Adicione as contas bancárias que você usa no dia a dia"
         ) {
             Button {
                 store.send(.list(.addButtonTapped))

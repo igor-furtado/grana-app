@@ -6,6 +6,13 @@ import Testing
 @MainActor
 @Suite("AccountsFeature")
 struct AccountsFeatureTests {
+    @Test("Resumo vazio usa texto amigável")
+    func emptySummaryUsesFriendlyCopy() {
+        let state = AccountListFeature.State()
+
+        #expect(state.summarySubtitle == "Nenhuma conta ainda")
+    }
+
     @Test("Carrega lista e seleciona a primeira conta visível")
     func loadsListAndSelectsFirstVisibleAccount() async {
         let firstInstitution = makeCheckingInstitution(name: "Inter")
@@ -80,6 +87,27 @@ struct AccountsFeatureTests {
         await store.send(.list(.deleteButtonTapped(account.id)))
         await store.receive(.list(.delegate(.deleteRequested(account.id)))) {
             $0.destination = .delete(AccountDeleteFeature.State(account: account))
+        }
+    }
+
+    @Test("Mostrar arquivadas reconcilia seleção no fluxo pai")
+    func showArchivedReconcilesSelectionInParentFeature() async {
+        let institution = makeCheckingInstitution()
+        let active = makeCheckingAccountItem(institution: institution, archived: false)
+        let archived = makeCheckingAccountItem(institution: institution, archived: true)
+        var initialState = AccountsFeature.State()
+        initialState.list.items = [active, archived]
+        initialState.list.institutions = [institution]
+        initialState.list.showArchived = true
+        initialState.list.selectedAccountId = archived.id
+
+        let store = TestStore(initialState: initialState) {
+            AccountsFeature()
+        }
+
+        await store.send(.list(.binding(.set(\.showArchived, false)))) {
+            $0.list.showArchived = false
+            $0.list.selectedAccountId = active.id
         }
     }
 }

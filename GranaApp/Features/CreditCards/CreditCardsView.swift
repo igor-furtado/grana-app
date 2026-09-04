@@ -40,7 +40,7 @@ struct CreditCardsView: View {
                 if store.isLoading {
                     CreditCardsLoadingView()
                         .frame(maxWidth: .infinity, maxHeight: .infinity)
-                } else if store.list.visibleItems.isEmpty {
+                } else if store.list.items.isEmpty {
                     emptyState
                         .frame(maxWidth: .infinity, maxHeight: .infinity)
                 } else {
@@ -80,9 +80,9 @@ struct CreditCardsView: View {
 
     private var emptyState: some View {
         EmptyStateView(
-            "Sem cartões por aqui",
+            "Cadastre seu primeiro cartão",
             icon: .sidebarCreditCards,
-            description: "Cadastre os cartões de crédito que você usa pra acompanhar as faturas, fechamento, vencimento e limite."
+            description: "Adicione os cartões de crédito que você usa no dia a dia"
         ) {
             Button {
                 store.send(.list(.addButtonTapped))

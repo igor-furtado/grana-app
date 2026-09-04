@@ -64,7 +64,17 @@ struct AccountsFeature {
                     await noticeClient.report(error, nil)
                 }
 
+            case .list(.binding(\.showArchived)):
+                let previousSelection = state.list.selectedAccountId
+                let visibleIds = Set(state.list.visibleItems.map(\.id))
+                if let previousSelection, visibleIds.contains(previousSelection) {
+                    return .none
+                }
+                state.list.selectedAccountId = state.list.visibleItems.first?.id
+                return .none
+
             case .list(.binding):
+                state.list.reconcileSelection()
                 return .none
 
             case .list(.delegate(.createRequested)):
