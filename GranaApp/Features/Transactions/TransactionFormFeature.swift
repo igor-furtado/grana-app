@@ -15,6 +15,8 @@ struct TransactionFormFeature {
         var statements: [Statement]
         var statementPayments: [StatementPayment]
         var supportsAdvancedCardRules = true
+        var calendar: Calendar
+        var referenceDate: Date
 
         var description = ""
         var amountCents = 0
@@ -23,6 +25,7 @@ struct TransactionFormFeature {
         var categoryId: UUID?
         var subcategoryId: UUID?
         var destinationAccountId: UUID?
+        var installmentPlan: InstallmentPlan?
         var notes = ""
         var saveError: String?
         var isSaving = false
@@ -40,7 +43,9 @@ struct TransactionFormFeature {
             categories: [Category],
             statements: [Statement],
             statementPayments: [StatementPayment],
-            occurredAt: Date = Date()
+            occurredAt: Date = Date(),
+            calendar: Calendar = .current,
+            referenceDate: Date = Date()
         ) {
             self.existing = existing
             self.transactions = transactions
@@ -52,6 +57,8 @@ struct TransactionFormFeature {
             self.statements = statements
             self.statementPayments = statementPayments
             self.occurredAt = occurredAt
+            self.calendar = calendar
+            self.referenceDate = referenceDate
 
             if let existing {
                 self.description = existing.description
@@ -61,6 +68,13 @@ struct TransactionFormFeature {
                 self.categoryId = existing.categoryId
                 self.subcategoryId = existing.subcategoryId
                 self.destinationAccountId = existing.destinationAccountId
+                if existing.purchaseType == .installment {
+                    let installmentIndex = existing.installmentIndex ?? 1
+                    self.installmentPlan = .normalized(
+                        index: installmentIndex,
+                        count: existing.installmentCount ?? max(2, installmentIndex)
+                    )
+                }
                 self.notes = existing.notes ?? ""
             } else {
                 self.accountId = accounts.first?.id
@@ -171,6 +185,22 @@ struct TransactionFormFeature {
             return creditCards.first { $0.accountId == accountId }
         }
 
+        var showsInstallmentFields: Bool {
+            supportsAdvancedCardRules && selectedAccountIsCreditCard && selectedCategoryKind == .expense
+        }
+
+        var isInstallment: Bool {
+            installmentPlan != nil
+        }
+
+        var installmentIndex: Int {
+            installmentPlan?.index ?? InstallmentPlan.default.index
+        }
+
+        var installmentCount: Int {
+            installmentPlan?.count ?? InstallmentPlan.default.count
+        }
+
         var automaticPaymentPreview: [(statement: Statement, amount: Decimal)] {
             guard let destinationAccountId else { return [] }
             return automaticPaymentPreview(
@@ -181,7 +211,7 @@ struct TransactionFormFeature {
         }
 
         var requiresRetroactivePreview: Bool {
-            let isPast = occurredAt < Calendar.current.startOfDay(for: Date())
+            let isPast = occurredAt < calendar.startOfDay(for: referenceDate)
             guard isPast else { return false }
             return selectedAccountIsCreditCard || isPayingCreditCard
         }
@@ -255,22 +285,46 @@ struct TransactionFormFeature {
         func mutationInput() -> TransactionMutationInput? {
             guard let accountId, let categoryId else { return nil }
             let trimmedNotes = notes.trimmingCharacters(in: .whitespacesAndNewlines)
+            let purchaseType: TransactionPurchaseType?
+            let mutationInstallmentIndex: Int?
+            let mutationInstallmentCount: Int?
+            if showsInstallmentFields {
+                purchaseType = installmentPlan == nil ? .cash : .installment
+                mutationInstallmentIndex = installmentPlan?.index
+                mutationInstallmentCount = installmentPlan?.count
+            } else {
+                purchaseType = nil
+                mutationInstallmentIndex = nil
+                mutationInstallmentCount = nil
+            }
             return TransactionMutationInput(
                 accountId: accountId,
                 categoryId: categoryId,
                 subcategoryId: subcategoryId,
                 amount: amount,
                 occurredAt: occurredAt,
+                originOccurredAt: originOccurredAtForMutation,
+                purchaseType: purchaseType,
+                installmentIndex: mutationInstallmentIndex,
+                installmentCount: mutationInstallmentCount,
                 description: description,
                 notes: trimmedNotes.isEmpty ? nil : trimmedNotes,
                 destinationAccountId: selectedCategoryKind == .transfer ? destinationAccountId : nil
             )
         }
 
+        var originOccurredAtForMutation: Date? {
+            guard showsInstallmentFields, let installmentPlan else {
+                return nil
+            }
+            return installmentPlan.originOccurredAt(for: occurredAt, calendar: calendar)
+        }
+
         mutating func accountSelectionChanged() {
             if destinationAccountId == accountId {
                 destinationAccountId = nil
             }
+            normalizeInstallmentSelection()
         }
 
         mutating func categorySelectionChanged() {
@@ -278,6 +332,28 @@ struct TransactionFormFeature {
             if selectedCategoryKind != .transfer {
                 destinationAccountId = nil
             }
+            normalizeInstallmentSelection()
+        }
+
+        mutating func normalizeInstallmentSelection() {
+            if !showsInstallmentFields {
+                installmentPlan = nil
+            }
+        }
+
+        mutating func setInstallmentEnabled(_ isEnabled: Bool) {
+            installmentPlan = isEnabled ? installmentPlan ?? .default : nil
+            normalizeInstallmentSelection()
+        }
+
+        mutating func setInstallmentIndex(_ index: Int) {
+            installmentPlan = (installmentPlan ?? .default).updatingIndex(index)
+            normalizeInstallmentSelection()
+        }
+
+        mutating func setInstallmentCount(_ count: Int) {
+            installmentPlan = (installmentPlan ?? .default).updatingCount(count)
+            normalizeInstallmentSelection()
         }
 
         private func openStatements(for accountId: UUID) -> [Statement] {
@@ -294,6 +370,7 @@ struct TransactionFormFeature {
             var categoryId: UUID?
             var subcategoryId: UUID?
             var destinationAccountId: UUID?
+            var installmentPlan: InstallmentPlan?
             var notes = ""
 
             init() {}
@@ -306,6 +383,7 @@ struct TransactionFormFeature {
                 self.categoryId = state.categoryId
                 self.subcategoryId = state.subcategoryId
                 self.destinationAccountId = state.destinationAccountId
+                self.installmentPlan = state.installmentPlan
                 self.notes = state.notes.trimmingCharacters(in: .whitespacesAndNewlines)
             }
         }
@@ -316,6 +394,9 @@ struct TransactionFormFeature {
         case cancelButtonTapped
         case discardChangesConfirmed
         case discardChangesDismissed
+        case installmentCountChanged(Int)
+        case installmentIndexChanged(Int)
+        case installmentToggled(Bool)
         case saveButtonTapped
         case retroactivePreviewCancelTapped
         case retroactivePreviewConfirmTapped
@@ -344,6 +425,18 @@ struct TransactionFormFeature {
 
             case .binding(\.categoryId):
                 state.categorySelectionChanged()
+                return .none
+
+            case let .installmentCountChanged(count):
+                state.setInstallmentCount(count)
+                return .none
+
+            case let .installmentIndexChanged(index):
+                state.setInstallmentIndex(index)
+                return .none
+
+            case let .installmentToggled(isEnabled):
+                state.setInstallmentEnabled(isEnabled)
                 return .none
 
             case .binding:
