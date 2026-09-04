@@ -2,6 +2,7 @@ import Foundation
 
 enum GranaDateFormat {
     private static let locale = Locale(identifier: "pt_BR")
+    private static let dateOnlyTimeZone = TimeZone(secondsFromGMT: 0) ?? .gmt
 
     static func fullDate(_ date: Date, timeZone: TimeZone = .autoupdatingCurrent) -> String {
         string(from: date, format: "dd 'de' MMM yyyy", timeZone: timeZone)
@@ -23,7 +24,19 @@ enum GranaDateFormat {
         string(from: date, format: "MMM", timeZone: timeZone)
     }
 
-    // `DateFormatter` não é thread-safe; mantemos um cache por thread+fuso.
+    static func dateOnlyDayMonth(_ date: Date) -> String {
+        dayMonth(date, timeZone: dateOnlyTimeZone)
+    }
+
+    static func dateOnlyMonthYear(_ date: Date) -> String {
+        monthYear(date, timeZone: dateOnlyTimeZone)
+    }
+
+    static func dateOnlyShortMonth(_ date: Date) -> String {
+        shortMonth(date, timeZone: dateOnlyTimeZone)
+    }
+
+    /// `DateFormatter` não é thread-safe; mantemos um cache por thread+fuso.
     private static func string(from date: Date, format: String, timeZone: TimeZone) -> String {
         formatter(format: format, timeZone: timeZone).string(from: date)
     }

@@ -52,6 +52,15 @@ struct GranaDateFormatTests {
         #expect(GranaDateFormat.fullDate(date, timeZone: fortaleza) == "29 de ago. 2026")
     }
 
+    @Test("Formata date-only sem deslocar para o dia anterior no fuso local")
+    func dateOnlyDoesNotShiftToPreviousLocalDay() throws {
+        let date = try #require(utcDate(year: 2025, month: 8, day: 1, hour: 0, minute: 0))
+
+        #expect(GranaDateFormat.dateOnlyDayMonth(date) == "01 de ago.")
+        #expect(GranaDateFormat.dateOnlyMonthYear(date) == "ago. de 2025")
+        #expect(GranaDateFormat.dateOnlyShortMonth(date) == "ago.")
+    }
+
     private func fortalezaTimeZone() throws -> TimeZone {
         try #require(TimeZone(identifier: "America/Fortaleza"))
     }

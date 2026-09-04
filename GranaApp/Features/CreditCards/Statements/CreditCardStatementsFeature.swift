@@ -77,7 +77,7 @@ struct CreditCardStatementsFeature {
         }
 
         private static func statementTitle(for dueDate: Date) -> String {
-            GranaDateFormat.monthYear(dueDate)
+            GranaDateFormat.dateOnlyMonthYear(dueDate)
         }
     }
 

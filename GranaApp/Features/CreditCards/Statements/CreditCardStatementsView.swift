@@ -384,7 +384,7 @@ private struct StatementCyclePanel: View {
     }
 
     private func monthTitle(_ date: Date) -> String {
-        GranaDateFormat.shortMonth(date)
+        GranaDateFormat.dateOnlyShortMonth(date)
     }
 }
 
@@ -443,7 +443,7 @@ private struct StatementCycleCard: View {
                         .font(AppUI.Theme.Typography.caption1)
                         .foregroundStyle(.secondary)
                     Spacer()
-                    Text(GranaDateFormat.dayMonth(closingDate))
+                    Text(GranaDateFormat.dateOnlyDayMonth(closingDate))
                         .font(AppUI.Theme.Typography.footnoteEmphasis)
                 }
                 HStack {
@@ -451,7 +451,7 @@ private struct StatementCycleCard: View {
                         .font(AppUI.Theme.Typography.caption1)
                         .foregroundStyle(.secondary)
                     Spacer()
-                    Text(GranaDateFormat.dayMonth(dueDate))
+                    Text(GranaDateFormat.dateOnlyDayMonth(dueDate))
                         .font(AppUI.Theme.Typography.footnoteEmphasis)
                 }
                 if let bestPurchaseDay {
