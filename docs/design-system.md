@@ -16,6 +16,8 @@ conceitos novos dos prototipos sem contrato de produto e dados.
 - `line`: borda sutil derivada de `ink`.
 - `paper`: superficie quente translúcida, proxima de `#fffcf5`.
 - `paperSolid`: superficie quente solida `#fffaf0`.
+- `overlayScrim`: camada de bloqueio para overlays proprios nao modais, como
+  drop overlays, derivada de `ink` com opacidade escura.
 - `teal`: cor de marca e interacao `#117a68`.
 - `tealDeep`: estado ativo/pressionado `#0c5f53`.
 - `brandGradient`: gradiente `ink` -> `teal`, com `tealDeep` no estado
@@ -29,10 +31,9 @@ teal nao substitui automaticamente receita, despesa ou transferencia.
 
 ## Superficies
 
-Use glass no shell estrutural, como o rail autenticado, e tambem no backdrop de
-`modal de workspace`. Glass e material nativo recebem overlay quente, sem
-contorno aparente e com sombra ampla para separar o chrome ou o plano modal da
-tela base.
+Use glass no shell estrutural, como o rail autenticado. Glass e material nativo
+recebem overlay quente, sem contorno aparente e com sombra ampla para separar o
+chrome da tela base.
 
 Cards de conteudo usam superficie `subtle`: preenchimento quente sem blur,
 sem borda externa e com sombra baixa para separar grupos analiticos.
@@ -41,11 +42,26 @@ Listas densas, tabelas, formularios e rows repetidas usam `solid`: preenchimento
 quente solido, sombra baixa e linha `line`. `solid` e a unica superficie base
 com contorno de linha aparente.
 
-`Modal de workspace` e o padrao para fluxos modais principais do app. Ele
-ocupa area proporcional ao viewport atual, acompanha resize da janela, bloqueia
-interacao com o shell, centraliza o conteudo e preserva foco modal. A camada
-externa pode usar material; a superficie interna do modal continua seguindo os
-tokens quentes do app.
+`Sheet` nativo do SwiftUI e o padrao unico de apresentacao modal do app. Use o
+scrim nativo do sistema; nao recrie overlay bloqueante para tentar controlar a
+opacidade do fundo. O tamanho da sheet muda conforme a classe de apresentacao:
+`compact` para confirmacoes e utilitarios pequenos, `medium` para formularios e
+edicoes de escopo moderado, e `large` para fluxos principais ou multi-etapa. A
+superficie interna da sheet continua seguindo os tokens quentes do app. As
+dimensoes padrao ficam em `AppUI.Modal.SheetSize`; sheets compactas usam largura
+fixa e altura intrinseca com `.presentationSizing(.fitted)`, sem definir altura
+manual. Casos proporcionais devem calcular tamanho a partir da janela
+apresentadora e ainda usar `.sheet`.
+
+O conteudo interno de toda sheet segue a mesma composicao: `ZStack` com
+`GranaBackground`, `AppUI.Form.Shell`, `AppUI.Form.Header`, conteudo ou `Form`,
+erro opcional com `AppUI.Form.ErrorMessage` e rodape com `AppUI.Form.Actions`.
+Nao crie card, superficie, scrim ou container proprio dentro da sheet para
+simular uma modal. Em confirmacoes compactas, mensagens curtas ficam no
+`Header.subtitle`; mensagens de impacto adicionais podem virar bloco de texto no
+corpo, sem icone decorativo. A ordem das acoes e sempre cancelamento primeiro e
+acao confirmatoria depois, usando `GranaSecondaryButtonStyle`,
+`GranaPrimaryButtonStyle` ou `GranaDestructiveButtonStyle` conforme a semantica.
 
 Quando uma feature precisar de fundacao visual reutilizavel, use `AppUI.*` como
 fachada oficial. `AppUI.Table` encapsula o shell visual padrao das tabelas do
@@ -95,12 +111,13 @@ Nao desenhe controles falsos de janela macOS dentro do conteudo do app real.
 Feature screens podem ocultar a window toolbar nativa quando tiverem header
 visual proprio integrado ao tema. Nesses casos, o header inline via
 `AppUI.Layout.ScreenHeader` substitui o titulo e as acoes primarias da tela, e
-o primeiro bloco util passa a ser esse header. `Modal de workspace` e `sheet`
-tambem podem ocultar a toolbar nativa. O rail lateral continua alinhado ao topo
-da area util, sem margem superior externa, mantendo respiro interno proprio.
+o primeiro bloco util passa a ser esse header. `Sheet` tambem pode ocultar a
+toolbar nativa. O rail lateral continua alinhado ao topo da area util, sem
+margem superior externa, mantendo respiro interno proprio.
 
-`Sheet` deixa de ser o padrao modal principal e fica restrito a confirmacoes
-curtas, pickers e utilitarios pequenos.
+Apresente modais na feature dona do fluxo sempre que possivel. Fluxos globais,
+como importacao iniciada por drop em qualquer tela, podem ser apresentados pelo
+shell autenticado, mas ainda usam `.sheet`.
 
 ## Tipografia
 
@@ -161,5 +178,4 @@ especificas ou tokens de `Size` quando essa escala existir.
 
 A primeira fase cobre `GranaTheme`, light-only global, rail customizado,
 `LoginView`, `EmptyStateView`, `MetricCard`, containers do dashboard e a
-convergencia dos fluxos modais principais para `modal de workspace`. Confirmacoes
-curtas e utilitarios pequenos podem continuar em `sheet`.
+convergencia dos fluxos modais para `sheet` nativo com classes de tamanho.

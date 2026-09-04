@@ -44,7 +44,7 @@ struct ContentView: View {
             ProgressView("Restaurando sessão…")
                 .foregroundStyle(AppUI.Theme.Palette.ink)
         }
-        .frame(minWidth: 1280, minHeight: 820)
+        .frame(minWidth: 940, minHeight: 620)
     }
 
     private var unavailableContent: some View {
@@ -68,7 +68,7 @@ struct ContentView: View {
             }
             .padding(AppUI.Theme.Spacing.xl)
         }
-        .frame(minWidth: 1280, minHeight: 820)
+        .frame(minWidth: 940, minHeight: 620)
     }
 
     private var loginContent: some View {
@@ -77,7 +77,7 @@ struct ContentView: View {
 
             LoginView(authService: environment.authService)
         }
-        .frame(minWidth: 1280, minHeight: 820)
+        .frame(minWidth: 940, minHeight: 620)
     }
 
     private var authenticatedContent: some View {
@@ -87,7 +87,7 @@ struct ContentView: View {
         )
         .id(ObjectIdentifier(environment.container))
         .environment(environment)
-        .frame(minWidth: 1280, minHeight: 820)
+        .frame(minWidth: 940, minHeight: 620)
     }
 }
 
@@ -95,8 +95,7 @@ private struct GlobalImportDropOverlay: View {
     var body: some View {
         ZStack {
             Rectangle()
-                .fill(.regularMaterial)
-                .opacity(0.84)
+                .fill(AppUI.Theme.Palette.overlayScrim)
             VStack(spacing: AppUI.Theme.Spacing.md) {
                 ZStack {
                     Circle()
@@ -151,6 +150,7 @@ private struct AuthenticatedShellView: View {
     @Binding var selectionRaw: String
     @Bindable var store: StoreOf<AppFeature>
     @State private var isImportDropTargeted = false
+    @State private var sheetHostSize: CGSize = .zero
     @State private var shellStore: AppShellStore
 
     init(selectionRaw: Binding<String>, store: StoreOf<AppFeature>) {
@@ -164,8 +164,6 @@ private struct AuthenticatedShellView: View {
     }
 
     var body: some View {
-        let isWorkspaceModalPresented = store.importFeature.wizard != nil
-
         ZStack {
             GranaBackground()
             HStack(spacing: AppUI.Theme.Spacing.none) {
@@ -178,8 +176,15 @@ private struct AuthenticatedShellView: View {
                     .padding(AppUI.Theme.Layout.pageInsets)
                     .frame(maxWidth: .infinity, maxHeight: .infinity)
             }
-            .allowsHitTesting(!isWorkspaceModalPresented)
-            .accessibilityHidden(isWorkspaceModalPresented)
+        }
+        .background {
+            GeometryReader { proxy in
+                Color.clear
+                    .onAppear { sheetHostSize = proxy.size }
+                    .onChange(of: proxy.size) { _, newSize in
+                        sheetHostSize = newSize
+                    }
+            }
         }
         .dropDestination(for: URL.self, action: handleImportDrop, isTargeted: setImportDropTargeted)
         .overlay {
@@ -189,16 +194,22 @@ private struct AuthenticatedShellView: View {
                     .allowsHitTesting(false)
             }
         }
-        .overlay {
+        .sheet(
+            isPresented: Binding(
+                get: { store.importFeature.wizard != nil },
+                set: { isPresented in
+                    if !isPresented {
+                        store.send(.importFeature(.wizard(.cancel)))
+                    }
+                }
+            )
+        ) {
             if let wizardStore = store.scope(state: \.importFeature.wizard, action: \.importFeature.wizard) {
-                ImportOverlayContainer(
-                    onClose: { store.send(.importFeature(.wizard(.cancel))) }
-                ) {
+                ImportSheetContainer(hostSize: sheetHostSize) {
                     ImportView(store: wizardStore) {
                         store.send(.importFeature(.wizard(.cancel)))
                     }
                 }
-                .transition(.opacity.combined(with: .scale(scale: 0.98)))
             }
         }
         .animation(.easeOut(duration: 0.18), value: isImportDropTargeted)
@@ -270,37 +281,17 @@ private struct AuthenticatedShellView: View {
     }
 }
 
-private struct ImportOverlayContainer<Content: View>: View {
-    let onClose: () -> Void
+private struct ImportSheetContainer<Content: View>: View {
+    let hostSize: CGSize
     @ViewBuilder let content: () -> Content
 
-    private let minimumWidth: CGFloat = 1080
-    private let minimumHeight: CGFloat = 620
-    private let widthRatio: CGFloat = 0.82
-    private let heightRatio: CGFloat = 0.84
+    private var size: CGSize {
+        AppUI.Modal.SheetSize.large(in: hostSize)
+    }
 
     var body: some View {
-        GeometryReader { proxy in
-            let width = overlayWidth(for: proxy.size.width)
-            let height = overlayHeight(for: proxy.size.height)
-
-            AppUI.Modal.Workspace(width: width, height: height, onDismiss: onClose) {
-                content()
-            }
-        }
-    }
-
-    private func overlayWidth(for containerWidth: CGFloat) -> CGFloat {
-        let horizontalInset = AppUI.Theme.Spacing.xl * 2
-        let availableWidth = max(minimumWidth, containerWidth - horizontalInset)
-        let proportionalWidth = max(minimumWidth, containerWidth * widthRatio)
-        return min(availableWidth, proportionalWidth)
-    }
-
-    private func overlayHeight(for containerHeight: CGFloat) -> CGFloat {
-        let verticalInset = AppUI.Theme.Spacing.xl * 2
-        let availableHeight = max(minimumHeight, containerHeight - verticalInset)
-        let proportionalHeight = max(minimumHeight, containerHeight * heightRatio)
-        return min(availableHeight, proportionalHeight)
+        content()
+            .frame(width: size.width, height: size.height)
+            .presentationSizing(.fitted)
     }
 }

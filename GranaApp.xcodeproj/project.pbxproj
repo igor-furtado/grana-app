@@ -27,6 +27,7 @@
 		30A000000000000000000010 /* GranaApp/Shared/Theme/Spacing.swift in Sources */ = {isa = PBXBuildFile; fileRef = 30A000000000000000000111 /* GranaApp/Shared/Theme/Spacing.swift */; };
 		30A000000000000000000011 /* AppUI.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 30A000000000000000000101 /* AppUI.framework */; };
 		30A000000000000000000014 /* GranaApp/Shared/Components/AppUISkeleton.swift in Sources */ = {isa = PBXBuildFile; fileRef = 30A000000000000000000112 /* GranaApp/Shared/Components/AppUISkeleton.swift */; };
+		30A000000000000000000015 /* GranaApp/Shared/Components/AppUIModal.swift in Sources */ = {isa = PBXBuildFile; fileRef = 30A000000000000000000113 /* GranaApp/Shared/Components/AppUIModal.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -67,6 +68,7 @@
 		30A000000000000000000110 /* GranaApp/Shared/Theme/Theme.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GranaApp/Shared/Theme/Theme.swift; sourceTree = SOURCE_ROOT; };
 		30A000000000000000000111 /* GranaApp/Shared/Theme/Spacing.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GranaApp/Shared/Theme/Spacing.swift; sourceTree = SOURCE_ROOT; };
 		30A000000000000000000112 /* GranaApp/Shared/Components/AppUISkeleton.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GranaApp/Shared/Components/AppUISkeleton.swift; sourceTree = SOURCE_ROOT; };
+		30A000000000000000000113 /* GranaApp/Shared/Components/AppUIModal.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GranaApp/Shared/Components/AppUIModal.swift; sourceTree = SOURCE_ROOT; };
 /* End PBXFileReference section */
 
 /* Begin PBXFileSystemSynchronizedBuildFileExceptionSet section */
@@ -80,6 +82,7 @@
 				Shared/Components/AppUIField.swift,
 				Shared/Components/AppUIForm.swift,
 				Shared/Components/AppUILayoutScreenHeader.swift,
+				Shared/Components/AppUIModal.swift,
 				Shared/Components/AppUISelector.swift,
 				Shared/Components/AppUISkeleton.swift,
 				Shared/Components/AppUITable.swift,
@@ -175,6 +178,7 @@
 				30A000000000000000000103 /* GranaApp/Shared/Components/AppUIField.swift */,
 				30A000000000000000000104 /* GranaApp/Shared/Components/AppUITable.swift */,
 				30A000000000000000000105 /* GranaApp/Shared/Components/AppUIForm.swift */,
+				30A000000000000000000113 /* GranaApp/Shared/Components/AppUIModal.swift */,
 				30A000000000000000000106 /* GranaApp/Shared/Components/AppUITextField.swift */,
 				30A000000000000000000107 /* GranaApp/Shared/Components/AppUICurrencyField.swift */,
 				30A000000000000000000108 /* GranaApp/Shared/Components/AppUIDatePicker.swift */,
@@ -400,6 +404,7 @@
 				30A00000000000000000000B /* GranaApp/Shared/Components/AppUIUsageMeterBar.swift in Sources */,
 				30A00000000000000000000C /* GranaApp/Shared/Components/AppUILayoutScreenHeader.swift in Sources */,
 				30A000000000000000000014 /* GranaApp/Shared/Components/AppUISkeleton.swift in Sources */,
+				30A000000000000000000015 /* GranaApp/Shared/Components/AppUIModal.swift in Sources */,
 				30A00000000000000000000D /* GranaApp/Shared/Components/AppIcon.swift in Sources */,
 				30A00000000000000000000E /* GranaApp/Shared/Theme/GranaTheme.swift in Sources */,
 				30A00000000000000000000F /* GranaApp/Shared/Theme/Theme.swift in Sources */,

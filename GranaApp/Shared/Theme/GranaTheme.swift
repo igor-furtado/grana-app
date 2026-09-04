@@ -28,6 +28,10 @@ public enum Theme {
         public static var line: Color {
             ink.opacity(0.13)
         }
+
+        public static var overlayScrim: Color {
+            ink.opacity(0.32)
+        }
     }
 
     public enum Radius {

@@ -38,7 +38,7 @@ struct GranaAppApp: App {
                     }
                 }
         }
-        .defaultSize(width: 1280, height: 820)
+        .defaultSize(width: 940, height: 620)
         .windowResizability(.contentSize)
     }
 }

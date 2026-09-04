@@ -18,9 +18,6 @@ struct TransactionDeleteView: View {
                 if !store.impactMessage.isEmpty {
                     messageBlock
                 }
-                else {
-                    Spacer(minLength: AppUI.Theme.Spacing.none)
-                }
 
                 if let saveError = store.saveError {
                     AppUI.Form.ErrorMessage(message: saveError)
@@ -43,21 +40,15 @@ struct TransactionDeleteView: View {
             }
         }
         .toolbar(.hidden, for: .windowToolbar)
-        .frame(minWidth: 460, idealWidth: 460, maxWidth: 460, minHeight: 280)
+        .frame(width: AppUI.Modal.SheetSize.compactWidth)
+        .presentationSizing(.fitted)
     }
 
     private var messageBlock: some View {
-        HStack(alignment: .top, spacing: AppUI.Theme.Spacing.sm) {
-            Image(systemName: AppUI.Icon.warning.systemImage)
-                .font(.system(size: AppUI.Theme.IconSize.small))
-                .foregroundStyle(AppUI.Theme.Palette.amber)
-                .padding(.top, AppUI.Theme.Spacing.xxs)
-
-            Text(store.impactMessage)
-                .font(AppUI.Theme.Typography.callout)
-                .foregroundStyle(AppUI.Theme.Palette.muted)
-                .fixedSize(horizontal: false, vertical: true)
-        }
+        Text(store.impactMessage)
+            .font(AppUI.Theme.Typography.callout)
+            .foregroundStyle(AppUI.Theme.Palette.muted)
+            .fixedSize(horizontal: false, vertical: true)
         .padding(AppUI.Theme.Spacing.lg)
     }
 

@@ -27,13 +27,25 @@ Leia `docs/design-system.md` antes de alterar UI SwiftUI no GranaApp.
   primarias da tela.
 - Use o rail icon-only como shell autenticado. Todos os itens precisam de
   tooltip e label de acessibilidade.
-- Reserve glass para o shell estrutural e para o backdrop de `modal de
-  workspace`. Cards de conteudo usam `subtle` sem contorno; rows/listas/tabelas
-  usam `solid`, a unica superficie com linha.
-- `Modal de workspace` e o padrao para fluxos modais principais. Ele precisa
-  acompanhar resize da janela, bloquear interacao com o shell, centralizar o
-  conteudo e manter foco modal.
-- Use `sheet` apenas para confirmacoes curtas e utilitarios pequenos.
+- Reserve glass para o shell estrutural. Cards de conteudo usam `subtle` sem
+  contorno; rows/listas/tabelas usam `solid`, a unica superficie com linha.
+- Use `.sheet` nativo do SwiftUI como padrao unico de apresentacao modal. Aceite
+  o scrim nativo do sistema; nao recrie overlay bloqueante para controlar a
+  opacidade do fundo.
+- Varie apenas a classe de tamanho da sheet: `compact` para confirmacoes e
+  utilitarios pequenos, `medium` para formularios e edicoes moderadas, e `large`
+  para fluxos principais ou multi-etapa. Use `AppUI.Modal.SheetSize` para as
+  dimensoes padrao.
+- Conteudo interno de sheet sempre segue `ZStack { GranaBackground();
+  AppUI.Form.Shell { AppUI.Form.Header; conteudo/Form; erro opcional;
+  AppUI.Form.Actions } }`, com toolbar oculta. Nao crie card, surface, scrim ou
+  container proprio dentro da sheet.
+- Sheets compactas usam largura fixa (`AppUI.Modal.SheetSize.compactWidth`) e
+  altura intrinseca com `.presentationSizing(.fitted)`. Nao defina altura fixa
+  para confirmacoes compactas.
+- Em confirmacoes compactas, mensagens curtas ficam em `Header.subtitle`;
+  mensagens de impacto adicionais podem aparecer como texto no corpo, sem icone
+  decorativo. Acoes ficam no rodape: cancelar primeiro, confirmar depois.
 - Quando uma tela precisar de fundacao visual reutilizavel, prefira `AppUI.*`
   em vez de instanciar `SwiftUI` direto. Isso inclui `AppUI.Table`,
   `AppUI.TextField`, `AppUI.Toggle`, `AppUI.DatePicker`,

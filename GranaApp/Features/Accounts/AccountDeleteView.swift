@@ -12,11 +12,9 @@ struct AccountDeleteView: View {
             AppUI.Form.Shell {
                 AppUI.Form.Header(
                     title: "Apagar conta",
-                    subtitle: "A conta só será apagada se não houver transações, faturas ou lotes de importação vinculados."
+                    subtitle: "A conta só será apagada se não houver transações vinculadas."
                 )
                 
-                Spacer(minLength: AppUI.Theme.Spacing.none)
-
                 if let saveError = store.saveError {
                     AppUI.Form.ErrorMessage(message: saveError)
                         .padding(.horizontal, AppUI.Theme.Spacing.lg)
@@ -37,6 +35,7 @@ struct AccountDeleteView: View {
             }
         }
         .toolbar(.hidden, for: .windowToolbar)
-        .frame(minWidth: 460, idealWidth: 460, maxWidth: 460, minHeight: 240)
+        .frame(width: AppUI.Modal.SheetSize.compactWidth)
+        .presentationSizing(.fitted)
     }
 }

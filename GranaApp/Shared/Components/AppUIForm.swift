@@ -141,66 +141,13 @@ public enum Form {
     }
 }
 
-public enum Modal {
-    public struct Workspace<Content: View>: View {
-        @ViewBuilder private let content: () -> Content
-        @FocusState private var isModalFocused: Bool
-        private let width: CGFloat
-        private let height: CGFloat
-        private let onDismiss: (() -> Void)?
-
-        public init(
-            width: CGFloat,
-            height: CGFloat,
-            onDismiss: (() -> Void)? = nil,
-            @ViewBuilder content: @escaping () -> Content
-        ) {
-            self.width = width
-            self.height = height
-            self.onDismiss = onDismiss
-            self.content = content
-        }
-
-        public var body: some View {
-            ZStack {
-                Rectangle()
-                    .fill(.regularMaterial)
-                    .opacity(0.62)
-
-                content()
-                    .frame(width: width, height: height)
-                    .background {
-                        RoundedRectangle(cornerRadius: Theme.Radius.hero, style: .continuous)
-                            .fill(Theme.Palette.paper.opacity(0.94))
-                    }
-                    .overlay {
-                        RoundedRectangle(cornerRadius: Theme.Radius.hero, style: .continuous)
-                            .strokeBorder(Theme.Palette.line.opacity(0.55), lineWidth: 1)
-                    }
-                    .clipShape(RoundedRectangle(cornerRadius: Theme.Radius.hero, style: .continuous))
-                    .shadow(color: Theme.Shadow.glassColor, radius: 30, y: 16)
-                    .padding(Theme.Spacing.xl)
-                    .focusable()
-                    .focused($isModalFocused)
-            }
-            .frame(maxWidth: .infinity, maxHeight: .infinity)
-            .onAppear {
-                isModalFocused = true
-            }
-            .onExitCommand {
-                onDismiss?()
-            }
-        }
-    }
-}
-
 private struct FormPreview: View {
     @State private var title = "Assinatura"
     @State private var amount = 3590
     @State private var isRecurring = true
 
     var body: some View {
-        AppUIPreviewSurface(title: "Form + Modal") {
+        AppUIPreviewSurface(title: "Form") {
             VStack(alignment: .leading, spacing: Theme.Spacing.xl) {
                 Form.Shell {
                     Form.Header(
@@ -237,25 +184,6 @@ private struct FormPreview: View {
                             .buttonStyle(GranaPrimaryButtonStyle())
                     }
                 }
-
-                Modal.Workspace(width: 520, height: 280) {
-                    VStack(alignment: .leading, spacing: Theme.Spacing.md) {
-                        Text("Modal de workspace")
-                            .font(Theme.Typography.title3)
-                            .foregroundStyle(Theme.Palette.ink)
-                        Text("Preview local do shell modal do AppUI.")
-                            .font(Theme.Typography.subheadline)
-                            .foregroundStyle(Theme.Palette.muted)
-                        Spacer(minLength: Theme.Spacing.none)
-                        HStack {
-                            Spacer()
-                            Button("Fechar") {}
-                                .buttonStyle(GranaSecondaryButtonStyle())
-                        }
-                    }
-                    .padding(Theme.Spacing.xl)
-                }
-                .frame(height: 360)
             }
         }
     }

@@ -15,8 +15,6 @@ struct AccountArchiveView: View {
                     subtitle: store.message
                 )
 
-                Spacer(minLength: AppUI.Theme.Spacing.none)
-
                 if let saveError = store.saveError {
                     AppUI.Form.ErrorMessage(message: saveError)
                         .padding(.horizontal, AppUI.Theme.Spacing.lg)
@@ -37,6 +35,7 @@ struct AccountArchiveView: View {
             }
         }
         .toolbar(.hidden, for: .windowToolbar)
-        .frame(minWidth: 460, idealWidth: 460, maxWidth: 460, minHeight: 240)
+        .frame(width: AppUI.Modal.SheetSize.compactWidth)
+        .presentationSizing(.fitted)
     }
 }

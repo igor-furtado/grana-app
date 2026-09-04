@@ -25,7 +25,8 @@ O design system já determina três pontos que orientam a leitura: `AppUI.Table`
   - exclusão de transação; (`GranaApp/Features/Transactions/TransactionsView.swift:29-34`)
   - editor de datas próprias de fatura. (`GranaApp/Features/CreditCards/Statements/CreditCardStatementsView.swift:48-53`)
 - `inspector` aparece explicitamente em `CategoriesView`, com largura de coluna configurada e persistência em `@SceneStorage`, reproduzindo um padrão clássico de app macOS. (`GranaApp/Features/Categories/CategoriesView.swift:21-25`; `GranaApp/Features/Categories/CategoriesView.swift:64-67`)
-- `confirmationDialog` é usado para a ação destrutiva de desfazer lote de importação. (`GranaApp/Features/Import/ImportHistoryView.swift:52-75`)
+- `sheet` tambem cobre a acao destrutiva de desfazer lote de importacao, usando
+  a confirmacao compacta do AppUI. (`GranaApp/Features/Import/ImportHistoryView.swift:52-72`)
 - `contextMenu` aparece no seletor de cartões, concentrando ações secundárias por item. (`GranaApp/Features/CreditCards/CreditCardListView.swift:108-114`)
 - `fileImporter` e `dropDestination` são usados como padrões nativos de entrada de arquivo no fluxo de importação. (`GranaApp/Features/Import/ImportView.swift:13-30`; `GranaApp/App/ContentView.swift:210-218`)
 - `@SceneStorage` persiste tanto a seção ativa do app quanto a visibilidade do inspector de categorias, dois comportamentos típicos de UX macOS. (`GranaApp/App/ContentView.swift:8-17`; `GranaApp/Features/Categories/CategoriesView.swift:23-25`)
