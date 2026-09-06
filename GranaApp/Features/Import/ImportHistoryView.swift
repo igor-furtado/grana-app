@@ -41,15 +41,13 @@ private struct ImportHistoryContentView: View {
                 ImportHistorySkeletonView()
                     .frame(maxWidth: .infinity, maxHeight: .infinity)
             } else if historyStore.snapshot.batches.isEmpty {
-                EmptyStateDropZone()
+                ImportHistoryDropZone()
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
             } else {
                 dashboard
                     .frame(maxWidth: .infinity, maxHeight: .infinity)
             }
         }
-        .navigationTitle("")
-        .toolbar(.hidden, for: .windowToolbar)
         .sheet(
             isPresented: Binding(
                 get: { historyStore.pendingDelete != nil },
@@ -289,33 +287,13 @@ private struct ImportHistoryFilterBar: View {
     }
 }
 
-private struct EmptyStateDropZone: View {
+private struct ImportHistoryDropZone: View {
     var body: some View {
-        VStack(spacing: AppUI.Theme.Spacing.xl) {
-            ZStack {
-                Circle()
-                    .fill(AppUI.Theme.Palette.teal.opacity(0.12))
-                    .frame(width: 92, height: 92)
-                Image(systemName: AppUI.Icon.importFile.systemImage)
-                    .font(.system(size: AppUI.Theme.IconSize.hero, weight: .regular))
-                    .foregroundStyle(AppUI.Theme.Palette.tealDeep)
-                    .symbolEffect(.bounce, value: false)
-            }
-            VStack(spacing: AppUI.Theme.Spacing.sm) {
-                Text("Arraste e solte um arquivo CSV ou OFX")
-                    .font(AppUI.Theme.Typography.title2)
-                    .foregroundStyle(AppUI.Theme.Palette.ink)
-                    .multilineTextAlignment(.center)
-                Text("Solte o arquivo nesta tela ou use + Nova importação para escolher manualmente.")
-                    .font(AppUI.Theme.Typography.callout)
-                    .foregroundStyle(AppUI.Theme.Palette.muted)
-                    .multilineTextAlignment(.center)
-                    .frame(maxWidth: 520)
-            }
-        }
-        .frame(maxWidth: .infinity, maxHeight: .infinity)
-        .padding(AppUI.Theme.Spacing.xxxl)
-      
+        IllustratedStatusView(
+            "Arraste e solte um arquivo CSV ou OFX",
+            icon: .importFile,
+            description: "Solte o arquivo nesta tela ou use + Nova importação para escolher manualmente."
+        )
         .overlay {
             RoundedRectangle(cornerRadius: AppUI.Theme.Radius.hero, style: .continuous)
                 .strokeBorder(

@@ -78,17 +78,7 @@ public struct Selector<ID: Hashable>: View {
     public var body: some View {
         switch style {
         case .menu:
-            MenuField(
-                label: label,
-                icon: icon,
-                errorMessage: errorMessage,
-                options: allOptions,
-                selectedTitle: selectedTitle,
-                selectedBadge: selectedBadge,
-                isEmpty: allOptions.isEmpty,
-                emptyTitle: emptyTitle,
-                setSelectedID: setSelectedID
-            )
+            menuField
         case .segmented:
             Field(
                 label: label,
@@ -98,6 +88,20 @@ public struct Selector<ID: Hashable>: View {
                     .frame(maxWidth: .infinity, alignment: .trailing)
             }
         }
+    }
+
+    private var menuField: MenuField<ID> {
+        MenuField(
+            label: label,
+            icon: icon,
+            errorMessage: errorMessage,
+            options: allOptions,
+            selectedTitle: selectedTitle,
+            selectedBadge: selectedBadge,
+            isEmpty: allOptions.isEmpty,
+            emptyTitle: emptyTitle,
+            setSelectedID: setSelectedID
+        )
     }
 
     private var segmentedSelector: some View {
@@ -210,6 +214,30 @@ private struct MenuField<ID: Hashable>: View {
         .frame(maxWidth: .infinity, alignment: .trailing)
     }
 }
+
+#if DEBUG
+struct SelectorMenuBehaviorContract: Equatable {
+    let usesFieldAsMenuLabel: Bool
+    let emptyTitle: String
+    let disablesEmptyMenuOption: Bool
+}
+
+extension Selector {
+    var menuBehaviorContract: SelectorMenuBehaviorContract {
+        menuField.behaviorContract
+    }
+}
+
+private extension MenuField {
+    var behaviorContract: SelectorMenuBehaviorContract {
+        SelectorMenuBehaviorContract(
+            usesFieldAsMenuLabel: true,
+            emptyTitle: emptyTitle,
+            disablesEmptyMenuOption: true
+        )
+    }
+}
+#endif
 
 private struct SelectorPreview: View {
     @State private var selectedCategory: String? = "alimentacao"

@@ -33,7 +33,6 @@ struct CategorizationReviewView: View {
                     .disabled(store.suggestions.allSatisfy(\.isReviewed))
                 }
             }
-            .toolbar(.hidden, for: .windowToolbar)
             .frame(minWidth: 700, minHeight: 600)
         case let .wizard(onImport, onBack, _):
             AppUI.Wizard.Shell {

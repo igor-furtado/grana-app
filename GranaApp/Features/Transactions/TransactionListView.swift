@@ -11,39 +11,8 @@ struct TransactionListView: View {
 
     var body: some View {
         VStack(spacing: AppUI.Theme.Spacing.none) {
-            mainContent
-        }
-        .navigationTitle("")
-        .toolbar(.hidden, for: .windowToolbar)
-        .onChange(of: sortOrder) { _, newValue in
-            let selectedSort = TransactionsSortMapper.map(newValue)
-            guard selectedSort != store.tableSort else { return }
-            store.send(.tableSortSelected(selectedSort))
-        }
-    }
-
-    private var mainContent: some View {
-        VStack(spacing: AppUI.Theme.Spacing.sm) {
-            AppUI.Layout.ScreenHeader(
-                title: "Transações",
-                subtitle: store.state.transactionsCountText(calendar: calendar)
-            ) {
-                HStack(spacing: AppUI.Theme.Spacing.sm) {
-                    Button {
-                        store.send(.addButtonTapped)
-                    } label: {
-                        Label("Nova transação", systemImage: AppUI.Icon.add.systemImage)
-                    }
-                    .buttonStyle(GranaPrimaryButtonStyle())
-                }
-            }
-
-            if store.isLoading {
-                TransactionsSkeletonView()
-                    .frame(maxWidth: .infinity, maxHeight: .infinity)
-            } else {
-                AppUI.Table(tableRows, sortOrder: $sortOrder) {
-                    TableColumn("Instituição", value: \.institutionName) { row in
+            AppUI.Table(tableRows, sortOrder: $sortOrder) {
+                TableColumn("Instituição", value: \.institutionName) { row in
                         HStack(spacing: AppUI.Theme.Spacing.sm) {
                             InstitutionIcon(kind: row.institutionKind, size: 24)
                             VStack(alignment: .leading, spacing: AppUI.Theme.Spacing.xxs) {
@@ -117,7 +86,11 @@ struct TransactionListView: View {
                     )
                 }
             }
-        }
+            .onChange(of: sortOrder) { _, newValue in
+                let selectedSort = TransactionsSortMapper.map(newValue)
+                guard selectedSort != store.tableSort else { return }
+                store.send(.tableSortSelected(selectedSort))
+            }
     }
 
     private var tableRows: [TransactionTableRow] {

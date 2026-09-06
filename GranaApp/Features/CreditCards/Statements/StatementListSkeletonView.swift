@@ -9,7 +9,7 @@ struct StatementListSkeletonView: View {
             if showsTitle {
                 statementListHeader
                 Divider()
-            }
+            } 
             statementRow(descriptionWidth: 0.64)
             Divider()
             statementRow(descriptionWidth: 0.52)

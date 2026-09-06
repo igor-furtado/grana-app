@@ -56,8 +56,6 @@ struct DesignSystemView: View {
             }
         }
         .background(.clear)
-        .navigationTitle("")
-        .toolbar(.hidden, for: .windowToolbar)
     }
 
     private var atlasSections: some View {
@@ -784,34 +782,48 @@ private struct BasicTextFieldShowcase: View {
 }
 
 private struct IconShowcase: View {
-    private let icons: [(AppUI.Icon, String)] = [
-        (.sidebarDashboard, "Dashboard"),
-        (.sidebarTransactions, "Transações"),
-        (.add, "Adicionar"),
-        (.success, "Sucesso"),
+    private let columns = [
+        GridItem(.adaptive(minimum: 148), spacing: AppUI.Theme.Spacing.sm),
     ]
 
     var body: some View {
-        VStack(spacing: AppUI.Theme.Spacing.none) {
-            ForEach(Array(icons.enumerated()), id: \.offset) { index, row in
-                HStack(spacing: AppUI.Theme.Spacing.sm) {
-                    Image(systemName: row.0.systemImage)
-                        .font(.system(size: AppUI.Theme.IconSize.medium, weight: .semibold))
-                        .foregroundStyle(AppUI.Theme.Palette.tealDeep)
-                        .frame(width: 32, height: 32)
-                        .background(
-                            AppUI.Theme.Palette.teal.opacity(0.10),
-                            in: RoundedRectangle(cornerRadius: 10, style: .continuous)
-                        )
-                    TableText(primary: row.1, secondary: row.0.systemImage)
-                }
-                .tableRowContent()
-
-                if index < icons.count - 1 {
-                    TableDivider()
-                }
+        LazyVGrid(columns: columns, alignment: .leading, spacing: AppUI.Theme.Spacing.sm) {
+            ForEach(AppUI.Icon.allCases, id: \.catalogTitle) { icon in
+                IconCatalogCell(icon: icon)
             }
         }
+    }
+}
+
+private struct IconCatalogCell: View {
+    let icon: AppUI.Icon
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: AppUI.Theme.Spacing.sm) {
+            Image(systemName: icon.systemImage)
+                .font(.system(size: AppUI.Theme.IconSize.large, weight: .semibold))
+                .foregroundStyle(AppUI.Theme.Palette.tealDeep)
+                .frame(width: 48, height: 48)
+                .background(
+                    AppUI.Theme.Palette.teal.opacity(0.10),
+                    in: RoundedRectangle(cornerRadius: AppUI.Theme.Radius.control, style: .continuous)
+                )
+
+            VStack(alignment: .leading, spacing: AppUI.Theme.Spacing.xxs) {
+                Text(icon.catalogTitle)
+                    .font(AppUI.Theme.Typography.caption1Emphasis)
+                    .foregroundStyle(AppUI.Theme.Palette.ink)
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.82)
+                Text(icon.systemImage)
+                    .font(AppUI.Theme.Typography.code)
+                    .foregroundStyle(AppUI.Theme.Palette.muted)
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.72)
+            }
+        }
+        .padding(AppUI.Theme.Spacing.sm)
+        .frame(maxWidth: .infinity, minHeight: 126, alignment: .topLeading)
         .tableSurface()
     }
 }

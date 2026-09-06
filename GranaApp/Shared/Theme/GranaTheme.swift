@@ -437,7 +437,7 @@ public enum Theme {
         public static let small: CGFloat = 12
         public static let medium: CGFloat = 20
         public static let large: CGFloat = 32
-        public static let hero: CGFloat = 56
+        public static let hero: CGFloat = 48
 
         public static func categoryGlyph(in bubbleSize: CGFloat) -> CGFloat {
             bubbleSize * 0.45

@@ -45,10 +45,6 @@ struct CreditCardFormFeature {
             institutions.filter { $0.capabilities.supportedAccountTypes.contains(.creditCard) }
         }
 
-        var navigationTitle: String {
-            existingCard == nil ? "Novo cartão" : "Editar cartão"
-        }
-
         var canSave: Bool {
             institutionId != nil && cardLastFour.count == 4
         }

@@ -22,8 +22,9 @@ Leia `docs/design-system.md` antes de alterar UI SwiftUI no GranaApp.
   `xxs`.
 - Mantenha a fase atual restrita a linguagem visual. Nao importe metricas,
   abas, textos ou modelos dos prototipos sem pedido explicito.
-- Feature screens podem ocultar a window toolbar nativa quando tiverem header
-  proprio alinhado ao tema. Nesses casos, o header inline assume titulo e acoes
+- A titlebar fica oculta no `WindowGroup` com `.windowStyle(.hiddenTitleBar)`.
+  Nao adicione `.toolbar(.hidden, for: .windowToolbar)` em cada feature ou sheet.
+  Feature screens com header proprio usam o header inline como titulo e acoes
   primarias da tela.
 - Use o rail icon-only como shell autenticado. Todos os itens precisam de
   tooltip e label de acessibilidade.
@@ -38,8 +39,8 @@ Leia `docs/design-system.md` antes de alterar UI SwiftUI no GranaApp.
   dimensoes padrao.
 - Conteudo interno de sheet sempre segue `ZStack { GranaBackground();
   AppUI.Form.Shell { AppUI.Form.Header; conteudo/Form; erro opcional;
-  AppUI.Form.Actions } }`, com toolbar oculta. Nao crie card, surface, scrim ou
-  container proprio dentro da sheet.
+  AppUI.Form.Actions } }`. Nao crie card, surface, scrim ou container proprio
+  dentro da sheet.
 - Sheets compactas usam largura fixa (`AppUI.Modal.SheetSize.compactWidth`) e
   altura intrinseca com `.presentationSizing(.fitted)`. Nao defina altura fixa
   para confirmacoes compactas.

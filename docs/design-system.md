@@ -44,14 +44,17 @@ com contorno de linha aparente.
 
 `Sheet` nativo do SwiftUI e o padrao unico de apresentacao modal do app. Use o
 scrim nativo do sistema; nao recrie overlay bloqueante para tentar controlar a
-opacidade do fundo. O tamanho da sheet muda conforme a classe de apresentacao:
-`compact` para confirmacoes e utilitarios pequenos, `medium` para formularios e
-edicoes de escopo moderado, e `large` para fluxos principais ou multi-etapa. A
-superficie interna da sheet continua seguindo os tokens quentes do app. As
-dimensoes padrao ficam em `AppUI.Modal.SheetSize`; sheets compactas usam largura
-fixa e altura intrinseca com `.presentationSizing(.fitted)`, sem definir altura
-manual. Casos proporcionais devem calcular tamanho a partir da janela
-apresentadora e ainda usar `.sheet`.
+opacidade do fundo. A janela principal centraliza a ausencia de barra de titulo
+com `.windowStyle(.hiddenTitleBar)`, entao sheets e telas nao repetem
+`.toolbar(.hidden, for: .windowToolbar)` localmente. O tamanho da sheet muda
+conforme a classe de apresentacao: `compact` para confirmacoes e utilitarios
+pequenos, `medium` para formularios e edicoes de escopo moderado, e `large` para
+fluxos principais ou multi-etapa. A superficie interna da sheet continua
+seguindo os tokens quentes do app. As dimensoes padrao ficam em
+`AppUI.Modal.SheetSize`; sheets compactas usam largura fixa e altura intrinseca
+com `.presentationSizing(.fitted)`, sem definir altura manual. Casos
+proporcionais devem calcular tamanho a partir da janela apresentadora e ainda
+usar `.sheet`.
 
 O conteudo interno de toda sheet segue a mesma composicao: `ZStack` com
 `GranaBackground`, `AppUI.Form.Shell`, `AppUI.Form.Header`, conteudo ou `Form`,
@@ -108,12 +111,11 @@ ficam no topo; Design System, Categorias, Instituicoes e Perfil ficam no
 rodape. Cada item deve ter tooltip e label de acessibilidade.
 
 Nao desenhe controles falsos de janela macOS dentro do conteudo do app real.
-Feature screens podem ocultar a window toolbar nativa quando tiverem header
-visual proprio integrado ao tema. Nesses casos, o header inline via
-`AppUI.Layout.ScreenHeader` substitui o titulo e as acoes primarias da tela, e
-o primeiro bloco util passa a ser esse header. `Sheet` tambem pode ocultar a
-toolbar nativa. O rail lateral continua alinhado ao topo da area util, sem
-margem superior externa, mantendo respiro interno proprio.
+A titlebar fica oculta no `WindowGroup`, nao em cada feature. Feature screens
+com header visual proprio usam `AppUI.Layout.ScreenHeader` como titulo e area de
+acoes primarias da tela, e o primeiro bloco util passa a ser esse header. O rail
+lateral continua alinhado ao topo da area util, sem margem superior externa,
+mantendo respiro interno proprio.
 
 Apresente modais na feature dona do fluxo sempre que possivel. Fluxos globais,
 como importacao iniciada por drop em qualquer tela, podem ser apresentados pelo

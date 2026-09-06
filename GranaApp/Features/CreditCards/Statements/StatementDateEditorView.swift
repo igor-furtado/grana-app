@@ -23,7 +23,6 @@ struct StatementDateEditorView: View {
                 actions
             }
         }
-        .toolbar(.hidden, for: .windowToolbar)
         .frame(minWidth: 560, idealWidth: 560, maxWidth: 560, minHeight: 360)
         .environment(\.timeZone, TimeZone(secondsFromGMT: 0) ?? .current)
         .onExitCommand {

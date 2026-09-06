@@ -15,7 +15,7 @@ import SwiftUI
 /// **Nomeação por intenção, não pelo símbolo.** Caso é `success`, não
 /// `checkmarkCircle` — se amanhã trocarmos pro `checkmark.seal.fill`, o nome
 /// do caso continua certo. Mesmo princípio do `CategoryIcon`.
-public enum Icon {
+public enum Icon: CaseIterable {
     // MARK: - Ações
 
     case add
@@ -73,14 +73,19 @@ public enum Icon {
     case sidebarDesignSystem
     case sidebarProfile
 
+    /// Nome estável do caso para catálogos e telas de referência.
+    public var catalogTitle: String {
+        String(describing: self)
+    }
+
     /// Nome do SF Symbol, pra `Image(systemName:)` ou `Label(_:systemImage:)`.
     public var systemImage: String {
         switch self {
         // Ações
         case .add: "plus"
         case .edit: "pencil"
-        case .delete: "trash"
-        case .undo: "arrow.uturn.backward"
+        case .delete: "delete.left"
+        case .undo: "arrow.uturn.backward.circle"
         case .importFile: "square.and.arrow.down"
         case .archive: "archivebox"
         case .unarchive: "tray.and.arrow.up"
@@ -91,21 +96,21 @@ public enum Icon {
         case .close: "xmark"
         case .signOut: "rectangle.portrait.and.arrow.right"
         // Métricas
-        case .balance: "wallet.pass.fill"
-        case .expenseFlow: "arrow.down.right.circle.fill"
-        case .incomeFlow: "arrow.up.right.circle.fill"
+        case .balance: "wallet.pass"
+        case .expenseFlow: "arrow.down.right.circle"
+        case .incomeFlow: "arrow.up.right.circle"
         case .netResult: "chart.line.uptrend.xyaxis"
         // Charts do dashboard
         case .chartCategoryRanking: "chart.bar.xaxis"
         case .chartIncomeExpense: "arrow.up.arrow.down"
         case .chartWeekday: "calendar"
         // Status
-        case .success: "checkmark.circle.fill"
-        case .warning: "exclamationmark.triangle.fill"
-        case .error: "xmark.circle.fill"
+        case .success: "checkmark.circle"
+        case .warning: "exclamationmark.triangle"
+        case .error: "xmark.circle"
         case .info: "info.circle"
         case .unknown: "questionmark.circle"
-        case .completedSeal: "checkmark.seal.fill"
+        case .completedSeal: "checkmark.seal"
         case .invalidDate: "calendar.badge.exclamationmark"
         case .invalidAmount: "dollarsign.circle.trianglebadge.exclamationmark"
         // Sidebar

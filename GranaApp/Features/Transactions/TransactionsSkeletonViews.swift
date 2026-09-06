@@ -36,10 +36,10 @@ struct TransactionsSkeletonView: View {
     private var tableHeader: some View {
         HStack(spacing: AppUI.Theme.Spacing.sm) {
             AppUI.Skeleton.Line(width: 210, height: 13)
-            AppUI.Skeleton.Line(width: 110, height: 13)
-            AppUI.Skeleton.Line(width: 170, height: 13)
-            Spacer(minLength: AppUI.Theme.Spacing.none)
-            AppUI.Skeleton.Line(width: 140, height: 13)
+            AppUI.Skeleton.Line(width: .infinity, height: 13)
+            AppUI.Skeleton.Line(width: .infinity, height: 13)
+            AppUI.Skeleton.Line(width: .infinity, height: 13)
+            AppUI.Skeleton.Line(width: .infinity, height: 13)
             AppUI.Skeleton.Line(width: 80, height: 13)
         }
         .padding(.horizontal, AppUI.Theme.Spacing.md)
@@ -56,11 +56,10 @@ struct TransactionsSkeletonView: View {
                 }
                 Spacer()
             }.frame(width: 210)
-            AppUI.Skeleton.Line(width: 110, height: 15)
-            AppUI.Skeleton.Line(width: 170, height: 15)
-            AppUI.Skeleton.Line(width: index.isMultiple(of: 2) ? 112 : 148, height: 15)
-            Spacer(minLength: AppUI.Theme.Spacing.none)
-            AppUI.Skeleton.Line(width: 140, height: 15)
+            AppUI.Skeleton.Line(width: .infinity, height: 15)
+            AppUI.Skeleton.Line(width: .infinity, height: 15)
+            AppUI.Skeleton.Line(width: .infinity, height: 15)
+            AppUI.Skeleton.Line(width: .infinity, height: 15)
             AppUI.Skeleton.Line(width: 80, height: 24)
         }
         .padding(.horizontal, AppUI.Theme.Spacing.md)

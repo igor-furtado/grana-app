@@ -1,5 +1,6 @@
 import ComposableArchitecture
 import Foundation
+import SwiftUI
 import Testing
 @testable import GranaApp
 
@@ -255,6 +256,27 @@ struct TransactionFormFeatureTests {
         await store.receive(.delegate(.saved))
 
         #expect(notices.value == ["Transação salva"])
+    }
+
+    @Test("Seletores do formulário tornam a linha inteira clicável")
+    func selectorMenuUsesFieldAsMenuLabel() {
+        let selection = LockIsolated<String?>(nil)
+        let selector = Selector(
+            label: "Categoria",
+            placeholder: "Selecione uma categoria",
+            options: [SelectorOption(id: "alimentacao", title: "Alimentação")],
+            selection: Binding(
+                get: { selection.value },
+                set: { selection.setValue($0) }
+            ),
+            style: .menu
+        )
+
+        #expect(selector.menuBehaviorContract == SelectorMenuBehaviorContract(
+            usesFieldAsMenuLabel: true,
+            emptyTitle: "Nenhuma opção disponível",
+            disablesEmptyMenuOption: true
+        ))
     }
 
     private static func makeCalendar() throws -> Calendar {

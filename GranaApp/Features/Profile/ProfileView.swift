@@ -30,8 +30,6 @@ struct ProfileView: View {
                 )
             }
         }
-        .navigationTitle("")
-        .toolbar(.hidden, for: .windowToolbar)
     }
 
     private func authenticatedContent(_ session: AuthSessionContext) -> some View {

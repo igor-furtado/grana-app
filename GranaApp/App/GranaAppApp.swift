@@ -40,5 +40,6 @@ struct GranaAppApp: App {
         }
         .defaultSize(width: 940, height: 620)
         .windowResizability(.contentSize)
+        .windowStyle(.hiddenTitleBar)
     }
 }

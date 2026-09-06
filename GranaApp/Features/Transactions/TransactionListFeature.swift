@@ -276,7 +276,6 @@ struct TransactionListFeature {
         var statements: [Statement] = []
         var statementPayments: [StatementPayment] = []
         var supportsAdvancedCardRules = true
-        var isLoading = false
 
         var searchText = ""
         var kindFilter: TransactionKindFilter = .all
@@ -366,6 +365,11 @@ struct TransactionListFeature {
         func transactionsCountText(calendar: Calendar = .current, today: Date = Date()) -> String {
             let visible = visibleTransactions(calendar: calendar, today: today).count
             let total = transactions.count
+
+            if total == 0 {
+                return "Nenhuma transação ainda"
+            }
+
             return visible == total ? "\(visible) transações" : "\(visible) de \(total) transações"
         }
 

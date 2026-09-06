@@ -66,8 +66,6 @@ private struct CategoriesLoadedView: View {
             inspector
                 .inspectorColumnWidth(min: 220, ideal: 280, max: 360)
         }
-        .navigationTitle("")
-        .toolbar(.hidden, for: .windowToolbar)
         .task {
             await store.send(.task).finish()
         }

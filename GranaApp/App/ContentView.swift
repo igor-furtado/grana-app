@@ -96,23 +96,12 @@ private struct GlobalImportDropOverlay: View {
         ZStack {
             Rectangle()
                 .fill(AppUI.Theme.Palette.overlayScrim)
-            VStack(spacing: AppUI.Theme.Spacing.md) {
-                ZStack {
-                    Circle()
-                        .fill(AppUI.Theme.Palette.teal.opacity(0.18))
-                        .frame(width: 96, height: 96)
-                    Image(systemName: AppUI.Icon.importFile.systemImage)
-                        .font(.system(size: AppUI.Theme.IconSize.hero, weight: .regular))
-                        .foregroundStyle(AppUI.Theme.Palette.tealDeep)
-                }
-                Text("Solte o extrato para revisar")
-                    .font(AppUI.Theme.Typography.title3)
-                    .foregroundStyle(AppUI.Theme.Palette.ink)
-                Text("OFX ou CSV em qualquer tela")
-                    .font(AppUI.Theme.Typography.callout)
-                    .foregroundStyle(AppUI.Theme.Palette.muted)
-            }
-            .padding(AppUI.Theme.Spacing.xxxl)
+            IllustratedStatusView(
+                "Solte o extrato para revisar",
+                icon: .importFile,
+                description: "OFX ou CSV em qualquer tela"
+            )
+            .frame(width: 520, height: 300)
             .background {
                 RoundedRectangle(cornerRadius: AppUI.Theme.Radius.hero, style: .continuous)
                     .fill(AppUI.Theme.Palette.paper.opacity(0.92))

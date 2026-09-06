@@ -39,7 +39,6 @@ struct CreditCardFormView: View {
                 }
             }
         }
-        .toolbar(.hidden, for: .windowToolbar)
         .frame(minWidth: 560, idealWidth: 560, maxWidth: 560, minHeight: 560)
         .onExitCommand {
             store.send(.cancelButtonTapped)

@@ -39,7 +39,6 @@ struct TransactionFormView: View {
                 actions
             }
         }
-        .toolbar(.hidden, for: .windowToolbar)
         .frame(minWidth: 560, idealWidth: 560, maxWidth: 560, minHeight: 640)
         .sheet(
             isPresented: Binding(
@@ -489,7 +488,7 @@ private struct TransactionFormConfirmationSheet: View {
                 }
             }
         }
-        .toolbar(.hidden, for: .windowToolbar)
+        // .toolbar(.hidden, for: .windowToolbar)
         .frame(width: AppUI.Modal.SheetSize.compactWidth)
         .presentationSizing(.fitted)
     }

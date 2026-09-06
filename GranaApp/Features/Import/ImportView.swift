@@ -55,7 +55,6 @@ struct ImportView: View {
                 didTriggerPicker = true
                 fileImporterShown = true
             }
-        .toolbar(.hidden, for: .windowToolbar)
         .frame(maxWidth: .infinity, maxHeight: .infinity)
         .background(GranaBackground())
     }
@@ -186,21 +185,11 @@ private struct ImportWizardStatusView<Actions: View>: View {
 
     var body: some View {
         AppUI.Wizard.Shell {
-            VStack(spacing: AppUI.Theme.Spacing.md) {
-                Image(systemName: icon.systemImage)
-                    .font(.system(size: AppUI.Theme.IconSize.hero, weight: .regular))
-                    .foregroundStyle(AppUI.Theme.Palette.tealDeep)
-
-                VStack(spacing: AppUI.Theme.Spacing.xs) {
-                    Text(title)
-                        .font(AppUI.Theme.Typography.title3)
-                        .foregroundStyle(AppUI.Theme.Palette.ink)
-                    Text(message)
-                        .font(AppUI.Theme.Typography.callout)
-                        .foregroundStyle(AppUI.Theme.Palette.muted)
-                        .multilineTextAlignment(.center)
-                }
-
+            IllustratedStatusView(
+                title,
+                icon: icon,
+                description: message
+            ) {
                 if showsProgress {
                     ProgressView()
                         .progressViewStyle(.linear)
@@ -210,9 +199,6 @@ private struct ImportWizardStatusView<Actions: View>: View {
 
                 actions
             }
-            .padding(.horizontal, AppUI.Theme.Spacing.xxxl)
-            .padding(.vertical, AppUI.Theme.Spacing.xxl)
-            .frame(maxWidth: .infinity, maxHeight: .infinity)
         }
     }
 }

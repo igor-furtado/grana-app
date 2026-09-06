@@ -15,8 +15,6 @@ struct SupportedInstitutionsView: View {
 
     var body: some View {
         SupportedInstitutionsLoadedView(store: store, columns: columns)
-            .navigationTitle("")
-            .toolbar(.hidden, for: .windowToolbar)
     }
 }
 

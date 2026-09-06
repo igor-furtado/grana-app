@@ -27,7 +27,6 @@ struct ImportHistoryRollbackView: View {
                 }
             }
         }
-        .toolbar(.hidden, for: .windowToolbar)
         .frame(width: AppUI.Modal.SheetSize.compactWidth)
         .presentationSizing(.fitted)
     }

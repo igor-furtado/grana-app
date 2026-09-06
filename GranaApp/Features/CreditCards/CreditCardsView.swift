@@ -57,7 +57,6 @@ struct CreditCardsView: View {
                 }
             }
         }
-        .toolbar(.hidden, for: .windowToolbar)
         .sheet(
             item: $store.scope(\.$destination, action: \.destination).form
         ) { formStore in

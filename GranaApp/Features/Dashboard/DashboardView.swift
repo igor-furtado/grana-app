@@ -19,7 +19,5 @@ struct DashboardView: View {
             )
             .frame(maxWidth: .infinity, maxHeight: .infinity)
         }
-        .navigationTitle("")
-        .toolbar(.hidden, for: .windowToolbar)
     }
 }

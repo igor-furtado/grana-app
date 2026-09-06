@@ -2,18 +2,18 @@ import AppKit
 import SwiftUI
 import AppUI
 
-private enum EmptyStateMetrics {
+private enum IllustratedStatusMetrics {
     static let maxContentWidth: CGFloat = 620
     static let maxTextWidth: CGFloat = 560
-    static let iconSize: CGFloat = 62
+    static let iconContainerSize: CGFloat = 92
 }
 
-/// Estado vazio padronizado do app com a linguagem warm/teal do design system.
+/// Bloco ilustrado padronizado do app para estados compactos, overlays e feedbacks.
 ///
 /// **Use isto em vez de `ContentUnavailableView` direto.** O wrapper centraliza
 /// a linguagem visual e permite trocar o look ou adicionar variantes em um
 /// único lugar.
-struct EmptyStateView<Icon: View, Actions: View>: View {
+struct IllustratedStatusView<Icon: View, Actions: View>: View {
     private let title: String
     private let descriptionText: String?
     private let icon: Icon
@@ -48,15 +48,15 @@ struct EmptyStateView<Icon: View, Actions: View>: View {
                 .multilineTextAlignment(.center)
                 .lineLimit(3)
                 .minimumScaleFactor(0.72)
-                .frame(maxWidth: EmptyStateMetrics.maxTextWidth)
+                .frame(maxWidth: IllustratedStatusMetrics.maxTextWidth)
 
             if let descriptionText {
                 Text(descriptionText)
-                    .font(AppUI.Theme.Typography.headline)
+                    .font(AppUI.Theme.Typography.callout)
                     .foregroundStyle(AppUI.Theme.Palette.muted)
                     .multilineTextAlignment(.center)
                     .fixedSize(horizontal: false, vertical: true)
-                    .frame(maxWidth: EmptyStateMetrics.maxTextWidth)
+                    .frame(maxWidth: IllustratedStatusMetrics.maxTextWidth)
                     .padding(.top, AppUI.Theme.Spacing.md)
             }
 
@@ -67,51 +67,16 @@ struct EmptyStateView<Icon: View, Actions: View>: View {
                     .padding(.top, AppUI.Theme.Spacing.xxl)
             }
         }
-        .frame(maxWidth: EmptyStateMetrics.maxContentWidth)
+        .frame(maxWidth: IllustratedStatusMetrics.maxContentWidth)
         .frame(maxWidth: .infinity, maxHeight: .infinity)
         .padding(.horizontal, AppUI.Theme.Spacing.xl)
         .padding(.vertical, AppUI.Theme.Spacing.xxxl)
     }
 }
 
-/// Resolução cacheada de símbolos SF. Fora da `EmptyStateView` porque tipos
-/// genéricos não suportam `static var` armazenado. Acesso é MainActor — bodies
-/// SwiftUI rodam no MainActor.
-@MainActor
-private enum SymbolResolver {
-    private static var cache: [String: String] = [:]
-
-    static func resolve(_ name: String) -> String {
-        if let cached = cache[name] {
-            return cached
-        }
-        let resolved = compute(name)
-        cache[name] = resolved
-        return resolved
-    }
-
-    private static func compute(_ name: String) -> String {
-        if name.hasSuffix(".circle.fill") {
-            return name
-        }
-        var candidates = ["\(name).circle.fill"]
-        if name.hasSuffix(".fill") {
-            candidates.append("\(name.dropLast(5)).circle.fill")
-        }
-        for candidate in candidates where exists(candidate) {
-            return candidate
-        }
-        return name
-    }
-
-    private static func exists(_ name: String) -> Bool {
-        NSImage(systemSymbolName: name, accessibilityDescription: nil) != nil
-    }
-}
-
 // MARK: - Conveniência sem actions
 
-extension EmptyStateView where Icon == EmptyView {
+extension IllustratedStatusView where Icon == EmptyView {
     init(
         _ title: String,
         description: String? = nil,
@@ -126,7 +91,7 @@ extension EmptyStateView where Icon == EmptyView {
     }
 }
 
-extension EmptyStateView where Actions == EmptyView {
+extension IllustratedStatusView where Actions == EmptyView {
     init(
         _ title: String,
         description: String? = nil,
@@ -141,7 +106,7 @@ extension EmptyStateView where Actions == EmptyView {
     }
 }
 
-extension EmptyStateView where Icon == EmptyView, Actions == EmptyView {
+extension IllustratedStatusView where Icon == EmptyView, Actions == EmptyView {
     init(
         _ title: String,
         description: String? = nil
@@ -155,6 +120,71 @@ extension EmptyStateView where Icon == EmptyView, Actions == EmptyView {
     }
 }
 
+/// Estado vazio padronizado do app com a linguagem warm/teal do design system.
+struct EmptyStateView<Icon: View, Actions: View>: View {
+    private let content: IllustratedStatusView<Icon, Actions>
+
+    init(
+        _ title: String,
+        description: String? = nil,
+        @ViewBuilder icon: () -> Icon,
+        @ViewBuilder actions: () -> Actions
+    ) {
+        self.content = IllustratedStatusView(
+            title,
+            description: description,
+            icon: icon,
+            actions: actions
+        )
+    }
+
+    var body: some View {
+        content
+    }
+}
+
+// MARK: - Conveniência sem actions
+
+extension EmptyStateView where Icon == EmptyView {
+    init(
+        _ title: String,
+        description: String? = nil,
+        @ViewBuilder actions: () -> Actions
+    ) {
+        self.content = IllustratedStatusView(
+            title,
+            description: description,
+            actions: actions
+        )
+    }
+}
+
+extension EmptyStateView where Actions == EmptyView {
+    init(
+        _ title: String,
+        description: String? = nil,
+        @ViewBuilder icon: () -> Icon
+    ) {
+        self.content = IllustratedStatusView(
+            title,
+            description: description,
+            icon: icon
+        )
+    }
+}
+
+extension EmptyStateView where Icon == EmptyView, Actions == EmptyView {
+    init(
+        _ title: String,
+        description: String? = nil
+    ) {
+        self.content = IllustratedStatusView(
+            title,
+            description: description
+        )
+    }
+}
+
 /// Tratamento visual padrão para SF Symbols usados em empty states.
 struct EmptyStateSymbolIcon: View {
     private let systemName: String
@@ -164,21 +194,17 @@ struct EmptyStateSymbolIcon: View {
     }
 
     var body: some View {
-        Image(systemName: Self.resolveSymbol(systemName))
-            .symbolRenderingMode(.hierarchical)
-            .font(.system(size: EmptyStateMetrics.iconSize, weight: .bold))
-            .foregroundStyle(AppUI.Theme.Palette.ink)
-            .shadow(color: AppUI.Theme.Shadow.accentColor.opacity(0.64), radius: 18, y: 12)
-    }
-
-    /// Procura o variant `.circle.fill` do símbolo. Estratégia em ordem:
-    /// 1. Se já termina em `.circle.fill`, é o variant — usa direto.
-    /// 2. Tenta `<nome>.circle.fill`.
-    /// 3. Se o nome termina em `.fill`, tenta `<base>.circle.fill`.
-    /// 4. Sem variant disponível, devolve o nome original.
-    /// `NSImage(systemSymbolName:)` valida a existência em tempo de execução —
-    /// sem ele, símbolos inexistentes renderizariam vazios silenciosamente.
-    private static func resolveSymbol(_ name: String) -> String {
-        SymbolResolver.resolve(name)
+        Image(systemName: systemName)
+            .symbolRenderingMode(.monochrome)
+            .font(.system(size: AppUI.Theme.IconSize.hero, weight: .regular))
+            .foregroundStyle(AppUI.Theme.Palette.tealDeep)
+            .frame(
+                width: IllustratedStatusMetrics.iconContainerSize,
+                height: IllustratedStatusMetrics.iconContainerSize
+            )
+            .background(
+                AppUI.Theme.Palette.teal.opacity(0.10),
+                in: Circle()
+            )
     }
 }

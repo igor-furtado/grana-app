@@ -17,6 +17,7 @@ struct TransactionsFeature {
     @ObservableState
     struct State: Equatable {
         var list = TransactionListFeature.State()
+        var isLoading = false
         var hasLoaded = false
         var pendingFormPresentation: FormPresentation?
 
@@ -106,24 +107,24 @@ struct TransactionsFeature {
 
             case let .snapshotLoaded(snapshot):
                 state.list.apply(snapshot)
-                state.list.isLoading = false
+                state.isLoading = false
                 state.hasLoaded = true
                 return .none
 
             case .loadFailed:
                 state.list.clearLoadedData()
-                state.list.isLoading = false
+                state.isLoading = false
                 state.hasLoaded = true
                 return .none
 
             case let .postDeleteRefreshCompleted(snapshot):
                 state.list.apply(snapshot)
-                state.list.isLoading = false
+                state.isLoading = false
                 state.hasLoaded = true
                 return .none
 
             case .postDeleteRefreshFailed:
-                state.list.isLoading = false
+                state.isLoading = false
                 state.hasLoaded = true
                 return .none
 
@@ -168,7 +169,7 @@ struct TransactionsFeature {
 
             case .destination(.presented(.delete(.delegate(.confirmed)))):
                 state.destination = nil
-                state.list.isLoading = true
+                state.isLoading = true
                 return .merge(
                     .send(.delegate(.financialDataChanged)),
                     .run { send in
@@ -193,7 +194,7 @@ struct TransactionsFeature {
     }
 
     private func load(_ state: inout State) -> Effect<Action> {
-        state.list.isLoading = true
+        state.isLoading = true
         return .run { send in
             do {
                 let snapshot = try await transactionsClient.loadSnapshot()
