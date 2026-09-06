@@ -169,6 +169,7 @@ struct ImportWizardFeature {
     }
 
     @Dependency(\.importClient) private var importClient
+    @Dependency(\.importPlanningClient) private var importPlanningClient
     @Dependency(\.noticeClient) private var noticeClient
 
     var body: some Reducer<State, Action> {
@@ -245,124 +246,43 @@ struct ImportWizardFeature {
 
             case .confirmOFXImport:
                 guard let ofx = state.ofx else { return .none }
-                let resolved = ofx.resolutions.compactMap { resolution in
-                    resolution.accountId.map { (resolution, $0) }
-                }
-                guard resolved.count == ofx.resolutions.count else {
-                    return fail(&state, error: ImportError.accountNotSelected)
-                }
-
-                let now = Date()
-                var pendingBatches: [PendingImportBatch] = []
-                var pendingDrafts: [TransactionDraft] = []
-                for (resolution, accountId) in resolved {
-                    let selectedRows = resolution.rows.filter(\.selected)
-                    if selectedRows.isEmpty {
-                        continue
-                    }
-                    let batchId = UUID()
-                    let batch = ImportBatch(
-                        id: batchId,
-                        sourceFilename: state.sourceURL?.lastPathComponent ?? "import.ofx",
-                        accountId: accountId,
-                        rowCount: selectedRows.count,
-                        importedAt: now,
-                        createdAt: now,
-                        updatedAt: now
+                let plan: PendingImportPlan
+                do {
+                    plan = try importPlanningClient.makePendingPlan(
+                        .ofx(
+                            sourceFilename: state.sourceURL?.lastPathComponent ?? "import.ofx",
+                            resolutions: ofx.resolutions
+                        ),
+                        ImportPlanningContext(now: Date(), makeID: UUID.init)
                     )
-                    pendingBatches.append(PendingImportBatch(batch: batch, importFormat: .ofx))
-                    pendingDrafts.append(contentsOf: selectedRows.map { row in
-                        TransactionDraft(
-                            id: UUID(),
-                            accountId: accountId,
-                            importBatchId: batchId,
-                            signedAmount: row.derived.amount,
-                            occurredAt: row.derived.occurredAt,
-                            originOccurredAt: row.derived.occurredAt,
-                            description: row.derived.description,
-                            notes: row.derived.notes,
-                            externalId: row.raw.fitid
-                        )
-                    })
+                } catch {
+                    return fail(&state, error: error)
                 }
 
-                guard !pendingDrafts.isEmpty else {
-                    return fail(&state, error: ImportError.noValidRows)
-                }
-
-                state.pendingBatches = pendingBatches
-                state.pendingDrafts = pendingDrafts
+                state.pendingBatches = plan.batches
+                state.pendingDrafts = plan.drafts
                 state.phase = .categorizing
-                return .send(.categorization(.start(pendingDrafts)))
+                return .send(.categorization(.start(plan.drafts)))
 
             case .confirmCSVImport:
                 guard let csv = state.csv else { return .none }
-                guard let accountId = csv.resolution.accountId else {
-                    return fail(&state, error: ImportError.accountNotSelected)
-                }
-
-                let purchasesToImport = csv.resolution.rows.filter(\.selected)
-                let balancesToImport = csv.resolution.negativeRows.filter {
-                    $0.raw.kind == .balance && $0.selected
-                }
-                guard !purchasesToImport.isEmpty || !balancesToImport.isEmpty else {
-                    return fail(&state, error: ImportError.noValidRows)
-                }
-
-                let now = Date()
-                let batchId = UUID()
-                let batch = ImportBatch(
-                    id: batchId,
-                    sourceFilename: csv.resolution.sourceFilename,
-                    accountId: accountId,
-                    rowCount: purchasesToImport.count + balancesToImport.count,
-                    importedAt: now,
-                    createdAt: now,
-                    updatedAt: now
-                )
-
-                var drafts = purchasesToImport.map { row in
-                    TransactionDraft(
-                        id: UUID(),
-                        accountId: accountId,
-                        importBatchId: batchId,
-                        signedAmount: row.raw.amount,
-                        occurredAt: row.derived.occurredAt,
-                        originOccurredAt: row.raw.date,
-                        purchaseType: row.raw.purchaseType,
-                        installmentIndex: row.raw.installmentIndex,
-                        installmentCount: row.raw.installmentCount,
-                        description: row.derived.description,
-                        notes: row.derived.notes,
-                        externalId: row.externalId,
-                        sourceCategoryHint: row.raw.interCategory
+                let plan: PendingImportPlan
+                do {
+                    plan = try importPlanningClient.makePendingPlan(
+                        .interCreditCardCSV(
+                            sourceFilename: csv.resolution.sourceFilename,
+                            resolution: csv.resolution
+                        ),
+                        ImportPlanningContext(now: Date(), makeID: UUID.init)
                     )
+                } catch {
+                    return fail(&state, error: error)
                 }
-                drafts.append(contentsOf: balancesToImport.map { row in
-                    TransactionDraft(
-                        id: UUID(),
-                        accountId: accountId,
-                        importBatchId: batchId,
-                        signedAmount: abs(row.raw.amount),
-                        occurredAt: row.raw.date,
-                        originOccurredAt: row.raw.date,
-                        description: row.raw.description,
-                        notes: "Saldo importado do CSV Inter",
-                        externalId: InterCreditCardCSVReader.makeExternalId(
-                            date: row.raw.date,
-                            description: row.raw.description,
-                            amount: abs(row.raw.amount),
-                            purchaseType: nil,
-                            installmentIndex: nil,
-                            installmentCount: nil
-                        )
-                    )
-                })
 
-                state.pendingDrafts = drafts
-                state.pendingBatches = [PendingImportBatch(batch: batch, importFormat: .interCreditCardCSV)]
+                state.pendingDrafts = plan.drafts
+                state.pendingBatches = plan.batches
                 state.phase = .categorizing
-                return .send(.categorization(.start(drafts)))
+                return .send(.categorization(.start(plan.drafts)))
 
             case .finalizeImport:
                 guard state.phase == .reviewingCategorization else { return .none }
@@ -371,8 +291,11 @@ struct ImportWizardFeature {
                 }
 
                 state.phase = .confirming
-                return .run { [pendingDrafts = state.pendingDrafts, pendingBatches = state.pendingBatches,
-                                categories = state.snapshot.categories, suggestions = state.categorization.suggestions] send in
+                let pendingDrafts = state.pendingDrafts
+                let pendingBatches = state.pendingBatches
+                let categories = state.snapshot.categories
+                let suggestions = state.categorization.suggestions
+                return .run { send in
                     let reviewedRows = pendingDrafts.map { draft in
                         let resolved = suggestions.first(where: { $0.transactionId == draft.id })
                         return ReviewedImportRow(
@@ -521,7 +444,7 @@ struct ImportFeature {
                     }
                 }
 
-            case .history(.delegate(.startImport(let file))):
+            case let .history(.delegate(.startImport(file))):
                 state.wizard = ImportWizardFeature.State(initialFile: file)
                 return .none
 
