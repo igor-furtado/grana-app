@@ -165,6 +165,7 @@ struct ImportWizardFeature {
     }
 
     @Dependency(\.importClient) private var importClient
+    @Dependency(\.importCommitClient) private var importCommitClient
     @Dependency(\.importPlanningClient) private var importPlanningClient
     @Dependency(\.noticeClient) private var noticeClient
 
@@ -285,23 +286,16 @@ struct ImportWizardFeature {
                 }
 
                 state.phase = .confirming
-                let reviewedRows = review.reviewedRows
-                let pendingBatches = review.plan.batches
-                let categories = state.snapshot.categories
-                let suggestions = review.categorization.suggestions
+                let commit = ReviewedImportCommit(
+                    idempotencyKey: UUID(),
+                    reviewedRows: review.reviewedRows,
+                    pendingBatches: review.plan.batches,
+                    categories: state.snapshot.categories,
+                    suggestions: review.categorization.suggestions
+                )
                 return .run { send in
                     do {
-                        let input = try ImportCommitBuilder.buildInput(
-                            idempotencyKey: UUID(),
-                            reviewedRows: reviewedRows,
-                            pendingBatches: pendingBatches,
-                            categories: categories
-                        )
-                        let learnRequest = try ImportCommitBuilder.buildLearnRequest(
-                            suggestions: suggestions,
-                            categories: categories
-                        )
-                        _ = try await importClient.commit(input, learnRequest)
+                        _ = try await importCommitClient.commitReviewedImport(commit)
                         await send(.delegate(.completed))
                     } catch {
                         await send(.fileLoaded(.failure(error)))
