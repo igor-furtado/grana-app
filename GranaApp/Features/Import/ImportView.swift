@@ -1,7 +1,7 @@
+import AppUI
 import ComposableArchitecture
 import SwiftUI
 import UniformTypeIdentifiers
-import AppUI
 
 struct ImportView: View {
     @Bindable var store: StoreOf<ImportWizardFeature>
@@ -55,15 +55,14 @@ struct ImportView: View {
                 didTriggerPicker = true
                 fileImporterShown = true
             }
-        .frame(maxWidth: .infinity, maxHeight: .infinity)
-        .background(GranaBackground())
+            .frame(maxWidth: .infinity, maxHeight: .infinity)
+            .background(GranaBackground())
     }
 
-    @ViewBuilder
     private var wizard: some View {
         phaseContent
             .frame(maxWidth: .infinity, maxHeight: .infinity)
-        .background(GranaBackground())
+            .background(GranaBackground())
     }
 
     @ViewBuilder
@@ -100,19 +99,23 @@ struct ImportView: View {
                 )
             }
         case .categorizing:
-            CategorizingStepView(
-                store: store.scope(state: \.categorization, action: \.categorization),
-                onCancel: { store.send(.backToPreview) }
-            )
-        case .reviewingCategorization:
-            CategorizationReviewView(
-                store: store.scope(state: \.categorization, action: \.categorization),
-                mode: .wizard(
-                    onImport: { store.send(.finalizeImport) },
-                    onBack: { store.send(.backToPreview) },
-                    onClose: onClose
+            if let reviewStore = store.scope(state: \.review, action: \.review) {
+                CategorizingStepView(
+                    store: reviewStore.scope(state: \.categorization, action: \.categorization),
+                    onCancel: { store.send(.backToPreview) }
                 )
-            )
+            }
+        case .reviewingCategorization:
+            if let reviewStore = store.scope(state: \.review, action: \.review) {
+                CategorizationReviewView(
+                    store: reviewStore.scope(state: \.categorization, action: \.categorization),
+                    mode: .wizard(
+                        onImport: { store.send(.finalizeImport) },
+                        onBack: { store.send(.backToPreview) },
+                        onClose: onClose
+                    )
+                )
+            }
         case .confirming:
             ImportWizardStatusView(
                 icon: AppUI.Icon.completedSeal,
