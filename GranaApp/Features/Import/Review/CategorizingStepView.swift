@@ -1,6 +1,6 @@
+import AppUI
 import ComposableArchitecture
 import SwiftUI
-import AppUI
 
 struct CategorizingStepView: View {
     @Bindable var store: StoreOf<CategorizationFeature>
@@ -99,9 +99,12 @@ struct CategorizingStepView: View {
                     .foregroundStyle(AppUI.Theme.Palette.ink)
 
                 TimelineView(.periodic(from: .now, by: 1.8)) { context in
-                    Text(rotatingMessage(for: loadingStage(processed: processed, total: total, message: message), date: context.date))
-                        .font(AppUI.Theme.Typography.callout)
-                        .foregroundStyle(AppUI.Theme.Palette.muted)
+                    Text(rotatingMessage(
+                        for: loadingStage(processed: processed, total: total, message: message),
+                        date: context.date
+                    ))
+                    .font(AppUI.Theme.Typography.callout)
+                    .foregroundStyle(AppUI.Theme.Palette.muted)
                 }
             }
         case .ready:

@@ -153,7 +153,8 @@ struct CSVImportFeature {
                 return .none
 
             case let .negativeSelectionChanged(rowId, isSelected):
-                guard let index = state.resolution.negativeRows.firstIndex(where: { $0.id == rowId }) else { return .none }
+                guard let index = state.resolution.negativeRows.firstIndex(where: { $0.id == rowId })
+                else { return .none }
                 guard state.resolution.negativeRows[index].raw.kind == .balance else { return .none }
                 state.resolution.negativeRows[index].selected = isSelected
                 return .none

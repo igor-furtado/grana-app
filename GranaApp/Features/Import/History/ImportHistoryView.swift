@@ -1,6 +1,6 @@
+import AppUI
 import ComposableArchitecture
 import SwiftUI
-import AppUI
 
 struct ImportHistoryView: View {
     @Bindable var store: StoreOf<ImportFeature>
@@ -42,7 +42,7 @@ private struct ImportHistoryContentView: View {
                     .frame(maxWidth: .infinity, maxHeight: .infinity)
             } else if historyStore.snapshot.batches.isEmpty {
                 ImportHistoryDropZone()
-                .frame(maxWidth: .infinity, maxHeight: .infinity)
+                    .frame(maxWidth: .infinity, maxHeight: .infinity)
             } else {
                 dashboard
                     .frame(maxWidth: .infinity, maxHeight: .infinity)
@@ -149,20 +149,42 @@ private struct ImportHistoryBatchPresentation: Identifiable {
     let accountDisplayName: String?
     let institution: Institution?
 
-    var id: UUID { batch.id }
-    var institutionKind: InstitutionKind { institution?.kind ?? .other }
-    var institutionName: String { institution?.name ?? "Conta desconhecida" }
-    var accountName: String { accountDisplayName ?? institutionName }
+    var id: UUID {
+        batch.id
+    }
+
+    var institutionKind: InstitutionKind {
+        institution?.kind ?? .other
+    }
+
+    var institutionName: String {
+        institution?.name ?? "Conta desconhecida"
+    }
+
+    var accountName: String {
+        accountDisplayName ?? institutionName
+    }
 
     var formatName: String {
         let ext = URL(fileURLWithPath: batch.sourceFilename).pathExtension
         return ext.isEmpty ? "ARQ" : ext.uppercased()
     }
 
-    var sourceFilename: String { batch.sourceFilename }
-    var rowCount: Int { batch.rowCount }
-    var importedAtText: String { GranaDateFormat.dateTime(batch.importedAt) }
-    var importedAt: Date { batch.importedAt }
+    var sourceFilename: String {
+        batch.sourceFilename
+    }
+
+    var rowCount: Int {
+        batch.rowCount
+    }
+
+    var importedAtText: String {
+        GranaDateFormat.dateTime(batch.importedAt)
+    }
+
+    var importedAt: Date {
+        batch.importedAt
+    }
 }
 
 private struct ImportHistoryMainPanel: View {

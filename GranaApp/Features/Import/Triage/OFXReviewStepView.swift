@@ -1,6 +1,6 @@
+import AppUI
 import ComposableArchitecture
 import SwiftUI
-import AppUI
 
 struct OFXReviewStepView: View {
     @Bindable var store: StoreOf<OFXImportFeature>
@@ -17,11 +17,10 @@ struct OFXReviewStepView: View {
     }
 
     private var selectedStatementIndex: Int {
-        if let selectedStatementID,
-           let index = store.state.resolutions.firstIndex(where: { $0.id == selectedStatementID }) {
-            return index
-        }
-        return 0
+        guard let selectedStatementID,
+              let index = store.state.resolutions.firstIndex(where: { $0.id == selectedStatementID })
+        else { return 0 }
+        return index
     }
 
     var body: some View {
@@ -130,18 +129,16 @@ private struct ImportWizardInfoRow<Content: View>: View {
     }
 }
 
-
 private struct OFXTransactionsListCard: View {
     @Binding var resolutions: [OFXStatementResolution]
     @Binding var selectedStatementID: OFXStatementResolution.ID?
     let bankKind: (UUID?) -> InstitutionKind?
 
     private var selectedIndex: Int {
-        if let selectedStatementID,
-           let index = resolutions.firstIndex(where: { $0.id == selectedStatementID }) {
-            return index
-        }
-        return 0
+        guard let selectedStatementID,
+              let index = resolutions.firstIndex(where: { $0.id == selectedStatementID })
+        else { return 0 }
+        return index
     }
 
     private var currentResolution: OFXStatementResolution? {
@@ -271,7 +268,8 @@ private struct OFXTransactionsListCard: View {
     private func selectionBinding(for rowID: UUID) -> Binding<Bool>? {
         guard resolutions.indices.contains(selectedIndex),
               let rowIndex = resolutions[selectedIndex].rows.firstIndex(where: { $0.id == rowID }),
-              !resolutions[selectedIndex].rows[rowIndex].isDuplicate else {
+              !resolutions[selectedIndex].rows[rowIndex].isDuplicate
+        else {
             return nil
         }
         return Binding(
@@ -282,7 +280,8 @@ private struct OFXTransactionsListCard: View {
 
     private func toggleAll(to value: Bool) {
         guard resolutions.indices.contains(selectedIndex) else { return }
-        for rowIndex in resolutions[selectedIndex].rows.indices where !resolutions[selectedIndex].rows[rowIndex].isDuplicate {
+        for rowIndex in resolutions[selectedIndex].rows.indices {
+            guard !resolutions[selectedIndex].rows[rowIndex].isDuplicate else { continue }
             resolutions[selectedIndex].rows[rowIndex].selected = value
         }
     }

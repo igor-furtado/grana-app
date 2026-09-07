@@ -1,6 +1,6 @@
+import AppUI
 import ComposableArchitecture
 import SwiftUI
-import AppUI
 
 struct CategorizationReviewView: View {
     enum Mode {
@@ -245,7 +245,9 @@ enum CategorizationReviewOrdering {
         let title: String
         let indices: [Int]
 
-        var id: String { title }
+        var id: String {
+            title
+        }
     }
 
     static func sections(from suggestions: [CategorizationSuggestion]) -> [Section] {

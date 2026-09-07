@@ -1,6 +1,6 @@
+import AppUI
 import ComposableArchitecture
 import SwiftUI
-import AppUI
 
 struct CSVReviewStepView: View {
     @Bindable var store: StoreOf<CSVImportFeature>
@@ -188,7 +188,6 @@ private struct CSVTransactionsListCard: View {
         }
     }
 
-    @ViewBuilder
     private func statusCell(for row: CSVTransactionTableRow) -> some View {
         VStack(alignment: .leading, spacing: AppUI.Theme.Spacing.xxs) {
             if let status = row.status {
@@ -206,8 +205,8 @@ private struct CSVTransactionsListCard: View {
             resolution.rows[index].selected = value
         }
 
-        for index in resolution.negativeRows.indices
-            where resolution.negativeRows[index].raw.kind == .balance {
+        for index in resolution.negativeRows.indices {
+            guard resolution.negativeRows[index].raw.kind == .balance else { continue }
             onNegativeSelectionChanged(resolution.negativeRows[index].id, value)
         }
     }
@@ -220,7 +219,8 @@ private struct CSVTransactionsListCard: View {
         switch row.kind {
         case .purchase:
             guard let index = resolution.rows.firstIndex(where: { $0.id == row.rowID }),
-                  !resolution.rows[index].isDuplicate else {
+                  !resolution.rows[index].isDuplicate
+            else {
                 return nil
             }
             return $resolution.rows[index].selected
