@@ -142,7 +142,7 @@ struct OFXTriageFeature {
         case resolutionsUpdated([OFXStatementResolution])
     }
 
-    @Dependency(\.importClient) private var importClient
+    @Dependency(\.importTriageClient) private var importTriageClient
 
     var body: some Reducer<State, Action> {
         BindingReducer()
@@ -152,7 +152,7 @@ struct OFXTriageFeature {
                 guard state.resolutions.indices.contains(statementIndex) else { return .none }
                 let resolution = state.resolutions[statementIndex]
                 return .run { send in
-                    let updated = await importClient.reloadOFXResolution(resolution, accountId)
+                    let updated = await importTriageClient.reloadOFXResolution(resolution, accountId)
                     await send(.accountReloaded(statementIndex: statementIndex, resolution: updated))
                 }
 
@@ -220,7 +220,7 @@ struct CSVTriageFeature {
         case resolutionUpdated(CSVStatementResolution)
     }
 
-    @Dependency(\.importClient) private var importClient
+    @Dependency(\.importTriageClient) private var importTriageClient
 
     var body: some Reducer<State, Action> {
         BindingReducer()
@@ -229,7 +229,7 @@ struct CSVTriageFeature {
             case let .accountSelected(accountId):
                 let resolution = state.resolution
                 return .run { send in
-                    let refreshed = await importClient.reloadCSVResolution(resolution, accountId)
+                    let refreshed = await importTriageClient.reloadCSVResolution(resolution, accountId)
                     await send(.accountReloaded(refreshed))
                 }
 

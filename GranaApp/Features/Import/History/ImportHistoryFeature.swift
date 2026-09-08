@@ -48,7 +48,7 @@ struct ImportHistoryFeature {
         case startImport(URL?)
     }
 
-    @Dependency(\.importClient) private var importClient
+    @Dependency(\.importHistoryClient) private var importHistoryClient
     @Dependency(\.noticeClient) private var noticeClient
 
     var body: some Reducer<State, Action> {
@@ -57,7 +57,7 @@ struct ImportHistoryFeature {
             case .task, .refresh:
                 state.isLoading = true
                 return .run { send in
-                    await send(.snapshotLoaded(TaskResult { try await importClient.loadSnapshot() }))
+                    await send(.snapshotLoaded(TaskResult { try await importHistoryClient.loadSnapshot() }))
                 }
 
             case let .snapshotLoaded(.success(snapshot)):
@@ -89,7 +89,7 @@ struct ImportHistoryFeature {
                 state.pendingDelete = nil
                 return .run { send in
                     do {
-                        try await importClient.undo(batch.id)
+                        try await importHistoryClient.undo(batch.id)
                         await send(.refresh)
                     } catch {
                         await noticeClient.report(error, "Falha ao desfazer importação")

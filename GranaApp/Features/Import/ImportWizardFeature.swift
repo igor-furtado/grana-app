@@ -64,7 +64,8 @@ struct ImportWizardFeature {
         case completed
     }
 
-    @Dependency(\.importClient) private var importClient
+    @Dependency(\.importFileLoadingClient) private var importFileLoadingClient
+    @Dependency(\.importHistoryClient) private var importHistoryClient
     @Dependency(\.importPlanningClient) private var importPlanningClient
     @Dependency(\.noticeClient) private var noticeClient
 
@@ -74,7 +75,7 @@ struct ImportWizardFeature {
             case .task:
                 state.phase = .loading(progress: "Carregando dados…")
                 return .run { [initialFile = state.initialFile] send in
-                    await send(.snapshotLoaded(TaskResult { try await importClient.loadSnapshot() }))
+                    await send(.snapshotLoaded(TaskResult { try await importHistoryClient.loadSnapshot() }))
                     if let initialFile {
                         await send(.fileSelected(initialFile))
                     } else {
@@ -102,7 +103,7 @@ struct ImportWizardFeature {
                 state.phase = .loading(progress: "Lendo arquivo…")
                 state.sourceURL = url
                 return .run { [snapshot = state.snapshot] send in
-                    await send(.fileLoaded(TaskResult { try await importClient.loadFile(url, snapshot) }))
+                    await send(.fileLoaded(TaskResult { try await importFileLoadingClient.loadFile(url, snapshot) }))
                 }
                 .cancellable(id: "import.fileLoading", cancelInFlight: true)
 

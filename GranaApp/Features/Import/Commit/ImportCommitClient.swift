@@ -11,13 +11,9 @@ struct ReviewedImportCommit: Equatable {
 
 struct ImportCommitClient {
     var commitReviewedImport: @Sendable (_ commit: ReviewedImportCommit) async throws -> ImportCommitResult
-}
 
-extension ImportCommitClient: DependencyKey {
-    static var liveValue: ImportCommitClient {
-        @Dependency(\.importClient) var importClient
-
-        return ImportCommitClient { commit in
+    static func live(container: AppContainer) -> ImportCommitClient {
+        ImportCommitClient { commit in
             let input = try ImportCommitBuilder.buildInput(
                 idempotencyKey: commit.idempotencyKey,
                 reviewedRows: commit.reviewedRows,
@@ -28,9 +24,18 @@ extension ImportCommitClient: DependencyKey {
                 suggestions: commit.suggestions,
                 categories: commit.categories
             )
-            return try await importClient.commit(input, learnRequest)
+            if let learnRequest {
+                try await container.categorizationFeedback.learnConfirmedClassifications(request: learnRequest)
+            }
+            return try await container.remoteImports.commit(input: input)
         }
     }
+}
+
+extension ImportCommitClient: DependencyKey {
+    static let liveValue = ImportCommitClient(
+        commitReviewedImport: unimplemented("ImportCommitClient.commitReviewedImport")
+    )
 
     static let testValue = ImportCommitClient(
         commitReviewedImport: unimplemented("ImportCommitClient.commitReviewedImport")

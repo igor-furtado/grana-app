@@ -49,8 +49,11 @@ final class AppEnvironment {
             $0.accountsClient = .live(container: container)
             $0.categoriesClient = .live(container: container)
             $0.creditCardsClient = .live(container: container)
-            $0.importClient = .live(container: container)
             $0.importCategorizationClient = .live(container: container)
+            $0.importCommitClient = .live(container: container)
+            $0.importFileLoadingClient = .live(container: container)
+            $0.importHistoryClient = .live(container: container)
+            $0.importTriageClient = .live(container: container)
             $0.supportedInstitutionsClient = .live(container: container)
             $0.transactionsClient = .live(container: container)
         }

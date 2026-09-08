@@ -166,8 +166,8 @@ struct CatalogLoadingTests {
     }
 
     @MainActor
-    @Test("ImportClient carrega snapshot com catálogos e contas remotas")
-    func importClientLoadsSnapshot() async throws {
+    @Test("ImportHistoryClient carrega snapshot com catálogos e contas remotas")
+    func importHistoryClientLoadsSnapshot() async throws {
         let institution = makeInstitution(
             code: "077",
             name: "Banco Inter",
@@ -209,7 +209,7 @@ struct CatalogLoadingTests {
             ),
             remoteImports: StaticImportRemoteRepository(batches: [batch])
         )
-        let client = ImportClient.live(container: container)
+        let client = ImportHistoryClient.live(container: container)
 
         let snapshot = try await client.loadSnapshot()
 

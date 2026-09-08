@@ -48,7 +48,7 @@ struct ImportFeatureTests {
         let store = TestStore(initialState: ImportHistoryFeature.State()) {
             ImportHistoryFeature()
         } withDependencies: {
-            $0.importClient.loadSnapshot = { snapshot }
+            $0.importHistoryClient.loadSnapshot = { snapshot }
         }
 
         await store.send(.task) {
@@ -79,10 +79,10 @@ struct ImportFeatureTests {
         let store = TestStore(initialState: ImportHistoryFeature.State()) {
             ImportHistoryFeature()
         } withDependencies: {
-            $0.importClient.undo = { undoBatchId in
+            $0.importHistoryClient.undo = { undoBatchId in
                 #expect(undoBatchId == batchId)
             }
-            $0.importClient.loadSnapshot = { .empty }
+            $0.importHistoryClient.loadSnapshot = { .empty }
         }
 
         await store.send(.undoButtonTapped(batch)) {
@@ -150,7 +150,7 @@ struct ImportFeatureTests {
         let store = TestStore(initialState: initialState) {
             ImportFeature()
         } withDependencies: {
-            $0.importClient.loadSnapshot = {
+            $0.importHistoryClient.loadSnapshot = {
                 ImportSnapshot(
                     batches: [],
                     accounts: [],

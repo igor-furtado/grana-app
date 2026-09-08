@@ -64,17 +64,15 @@ struct ImportCommitClientTests {
             importedRowCount: 1,
             duplicateRows: []
         )
-        var recordedInput: ImportCommitInput?
-        var recordedLearnRequest: GranaAIClassificationLearningRequest?
-        let client = withDependencies {
-            $0.importClient.commit = { input, learnRequest in
-                recordedInput = input
-                recordedLearnRequest = learnRequest
-                return expectedResult
-            }
-        } operation: {
-            ImportCommitClient.liveValue
-        }
+        let remoteImports = ImportCommitRecordingRemoteRepository(commitResult: expectedResult)
+        let granaAI = ImportCommitRecordingGranaAIClient()
+        let container = AppContainer.inMemoryForTesting(
+            categoryCatalog: StaticCategoryCatalogRepository(categories: []),
+            institutionCatalog: StaticInstitutionCatalogRepository(institutions: []),
+            remoteImports: remoteImports,
+            granaAI: granaAI
+        )
+        let client = ImportCommitClient.live(container: container)
 
         let result = try await client.commitReviewedImport(
             ReviewedImportCommit(
@@ -106,10 +104,51 @@ struct ImportCommitClientTests {
         )
 
         #expect(result == expectedResult)
-        #expect(recordedInput?.idempotencyKey == idempotencyKey)
-        #expect(recordedInput?.rows.first?.transactionId == transactionId)
-        #expect(recordedInput?.rows.first?.categorySlug == "alimentacao")
-        #expect(recordedInput?.rows.first?.amount == Decimal(42))
-        #expect(recordedLearnRequest?.confirmedClassifications.count == 1)
+        let input = try #require(await remoteImports.recordedInputs().first)
+        #expect(input.idempotencyKey == idempotencyKey)
+        #expect(input.rows.first?.transactionId == transactionId)
+        #expect(input.rows.first?.categorySlug == "alimentacao")
+        #expect(input.rows.first?.amount == Decimal(42))
+        #expect(await granaAI.recordedLearnRequests().first?.confirmedClassifications.count == 1)
+    }
+}
+
+private actor ImportCommitRecordingRemoteRepository: ImportRemoteRepositoryProtocol {
+    private let commitResult: ImportCommitResult
+    private var inputs: [ImportCommitInput] = []
+
+    init(commitResult: ImportCommitResult) {
+        self.commitResult = commitResult
+    }
+
+    func loadBatches() async throws -> [ImportBatch] {
+        []
+    }
+
+    func commit(input: ImportCommitInput) async throws -> ImportCommitResult {
+        inputs.append(input)
+        return commitResult
+    }
+
+    func delete(batchId _: UUID) async throws {}
+
+    func recordedInputs() -> [ImportCommitInput] {
+        inputs
+    }
+}
+
+private actor ImportCommitRecordingGranaAIClient: GranaAIClassificationClientProtocol {
+    private var learnRequests: [GranaAIClassificationLearningRequest] = []
+
+    func classify(_ request: GranaAIClassificationRequest) async throws -> GranaAIClassificationResponse {
+        .init(version: request.version, results: [])
+    }
+
+    func learn(_ request: GranaAIClassificationLearningRequest) async throws {
+        learnRequests.append(request)
+    }
+
+    func recordedLearnRequests() -> [GranaAIClassificationLearningRequest] {
+        learnRequests
     }
 }

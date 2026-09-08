@@ -90,7 +90,7 @@ struct ImportRemoteRepositoryTests {
 
 @MainActor
 @Suite("Import client and commit builder")
-struct ImportClientAndCommitBuilderTests {
+struct ImportCommitBuilderTests {
     @Test("Monta payload com slugs e propaga idempotency key até a request RPC")
     func buildsStructuredPayloadAndPassesIdempotencyKey() throws {
         let batchId = UUID()
@@ -181,8 +181,8 @@ struct ImportClientAndCommitBuilderTests {
         #expect(request.pTransactions.first?.installmentCount == 10)
     }
 
-    @Test("ImportClient.live propaga resultado do commit remoto")
-    func liveClientForwardsCommitResult() async throws {
+    @Test("ImportCommitClient.live propaga resultado do commit remoto")
+    func liveCommitClientForwardsCommitResult() async throws {
         let batchId = UUID()
         let remoteImports = RecordingImportRemoteRepository(
             batches: [],
@@ -197,15 +197,16 @@ struct ImportClientAndCommitBuilderTests {
             institutionCatalog: StaticInstitutionCatalogRepository(institutions: []),
             remoteImports: remoteImports
         )
-        let client = ImportClient.live(container: container)
+        let client = ImportCommitClient.live(container: container)
 
-        let result = try await client.commit(
-            ImportCommitInput(
+        let result = try await client.commitReviewedImport(
+            ReviewedImportCommit(
                 idempotencyKey: UUID(),
-                batches: [],
-                rows: []
-            ),
-            nil
+                reviewedRows: [],
+                pendingBatches: [],
+                categories: [],
+                suggestions: []
+            )
         )
 
         #expect(result.batchIds == [batchId])
@@ -228,6 +229,11 @@ struct ImportClientAndCommitBuilderTests {
         let bakerySubcategory = makeCategory(
             parentId: foodCategory.id,
             name: "Padarias",
+            kind: .expense
+        )
+        let fallbackCategory = makeCategory(
+            slug: "nao-classificado",
+            name: "Não Classificado",
             kind: .expense
         )
         let draftToLearn = TransactionDraft(
@@ -278,12 +284,25 @@ struct ImportClientAndCommitBuilderTests {
     func learnsBeforeRemoteCommit() async throws {
         let recorder = EventRecorder()
         let batchId = UUID()
-        let learnRequest = GranaAIClassificationLearningRequest(
-            version: GranaAIContract.version,
-            taxonomy: .init(categories: []),
-            confirmedClassifications: [
-                .init(description: "PADARIA CENTRAL", categoryId: "alimentacao", subcategoryId: "padarias"),
-            ]
+        let foodCategory = makeCategory(
+            slug: "alimentacao",
+            name: "Alimentação",
+            kind: .expense
+        )
+        let bakerySubcategory = makeCategory(
+            parentId: foodCategory.id,
+            name: "Padarias",
+            kind: .expense
+        )
+        let draft = TransactionDraft(
+            id: UUID(),
+            accountId: UUID(),
+            importBatchId: batchId,
+            signedAmount: Decimal(-18),
+            occurredAt: Date(),
+            description: "PADARIA CENTRAL",
+            notes: nil,
+            externalId: "FIT-1"
         )
         let remoteImports = RecordingImportRemoteRepository(
             batches: [],
@@ -301,15 +320,41 @@ struct ImportClientAndCommitBuilderTests {
             remoteImports: remoteImports,
             granaAI: granaAI
         )
-        let client = ImportClient.live(container: container)
+        let client = ImportCommitClient.live(container: container)
 
-        _ = try await client.commit(
-            ImportCommitInput(
+        _ = try await client.commitReviewedImport(
+            ReviewedImportCommit(
                 idempotencyKey: UUID(),
-                batches: [],
-                rows: []
-            ),
-            learnRequest
+                reviewedRows: [
+                    ReviewedImportRow(
+                        draft: draft,
+                        categoryId: foodCategory.id,
+                        subcategoryId: bakerySubcategory.id
+                    ),
+                ],
+                pendingBatches: [
+                    PendingImportBatch(
+                        batch: ImportBatch(
+                            id: batchId,
+                            sourceFilename: "extrato.ofx",
+                            accountId: draft.accountId,
+                            rowCount: 1,
+                            importedAt: draft.occurredAt,
+                            createdAt: draft.occurredAt,
+                            updatedAt: draft.occurredAt
+                        ),
+                        importFormat: .ofx
+                    ),
+                ],
+                categories: [fallbackCategory, foodCategory, bakerySubcategory],
+                suggestions: [
+                    makeSuggestion(
+                        draft: draft,
+                        categoryId: foodCategory.id,
+                        subcategoryId: bakerySubcategory.id
+                    ),
+                ]
+            )
         )
 
         let events = await recorder.snapshot()

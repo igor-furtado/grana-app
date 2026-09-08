@@ -1,65 +1,11 @@
 import ComposableArchitecture
 import Foundation
 
-struct ImportSnapshot: Equatable {
-    var batches: [ImportBatch]
-    var accounts: [Account]
-    var institutions: [Institution]
-    var bankDetails: [BankAccountDetails]
-    var creditCards: [CreditCardDetails]
-    var categories: [Category]
-
-    nonisolated static let empty = ImportSnapshot(
-        batches: [],
-        accounts: [],
-        institutions: [],
-        bankDetails: [],
-        creditCards: [],
-        categories: []
-    )
-}
-
-enum ImportLoadedFile: Equatable {
-    case ofx(sourceURL: URL, resolutions: [OFXStatementResolution])
-    case csv(sourceURL: URL, resolution: CSVStatementResolution)
-}
-
-struct ImportClient {
-    var loadSnapshot: @Sendable () async throws -> ImportSnapshot
+struct ImportFileLoadingClient {
     var loadFile: @Sendable (_ url: URL, _ snapshot: ImportSnapshot) async throws -> ImportLoadedFile
-    var reloadOFXResolution: @Sendable (_ resolution: OFXStatementResolution, _ accountId: UUID?) async
-        -> OFXStatementResolution
-    var reloadCSVResolution: @Sendable (_ resolution: CSVStatementResolution, _ accountId: UUID?) async
-        -> CSVStatementResolution
-    var commit: @Sendable (
-        _ input: ImportCommitInput,
-        _ learnRequest: GranaAIClassificationLearningRequest?
-    ) async throws
-        -> ImportCommitResult
-    var undo: @Sendable (_ batchId: UUID) async throws -> Void
 
-    static func live(container: AppContainer) -> ImportClient {
-        ImportClient(
-            loadSnapshot: {
-                async let institutionsTask = container.institutionCatalog.load()
-                async let categoriesTask = container.categoryCatalog.load()
-                async let accountsTask = container.remoteAccounts.load()
-                async let batchesTask = container.remoteImports.loadBatches()
-                let (institutions, categories, accountSnapshot, batches) = try await (
-                    institutionsTask,
-                    categoriesTask,
-                    accountsTask,
-                    batchesTask
-                )
-                return ImportSnapshot(
-                    batches: batches,
-                    accounts: accountSnapshot.accounts,
-                    institutions: institutions,
-                    bankDetails: accountSnapshot.bankDetails,
-                    creditCards: accountSnapshot.creditCards,
-                    categories: categories
-                )
-            },
+    static func live(container: AppContainer) -> ImportFileLoadingClient {
+        ImportFileLoadingClient(
             loadFile: { url, snapshot in
                 let needsScope = url.startAccessingSecurityScopedResource()
                 defer {
@@ -70,81 +16,42 @@ struct ImportClient {
 
                 let ext = url.pathExtension.lowercased()
                 if ext == "csv" {
-                    return try await loadCSV(
+                    return try await ImportFileLoadingOperations.loadCSV(
                         url: url,
                         snapshot: snapshot,
                         remoteTransactions: container.remoteTransactions
                     )
                 }
-                return try await loadOFX(
+                return try await ImportFileLoadingOperations.loadOFX(
                     url: url,
                     snapshot: snapshot,
                     remoteTransactions: container.remoteTransactions
                 )
-            },
-            reloadOFXResolution: { resolution, accountId in
-                await reloadOFXResolution(
-                    resolution,
-                    accountId: accountId,
-                    remoteTransactions: container.remoteTransactions
-                )
-            },
-            reloadCSVResolution: { resolution, accountId in
-                await reloadCSVResolution(
-                    resolution,
-                    accountId: accountId,
-                    remoteTransactions: container.remoteTransactions
-                )
-            },
-            commit: { input, learnRequest in
-                if let learnRequest {
-                    try await container.categorizationFeedback.learnConfirmedClassifications(request: learnRequest)
-                }
-                return try await container.remoteImports.commit(input: input)
-            },
-            undo: { batchId in
-                try await container.remoteImports.delete(batchId: batchId)
             }
         )
     }
 }
 
-extension ImportClient: DependencyKey {
-    static let liveValue = ImportClient(
-        loadSnapshot: { .empty },
+extension ImportFileLoadingClient: DependencyKey {
+    static let liveValue = ImportFileLoadingClient(
         loadFile: { _, _ in
             .ofx(sourceURL: URL(filePath: "/dev/null"), resolutions: [])
-        },
-        reloadOFXResolution: { resolution, _ in resolution },
-        reloadCSVResolution: { resolution, _ in resolution },
-        commit: { _, _ in
-            ImportCommitResult(batchIds: [], importedRowCount: 0, duplicateRows: [])
-        },
-        undo: { _ in }
+        }
     )
 
-    static let testValue = ImportClient(
-        loadSnapshot: unimplemented("ImportClient.loadSnapshot"),
-        loadFile: unimplemented("ImportClient.loadFile"),
-        reloadOFXResolution: { _, _ in
-            fatalError("ImportClient.reloadOFXResolution")
-        },
-        reloadCSVResolution: { _, _ in
-            fatalError("ImportClient.reloadCSVResolution")
-        },
-        commit: unimplemented("ImportClient.commit"),
-        undo: unimplemented("ImportClient.undo")
+    static let testValue = ImportFileLoadingClient(
+        loadFile: unimplemented("ImportFileLoadingClient.loadFile")
     )
 }
 
 extension DependencyValues {
-    var importClient: ImportClient {
-        get { self[ImportClient.self] }
-        set { self[ImportClient.self] = newValue }
+    var importFileLoadingClient: ImportFileLoadingClient {
+        get { self[ImportFileLoadingClient.self] }
+        set { self[ImportFileLoadingClient.self] = newValue }
     }
 }
 
-private extension ImportClient {
+private enum ImportFileLoadingOperations {
     static func loadOFX(
         url: URL,
         snapshot: ImportSnapshot,
@@ -252,7 +159,7 @@ private extension ImportClient {
         )
 
         if let initialAccountId {
-            resolution = await reloadCSVResolution(
+            resolution = await ImportDuplicateResolution.reloadCSVResolution(
                 resolution,
                 accountId: initialAccountId,
                 remoteTransactions: remoteTransactions
@@ -263,67 +170,6 @@ private extension ImportClient {
             sourceURL: url,
             resolution: resolution
         )
-    }
-
-    static func reloadOFXResolution(
-        _ resolution: OFXStatementResolution,
-        accountId: UUID?,
-        remoteTransactions: any TransactionRemoteRepositoryProtocol
-    ) async -> OFXStatementResolution {
-        var resolution = resolution
-        resolution.accountId = accountId
-        resolution.wasAutoDetected = false
-
-        let existingExternalIds: Set<String>
-        if let accountId {
-            existingExternalIds = (try? await remoteTransactions.externalIds(forAccount: accountId)) ?? []
-        } else {
-            existingExternalIds = []
-        }
-
-        for rowIndex in resolution.rows.indices {
-            let fitid = resolution.rows[rowIndex].raw.fitid
-            let wasDuplicate = resolution.rows[rowIndex].isDuplicate
-            let isDuplicate = existingExternalIds.contains(fitid)
-            resolution.rows[rowIndex].isDuplicate = isDuplicate
-            if wasDuplicate != isDuplicate {
-                resolution.rows[rowIndex].selected = !isDuplicate
-            }
-        }
-
-        return resolution
-    }
-
-    static func reloadCSVResolution(
-        _ resolution: CSVStatementResolution,
-        accountId: UUID?,
-        remoteTransactions: any TransactionRemoteRepositoryProtocol
-    ) async -> CSVStatementResolution {
-        var resolution = resolution
-        resolution.accountId = accountId
-
-        guard let accountId else {
-            for index in resolution.rows.indices {
-                resolution.rows[index].isDuplicate = false
-                resolution.rows[index].selected = true
-            }
-            for index in resolution.negativeRows.indices {
-                resolution.negativeRows[index].selected = false
-            }
-            return resolution
-        }
-
-        let existing = (try? await remoteTransactions.externalIds(forAccount: accountId)) ?? []
-        for index in resolution.rows.indices {
-            let isDuplicate = existing.contains(resolution.rows[index].externalId)
-            resolution.rows[index].isDuplicate = isDuplicate
-            resolution.rows[index].selected = !isDuplicate
-        }
-
-        for index in resolution.negativeRows.indices {
-            resolution.negativeRows[index].selected = false
-        }
-        return resolution
     }
 
     static func buildOFXRows(
