@@ -3,7 +3,7 @@ import ComposableArchitecture
 import SwiftUI
 
 struct CategorizingStepView: View {
-    @Bindable var store: StoreOf<CategorizationFeature>
+    @Bindable var store: StoreOf<ImportCategorizationFeature>
     let onCancel: () -> Void
 
     private enum LoadingStage {

@@ -50,7 +50,7 @@ final class AppEnvironment {
             $0.categoriesClient = .live(container: container)
             $0.creditCardsClient = .live(container: container)
             $0.importClient = .live(container: container)
-            $0.categorizationClient = .live(container: container)
+            $0.importCategorizationClient = .live(container: container)
             $0.supportedInstitutionsClient = .live(container: container)
             $0.transactionsClient = .live(container: container)
         }

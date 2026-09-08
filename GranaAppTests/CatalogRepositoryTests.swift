@@ -220,8 +220,8 @@ struct CatalogLoadingTests {
     }
 
     @MainActor
-    @Test("CategorizationClient carrega catálogos remotos para os consumidores")
-    func categorizationClientLoadsContext() async throws {
+    @Test("ImportCategorizationClient carrega catálogos remotos para os consumidores")
+    func importCategorizationClientLoadsContext() async throws {
         let institution = makeInstitution(
             code: "341",
             name: "Itaú",
@@ -253,7 +253,7 @@ struct CatalogLoadingTests {
                 )
             )
         )
-        let client = CategorizationClient.live(container: container)
+        let client = ImportCategorizationClient.live(container: container)
 
         let context = try await client.loadContext()
 

@@ -4,8 +4,8 @@ import Testing
 @testable import GranaApp
 
 @MainActor
-@Suite("CategorizationFeature")
-struct CategorizationFeatureTests {
+@Suite("ImportCategorizationFeature")
+struct ImportCategorizationFeatureTests {
     @Test("Carrega contexto e sugestões ao iniciar classificação")
     func startsAndTransitionsToReady() async {
         let category = Category(
@@ -56,17 +56,17 @@ struct CategorizationFeatureTests {
             isReviewed: false
         )
 
-        let store = TestStore(initialState: CategorizationFeature.State()) {
-            CategorizationFeature()
+        let store = TestStore(initialState: ImportCategorizationFeature.State()) {
+            ImportCategorizationFeature()
         } withDependencies: {
-            $0.categorizationClient.loadContext = {
-                CategorizationContext(
+            $0.importCategorizationClient.loadContext = {
+                ImportCategorizationContext(
                     categories: [category],
                     accounts: [account],
                     institutions: []
                 )
             }
-            $0.categorizationClient.classifyDrafts = { _ in [suggestion] }
+            $0.importCategorizationClient.classifyDrafts = { _ in [suggestion] }
         }
 
         await store.send(.start([draft])) {
@@ -79,7 +79,7 @@ struct CategorizationFeatureTests {
         }
 
         await store.receive(.contextLoaded(.success(
-            CategorizationContext(
+            ImportCategorizationContext(
                 categories: [category],
                 accounts: [account],
                 institutions: []
@@ -145,7 +145,7 @@ struct CategorizationFeatureTests {
         )
 
         let store = TestStore(
-            initialState: CategorizationFeature.State(
+            initialState: ImportCategorizationFeature.State(
                 status: .ready(total: 2, fallback: 2),
                 suggestions: [first, second],
                 categories: [],
@@ -153,7 +153,7 @@ struct CategorizationFeatureTests {
                 institutions: []
             )
         ) {
-            CategorizationFeature()
+            ImportCategorizationFeature()
         }
 
         await store.send(.applyCorrection(index: 0, categoryId: newCategoryId, subcategoryId: newSubcategoryId)) {

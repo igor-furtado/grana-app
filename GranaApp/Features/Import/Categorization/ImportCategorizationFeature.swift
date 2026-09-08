@@ -1,20 +1,20 @@
 import ComposableArchitecture
 import Foundation
 
-struct CategorizationContext: Equatable {
+struct ImportCategorizationContext: Equatable {
     var categories: [Category]
     var accounts: [Account]
     var institutions: [Institution]
 }
 
-struct CategorizationClient {
-    var loadContext: @Sendable () async throws -> CategorizationContext
+struct ImportCategorizationClient {
+    var loadContext: @Sendable () async throws -> ImportCategorizationContext
     var classifyDrafts: @Sendable (_ drafts: [TransactionDraft]) async throws -> [CategorizationSuggestion]
 }
 
-extension CategorizationClient {
-    static func live(container: AppContainer) -> CategorizationClient {
-        CategorizationClient(
+extension ImportCategorizationClient {
+    static func live(container: AppContainer) -> ImportCategorizationClient {
+        ImportCategorizationClient(
             loadContext: {
                 async let categoriesTask = container.categoryCatalog.load()
                 async let accountsTask = container.remoteAccounts.load()
@@ -24,7 +24,7 @@ extension CategorizationClient {
                     accountsTask,
                     institutionsTask
                 )
-                return CategorizationContext(
+                return ImportCategorizationContext(
                     categories: categories,
                     accounts: accountSnapshot.accounts,
                     institutions: institutions
@@ -38,27 +38,27 @@ extension CategorizationClient {
     }
 }
 
-extension CategorizationClient: DependencyKey {
-    static let liveValue = CategorizationClient(
-        loadContext: { CategorizationContext(categories: [], accounts: [], institutions: []) },
+extension ImportCategorizationClient: DependencyKey {
+    static let liveValue = ImportCategorizationClient(
+        loadContext: { ImportCategorizationContext(categories: [], accounts: [], institutions: []) },
         classifyDrafts: { _ in [] }
     )
 
-    static let testValue = CategorizationClient(
-        loadContext: unimplemented("CategorizationClient.loadContext"),
-        classifyDrafts: unimplemented("CategorizationClient.classifyDrafts")
+    static let testValue = ImportCategorizationClient(
+        loadContext: unimplemented("ImportCategorizationClient.loadContext"),
+        classifyDrafts: unimplemented("ImportCategorizationClient.classifyDrafts")
     )
 }
 
 extension DependencyValues {
-    var categorizationClient: CategorizationClient {
-        get { self[CategorizationClient.self] }
-        set { self[CategorizationClient.self] = newValue }
+    var importCategorizationClient: ImportCategorizationClient {
+        get { self[ImportCategorizationClient.self] }
+        set { self[ImportCategorizationClient.self] = newValue }
     }
 }
 
 @Reducer
-struct CategorizationFeature {
+struct ImportCategorizationFeature {
     enum Status: Equatable {
         case idle
         case classifying(processed: Int, total: Int, message: String)
@@ -102,7 +102,7 @@ struct CategorizationFeature {
 
     enum Action: Equatable {
         case start([TransactionDraft])
-        case contextLoaded(TaskResult<CategorizationContext>)
+        case contextLoaded(TaskResult<ImportCategorizationContext>)
         case suggestionsLoaded(TaskResult<[CategorizationSuggestion]>)
         case confirm(Int)
         case confirmAll
@@ -116,7 +116,7 @@ struct CategorizationFeature {
         case failed(String)
     }
 
-    @Dependency(\.categorizationClient) private var categorizationClient
+    @Dependency(\.importCategorizationClient) private var importCategorizationClient
     @Dependency(\.noticeClient) private var noticeClient
 
     var body: some Reducer<State, Action> {
@@ -133,7 +133,7 @@ struct CategorizationFeature {
                     .run { send in
                         await send(
                             .contextLoaded(
-                                TaskResult { try await categorizationClient.loadContext() }
+                                TaskResult { try await importCategorizationClient.loadContext() }
                             )
                         )
                     },
@@ -141,7 +141,7 @@ struct CategorizationFeature {
                         await send(
                             .suggestionsLoaded(
                                 TaskResult {
-                                    try await categorizationClient.classifyDrafts(drafts)
+                                    try await importCategorizationClient.classifyDrafts(drafts)
                                 }
                             )
                         )

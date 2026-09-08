@@ -19,7 +19,7 @@ struct ImportReviewFeatureTests {
 
         let state = ImportReviewFeature.State(
             plan: makePlan(drafts: [draft]),
-            categorization: CategorizationFeature.State(suggestions: [suggestion])
+            categorization: ImportCategorizationFeature.State(suggestions: [suggestion])
         )
 
         #expect(state.reviewedRows == [
@@ -51,10 +51,10 @@ struct ImportReviewFeatureTests {
         let store = TestStore(initialState: ImportReviewFeature.State(plan: plan)) {
             ImportReviewFeature()
         } withDependencies: {
-            $0.categorizationClient.loadContext = {
-                CategorizationContext(categories: [category], accounts: [], institutions: [])
+            $0.importCategorizationClient.loadContext = {
+                ImportCategorizationContext(categories: [category], accounts: [], institutions: [])
             }
-            $0.categorizationClient.classifyDrafts = { drafts in
+            $0.importCategorizationClient.classifyDrafts = { drafts in
                 #expect(drafts == [draft])
                 return [suggestion]
             }
@@ -72,7 +72,7 @@ struct ImportReviewFeatureTests {
         }
 
         await store.receive(.categorization(.contextLoaded(.success(
-            CategorizationContext(categories: [category], accounts: [], institutions: [])
+            ImportCategorizationContext(categories: [category], accounts: [], institutions: [])
         )))) {
             $0.categorization.categories = [category]
             $0.categorization.accounts = []

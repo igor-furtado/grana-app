@@ -2,8 +2,8 @@ import AppUI
 import ComposableArchitecture
 import SwiftUI
 
-struct CategorizationRowView: View {
-    @Bindable var store: StoreOf<CategorizationFeature>
+struct ImportCategorizationRowView: View {
+    @Bindable var store: StoreOf<ImportCategorizationFeature>
     let index: Int
 
     private var suggestion: CategorizationSuggestion {

@@ -13,7 +13,7 @@ struct CategorizationReviewView: View {
     }
 
     @Environment(\.dismiss) private var dismiss
-    @Bindable var store: StoreOf<CategorizationFeature>
+    @Bindable var store: StoreOf<ImportCategorizationFeature>
     var mode: Mode = .modal
 
     var body: some View {

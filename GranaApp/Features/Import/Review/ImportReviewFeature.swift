@@ -6,11 +6,11 @@ struct ImportReviewFeature {
     @ObservableState
     struct State: Equatable {
         var plan: PendingImportPlan
-        var categorization: CategorizationFeature.State
+        var categorization: ImportCategorizationFeature.State
 
         init(
             plan: PendingImportPlan,
-            categorization: CategorizationFeature.State = CategorizationFeature.State()
+            categorization: ImportCategorizationFeature.State = ImportCategorizationFeature.State()
         ) {
             self.plan = plan
             self.categorization = categorization
@@ -30,7 +30,7 @@ struct ImportReviewFeature {
 
     enum Action: Equatable {
         case start
-        case categorization(CategorizationFeature.Action)
+        case categorization(ImportCategorizationFeature.Action)
         case delegate(Delegate)
     }
 
@@ -56,7 +56,7 @@ struct ImportReviewFeature {
             }
         }
         Scope(state: \.categorization, action: \.categorization) {
-            CategorizationFeature()
+            ImportCategorizationFeature()
         }
     }
 }
