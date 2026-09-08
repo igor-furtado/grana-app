@@ -2,7 +2,92 @@ import ComposableArchitecture
 import Foundation
 
 @Reducer
-struct OFXImportFeature {
+struct ImportTriageFeature {
+    @ObservableState
+    struct State: Equatable {
+        enum Content: Equatable {
+            case ofx(OFXTriageFeature.State)
+            case csv(CSVTriageFeature.State)
+        }
+
+        var sourceFilename: String
+        var content: Content
+
+        var ofx: OFXTriageFeature.State? {
+            get {
+                guard case let .ofx(state) = content else { return nil }
+                return state
+            }
+            set {
+                guard let newValue else { return }
+                content = .ofx(newValue)
+            }
+        }
+
+        var csv: CSVTriageFeature.State? {
+            get {
+                guard case let .csv(state) = content else { return nil }
+                return state
+            }
+            set {
+                guard let newValue else { return }
+                content = .csv(newValue)
+            }
+        }
+
+        init(
+            sourceFilename: String,
+            content: Content
+        ) {
+            self.sourceFilename = sourceFilename
+            self.content = content
+        }
+    }
+
+    enum Action: Equatable {
+        case ofx(OFXTriageFeature.Action)
+        case csv(CSVTriageFeature.Action)
+        case advanceButtonTapped
+        case delegate(Delegate)
+    }
+
+    enum Delegate: Equatable {
+        case confirmed(ConfirmedImportTriage)
+    }
+
+    var body: some Reducer<State, Action> {
+        Reduce { state, action in
+            switch action {
+            case .advanceButtonTapped:
+                switch state.content {
+                case let .ofx(ofx):
+                    return .send(.delegate(.confirmed(.ofx(
+                        sourceFilename: state.sourceFilename,
+                        resolutions: ofx.resolutions
+                    ))))
+
+                case let .csv(csv):
+                    return .send(.delegate(.confirmed(.interCreditCardCSV(
+                        sourceFilename: csv.resolution.sourceFilename,
+                        resolution: csv.resolution
+                    ))))
+                }
+
+            case .ofx, .csv, .delegate:
+                return .none
+            }
+        }
+        .ifLet(\.ofx, action: \.ofx) {
+            OFXTriageFeature()
+        }
+        .ifLet(\.csv, action: \.csv) {
+            CSVTriageFeature()
+        }
+    }
+}
+
+@Reducer
+struct OFXTriageFeature {
     @ObservableState
     struct State: Equatable {
         var resolutions: [OFXStatementResolution]
@@ -88,7 +173,7 @@ struct OFXImportFeature {
 }
 
 @Reducer
-struct CSVImportFeature {
+struct CSVTriageFeature {
     @ObservableState
     struct State: Equatable {
         var resolution: CSVStatementResolution

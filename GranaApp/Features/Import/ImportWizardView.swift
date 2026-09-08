@@ -82,20 +82,11 @@ struct ImportWizardView: View {
                 message: progress,
                 showsProgress: true
             )
-        case .ofxReview:
-            if let ofxStore = store.scope(state: \.ofx, action: \.ofx) {
-                OFXReviewStepView(
-                    store: ofxStore,
-                    onClose: onClose,
-                    onConfirm: { store.send(.confirmOFXImport) }
-                )
-            }
-        case .csvReview:
-            if let csvStore = store.scope(state: \.csv, action: \.csv) {
-                CSVReviewStepView(
-                    store: csvStore,
-                    onClose: onClose,
-                    onConfirm: { store.send(.confirmCSVImport) }
+        case .triage:
+            if let triageStore = store.scope(state: \.triage, action: \.triage) {
+                ImportTriageView(
+                    store: triageStore,
+                    onClose: onClose
                 )
             }
         case .categorizing:

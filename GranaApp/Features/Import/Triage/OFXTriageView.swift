@@ -2,19 +2,10 @@ import AppUI
 import ComposableArchitecture
 import SwiftUI
 
-struct OFXReviewStepView: View {
-    @Bindable var store: StoreOf<OFXImportFeature>
+struct OFXTriageView<SidebarActions: View>: View {
+    @Bindable var store: StoreOf<OFXTriageFeature>
     @State private var selectedStatementID: OFXStatementResolution.ID?
-    let onClose: () -> Void
-    let onConfirm: () -> Void
-
-    private var totalSelected: Int {
-        store.state.totalSelected
-    }
-
-    private var allAccountsSelected: Bool {
-        store.state.allAccountsSelected
-    }
+    let sidebarActions: () -> SidebarActions
 
     private var selectedStatementIndex: Int {
         guard let selectedStatementID,
@@ -42,14 +33,7 @@ struct OFXReviewStepView: View {
                     }
                 }
             } sidebarActions: {
-                Button("Fechar") { onClose() }
-                    .buttonStyle(GranaSecondaryButtonStyle())
-                    .frame(maxWidth: .infinity)
-
-                Button("Avançar") { onConfirm() }
-                    .buttonStyle(GranaPrimaryButtonStyle())
-                    .disabled(totalSelected == 0 || !allAccountsSelected)
-                    .frame(maxWidth: .infinity)
+                sidebarActions()
             }
         }
         .onAppear {
@@ -67,7 +51,7 @@ struct OFXReviewStepView: View {
 }
 
 private struct OFXAccountInfoCard: View {
-    @Bindable var store: StoreOf<OFXImportFeature>
+    @Bindable var store: StoreOf<OFXTriageFeature>
     let statementIndex: Int
 
     private var resolution: OFXStatementResolution? {

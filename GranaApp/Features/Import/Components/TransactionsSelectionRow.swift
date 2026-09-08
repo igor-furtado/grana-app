@@ -1,12 +1,12 @@
-import SwiftUI
 import AppUI
+import SwiftUI
 
 /// Linha de controle de seleção que vai **dentro do scroll**, logo antes das
 /// rows de transação. Fica abaixo do header `Section` (que tem só o título
 /// "Transações") pra o checkbox master alinhar verticalmente com a coluna
 /// de checkboxes das rows.
 ///
-/// Compartilhada entre [OFXReviewStepView] e [CSVReviewStepView] — ambos os
+/// Compartilhada entre [OFXTriageView] e [CSVTriageView] — ambos os
 /// fluxos do wizard precisam do mesmo controle "marcar/desmarcar todas".
 struct TransactionsSelectionRow: View {
     let summary: String

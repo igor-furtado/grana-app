@@ -6,8 +6,7 @@ struct ImportWizardFeature {
     enum Phase: Equatable {
         case idle
         case loading(progress: String)
-        case ofxReview
-        case csvReview
+        case triage
         case categorizing
         case reviewingCategorization
         case confirming
@@ -23,8 +22,7 @@ struct ImportWizardFeature {
         var phase: Phase = .idle
         var sourceURL: URL?
         var pendingPlan: PendingImportPlan?
-        var ofx: OFXImportFeature.State?
-        var csv: CSVImportFeature.State?
+        var triage: ImportTriageFeature.State?
         var categorization: ImportCategorizationFeature.State?
         var review: ImportReviewFeature.State?
         var commit: ImportCommitFeature.State?
@@ -37,8 +35,7 @@ struct ImportWizardFeature {
                 && lhs.phase == rhs.phase
                 && lhs.sourceURL == rhs.sourceURL
                 && lhs.pendingPlan == rhs.pendingPlan
-                && lhs.ofx == rhs.ofx
-                && lhs.csv == rhs.csv
+                && lhs.triage == rhs.triage
                 && lhs.categorization == rhs.categorization
                 && lhs.review == rhs.review
                 && lhs.commit == rhs.commit
@@ -51,13 +48,10 @@ struct ImportWizardFeature {
         case promptForFile
         case fileSelected(URL)
         case fileLoaded(TaskResult<ImportLoadedFile>)
-        case confirmOFXImport
-        case confirmCSVImport
+        case triage(ImportTriageFeature.Action)
         case reviewCompleted(ReviewedImportCommit)
         case backToPreview
         case cancel
-        case ofx(OFXImportFeature.Action)
-        case csv(CSVImportFeature.Action)
         case categorization(ImportCategorizationFeature.Action)
         case review(ImportReviewFeature.Action)
         case commit(ImportCommitFeature.Action)
@@ -116,27 +110,31 @@ struct ImportWizardFeature {
                 switch file {
                 case let .ofx(sourceURL, resolutions):
                     state.sourceURL = sourceURL
-                    state.csv = nil
-                    state.ofx = OFXImportFeature.State(
-                        resolutions: resolutions,
-                        accounts: state.snapshot.accounts,
-                        institutions: state.snapshot.institutions,
-                        bankDetails: state.snapshot.bankDetails,
-                        creditCards: state.snapshot.creditCards
+                    state.triage = ImportTriageFeature.State(
+                        sourceFilename: sourceURL.lastPathComponent,
+                        content: .ofx(OFXTriageFeature.State(
+                            resolutions: resolutions,
+                            accounts: state.snapshot.accounts,
+                            institutions: state.snapshot.institutions,
+                            bankDetails: state.snapshot.bankDetails,
+                            creditCards: state.snapshot.creditCards
+                        ))
                     )
-                    state.phase = .ofxReview
+                    state.phase = .triage
 
                 case let .csv(sourceURL, resolution):
                     state.sourceURL = sourceURL
-                    state.ofx = nil
-                    state.csv = CSVImportFeature.State(
-                        resolution: resolution,
-                        accounts: state.snapshot.accounts,
-                        institutions: state.snapshot.institutions,
-                        bankDetails: state.snapshot.bankDetails,
-                        creditCards: state.snapshot.creditCards
+                    state.triage = ImportTriageFeature.State(
+                        sourceFilename: sourceURL.lastPathComponent,
+                        content: .csv(CSVTriageFeature.State(
+                            resolution: resolution,
+                            accounts: state.snapshot.accounts,
+                            institutions: state.snapshot.institutions,
+                            bankDetails: state.snapshot.bankDetails,
+                            creditCards: state.snapshot.creditCards
+                        ))
                     )
-                    state.phase = .csvReview
+                    state.phase = .triage
                 }
                 return .none
 
@@ -146,15 +144,11 @@ struct ImportWizardFeature {
                     await noticeClient.report(error, "Erro ao abrir arquivo")
                 }
 
-            case .confirmOFXImport:
-                guard let ofx = state.ofx else { return .none }
+            case let .triage(.delegate(.confirmed(triage))):
                 let plan: PendingImportPlan
                 do {
                     plan = try importPlanningClient.makePendingPlan(
-                        .ofx(
-                            sourceFilename: state.sourceURL?.lastPathComponent ?? "import.ofx",
-                            resolutions: ofx.resolutions
-                        ),
+                        triage,
                         ImportPlanningContext(now: Date(), makeID: UUID.init)
                     )
                 } catch {
@@ -168,27 +162,8 @@ struct ImportWizardFeature {
                 state.phase = .categorizing
                 return .send(.categorization(.start(plan.drafts)))
 
-            case .confirmCSVImport:
-                guard let csv = state.csv else { return .none }
-                let plan: PendingImportPlan
-                do {
-                    plan = try importPlanningClient.makePendingPlan(
-                        .interCreditCardCSV(
-                            sourceFilename: csv.resolution.sourceFilename,
-                            resolution: csv.resolution
-                        ),
-                        ImportPlanningContext(now: Date(), makeID: UUID.init)
-                    )
-                } catch {
-                    return fail(&state, error: error)
-                }
-
-                state.pendingPlan = plan
-                state.categorization = ImportCategorizationFeature.State()
-                state.review = nil
-                state.commit = nil
-                state.phase = .categorizing
-                return .send(.categorization(.start(plan.drafts)))
+            case .triage:
+                return .none
 
             case let .reviewCompleted(commit):
                 state.review = nil
@@ -201,25 +176,18 @@ struct ImportWizardFeature {
                 state.categorization = nil
                 state.pendingPlan = nil
                 state.commit = nil
-                state.phase = state.csv != nil ? .csvReview : .ofxReview
+                state.phase = .triage
                 return .none
 
             case .cancel:
                 state.phase = .idle
                 state.sourceURL = nil
                 state.pendingPlan = nil
-                state.ofx = nil
-                state.csv = nil
+                state.triage = nil
                 state.categorization = nil
                 state.review = nil
                 state.commit = nil
                 return .send(.delegate(.close))
-
-            case .ofx:
-                return .none
-
-            case .csv:
-                return .none
 
             case .categorization(.delegate(.ready)):
                 guard let plan = state.pendingPlan,
@@ -270,11 +238,8 @@ struct ImportWizardFeature {
                 return .none
             }
         }
-        .ifLet(\.ofx, action: \.ofx) {
-            OFXImportFeature()
-        }
-        .ifLet(\.csv, action: \.csv) {
-            CSVImportFeature()
+        .ifLet(\.triage, action: \.triage) {
+            ImportTriageFeature()
         }
         .ifLet(\.categorization, action: \.categorization) {
             ImportCategorizationFeature()

@@ -2,14 +2,9 @@ import AppUI
 import ComposableArchitecture
 import SwiftUI
 
-struct CSVReviewStepView: View {
-    @Bindable var store: StoreOf<CSVImportFeature>
-    let onClose: () -> Void
-    let onConfirm: () -> Void
-
-    private var canConfirm: Bool {
-        store.state.resolution.selectedCount > 0 && store.state.resolution.accountId != nil
-    }
+struct CSVTriageView<SidebarActions: View>: View {
+    @Bindable var store: StoreOf<CSVTriageFeature>
+    let sidebarActions: () -> SidebarActions
 
     var body: some View {
         AppUI.Wizard.Shell {
@@ -30,21 +25,14 @@ struct CSVReviewStepView: View {
                     CSVAccountInfoCard(store: store)
                 }
             } sidebarActions: {
-                Button("Fechar") { onClose() }
-                    .buttonStyle(GranaSecondaryButtonStyle())
-                    .frame(maxWidth: .infinity)
-
-                Button("Avançar") { onConfirm() }
-                    .buttonStyle(GranaPrimaryButtonStyle())
-                    .disabled(!canConfirm)
-                    .frame(maxWidth: .infinity)
+                sidebarActions()
             }
         }
     }
 }
 
 private struct CSVAccountInfoCard: View {
-    @Bindable var store: StoreOf<CSVImportFeature>
+    @Bindable var store: StoreOf<CSVTriageFeature>
 
     var body: some View {
         ImportWizardSectionCard(
