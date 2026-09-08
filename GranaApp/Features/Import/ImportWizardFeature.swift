@@ -27,6 +27,7 @@ struct ImportWizardFeature {
         var csv: CSVImportFeature.State?
         var categorization: ImportCategorizationFeature.State?
         var review: ImportReviewFeature.State?
+        var commit: ImportCommitFeature.State?
 
         static let supportedExtensions: Set<String> = ImportFeatureConfiguration.supportedExtensions
 
@@ -40,6 +41,7 @@ struct ImportWizardFeature {
                 && lhs.csv == rhs.csv
                 && lhs.categorization == rhs.categorization
                 && lhs.review == rhs.review
+                && lhs.commit == rhs.commit
         }
     }
 
@@ -51,13 +53,14 @@ struct ImportWizardFeature {
         case fileLoaded(TaskResult<ImportLoadedFile>)
         case confirmOFXImport
         case confirmCSVImport
-        case finalizeImport
+        case reviewCompleted(ReviewedImportCommit)
         case backToPreview
         case cancel
         case ofx(OFXImportFeature.Action)
         case csv(CSVImportFeature.Action)
         case categorization(ImportCategorizationFeature.Action)
         case review(ImportReviewFeature.Action)
+        case commit(ImportCommitFeature.Action)
         case delegate(Delegate)
     }
 
@@ -68,7 +71,6 @@ struct ImportWizardFeature {
     }
 
     @Dependency(\.importClient) private var importClient
-    @Dependency(\.importCommitClient) private var importCommitClient
     @Dependency(\.importPlanningClient) private var importPlanningClient
     @Dependency(\.noticeClient) private var noticeClient
 
@@ -162,6 +164,7 @@ struct ImportWizardFeature {
                 state.pendingPlan = plan
                 state.categorization = ImportCategorizationFeature.State()
                 state.review = nil
+                state.commit = nil
                 state.phase = .categorizing
                 return .send(.categorization(.start(plan.drafts)))
 
@@ -183,37 +186,21 @@ struct ImportWizardFeature {
                 state.pendingPlan = plan
                 state.categorization = ImportCategorizationFeature.State()
                 state.review = nil
+                state.commit = nil
                 state.phase = .categorizing
                 return .send(.categorization(.start(plan.drafts)))
 
-            case .finalizeImport:
-                guard state.phase == .reviewingCategorization else { return .none }
-                guard let review = state.review else {
-                    return fail(&state, error: ImportError.noValidRows)
-                }
-
+            case let .reviewCompleted(commit):
+                state.review = nil
+                state.commit = ImportCommitFeature.State(commit: commit)
                 state.phase = .confirming
-                let commit = ReviewedImportCommit(
-                    idempotencyKey: UUID(),
-                    reviewedRows: review.reviewedRows,
-                    pendingBatches: review.plan.batches,
-                    categories: review.categories,
-                    suggestions: review.suggestions
-                )
-                return .run { send in
-                    do {
-                        _ = try await importCommitClient.commitReviewedImport(commit)
-                        await send(.delegate(.completed))
-                    } catch {
-                        await send(.fileLoaded(.failure(error)))
-                    }
-                }
-                .cancellable(id: "import.finalize", cancelInFlight: true)
+                return .none
 
             case .backToPreview:
                 state.review = nil
                 state.categorization = nil
                 state.pendingPlan = nil
+                state.commit = nil
                 state.phase = state.csv != nil ? .csvReview : .ofxReview
                 return .none
 
@@ -225,6 +212,7 @@ struct ImportWizardFeature {
                 state.csv = nil
                 state.categorization = nil
                 state.review = nil
+                state.commit = nil
                 return .send(.delegate(.close))
 
             case .ofx:
@@ -248,6 +236,7 @@ struct ImportWizardFeature {
                 )
                 state.categorization = nil
                 state.pendingPlan = nil
+                state.commit = nil
                 state.phase = .reviewingCategorization
                 return .none
 
@@ -258,7 +247,23 @@ struct ImportWizardFeature {
             case .categorization:
                 return .none
 
+            case let .review(.delegate(.completed(commit))):
+                return .send(.reviewCompleted(commit))
+
             case .review:
+                return .none
+
+            case let .commit(.delegate(.completed(result))):
+                state.commit = nil
+                state.phase = .done(batchIds: result.batchIds, rowCount: result.importedRowCount)
+                return .send(.delegate(.completed))
+
+            case let .commit(.delegate(.failed(message))):
+                state.commit = nil
+                state.phase = .failed(message: message)
+                return .none
+
+            case .commit:
                 return .none
 
             case .delegate:
@@ -276,6 +281,9 @@ struct ImportWizardFeature {
         }
         .ifLet(\.review, action: \.review) {
             ImportReviewFeature()
+        }
+        .ifLet(\.commit, action: \.commit) {
+            ImportCommitFeature()
         }
     }
 

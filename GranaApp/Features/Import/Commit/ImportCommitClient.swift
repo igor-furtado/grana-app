@@ -1,7 +1,7 @@
 import ComposableArchitecture
 import Foundation
 
-struct ReviewedImportCommit {
+struct ReviewedImportCommit: Equatable {
     var idempotencyKey: UUID
     var reviewedRows: [ReviewedImportRow]
     var pendingBatches: [PendingImportBatch]

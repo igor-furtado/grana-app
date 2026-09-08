@@ -110,18 +110,14 @@ struct ImportWizardView: View {
                 ImportReviewView(
                     store: reviewStore,
                     mode: .wizard(
-                        onImport: { store.send(.finalizeImport) },
                         onBack: { store.send(.backToPreview) }
                     )
                 )
             }
         case .confirming:
-            ImportWizardStatusView(
-                icon: AppUI.Icon.completedSeal,
-                title: "Consolidando lotes",
-                message: "Aplicando a revisão e finalizando a importação.",
-                showsProgress: true
-            )
+            if let commitStore = store.scope(state: \.commit, action: \.commit) {
+                ImportCommitView(store: commitStore)
+            }
         case .done:
             Color.clear
         case let .failed(message):
@@ -159,47 +155,6 @@ private struct FailedStepView: View {
                     onRetry()
                 }
                 .buttonStyle(GranaPrimaryButtonStyle())
-            }
-        }
-    }
-}
-
-private struct ImportWizardStatusView<Actions: View>: View {
-    let icon: AppUI.Icon
-    let title: String
-    let message: String
-    let showsProgress: Bool
-    let actions: Actions
-
-    init(
-        icon: AppUI.Icon,
-        title: String,
-        message: String,
-        showsProgress: Bool,
-        @ViewBuilder actions: () -> Actions = { EmptyView() }
-    ) {
-        self.icon = icon
-        self.title = title
-        self.message = message
-        self.showsProgress = showsProgress
-        self.actions = actions()
-    }
-
-    var body: some View {
-        AppUI.Wizard.Shell {
-            IllustratedStatusView(
-                title,
-                icon: icon,
-                description: message
-            ) {
-                if showsProgress {
-                    ProgressView()
-                        .progressViewStyle(.linear)
-                        .frame(maxWidth: 320)
-                        .tint(AppUI.Theme.Palette.teal)
-                }
-
-                actions
             }
         }
     }

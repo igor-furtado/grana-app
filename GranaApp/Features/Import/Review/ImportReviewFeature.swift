@@ -66,7 +66,15 @@ struct ImportReviewFeature {
         case confirm(Int)
         case confirmAll
         case applyCorrection(index: Int, categoryId: UUID, subcategoryId: UUID?)
+        case importButtonTapped
+        case delegate(Delegate)
     }
+
+    enum Delegate: Equatable {
+        case completed(ReviewedImportCommit)
+    }
+
+    @Dependency(\.uuid) private var uuid
 
     var body: some Reducer<State, Action> {
         Reduce { state, action in
@@ -91,6 +99,18 @@ struct ImportReviewFeature {
                     state.suggestions[suggestionIndex].subcategoryId = subcategoryId
                     state.suggestions[suggestionIndex].isReviewed = true
                 }
+                return .none
+
+            case .importButtonTapped:
+                return .send(.delegate(.completed(ReviewedImportCommit(
+                    idempotencyKey: uuid(),
+                    reviewedRows: state.reviewedRows,
+                    pendingBatches: state.plan.batches,
+                    categories: state.categories,
+                    suggestions: state.suggestions
+                ))))
+
+            case .delegate:
                 return .none
             }
         }

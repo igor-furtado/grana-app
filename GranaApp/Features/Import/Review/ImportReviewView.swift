@@ -5,10 +5,7 @@ import SwiftUI
 struct ImportReviewView: View {
     enum Mode {
         case modal
-        case wizard(
-            onImport: @MainActor @Sendable () -> Void,
-            onBack: @MainActor @Sendable () -> Void
-        )
+        case wizard(onBack: @MainActor @Sendable () -> Void)
     }
 
     @Environment(\.dismiss) private var dismiss
@@ -33,7 +30,7 @@ struct ImportReviewView: View {
                 }
             }
             .frame(minWidth: 700, minHeight: 600)
-        case let .wizard(onImport, onBack):
+        case let .wizard(onBack):
             AppUI.Wizard.Shell {
                 AppUI.Wizard.Layout(steps: ImportWizardStage.presentedSteps(currentStage: .review)) {
                     content
@@ -47,7 +44,7 @@ struct ImportReviewView: View {
                     .buttonStyle(GranaSecondaryButtonStyle())
                     .disabled(store.suggestions.allSatisfy(\.isReviewed))
                     .frame(maxWidth: .infinity)
-                    Button("Importar") { onImport() }
+                    Button("Importar") { store.send(.importButtonTapped) }
                         .buttonStyle(GranaPrimaryButtonStyle())
                         .disabled(store.suggestions.isEmpty)
                         .frame(maxWidth: .infinity)

@@ -157,6 +157,92 @@ struct ImportReviewFeatureTests {
         }
     }
 
+    @Test("Wizard transforma revisão concluída em feature de commit")
+    func wizardCreatesCommitStateAfterFinalReview() async throws {
+        let idempotencyKey = try #require(UUID(uuidString: "00000000-0000-0000-0000-000000000109"))
+        let draft = makeDraft()
+        let plan = makePlan(drafts: [draft])
+        let category = Category(
+            id: UUID(),
+            parentId: nil,
+            name: "Não Classificado",
+            kind: .expense,
+            slug: "nao-classificado",
+            createdAt: Date()
+        )
+        let suggestion = makeSuggestion(
+            transactionId: draft.id,
+            categoryId: category.id,
+            subcategoryId: nil
+        )
+        let review = ImportReviewFeature.State(
+            plan: plan,
+            suggestions: [suggestion],
+            categories: [category],
+            accounts: [],
+            institutions: []
+        )
+        let commit = ReviewedImportCommit(
+            idempotencyKey: idempotencyKey,
+            reviewedRows: review.reviewedRows,
+            pendingBatches: plan.batches,
+            categories: [category],
+            suggestions: [suggestion]
+        )
+        let store = TestStore(
+            initialState: ImportWizardFeature.State(
+                phase: .reviewingCategorization,
+                review: review
+            )
+        ) {
+            ImportWizardFeature()
+        } withDependencies: {
+            $0.uuid = .constant(idempotencyKey)
+        }
+
+        await store.send(.review(.importButtonTapped))
+
+        await store.receive(.review(.delegate(.completed(commit))))
+
+        await store.receive(.reviewCompleted(commit)) {
+            $0.review = nil
+            $0.commit = ImportCommitFeature.State(commit: commit)
+            $0.phase = .confirming
+        }
+    }
+
+    @Test("Wizard repassa conclusão da feature de commit")
+    func wizardDelegatesCommitCompletion() async throws {
+        let batchId = try #require(UUID(uuidString: "00000000-0000-0000-0000-000000000110"))
+        let result = ImportCommitResult(
+            batchIds: [batchId],
+            importedRowCount: 3,
+            duplicateRows: []
+        )
+        let commit = ReviewedImportCommit(
+            idempotencyKey: UUID(),
+            reviewedRows: [],
+            pendingBatches: [],
+            categories: [],
+            suggestions: []
+        )
+        let store = TestStore(
+            initialState: ImportWizardFeature.State(
+                phase: .confirming,
+                commit: ImportCommitFeature.State(commit: commit, status: .completed(result))
+            )
+        ) {
+            ImportWizardFeature()
+        }
+
+        await store.send(.commit(.delegate(.completed(result)))) {
+            $0.commit = nil
+            $0.phase = .done(batchIds: [batchId], rowCount: 3)
+        }
+
+        await store.receive(.delegate(.completed))
+    }
+
     private func makePlan(drafts: [TransactionDraft]) -> PendingImportPlan {
         PendingImportPlan(
             batches: [
