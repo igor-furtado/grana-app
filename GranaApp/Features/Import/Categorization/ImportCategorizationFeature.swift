@@ -93,20 +93,12 @@ struct ImportCategorizationFeature {
             else { return nil }
             return institution.kind
         }
-
-        func resolvedCategory(forTransactionId id: UUID) -> (categoryId: UUID, subcategoryId: UUID?)? {
-            guard let suggestion = suggestions.first(where: { $0.transactionId == id }) else { return nil }
-            return (suggestion.categoryId, suggestion.subcategoryId)
-        }
     }
 
     enum Action: Equatable {
         case start([TransactionDraft])
         case contextLoaded(TaskResult<ImportCategorizationContext>)
         case suggestionsLoaded(TaskResult<[CategorizationSuggestion]>)
-        case confirm(Int)
-        case confirmAll
-        case applyCorrection(index: Int, categoryId: UUID, subcategoryId: UUID?)
         case cancel
         case delegate(Delegate)
     }
@@ -180,28 +172,6 @@ struct ImportCategorizationFeature {
                     },
                     .send(.delegate(.failed(error.localizedDescription)))
                 )
-
-            case let .confirm(index):
-                guard state.suggestions.indices.contains(index) else { return .none }
-                state.suggestions[index].isReviewed = true
-                return .none
-
-            case .confirmAll:
-                for index in state.suggestions.indices where !state.suggestions[index].isReviewed {
-                    state.suggestions[index].isReviewed = true
-                }
-                return .none
-
-            case let .applyCorrection(index, categoryId, subcategoryId):
-                guard state.suggestions.indices.contains(index) else { return .none }
-                let hash = state.suggestions[index].descriptionHash
-                for suggestionIndex in state.suggestions.indices {
-                    guard state.suggestions[suggestionIndex].descriptionHash == hash else { continue }
-                    state.suggestions[suggestionIndex].categoryId = categoryId
-                    state.suggestions[suggestionIndex].subcategoryId = subcategoryId
-                    state.suggestions[suggestionIndex].isReviewed = true
-                }
-                return .none
 
             case .cancel:
                 state.status = .idle

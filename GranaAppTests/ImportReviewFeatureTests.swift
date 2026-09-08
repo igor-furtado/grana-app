@@ -19,7 +19,7 @@ struct ImportReviewFeatureTests {
 
         let state = ImportReviewFeature.State(
             plan: makePlan(drafts: [draft]),
-            categorization: ImportCategorizationFeature.State(suggestions: [suggestion])
+            suggestions: [suggestion]
         )
 
         #expect(state.reviewedRows == [
@@ -31,8 +31,78 @@ struct ImportReviewFeatureTests {
         ])
     }
 
-    @Test("Revisão inicia classificação e propaga pronto")
-    func reviewStartsCategorizationAndPropagatesReady() async {
+    @Test("Aplicar correção propaga para sugestões com mesmo hash")
+    func applyCorrectionPropagatesAcrossMatchingSuggestions() async {
+        let oldCategoryId = UUID()
+        let newCategoryId = UUID()
+        let newSubcategoryId = UUID()
+        let first = makeSuggestion(
+            transactionId: UUID(),
+            categoryId: oldCategoryId,
+            subcategoryId: nil,
+            descriptionHash: "same-hash",
+            amount: 10
+        )
+        let second = makeSuggestion(
+            transactionId: UUID(),
+            categoryId: oldCategoryId,
+            subcategoryId: nil,
+            descriptionHash: "same-hash",
+            amount: 20
+        )
+
+        let store = TestStore(
+            initialState: ImportReviewFeature.State(
+                plan: makePlan(drafts: []),
+                suggestions: [first, second]
+            )
+        ) {
+            ImportReviewFeature()
+        }
+
+        await store.send(.applyCorrection(index: 0, categoryId: newCategoryId, subcategoryId: newSubcategoryId)) {
+            $0.suggestions[0].categoryId = newCategoryId
+            $0.suggestions[0].subcategoryId = newSubcategoryId
+            $0.suggestions[0].isReviewed = true
+            $0.suggestions[1].categoryId = newCategoryId
+            $0.suggestions[1].subcategoryId = newSubcategoryId
+            $0.suggestions[1].isReviewed = true
+        }
+    }
+
+    @Test("Revisão mantém Não Classificado no topo")
+    func reviewOrderingKeepsFallbackRowsAtTop() {
+        let earlier = Date(timeIntervalSince1970: 10)
+        let later = Date(timeIntervalSince1970: 20)
+        let fallback = makeSuggestion(
+            transactionId: UUID(),
+            categoryId: UUID(),
+            subcategoryId: UUID(),
+            descriptionHash: "fallback",
+            source: .fallback,
+            originalCategorySlug: nil,
+            occurredAt: later,
+            isReviewed: true
+        )
+        let regular = makeSuggestion(
+            transactionId: UUID(),
+            categoryId: UUID(),
+            subcategoryId: nil,
+            descriptionHash: "regular",
+            description: "Uber",
+            amount: 20,
+            source: .granaAI,
+            originalCategorySlug: "mobilidade",
+            occurredAt: earlier
+        )
+
+        let orderedIndices = ImportReviewOrdering.orderedIndices(from: [regular, fallback])
+
+        #expect(orderedIndices == [1, 0])
+    }
+
+    @Test("Wizard materializa revisão após classificação pronta")
+    func wizardCreatesReviewStateAfterCategorizationReady() async {
         let draft = makeDraft()
         let plan = makePlan(drafts: [draft])
         let category = Category(
@@ -43,49 +113,48 @@ struct ImportReviewFeatureTests {
             slug: "nao-classificado",
             createdAt: Date()
         )
+        let account = Account(
+            id: draft.accountId,
+            type: .checking,
+            initialBalance: 0,
+            archived: false,
+            institutionId: nil,
+            createdAt: Date(),
+            updatedAt: Date()
+        )
         let suggestion = makeSuggestion(
             transactionId: draft.id,
             categoryId: category.id,
             subcategoryId: nil
         )
-        let store = TestStore(initialState: ImportReviewFeature.State(plan: plan)) {
-            ImportReviewFeature()
-        } withDependencies: {
-            $0.importCategorizationClient.loadContext = {
-                ImportCategorizationContext(categories: [category], accounts: [], institutions: [])
-            }
-            $0.importCategorizationClient.classifyDrafts = { drafts in
-                #expect(drafts == [draft])
-                return [suggestion]
-            }
-        }
 
-        await store.send(.start)
-
-        await store.receive(.categorization(.start([draft]))) {
-            $0.categorization.status = .classifying(
-                processed: 0,
-                total: 1,
-                message: "Preparando classificação…"
+        let store = TestStore(
+            initialState: ImportWizardFeature.State(
+                pendingPlan: plan,
+                categorization: ImportCategorizationFeature.State(
+                    status: .ready(total: 1, fallback: 1),
+                    suggestions: [suggestion],
+                    categories: [category],
+                    accounts: [account],
+                    institutions: []
+                )
             )
-            $0.categorization.suggestions = []
+        ) {
+            ImportWizardFeature()
         }
 
-        await store.receive(.categorization(.contextLoaded(.success(
-            ImportCategorizationContext(categories: [category], accounts: [], institutions: [])
-        )))) {
-            $0.categorization.categories = [category]
-            $0.categorization.accounts = []
-            $0.categorization.institutions = []
+        await store.send(.categorization(.delegate(.ready))) {
+            $0.review = ImportReviewFeature.State(
+                plan: plan,
+                suggestions: [suggestion],
+                categories: [category],
+                accounts: [account],
+                institutions: []
+            )
+            $0.categorization = nil
+            $0.pendingPlan = nil
+            $0.phase = .reviewingCategorization
         }
-
-        await store.receive(.categorization(.suggestionsLoaded(.success([suggestion])))) {
-            $0.categorization.suggestions = [suggestion]
-            $0.categorization.status = .ready(total: 1, fallback: 1)
-        }
-
-        await store.receive(.categorization(.delegate(.ready)))
-        await store.receive(.delegate(.ready))
     }
 
     private func makePlan(drafts: [TransactionDraft]) -> PendingImportPlan {
@@ -130,27 +199,34 @@ struct ImportReviewFeatureTests {
     private func makeSuggestion(
         transactionId: UUID,
         categoryId: UUID,
-        subcategoryId: UUID?
+        subcategoryId: UUID?,
+        descriptionHash: String = "hash",
+        description: String = "Padaria",
+        amount: Decimal = Decimal(12),
+        source: CategorizationSuggestion.Source = .fallback,
+        originalCategorySlug: String? = nil,
+        occurredAt: Date = Date(),
+        isReviewed: Bool = false
     ) -> CategorizationSuggestion {
         CategorizationSuggestion(
             id: UUID(),
             transactionId: transactionId,
-            descriptionHash: "hash",
-            normalizedDescription: "padaria",
+            descriptionHash: descriptionHash,
+            normalizedDescription: description.lowercased(),
             categoryId: categoryId,
             subcategoryId: subcategoryId,
-            source: .fallback,
+            source: source,
             originalCategoryId: nil,
             originalSubcategoryId: nil,
-            originalCategorySlug: nil,
+            originalCategorySlug: originalCategorySlug,
             originalSubcategoryName: nil,
-            transactionDescription: "Padaria",
-            transactionAmount: Decimal(12),
-            transactionOccurredAt: Date(),
+            transactionDescription: description,
+            transactionAmount: amount,
+            transactionOccurredAt: occurredAt,
             transactionAccountId: UUID(),
             transactionNotes: nil,
             transactionDestinationAccountId: nil,
-            isReviewed: false
+            isReviewed: isReviewed
         )
     }
 }

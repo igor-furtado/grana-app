@@ -22,8 +22,10 @@ struct ImportWizardFeature {
         var snapshot: ImportSnapshot = .empty
         var phase: Phase = .idle
         var sourceURL: URL?
+        var pendingPlan: PendingImportPlan?
         var ofx: OFXImportFeature.State?
         var csv: CSVImportFeature.State?
+        var categorization: ImportCategorizationFeature.State?
         var review: ImportReviewFeature.State?
 
         static let supportedExtensions: Set<String> = ImportFeatureConfiguration.supportedExtensions
@@ -33,8 +35,10 @@ struct ImportWizardFeature {
                 && lhs.snapshot == rhs.snapshot
                 && lhs.phase == rhs.phase
                 && lhs.sourceURL == rhs.sourceURL
+                && lhs.pendingPlan == rhs.pendingPlan
                 && lhs.ofx == rhs.ofx
                 && lhs.csv == rhs.csv
+                && lhs.categorization == rhs.categorization
                 && lhs.review == rhs.review
         }
     }
@@ -52,6 +56,7 @@ struct ImportWizardFeature {
         case cancel
         case ofx(OFXImportFeature.Action)
         case csv(CSVImportFeature.Action)
+        case categorization(ImportCategorizationFeature.Action)
         case review(ImportReviewFeature.Action)
         case delegate(Delegate)
     }
@@ -154,9 +159,11 @@ struct ImportWizardFeature {
                     return fail(&state, error: error)
                 }
 
-                state.review = ImportReviewFeature.State(plan: plan)
+                state.pendingPlan = plan
+                state.categorization = ImportCategorizationFeature.State()
+                state.review = nil
                 state.phase = .categorizing
-                return .send(.review(.start))
+                return .send(.categorization(.start(plan.drafts)))
 
             case .confirmCSVImport:
                 guard let csv = state.csv else { return .none }
@@ -173,9 +180,11 @@ struct ImportWizardFeature {
                     return fail(&state, error: error)
                 }
 
-                state.review = ImportReviewFeature.State(plan: plan)
+                state.pendingPlan = plan
+                state.categorization = ImportCategorizationFeature.State()
+                state.review = nil
                 state.phase = .categorizing
-                return .send(.review(.start))
+                return .send(.categorization(.start(plan.drafts)))
 
             case .finalizeImport:
                 guard state.phase == .reviewingCategorization else { return .none }
@@ -188,8 +197,8 @@ struct ImportWizardFeature {
                     idempotencyKey: UUID(),
                     reviewedRows: review.reviewedRows,
                     pendingBatches: review.plan.batches,
-                    categories: state.snapshot.categories,
-                    suggestions: review.categorization.suggestions
+                    categories: review.categories,
+                    suggestions: review.suggestions
                 )
                 return .run { send in
                     do {
@@ -203,14 +212,18 @@ struct ImportWizardFeature {
 
             case .backToPreview:
                 state.review = nil
+                state.categorization = nil
+                state.pendingPlan = nil
                 state.phase = state.csv != nil ? .csvReview : .ofxReview
                 return .none
 
             case .cancel:
                 state.phase = .idle
                 state.sourceURL = nil
+                state.pendingPlan = nil
                 state.ofx = nil
                 state.csv = nil
+                state.categorization = nil
                 state.review = nil
                 return .send(.delegate(.close))
 
@@ -220,12 +233,29 @@ struct ImportWizardFeature {
             case .csv:
                 return .none
 
-            case .review(.delegate(.ready)):
+            case .categorization(.delegate(.ready)):
+                guard let plan = state.pendingPlan,
+                      let categorization = state.categorization
+                else {
+                    return fail(&state, error: ImportError.noValidRows)
+                }
+                state.review = ImportReviewFeature.State(
+                    plan: plan,
+                    suggestions: categorization.suggestions,
+                    categories: categorization.categories,
+                    accounts: categorization.accounts,
+                    institutions: categorization.institutions
+                )
+                state.categorization = nil
+                state.pendingPlan = nil
                 state.phase = .reviewingCategorization
                 return .none
 
-            case let .review(.delegate(.failed(message))):
+            case let .categorization(.delegate(.failed(message))):
                 state.phase = .failed(message: message)
+                return .none
+
+            case .categorization:
                 return .none
 
             case .review:
@@ -240,6 +270,9 @@ struct ImportWizardFeature {
         }
         .ifLet(\.csv, action: \.csv) {
             CSVImportFeature()
+        }
+        .ifLet(\.categorization, action: \.categorization) {
+            ImportCategorizationFeature()
         }
         .ifLet(\.review, action: \.review) {
             ImportReviewFeature()

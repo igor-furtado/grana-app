@@ -5,7 +5,7 @@ import UniformTypeIdentifiers
 
 struct ImportWizardView: View {
     @Bindable var store: StoreOf<ImportWizardFeature>
-    let onClose: () -> Void
+    let onClose: @MainActor @Sendable () -> Void
     @State private var fileImporterShown = false
     @State private var fileWasPicked = false
     @State private var didTriggerPicker = false
@@ -99,20 +99,19 @@ struct ImportWizardView: View {
                 )
             }
         case .categorizing:
-            if let reviewStore = store.scope(state: \.review, action: \.review) {
+            if let categorizationStore = store.scope(state: \.categorization, action: \.categorization) {
                 ImportCategorizationView(
-                    store: reviewStore.scope(state: \.categorization, action: \.categorization),
+                    store: categorizationStore,
                     onCancel: { store.send(.backToPreview) }
                 )
             }
         case .reviewingCategorization:
             if let reviewStore = store.scope(state: \.review, action: \.review) {
-                CategorizationReviewView(
-                    store: reviewStore.scope(state: \.categorization, action: \.categorization),
+                ImportReviewView(
+                    store: reviewStore,
                     mode: .wizard(
                         onImport: { store.send(.finalizeImport) },
-                        onBack: { store.send(.backToPreview) },
-                        onClose: onClose
+                        onBack: { store.send(.backToPreview) }
                     )
                 )
             }

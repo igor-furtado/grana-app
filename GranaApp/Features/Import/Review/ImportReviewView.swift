@@ -2,18 +2,17 @@ import AppUI
 import ComposableArchitecture
 import SwiftUI
 
-struct CategorizationReviewView: View {
+struct ImportReviewView: View {
     enum Mode {
         case modal
         case wizard(
-            onImport: @MainActor () -> Void,
-            onBack: @MainActor () -> Void,
-            onClose: @MainActor () -> Void
+            onImport: @MainActor @Sendable () -> Void,
+            onBack: @MainActor @Sendable () -> Void
         )
     }
 
     @Environment(\.dismiss) private var dismiss
-    @Bindable var store: StoreOf<ImportCategorizationFeature>
+    @Bindable var store: StoreOf<ImportReviewFeature>
     var mode: Mode = .modal
 
     var body: some View {
@@ -34,7 +33,7 @@ struct CategorizationReviewView: View {
                 }
             }
             .frame(minWidth: 700, minHeight: 600)
-        case let .wizard(onImport, onBack, _):
+        case let .wizard(onImport, onBack):
             AppUI.Wizard.Shell {
                 AppUI.Wizard.Layout(steps: ImportWizardStage.presentedSteps(currentStage: .review)) {
                     content
@@ -42,9 +41,15 @@ struct CategorizationReviewView: View {
                     Button("Voltar") { onBack() }
                         .buttonStyle(GranaSecondaryButtonStyle())
                         .frame(maxWidth: .infinity)
+                    Button("Confirmar tudo") {
+                        store.send(.confirmAll)
+                    }
+                    .buttonStyle(GranaSecondaryButtonStyle())
+                    .disabled(store.suggestions.allSatisfy(\.isReviewed))
+                    .frame(maxWidth: .infinity)
                     Button("Importar") { onImport() }
                         .buttonStyle(GranaPrimaryButtonStyle())
-                        .disabled(store.suggestions.isEmpty || isClassifying)
+                        .disabled(store.suggestions.isEmpty)
                         .frame(maxWidth: .infinity)
                 }
             }
@@ -113,34 +118,18 @@ struct CategorizationReviewView: View {
         }
     }
 
-    @ViewBuilder
     private var emptyState: some View {
-        if case .classifying = store.status {
-            VStack(spacing: AppUI.Theme.Spacing.sm) {
-                ProgressView()
-                Text("Categorizando…").foregroundStyle(.secondary)
-            }
-            .frame(maxWidth: .infinity, maxHeight: .infinity)
-        } else {
-            EmptyStateView(
-                "Tudo categorizado",
-                icon: .success,
-                description: "Sem sugestões pendentes pra revisar."
-            )
-        }
+        EmptyStateView(
+            "Tudo categorizado",
+            icon: .success,
+            description: "Sem sugestões pendentes pra revisar."
+        )
     }
 
-    private var isClassifying: Bool {
-        if case .classifying = store.status {
-            return true
-        }
-        return false
-    }
-
-    private var tableRows: [CategorizationReviewTableRow] {
-        CategorizationReviewOrdering.orderedIndices(from: store.suggestions).map { index in
+    private var tableRows: [ImportReviewTableRow] {
+        ImportReviewOrdering.orderedIndices(from: store.suggestions).map { index in
             let suggestion = store.suggestions[index]
-            return CategorizationReviewTableRow(
+            return ImportReviewTableRow(
                 id: suggestion.id,
                 index: index,
                 occurredAt: suggestion.transactionOccurredAt,
@@ -148,13 +137,13 @@ struct CategorizationReviewView: View {
                 amount: suggestion.transactionAmount,
                 categoryId: suggestion.categoryId,
                 subcategoryId: suggestion.subcategoryId,
-                needsAttention: CategorizationReviewOrdering.needsAttention(suggestion),
+                needsAttention: ImportReviewOrdering.needsAttention(suggestion),
                 institutionKind: store.state.institutionKind(forAccountId: suggestion.transactionAccountId)
             )
         }
     }
 
-    private func categoryMenu(for row: CategorizationReviewTableRow) -> some View {
+    private func categoryMenu(for row: ImportReviewTableRow) -> some View {
         Menu {
             ForEach(store.rootCategories) { category in
                 Button(category.name) {
@@ -174,7 +163,7 @@ struct CategorizationReviewView: View {
         .help(rootName(for: row))
     }
 
-    private func subcategoryMenu(for row: CategorizationReviewTableRow) -> some View {
+    private func subcategoryMenu(for row: ImportReviewTableRow) -> some View {
         Menu {
             Button("Nenhuma") {
                 store.send(
@@ -203,11 +192,11 @@ struct CategorizationReviewView: View {
         .help(subName(for: row) ?? "Sem subcategoria")
     }
 
-    private func rootName(for row: CategorizationReviewTableRow) -> String {
+    private func rootName(for row: ImportReviewTableRow) -> String {
         store.state.category(for: row.categoryId)?.name ?? "Categoria"
     }
 
-    private func subName(for row: CategorizationReviewTableRow) -> String? {
+    private func subName(for row: ImportReviewTableRow) -> String? {
         guard let subcategoryId = row.subcategoryId else { return nil }
         return store.state.category(for: subcategoryId)?.name
     }
@@ -240,29 +229,7 @@ struct CategorizationReviewView: View {
     }
 }
 
-enum CategorizationReviewOrdering {
-    struct Section: Identifiable, Equatable {
-        let title: String
-        let indices: [Int]
-
-        var id: String {
-            title
-        }
-    }
-
-    static func sections(from suggestions: [CategorizationSuggestion]) -> [Section] {
-        let ordered = orderedSuggestions(from: suggestions)
-
-        let attention = ordered.filter { needsAttention($0.suggestion) }.map(\.index)
-        let remaining = ordered.filter { !needsAttention($0.suggestion) }.map(\.index)
-
-        return [
-            Section(title: "Não Classificado", indices: attention),
-            Section(title: "Demais", indices: remaining),
-        ]
-        .filter { !$0.indices.isEmpty }
-    }
-
+enum ImportReviewOrdering {
     static func orderedIndices(from suggestions: [CategorizationSuggestion]) -> [Int] {
         orderedSuggestions(from: suggestions).map(\.index)
     }
@@ -289,7 +256,7 @@ enum CategorizationReviewOrdering {
     }
 }
 
-private struct CategorizationReviewTableRow: Identifiable {
+private struct ImportReviewTableRow: Identifiable {
     let id: UUID
     let index: Int
     let occurredAt: Date
