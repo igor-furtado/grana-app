@@ -195,9 +195,8 @@ struct CategorizationFeature {
             case let .applyCorrection(index, categoryId, subcategoryId):
                 guard state.suggestions.indices.contains(index) else { return .none }
                 let hash = state.suggestions[index].descriptionHash
-                for suggestionIndex in state.suggestions.indices
-                    where state.suggestions[suggestionIndex].descriptionHash == hash
-                {
+                for suggestionIndex in state.suggestions.indices {
+                    guard state.suggestions[suggestionIndex].descriptionHash == hash else { continue }
                     state.suggestions[suggestionIndex].categoryId = categoryId
                     state.suggestions[suggestionIndex].subcategoryId = subcategoryId
                     state.suggestions[suggestionIndex].isReviewed = true

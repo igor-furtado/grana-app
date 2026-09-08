@@ -1,6 +1,6 @@
+import AppUI
 import ComposableArchitecture
 import SwiftUI
-import AppUI
 
 struct CategorizationRowView: View {
     @Bindable var store: StoreOf<CategorizationFeature>
