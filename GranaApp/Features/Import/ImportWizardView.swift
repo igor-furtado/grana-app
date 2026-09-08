@@ -3,7 +3,7 @@ import ComposableArchitecture
 import SwiftUI
 import UniformTypeIdentifiers
 
-struct ImportView: View {
+struct ImportWizardView: View {
     @Bindable var store: StoreOf<ImportWizardFeature>
     let onClose: () -> Void
     @State private var fileImporterShown = false
@@ -100,7 +100,7 @@ struct ImportView: View {
             }
         case .categorizing:
             if let reviewStore = store.scope(state: \.review, action: \.review) {
-                CategorizingStepView(
+                ImportCategorizationView(
                     store: reviewStore.scope(state: \.categorization, action: \.categorization),
                     onCancel: { store.send(.backToPreview) }
                 )

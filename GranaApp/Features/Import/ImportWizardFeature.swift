@@ -1,0 +1,255 @@
+import ComposableArchitecture
+import Foundation
+
+@Reducer
+struct ImportWizardFeature {
+    enum Phase: Equatable {
+        case idle
+        case loading(progress: String)
+        case ofxReview
+        case csvReview
+        case categorizing
+        case reviewingCategorization
+        case confirming
+        case done(batchIds: [UUID], rowCount: Int)
+        case failed(message: String)
+    }
+
+    @ObservableState
+    struct State: Equatable {
+        let id = UUID()
+        var initialFile: URL?
+        var snapshot: ImportSnapshot = .empty
+        var phase: Phase = .idle
+        var sourceURL: URL?
+        var ofx: OFXImportFeature.State?
+        var csv: CSVImportFeature.State?
+        var review: ImportReviewFeature.State?
+
+        static let supportedExtensions: Set<String> = ImportFeatureConfiguration.supportedExtensions
+
+        static func == (lhs: State, rhs: State) -> Bool {
+            lhs.initialFile == rhs.initialFile
+                && lhs.snapshot == rhs.snapshot
+                && lhs.phase == rhs.phase
+                && lhs.sourceURL == rhs.sourceURL
+                && lhs.ofx == rhs.ofx
+                && lhs.csv == rhs.csv
+                && lhs.review == rhs.review
+        }
+    }
+
+    enum Action: Equatable {
+        case task
+        case snapshotLoaded(TaskResult<ImportSnapshot>)
+        case promptForFile
+        case fileSelected(URL)
+        case fileLoaded(TaskResult<ImportLoadedFile>)
+        case confirmOFXImport
+        case confirmCSVImport
+        case finalizeImport
+        case backToPreview
+        case cancel
+        case ofx(OFXImportFeature.Action)
+        case csv(CSVImportFeature.Action)
+        case review(ImportReviewFeature.Action)
+        case delegate(Delegate)
+    }
+
+    enum Delegate: Equatable {
+        case presentFileImporter
+        case close
+        case completed
+    }
+
+    @Dependency(\.importClient) private var importClient
+    @Dependency(\.importCommitClient) private var importCommitClient
+    @Dependency(\.importPlanningClient) private var importPlanningClient
+    @Dependency(\.noticeClient) private var noticeClient
+
+    var body: some Reducer<State, Action> {
+        Reduce { state, action in
+            switch action {
+            case .task:
+                state.phase = .loading(progress: "Carregando dados…")
+                return .run { [initialFile = state.initialFile] send in
+                    await send(.snapshotLoaded(TaskResult { try await importClient.loadSnapshot() }))
+                    if let initialFile {
+                        await send(.fileSelected(initialFile))
+                    } else {
+                        await send(.promptForFile)
+                    }
+                }
+
+            case let .snapshotLoaded(.success(snapshot)):
+                state.snapshot = snapshot
+                if case .loading = state.phase {
+                    state.phase = .idle
+                }
+                return .none
+
+            case let .snapshotLoaded(.failure(error)):
+                state.phase = .failed(message: error.localizedDescription)
+                return .run { _ in
+                    await noticeClient.report(error, nil)
+                }
+
+            case .promptForFile:
+                return .send(.delegate(.presentFileImporter))
+
+            case let .fileSelected(url):
+                state.phase = .loading(progress: "Lendo arquivo…")
+                state.sourceURL = url
+                return .run { [snapshot = state.snapshot] send in
+                    await send(.fileLoaded(TaskResult { try await importClient.loadFile(url, snapshot) }))
+                }
+                .cancellable(id: "import.fileLoading", cancelInFlight: true)
+
+            case let .fileLoaded(.success(file)):
+                switch file {
+                case let .ofx(sourceURL, resolutions):
+                    state.sourceURL = sourceURL
+                    state.csv = nil
+                    state.ofx = OFXImportFeature.State(
+                        resolutions: resolutions,
+                        accounts: state.snapshot.accounts,
+                        institutions: state.snapshot.institutions,
+                        bankDetails: state.snapshot.bankDetails,
+                        creditCards: state.snapshot.creditCards
+                    )
+                    state.phase = .ofxReview
+
+                case let .csv(sourceURL, resolution):
+                    state.sourceURL = sourceURL
+                    state.ofx = nil
+                    state.csv = CSVImportFeature.State(
+                        resolution: resolution,
+                        accounts: state.snapshot.accounts,
+                        institutions: state.snapshot.institutions,
+                        bankDetails: state.snapshot.bankDetails,
+                        creditCards: state.snapshot.creditCards
+                    )
+                    state.phase = .csvReview
+                }
+                return .none
+
+            case let .fileLoaded(.failure(error)):
+                state.phase = .failed(message: error.localizedDescription)
+                return .run { _ in
+                    await noticeClient.report(error, "Erro ao abrir arquivo")
+                }
+
+            case .confirmOFXImport:
+                guard let ofx = state.ofx else { return .none }
+                let plan: PendingImportPlan
+                do {
+                    plan = try importPlanningClient.makePendingPlan(
+                        .ofx(
+                            sourceFilename: state.sourceURL?.lastPathComponent ?? "import.ofx",
+                            resolutions: ofx.resolutions
+                        ),
+                        ImportPlanningContext(now: Date(), makeID: UUID.init)
+                    )
+                } catch {
+                    return fail(&state, error: error)
+                }
+
+                state.review = ImportReviewFeature.State(plan: plan)
+                state.phase = .categorizing
+                return .send(.review(.start))
+
+            case .confirmCSVImport:
+                guard let csv = state.csv else { return .none }
+                let plan: PendingImportPlan
+                do {
+                    plan = try importPlanningClient.makePendingPlan(
+                        .interCreditCardCSV(
+                            sourceFilename: csv.resolution.sourceFilename,
+                            resolution: csv.resolution
+                        ),
+                        ImportPlanningContext(now: Date(), makeID: UUID.init)
+                    )
+                } catch {
+                    return fail(&state, error: error)
+                }
+
+                state.review = ImportReviewFeature.State(plan: plan)
+                state.phase = .categorizing
+                return .send(.review(.start))
+
+            case .finalizeImport:
+                guard state.phase == .reviewingCategorization else { return .none }
+                guard let review = state.review else {
+                    return fail(&state, error: ImportError.noValidRows)
+                }
+
+                state.phase = .confirming
+                let commit = ReviewedImportCommit(
+                    idempotencyKey: UUID(),
+                    reviewedRows: review.reviewedRows,
+                    pendingBatches: review.plan.batches,
+                    categories: state.snapshot.categories,
+                    suggestions: review.categorization.suggestions
+                )
+                return .run { send in
+                    do {
+                        _ = try await importCommitClient.commitReviewedImport(commit)
+                        await send(.delegate(.completed))
+                    } catch {
+                        await send(.fileLoaded(.failure(error)))
+                    }
+                }
+                .cancellable(id: "import.finalize", cancelInFlight: true)
+
+            case .backToPreview:
+                state.review = nil
+                state.phase = state.csv != nil ? .csvReview : .ofxReview
+                return .none
+
+            case .cancel:
+                state.phase = .idle
+                state.sourceURL = nil
+                state.ofx = nil
+                state.csv = nil
+                state.review = nil
+                return .send(.delegate(.close))
+
+            case .ofx:
+                return .none
+
+            case .csv:
+                return .none
+
+            case .review(.delegate(.ready)):
+                state.phase = .reviewingCategorization
+                return .none
+
+            case let .review(.delegate(.failed(message))):
+                state.phase = .failed(message: message)
+                return .none
+
+            case .review:
+                return .none
+
+            case .delegate:
+                return .none
+            }
+        }
+        .ifLet(\.ofx, action: \.ofx) {
+            OFXImportFeature()
+        }
+        .ifLet(\.csv, action: \.csv) {
+            CSVImportFeature()
+        }
+        .ifLet(\.review, action: \.review) {
+            ImportReviewFeature()
+        }
+    }
+
+    private func fail(_ state: inout State, error: Error) -> Effect<Action> {
+        state.phase = .failed(message: error.localizedDescription)
+        return .run { _ in
+            await noticeClient.report(error, nil)
+        }
+    }
+}

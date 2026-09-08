@@ -2,7 +2,7 @@ import AppUI
 import ComposableArchitecture
 import SwiftUI
 
-struct CategorizingStepView: View {
+struct ImportCategorizationView: View {
     @Bindable var store: StoreOf<ImportCategorizationFeature>
     let onCancel: () -> Void
 

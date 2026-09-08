@@ -195,7 +195,7 @@ private struct AuthenticatedShellView: View {
         ) {
             if let wizardStore = store.scope(state: \.importFeature.wizard, action: \.importFeature.wizard) {
                 ImportSheetContainer(hostSize: sheetHostSize) {
-                    ImportView(store: wizardStore) {
+                    ImportWizardView(store: wizardStore) {
                         store.send(.importFeature(.wizard(.cancel)))
                     }
                 }
