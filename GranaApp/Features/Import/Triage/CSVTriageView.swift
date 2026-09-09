@@ -4,95 +4,10 @@ import SwiftUI
 
 struct CSVTriageView<SidebarActions: View>: View {
     @Bindable var store: StoreOf<CSVTriageFeature>
-    let sidebarActions: () -> SidebarActions
-
-    var body: some View {
-        AppUI.Wizard.Shell {
-            AppUI.Wizard.Layout(steps: ImportWizardStage.presentedSteps(currentStage: .triage)) {
-                VStack(spacing: AppUI.Theme.Spacing.md) {
-                    CSVTransactionsListCard(
-                        resolution: Binding(
-                            get: { store.state.resolution },
-                            set: { store.send(.resolutionUpdated($0)) }
-                        ),
-                        institutionKind: store.state.bankKind(for: store.state.resolution.accountId),
-                        onNegativeSelectionChanged: { rowId, isSelected in
-                            store.send(.negativeSelectionChanged(rowId: rowId, isSelected: isSelected))
-                        }
-                    )
-                    .frame(maxHeight: .infinity)
-
-                    CSVAccountInfoCard(store: store)
-                }
-            } sidebarActions: {
-                sidebarActions()
-            }
-        }
-    }
-}
-
-private struct CSVAccountInfoCard: View {
-    @Bindable var store: StoreOf<CSVTriageFeature>
-
-    var body: some View {
-        ImportWizardSectionCard(
-            title: "Conta de destino",
-            trailing: AnyView(
-                AppUI.Selector(
-                    placeholder: "Selecione…",
-                    options: store.state.creditCardAccounts.map {
-                        .init(id: $0.id, title: store.state.accountLabel(for: $0))
-                    },
-                    selection: Binding(
-                        get: { store.state.resolution.accountId },
-                        set: { store.send(.accountSelected($0)) }
-                    ),
-                    icon: "creditcard"
-                )
-                .frame(maxWidth: .infinity, alignment: .leading)
-            )
-        ) {}
-    }
-}
-
-private struct CSVTransactionsListCard: View {
     @Binding var resolution: CSVStatementResolution
     let institutionKind: InstitutionKind?
     let onNegativeSelectionChanged: (UUID, Bool) -> Void
-
-    private var tableRows: [CSVTransactionTableRow] {
-        let purchaseRows = resolution.rows.map {
-            CSVTransactionTableRow(
-                id: "purchase-\($0.id.uuidString)",
-                rowID: $0.id,
-                date: $0.raw.date,
-                description: $0.raw.description,
-                memo: purchaseMemo(for: $0),
-                amount: $0.raw.amount,
-                status: $0.isDuplicate ? .duplicate : nil,
-                kind: .purchase
-            )
-        }
-        let negativeRows = resolution.negativeRows.map {
-            CSVTransactionTableRow(
-                id: "negative-\($0.id.uuidString)",
-                rowID: $0.id,
-                date: $0.raw.date,
-                description: $0.raw.description,
-                memo: negativeMemo(for: $0),
-                amount: abs($0.raw.amount),
-                status: negativeStatus(for: $0),
-                kind: $0.raw.kind == .payment ? .payment : .balance
-            )
-        }
-
-        return (purchaseRows + negativeRows).sorted { lhs, rhs in
-            if lhs.date == rhs.date {
-                return lhs.id < rhs.id
-            }
-            return lhs.date < rhs.date
-        }
-    }
+    let sidebarActions: () -> SidebarActions
 
     private var eligibleSelectionCount: Int {
         resolution.rows.filter { !$0.isDuplicate }.count
@@ -106,60 +21,30 @@ private struct CSVTransactionsListCard: View {
         return purchasesSelected + balancesSelected == eligibleSelectionCount
     }
 
-    var body: some View {
-        ImportWizardSectionCard(title: "Transações") {
-            AppUI.Table(tableRows) {
-                TableColumn("") { row in
-                    selectionCell(for: row)
-                }
-                .width(min: 35, ideal: 35, max: 48)
+    private func purchaseMemo(for row: CSVPreviewRow) -> String? {
+        let tipo = row.raw.tipo
+        guard !tipo.isEmpty, tipo != "Compra à vista" else { return nil }
+        return tipo
+    }
 
-                TableColumn("Data") { row in
-                    Text(GranaDateFormat.fullDate(row.date))
-                        .font(AppUI.Theme.Typography.caption1)
-                        .foregroundStyle(AppUI.Theme.Palette.muted)
-                }
-                .width(min: 128, ideal: 148, max: 172)
+    private func negativeMemo(for row: CSVNegativePreviewRow) -> String? {
+        switch row.raw.kind {
+        case .payment:
+            "Pagamento"
+        case .balance:
+            "Saldo"
+        }
+    }
 
-                TableColumn("Descrição") { row in
-                    HStack(spacing: AppUI.Theme.Spacing.sm) {
-                        if let institutionKind {
-                            InstitutionIcon(kind: institutionKind, size: 22)
-                        }
-
-                        VStack(alignment: .leading, spacing: AppUI.Theme.Spacing.xxs) {
-                            Text(row.description)
-                                .font(AppUI.Theme.Typography.subheadlineEmphasis)
-                                .foregroundStyle(AppUI.Theme.Palette.ink)
-                                .lineLimit(1)
-                            if let memo = row.memo {
-                                Text(memo)
-                                    .font(AppUI.Theme.Typography.caption1)
-                                    .foregroundStyle(AppUI.Theme.Palette.muted)
-                                    .lineLimit(1)
-                            }
-                        }
-                    }
-                }
-
-                TableColumn("Situação") { row in
-                    statusCell(for: row)
-                }
-                .width(min: 80, ideal: 80, max: 100)
-
-                TableColumn("Valor") { row in
-                    Text(row.amount.formatted(.currency(code: "BRL")))
-                        .font(AppUI.Theme.Typography.moneySubheadline)
-                        .foregroundStyle(AppUI.Theme.Palette.ink)
-                        .frame(maxWidth: .infinity, alignment: .trailing)
-                }
-                .width(min: 140, ideal: 140, max: 160)
-            } filterBar: {
-                TransactionsSelectionRow(
-                    summary: selectionSummary,
-                    allSelected: allSelected,
-                    onToggleAll: toggleAll(to:)
-                )
+    private func negativeStatus(for row: CSVNegativePreviewRow) -> TransactionRow.Status {
+        switch row.raw.kind {
+        case .payment:
+            .init(label: "Pagamento", tint: .neutral)
+        case .balance:
+            if row.selected {
+                .init(label: "Saldo", tint: .info)
+            } else {
+                .init(label: "Saldo", tint: .neutral)
             }
         }
     }
@@ -199,10 +84,6 @@ private struct CSVTransactionsListCard: View {
         }
     }
 
-    private var selectionSummary: String {
-        "\(resolution.selectedCount) de \(eligibleSelectionCount) selecionadas"
-    }
-
     private func selectionBinding(for row: CSVTransactionTableRow) -> Binding<Bool>? {
         switch row.kind {
         case .purchase:
@@ -225,36 +106,155 @@ private struct CSVTransactionsListCard: View {
         }
     }
 
-    private func purchaseMemo(for row: CSVPreviewRow) -> String? {
-        let tipo = row.raw.tipo
-        guard !tipo.isEmpty, tipo != "Compra à vista" else { return nil }
-        return tipo
-    }
-
-    private func negativeMemo(for row: CSVNegativePreviewRow) -> String? {
-        switch row.raw.kind {
-        case .payment:
-            "Pagamento"
-        case .balance:
-            "Saldo"
-        }
-    }
-
-    private func negativeStatus(for row: CSVNegativePreviewRow) -> TransactionRow.Status {
-        switch row.raw.kind {
-        case .payment:
-            .init(label: "Pagamento", tint: .neutral)
-        case .balance:
-            if row.selected {
-                .init(label: "Saldo", tint: .info)
-            } else {
-                .init(label: "Saldo", tint: .neutral)
-            }
-        }
-    }
-
     private func negativeRow(for row: CSVTransactionTableRow) -> CSVNegativePreviewRow? {
         resolution.negativeRows.first(where: { $0.id == row.rowID })
+    }
+
+    private var tableRows: [CSVTransactionTableRow] {
+        let purchaseRows = resolution.rows.map {
+            CSVTransactionTableRow(
+                id: "purchase-\($0.id.uuidString)",
+                rowID: $0.id,
+                date: $0.raw.date,
+                description: $0.raw.description,
+                memo: purchaseMemo(for: $0),
+                amount: $0.raw.amount,
+                status: $0.isDuplicate ? .duplicate : nil,
+                kind: .purchase
+            )
+        }
+        let negativeRows = resolution.negativeRows.map {
+            CSVTransactionTableRow(
+                id: "negative-\($0.id.uuidString)",
+                rowID: $0.id,
+                date: $0.raw.date,
+                description: $0.raw.description,
+                memo: negativeMemo(for: $0),
+                amount: abs($0.raw.amount),
+                status: negativeStatus(for: $0),
+                kind: $0.raw.kind == .payment ? .payment : .balance
+            )
+        }
+
+        return (purchaseRows + negativeRows).sorted { lhs, rhs in
+            if lhs.date == rhs.date {
+                return lhs.id < rhs.id
+            }
+            return lhs.date < rhs.date
+        }
+    }
+
+    var body: some View {
+        AppUI.Form.Shell {
+            AppUI.Form.Header(
+                title: "Triagem",
+                subtitle: "Selecione a conta e as transações que serão importadas"
+            ) {
+                ImportWizardInlineSteps(steps: ImportWizardStage.presentedSteps(currentStage: .triage))
+            }
+
+            VStack(alignment: .leading, spacing: AppUI.Theme.Spacing.md) {
+                accountSection
+                transactionsSection
+            }
+            .padding(.horizontal, AppUI.Theme.Spacing.lg)
+            .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
+
+            AppUI.Form.Actions {
+                sidebarActions()
+            }
+        }
+        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
+    }
+
+    private var accountSection: some View {
+        VStack(alignment: .leading, spacing: AppUI.Theme.Spacing.xs) {
+            AppUI.Form.SectionHeader(title: "Conta de destino")
+
+            AppUI.Selector(
+                placeholder: "Selecione…",
+                options: store.state.creditCardAccounts.map {
+                    .init(id: $0.id, title: store.state.accountLabel(for: $0))
+                },
+                selection: Binding(
+                    get: { store.state.resolution.accountId },
+                    set: { store.send(.accountSelected($0)) }
+                ),
+                icon: "creditcard"
+            )
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+    }
+
+    private var transactionsSection: some View {
+        VStack(alignment: .leading, spacing: AppUI.Theme.Spacing.xs) {
+            AppUI.Form.SectionHeader(title: "Transações")
+
+            AppUI.Table(tableRows) {
+                TableColumn("") { row in
+                    selectionCell(for: row)
+                }
+                .width(min: 35, ideal: 35, max: 48)
+
+                TableColumn("Data") { row in
+                    Text(GranaDateFormat.fullDate(row.date))
+                        .font(AppUI.Theme.Typography.caption1)
+                        .foregroundStyle(AppUI.Theme.Palette.muted)
+                }
+                .width(min: 128, ideal: 148, max: 172)
+
+                TableColumn("Descrição") { row in
+                    HStack(spacing: AppUI.Theme.Spacing.sm) {
+                        if let institutionKind {
+                            InstitutionIcon(kind: institutionKind, size: 22)
+                        }
+
+                        VStack(alignment: .leading, spacing: AppUI.Theme.Spacing.xxs) {
+                            Text(row.description)
+                                .font(AppUI.Theme.Typography.subheadlineEmphasis)
+                                .foregroundStyle(AppUI.Theme.Palette.ink)
+                                .lineLimit(1)
+
+                            if let memo = row.memo {
+                                Text(memo)
+                                    .font(AppUI.Theme.Typography.caption1)
+                                    .foregroundStyle(AppUI.Theme.Palette.muted)
+                                    .lineLimit(1)
+                            }
+                        }
+                    }
+                }
+
+                TableColumn("Situação") { row in
+                    statusCell(for: row)
+                }
+                .width(min: 80, ideal: 80, max: 100)
+
+                TableColumn("Valor") { row in
+                    Text(row.amount.formatted(.currency(code: "BRL")))
+                        .font(AppUI.Theme.Typography.moneySubheadline)
+                        .foregroundStyle(AppUI.Theme.Palette.ink)
+                        .frame(maxWidth: .infinity, alignment: .trailing)
+                }
+                .width(min: 140, ideal: 140, max: 160)
+            }
+            .overlay(alignment: .topLeading) {
+                allRowsSelectionToggle
+                    .padding(.leading, AppUI.Theme.Spacing.md)
+                    .padding(.top, AppUI.Theme.Spacing.sm)
+            }
+        }
+        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
+    }
+
+    private var allRowsSelectionToggle: some View {
+        AppUI.Toggle(label: "", isOn: Binding(
+            get: { allSelected },
+            set: { toggleAll(to: $0) }
+        ))
+        .toggleStyle(.checkbox)
+        .labelsHidden()
+        .accessibilityLabel(allSelected ? "Desmarcar todas" : "Marcar todas")
     }
 }
 

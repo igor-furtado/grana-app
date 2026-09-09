@@ -23,7 +23,7 @@ struct ImportWizardStatusView<Actions: View>: View {
     }
 
     var body: some View {
-        AppUI.Wizard.Shell {
+        AppUI.Form.Shell {
             IllustratedStatusView(
                 title,
                 icon: icon,
@@ -39,5 +39,6 @@ struct ImportWizardStatusView<Actions: View>: View {
                 actions
             }
         }
+        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
     }
 }

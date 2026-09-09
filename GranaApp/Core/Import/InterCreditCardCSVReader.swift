@@ -356,7 +356,7 @@ struct InterCreditCardCSVReader {
         installmentCount: Int?
     ) -> String {
         let dateStr = isoDayFormatter.string(from: date)
-        let amountStr = NSDecimalNumber(decimal: amount).stringValue
+        let amountStr = String(Converters.decimalToCents(amount))
         let normalizedDescription = normalizeDescription(description).lowercased()
         let purchaseTypeValue = purchaseType?.rawValue ?? "unknown"
         let installmentPart = installmentIndex.map(String.init) ?? "-"
@@ -385,7 +385,7 @@ struct InterCreditCardCSVReader {
         let f = DateFormatter()
         f.dateFormat = "yyyy-MM-dd"
         f.locale = Locale(identifier: "en_US_POSIX")
-        f.timeZone = TimeZone.current
+        f.timeZone = TimeZone(secondsFromGMT: 0)
         return f
     }()
 }

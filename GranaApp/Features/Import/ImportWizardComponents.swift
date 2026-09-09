@@ -1,5 +1,16 @@
-import SwiftUI
 import AppUI
+import SwiftUI
+
+struct ImportWizardStep: Hashable {
+    let title: String
+    let state: State
+
+    enum State {
+        case completed
+        case current
+        case pending
+    }
+}
 
 enum ImportWizardStage: Int, CaseIterable {
     case triage
@@ -17,16 +28,16 @@ enum ImportWizardStage: Int, CaseIterable {
         }
     }
 
-    static func presentedSteps(currentStage: Self) -> [AppUI.Wizard.Step] {
+    static func presentedSteps(currentStage: Self) -> [ImportWizardStep] {
         allCases.map { stage in
-            AppUI.Wizard.Step(
+            ImportWizardStep(
                 title: stage.title,
                 state: stage.stepState(relativeTo: currentStage)
             )
         }
     }
 
-    private func stepState(relativeTo currentStage: Self) -> AppUI.Wizard.Step.State {
+    private func stepState(relativeTo currentStage: Self) -> ImportWizardStep.State {
         if rawValue < currentStage.rawValue {
             return .completed
         }
@@ -37,47 +48,88 @@ enum ImportWizardStage: Int, CaseIterable {
     }
 }
 
-struct ImportWizardSectionCard<Content: View>: View {
-    let title: String
-    let subtitle: String?
-    let trailing: AnyView?
-    @ViewBuilder var content: () -> Content
-
-    init(
-        title: String,
-        subtitle: String? = nil,
-        trailing: AnyView? = nil,
-        @ViewBuilder content: @escaping () -> Content
-    ) {
-        self.title = title
-        self.subtitle = subtitle
-        self.trailing = trailing
-        self.content = content
-    }
+struct ImportWizardInlineSteps: View {
+    let steps: [ImportWizardStep]
 
     var body: some View {
-        VStack(alignment: .leading, spacing: AppUI.Theme.Spacing.none) {
-            HStack(alignment: .top, spacing: AppUI.Theme.Spacing.sm) {
-                VStack(alignment: .leading, spacing: AppUI.Theme.Spacing.xxs) {
-                    Text(title)
-                        .font(AppUI.Theme.Typography.headline)
-                        .foregroundStyle(AppUI.Theme.Palette.ink)
-
-                    if let subtitle, !subtitle.isEmpty {
-                        Text(subtitle)
-                            .font(AppUI.Theme.Typography.caption1)
-                            .foregroundStyle(AppUI.Theme.Palette.muted)
-                    }
+        HStack(spacing: AppUI.Theme.Spacing.sm) {
+            ForEach(Array(steps.enumerated()), id: \.offset) { index, step in
+                if index > 0 {
+                    Rectangle()
+                        .fill(connectorColor(before: index))
+                        .frame(width: 28, height: 1)
                 }
 
-                Spacer(minLength: AppUI.Theme.Spacing.none)
-                trailing
+                stepView(step, index: index)
             }
-            .padding(AppUI.Theme.Spacing.md)
-
-            content()
         }
-        .granaSurface(.solid, cornerRadius: AppUI.Theme.Radius.card)
+        .accessibilityElement(children: .combine)
+        .accessibilityLabel(accessibilityLabel)
+    }
+
+    private func stepView(_ step: ImportWizardStep, index: Int) -> some View {
+        HStack(spacing: AppUI.Theme.Spacing.xs) {
+            ZStack {
+                Circle()
+                    .fill(fillColor(for: step.state))
+                    .frame(width: 24, height: 24)
+                Circle()
+                    .strokeBorder(strokeColor(for: step.state), lineWidth: 1.5)
+                    .frame(width: 24, height: 24)
+
+                if step.state == .completed {
+                    AppIcon(.completedStep, size: AppUI.Theme.IconSize.micro, weight: .bold)
+                        .foregroundStyle(AppUI.Theme.Palette.creamText)
+                } else {
+                    Text("\(index + 1)")
+                        .font(AppUI.Theme.Typography.footnoteEmphasis)
+                        .foregroundStyle(numberColor(for: step.state))
+                }
+            }
+
+            if step.state == .current {
+                Text(step.title)
+                    .font(AppUI.Theme.Typography.calloutEmphasis)
+                    .foregroundStyle(AppUI.Theme.Palette.ink)
+            }
+        }
+    }
+
+    private var accessibilityLabel: String {
+        steps.enumerated()
+            .map { index, step in "\(index + 1). \(step.title)" }
+            .joined(separator: ", ")
+    }
+
+    private func fillColor(for state: ImportWizardStep.State) -> Color {
+        switch state {
+        case .completed, .current:
+            AppUI.Theme.Palette.teal
+        case .pending:
+            .clear
+        }
+    }
+
+    private func strokeColor(for state: ImportWizardStep.State) -> Color {
+        switch state {
+        case .completed, .current:
+            AppUI.Theme.Palette.teal
+        case .pending:
+            AppUI.Theme.Palette.line
+        }
+    }
+
+    private func numberColor(for state: ImportWizardStep.State) -> Color {
+        switch state {
+        case .current:
+            AppUI.Theme.Palette.creamText
+        case .completed, .pending:
+            AppUI.Theme.Palette.muted
+        }
+    }
+
+    private func connectorColor(before index: Int) -> Color {
+        steps[index - 1].state == .completed ? AppUI.Theme.Palette.teal : AppUI.Theme.Palette.line
     }
 }
 

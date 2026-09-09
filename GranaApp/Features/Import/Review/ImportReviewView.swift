@@ -31,10 +31,19 @@ struct ImportReviewView: View {
             }
             .frame(minWidth: 700, minHeight: 600)
         case let .wizard(onBack):
-            AppUI.Wizard.Shell {
-                AppUI.Wizard.Layout(steps: ImportWizardStage.presentedSteps(currentStage: .review)) {
-                    content
-                } sidebarActions: {
+            AppUI.Form.Shell {
+                AppUI.Form.Header(
+                    title: "Revisão",
+                    subtitle: "Confira categorias e subcategorias antes da importação"
+                ) {
+                    ImportWizardInlineSteps(steps: ImportWizardStage.presentedSteps(currentStage: .review))
+                }
+
+                content
+                    .padding(.horizontal, AppUI.Theme.Spacing.lg)
+                    .frame(maxWidth: .infinity, maxHeight: .infinity)
+
+                AppUI.Form.Actions {
                     Button("Voltar") { onBack() }
                         .buttonStyle(GranaSecondaryButtonStyle())
                         .frame(maxWidth: .infinity)
@@ -50,6 +59,7 @@ struct ImportReviewView: View {
                         .frame(maxWidth: .infinity)
                 }
             }
+            .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
         }
     }
 
@@ -59,19 +69,6 @@ struct ImportReviewView: View {
             emptyState
         } else {
             AppUI.Table(tableRows) {
-                TableColumn("Status") { row in
-                    if row.needsAttention {
-                        ImportWizardTableStatusBadge(
-                            status: .init(label: "Não Classificado", tint: .warning)
-                        )
-                    } else {
-                        Text("Classificada")
-                            .font(AppUI.Theme.Typography.caption1Emphasis)
-                            .foregroundStyle(AppUI.Theme.Palette.tealDeep)
-                    }
-                }
-                .width(min: 132, ideal: 156, max: 180)
-
                 TableColumn("Data") { row in
                     Text(GranaDateFormat.fullDate(row.occurredAt))
                         .font(AppUI.Theme.Typography.caption1)
@@ -134,7 +131,6 @@ struct ImportReviewView: View {
                 amount: suggestion.transactionAmount,
                 categoryId: suggestion.categoryId,
                 subcategoryId: suggestion.subcategoryId,
-                needsAttention: ImportReviewOrdering.needsAttention(suggestion),
                 institutionKind: store.state.institutionKind(forAccountId: suggestion.transactionAccountId)
             )
         }
@@ -231,10 +227,6 @@ enum ImportReviewOrdering {
         orderedSuggestions(from: suggestions).map(\.index)
     }
 
-    static func needsAttention(_ suggestion: CategorizationSuggestion) -> Bool {
-        suggestion.source == .fallback || suggestion.originalCategorySlug == "nao-classificado"
-    }
-
     private static func orderedSuggestions(
         from suggestions: [CategorizationSuggestion]
     ) -> [(index: Int, suggestion: CategorizationSuggestion)] {
@@ -242,9 +234,6 @@ enum ImportReviewOrdering {
             (index: $0.offset, suggestion: $0.element)
         }
         return indexed.sorted { lhs, rhs in
-            if needsAttention(lhs.suggestion) != needsAttention(rhs.suggestion) {
-                return needsAttention(lhs.suggestion) && !needsAttention(rhs.suggestion)
-            }
             if lhs.suggestion.transactionOccurredAt == rhs.suggestion.transactionOccurredAt {
                 return lhs.index < rhs.index
             }
@@ -261,6 +250,5 @@ private struct ImportReviewTableRow: Identifiable {
     let amount: Decimal
     let categoryId: UUID
     let subcategoryId: UUID?
-    let needsAttention: Bool
     let institutionKind: InstitutionKind?
 }

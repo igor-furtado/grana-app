@@ -58,6 +58,7 @@ public enum Icon: CaseIterable {
     case info
     case unknown
     case completedSeal
+    case completedStep
     case invalidDate
     case invalidAmount
 
@@ -111,6 +112,7 @@ public enum Icon: CaseIterable {
         case .info: "info.circle"
         case .unknown: "questionmark.circle"
         case .completedSeal: "checkmark.seal"
+        case .completedStep: "checkmark"
         case .invalidDate: "calendar.badge.exclamationmark"
         case .invalidAmount: "dollarsign.circle.trianglebadge.exclamationmark"
         // Sidebar
@@ -124,6 +126,27 @@ public enum Icon: CaseIterable {
         case .sidebarDesignSystem: "paintpalette"
         case .sidebarProfile: "person.crop.circle"
         }
+    }
+}
+
+public struct AppIcon: View {
+    private let icon: Icon
+    private let size: CGFloat
+    private let weight: Font.Weight
+
+    public init(
+        _ icon: Icon,
+        size: CGFloat = Theme.IconSize.medium,
+        weight: Font.Weight = .regular
+    ) {
+        self.icon = icon
+        self.size = size
+        self.weight = weight
+    }
+
+    public var body: some View {
+        Image(systemName: icon.systemImage)
+            .font(.system(size: size, weight: weight))
     }
 }
 

@@ -12,18 +12,28 @@ struct ImportCategorizationView: View {
     }
 
     var body: some View {
-        AppUI.Wizard.Shell {
-            AppUI.Wizard.Layout(steps: ImportWizardStage.presentedSteps(currentStage: .classification)) {
-                loadingCard
-            } sidebarActions: {
+        AppUI.Form.Shell {
+            AppUI.Form.Header(
+                title: "Classificação",
+                subtitle: "Preparando sugestões para revisão"
+            ) {
+                ImportWizardInlineSteps(steps: ImportWizardStage.presentedSteps(currentStage: .classification))
+            }
+
+            loadingContent
+                .padding(.horizontal, AppUI.Theme.Spacing.lg)
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
+
+            AppUI.Form.Actions {
                 Button("Cancelar") { onCancel() }
                     .buttonStyle(GranaSecondaryButtonStyle())
                     .frame(maxWidth: .infinity)
             }
         }
+        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
     }
 
-    private var loadingCard: some View {
+    private var loadingContent: some View {
         VStack(spacing: AppUI.Theme.Spacing.lg) {
             ZStack {
                 Circle()
@@ -51,7 +61,6 @@ struct ImportCategorizationView: View {
         .padding(.horizontal, AppUI.Theme.Spacing.xxxl)
         .padding(.vertical, AppUI.Theme.Spacing.xxl)
         .frame(maxWidth: .infinity, maxHeight: .infinity)
-        .granaSurface(.subtle, cornerRadius: AppUI.Theme.Radius.hero)
     }
 
     @ViewBuilder

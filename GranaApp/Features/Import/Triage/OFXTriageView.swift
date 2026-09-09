@@ -15,27 +15,36 @@ struct OFXTriageView<SidebarActions: View>: View {
     }
 
     var body: some View {
-        AppUI.Wizard.Shell {
-            AppUI.Wizard.Layout(steps: ImportWizardStage.presentedSteps(currentStage: .triage)) {
-                VStack(spacing: AppUI.Theme.Spacing.md) {
-                    OFXTransactionsListCard(
-                        resolutions: Binding(
-                            get: { store.state.resolutions },
-                            set: { store.send(.resolutionsUpdated($0)) }
-                        ),
-                        selectedStatementID: $selectedStatementID,
-                        bankKind: { accountId in store.state.bankKind(for: accountId) }
-                    )
-                    .frame(maxHeight: .infinity)
+        AppUI.Form.Shell {
+            AppUI.Form.Header(
+                title: "Triagem",
+                subtitle: "Selecione a conta e as transações que serão importadas"
+            ) {
+                ImportWizardInlineSteps(steps: ImportWizardStage.presentedSteps(currentStage: .triage))
+            }
 
-                    if store.state.resolutions.indices.contains(selectedStatementIndex) {
-                        OFXAccountInfoCard(store: store, statementIndex: selectedStatementIndex)
-                    }
+            VStack(alignment: .leading, spacing: AppUI.Theme.Spacing.md) {
+                if store.state.resolutions.indices.contains(selectedStatementIndex) {
+                    OFXAccountInfoSection(store: store, statementIndex: selectedStatementIndex)
                 }
-            } sidebarActions: {
+
+                OFXTransactionsListSection(
+                    resolutions: Binding(
+                        get: { store.state.resolutions },
+                        set: { store.send(.resolutionsUpdated($0)) }
+                    ),
+                    selectedStatementID: $selectedStatementID,
+                    bankKind: { accountId in store.state.bankKind(for: accountId) }
+                )
+            }
+            .padding(.horizontal, AppUI.Theme.Spacing.lg)
+            .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
+
+            AppUI.Form.Actions {
                 sidebarActions()
             }
         }
+        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
         .onAppear {
             if selectedStatementID == nil {
                 selectedStatementID = store.state.resolutions.first?.id
@@ -50,7 +59,7 @@ struct OFXTriageView<SidebarActions: View>: View {
     }
 }
 
-private struct OFXAccountInfoCard: View {
+private struct OFXAccountInfoSection: View {
     @Bindable var store: StoreOf<OFXTriageFeature>
     let statementIndex: Int
 
@@ -59,26 +68,23 @@ private struct OFXAccountInfoCard: View {
     }
 
     var body: some View {
-        ImportWizardSectionCard(
-            title: "Conta de destino",
-            trailing: AnyView(
-                AppUI.Selector(
-                    placeholder: "Selecione…",
-                    options: store.state.availableAccounts.map {
-                        .init(id: $0.id, title: store.state.label(for: $0))
-                    },
-                    selection: Binding(
-                        get: { resolution?.accountId },
-                        set: { newValue in
-                            store.send(.accountSelected(statementIndex: statementIndex, accountId: newValue))
-                        }
-                    ),
-                    icon: "building.columns"
-                )
-                .labelsHidden()
-                .frame(maxWidth: .infinity, alignment: .leading)
+        VStack(alignment: .leading, spacing: AppUI.Theme.Spacing.xs) {
+            AppUI.Form.SectionHeader(title: "Conta de destino")
+
+            AppUI.Selector(
+                placeholder: "Selecione…",
+                options: store.state.availableAccounts.map {
+                    .init(id: $0.id, title: store.state.label(for: $0))
+                },
+                selection: Binding(
+                    get: { resolution?.accountId },
+                    set: { newValue in
+                        store.send(.accountSelected(statementIndex: statementIndex, accountId: newValue))
+                    }
+                ),
+                icon: "building.columns"
             )
-        ) {
+
             if let resolution {
                 HStack(spacing: AppUI.Theme.Spacing.md) {
                     ImportWizardInfoRow(label: "Banco") {
@@ -89,10 +95,9 @@ private struct OFXAccountInfoCard: View {
                         Text(resolution.ofxAccountLabel)
                     }
                 }
-                .padding(.horizontal, AppUI.Theme.Spacing.md)
-                .padding(.bottom, AppUI.Theme.Spacing.md)
             }
         }
+        .frame(maxWidth: .infinity, alignment: .leading)
     }
 }
 
@@ -113,7 +118,7 @@ private struct ImportWizardInfoRow<Content: View>: View {
     }
 }
 
-private struct OFXTransactionsListCard: View {
+private struct OFXTransactionsListSection: View {
     @Binding var resolutions: [OFXStatementResolution]
     @Binding var selectedStatementID: OFXStatementResolution.ID?
     let bankKind: (UUID?) -> InstitutionKind?
@@ -149,11 +154,6 @@ private struct OFXTransactionsListCard: View {
         }
     }
 
-    private var currentSelectedCount: Int {
-        guard let currentResolution else { return 0 }
-        return currentResolution.rows.filter(\.selected).count
-    }
-
     private var currentEligibleCount: Int {
         guard let currentResolution else { return 0 }
         return currentResolution.rows.filter { !$0.isDuplicate }.count
@@ -165,7 +165,20 @@ private struct OFXTransactionsListCard: View {
     }
 
     var body: some View {
-        ImportWizardSectionCard(title: "Transações") {
+        VStack(alignment: .leading, spacing: AppUI.Theme.Spacing.xs) {
+            AppUI.Form.SectionHeader(title: "Transações")
+
+            if resolutions.count > 1 {
+                AppUI.Selector(
+                    label: "Extrato",
+                    options: Array(resolutions.enumerated()).map { index, statement in
+                        .init(id: statement.id, title: tabLabel(for: index))
+                    },
+                    selection: selectedBinding,
+                    style: .segmented
+                )
+            }
+
             AppUI.Table(tableRows) {
                 TableColumn("") { row in
                     if let selection = selectionBinding(for: row.id) {
@@ -219,27 +232,24 @@ private struct OFXTransactionsListCard: View {
                         .frame(maxWidth: .infinity, alignment: .trailing)
                 }
                 .width(min: 140, ideal: 140, max: 160)
-            } filterBar: {
-                VStack(alignment: .leading, spacing: AppUI.Theme.Spacing.sm) {
-                    if resolutions.count > 1 {
-                        AppUI.Selector(
-                            label: "Extrato",
-                            options: Array(resolutions.enumerated()).map { index, statement in
-                                .init(id: statement.id, title: tabLabel(for: index))
-                            },
-                            selection: selectedBinding,
-                            style: .segmented
-                        )
-                    }
-
-                    TransactionsSelectionRow(
-                        summary: "\(currentSelectedCount) de \(currentEligibleCount) selecionadas",
-                        allSelected: allSelected,
-                        onToggleAll: toggleAll(to:)
-                    )
-                }
+            }
+            .overlay(alignment: .topLeading) {
+                allRowsSelectionToggle
+                    .padding(.leading, AppUI.Theme.Spacing.md)
+                    .padding(.top, AppUI.Theme.Spacing.sm)
             }
         }
+        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
+    }
+
+    private var allRowsSelectionToggle: some View {
+        AppUI.Toggle(label: "", isOn: Binding(
+            get: { allSelected },
+            set: { toggleAll(to: $0) }
+        ))
+        .toggleStyle(.checkbox)
+        .labelsHidden()
+        .accessibilityLabel(allSelected ? "Desmarcar todas" : "Marcar todas")
     }
 
     private var selectedBinding: Binding<OFXStatementResolution.ID?> {
