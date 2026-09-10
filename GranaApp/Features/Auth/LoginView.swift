@@ -67,7 +67,7 @@ struct LoginView: View {
                     await signInWithApple()
                 }
             } label: {
-                Label(appleButtonTitle, systemImage: "apple.logo")
+                Label(appleButtonTitle, systemImage: AppUI.Icon.apple.systemImage)
                     .frame(maxWidth: .infinity)
             }
             .buttonStyle(GranaPrimaryButtonStyle())
@@ -95,7 +95,7 @@ struct LoginView: View {
                     label: "E-mail",
                     text: $email,
                     placeholder: "voce@exemplo.com",
-                    leadingSystemImage: "envelope",
+                    leadingIcon: .email,
                     showsClearButton: true
                 )
                 .disabled(isBusy || isAwaitingOTP || isVerifyingOTP)
@@ -105,7 +105,7 @@ struct LoginView: View {
                         label: "Código",
                         text: $code,
                         placeholder: "123456",
-                        leadingSystemImage: "number",
+                        leadingIcon: .number,
                         font: AppUI.Theme.Typography.code,
                         textAlignment: .trailing
                     )

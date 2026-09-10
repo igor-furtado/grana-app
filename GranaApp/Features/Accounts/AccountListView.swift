@@ -62,7 +62,7 @@ struct AccountListView: View {
                     Button {
                         store.send(.editButtonTapped(item.id))
                     } label: {
-                        Image(systemName: AppUI.Icon.edit.systemImage)
+                        AppIcon(.edit)
                             .foregroundStyle(AppUI.Theme.Palette.muted)
                     }
                     .buttonStyle(.borderless)
@@ -84,7 +84,7 @@ struct AccountListView: View {
                     Button(role: .destructive) {
                         store.send(.deleteButtonTapped(item.id))
                     } label: {
-                        Image(systemName: AppUI.Icon.delete.systemImage)
+                        AppIcon(.delete)
                             .foregroundStyle(AppUI.Theme.Palette.muted)
                     }
                     .buttonStyle(.borderless)
@@ -106,14 +106,14 @@ private struct AccountListFilterBar: View {
             AppUI.Selector(
                 options: store.availableInstitutionNames.map { .init(id: $0, title: $0) },
                 selection: $store.institutionFilter,
-                icon: "building.columns"
+                icon: .sidebarInstitutions
             )
             .frame(width: 220, alignment: .leading)
 
             AppUI.TextField(
                 text: $store.searchText,
                 placeholder: "Buscar conta ou instituição",
-                leadingSystemImage: "magnifyingglass",
+                leadingIcon: .search,
                 showsClearButton: true,
                 font: AppUI.Theme.Typography.footnoteEmphasis,
                 textAlignment: .leading

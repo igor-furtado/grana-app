@@ -53,7 +53,7 @@ struct CreditCardFormView: View {
                     .init(id: $0, title: $0.displayName)
                 },
                 selection: $store.territorialScope,
-                icon: AppUI.Icon.territorialScope.systemImage
+                icon: .territorialScope
             )
             AppUI.Selector(
                 label: "Emissor",
@@ -62,7 +62,7 @@ struct CreditCardFormView: View {
                     .init(id: $0.id, title: $0.name)
                 },
                 selection: $store.institutionId,
-                icon: "building.columns"
+                icon: .sidebarInstitutions
             )
             AppUI.TextField(
                 label: "Apelido",
@@ -77,7 +77,7 @@ struct CreditCardFormView: View {
                         .init(id: $0, title: $0)
                     },
                     selection: $store.currency,
-                    icon: AppUI.Icon.currency.systemImage
+                    icon: .currency
                 )
             }
         } header: {
@@ -120,13 +120,13 @@ struct CreditCardFormView: View {
                 label: "Dia de fechamento",
                 options: (1 ... 31).map { .init(id: $0, title: "\($0)") },
                 selection: $store.statementClosingDay,
-                icon: "calendar"
+                icon: .calendar
             )
             AppUI.Selector(
                 label: "Dia de vencimento",
                 options: (1 ... 31).map { .init(id: $0, title: "\($0)") },
                 selection: $store.paymentDueDay,
-                icon: "calendar"
+                icon: .calendar
             )
         } header: {
             AppUI.Form.SectionHeader(title: "Ciclo da fatura")

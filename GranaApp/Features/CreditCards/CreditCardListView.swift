@@ -124,8 +124,7 @@ private struct CreditCardSelectorCard: View {
                     .foregroundStyle(AppUI.Theme.Palette.red)
             }
         } label: {
-            Image(systemName: AppUI.Icon.more.systemImage)
-                .font(.system(size: AppUI.Theme.IconSize.small, weight: .semibold))
+            AppIcon(.more, size: AppUI.Theme.IconSize.small, weight: .semibold)
                 .frame(width: 28, height: 28)
                 .background(
                     Circle().fill(AppUI.Theme.Palette.paper.opacity(0.95))
@@ -215,7 +214,7 @@ private struct CreditCardSelectorCard: View {
             .fill(AppUI.Theme.Palette.soft)
             .frame(width: 40, height: 40)
             .overlay {
-                Image(systemName: AppUI.Icon.sidebarCreditCards.systemImage)
+                AppIcon(.sidebarCreditCards)
                     .foregroundStyle(AppUI.Theme.Palette.muted)
             }
     }

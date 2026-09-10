@@ -82,7 +82,7 @@ private struct CategoriesLoadedView: View {
                         await store.send(.refresh).finish()
                     }
                 } label: {
-                    Label("Atualizar", systemImage: "arrow.clockwise")
+                    Label("Atualizar", systemImage: AppUI.Icon.refresh.systemImage)
                 }
                 .buttonStyle(GranaPrimaryButtonStyle())
                 .disabled(store.isLoading)
@@ -165,8 +165,7 @@ private struct CategoriesLoadedView: View {
 
     private var inspectorPlaceholder: some View {
         VStack(spacing: AppUI.Theme.Spacing.sm) {
-            Image(systemName: AppUI.Icon.sidebarCategories.systemImage)
-                .font(.system(size: AppUI.Theme.IconSize.large))
+            AppIcon(.sidebarCategories, size: AppUI.Theme.IconSize.large)
                 .foregroundStyle(.tertiary)
             Text("Selecione uma categoria")
                 .font(AppUI.Theme.Typography.callout)
@@ -280,8 +279,7 @@ private struct CategoryCard: View {
                 .symbolRenderingMode(.hierarchical)
                 .foregroundStyle(icon.color.gradient)
         } else {
-            Image(systemName: AppUI.Icon.warning.systemImage)
-                .font(.system(size: AppUI.Theme.IconSize.large, weight: .regular))
+            AppIcon(.warning, size: AppUI.Theme.IconSize.large)
                 .foregroundStyle(.tertiary)
         }
     }
@@ -332,8 +330,7 @@ private struct CategoryInspector: View {
                     .symbolRenderingMode(.hierarchical)
                     .foregroundStyle(icon.color.gradient)
             } else {
-                Image(systemName: AppUI.Icon.warning.systemImage)
-                    .font(.system(size: AppUI.Theme.IconSize.hero, weight: .regular))
+                AppIcon(.warning, size: AppUI.Theme.IconSize.hero)
                     .foregroundStyle(.tertiary)
             }
         }

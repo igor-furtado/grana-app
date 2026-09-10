@@ -269,8 +269,7 @@ struct ImportReviewView: View {
                 .font(AppUI.Theme.Typography.caption1)
                 .lineLimit(1)
                 .frame(maxWidth: .infinity, alignment: .leading)
-            Image(systemName: AppUI.Icon.sort.systemImage)
-                .font(.system(size: AppUI.Theme.IconSize.micro))
+            AppIcon(.sort, size: AppUI.Theme.IconSize.micro)
                 .foregroundStyle(.secondary)
         }
         .padding(.horizontal, AppUI.Theme.Spacing.xs)

@@ -156,7 +156,7 @@ struct CSVTriageView<SidebarActions: View>: View {
                     get: { store.state.resolution.accountId },
                     set: { store.send(.accountSelected($0)) }
                 ),
-                icon: "creditcard"
+                icon: .creditCard
             )
         }
         .frame(maxWidth: .infinity, alignment: .leading)

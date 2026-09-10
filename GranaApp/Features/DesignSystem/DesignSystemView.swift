@@ -1,5 +1,5 @@
-import SwiftUI
 import AppUI
+import SwiftUI
 
 struct DesignSystemView: View {
     @State private var selectedSection: AtlasSection = .foundations
@@ -743,12 +743,12 @@ private struct ButtonsShowcase: View {
                 Button("Secundário") {}
                     .buttonStyle(GranaSecondaryButtonStyle())
                 Button {} label: {
-                    Label("Salvar", systemImage: "tray.and.arrow.down.fill")
+                    Label("Salvar", systemImage: AppUI.Icon.save.systemImage)
                 }
                 .buttonStyle(GranaPrimaryButtonStyle())
 
                 Button {} label: {
-                    Label("Filtrar", systemImage: "line.3.horizontal.decrease.circle")
+                    Label("Filtrar", systemImage: AppUI.Icon.filter.systemImage)
                 }
                 .buttonStyle(GranaSecondaryButtonStyle())
             }
@@ -881,9 +881,9 @@ private struct SearchBarShowcase: View {
             label: "Campo monetário",
             text: $query,
             placeholder: "Descrição, categoria ou nota",
-            leadingSystemImage: "magnifyingglass",
+            leadingIcon: .search,
             showsClearButton: true,
-            textAlignment: .leading,
+            textAlignment: .leading
         )
         .frame(maxWidth: .infinity, alignment: .leading)
     }
@@ -905,7 +905,7 @@ private struct SelectorShowcase: View {
             selection: $selectedCategoryID,
             includesNoneOption: true,
             noneOptionTitle: "Sem categoria",
-            icon: "tag",
+            icon: .category
         )
         .frame(maxWidth: .infinity, alignment: .leading)
     }
@@ -1169,7 +1169,7 @@ private struct TransactionsTableExample: View {
                     label: "Transação",
                     text: $filterText,
                     placeholder: "Buscar descrição",
-                    leadingSystemImage: "magnifyingglass",
+                    leadingIcon: .search,
                     showsClearButton: true,
                     font: AppUI.Theme.Typography.footnoteEmphasis,
                     textAlignment: .leading

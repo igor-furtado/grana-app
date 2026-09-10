@@ -1,5 +1,5 @@
-import SwiftUI
 import AppUI
+import SwiftUI
 
 struct AppNavigationRail: View {
     let selection: AppSection
@@ -43,8 +43,7 @@ struct AppNavigationRail: View {
         return Button {
             onSelect(section)
         } label: {
-            Image(systemName: section.icon.systemImage)
-                .font(.system(size: AppUI.Theme.IconSize.medium, weight: .semibold))
+            AppIcon(section.icon, size: AppUI.Theme.IconSize.medium, weight: .semibold)
                 .foregroundStyle(isSelected ? AppUI.Theme.Palette.creamText : AppUI.Theme.Palette.muted)
                 .frame(width: 48, height: 48)
                 .background {

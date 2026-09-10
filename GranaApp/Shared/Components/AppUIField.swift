@@ -2,20 +2,20 @@ import SwiftUI
 
 public struct Field<TrailingContent: View>: View {
     private let label: String?
-    private let leadingSystemImage: String?
+    private let leadingIcon: Icon?
     private let errorMessage: String?
     private let minHeight: CGFloat
     private let trailing: () -> TrailingContent
 
     public init(
         label: String? = nil,
-        leadingSystemImage: String? = nil,
+        leadingIcon: Icon? = nil,
         errorMessage: String? = nil,
         minHeight: CGFloat = 40,
         @ViewBuilder trailing: @escaping () -> TrailingContent
     ) {
         self.label = label
-        self.leadingSystemImage = leadingSystemImage
+        self.leadingIcon = leadingIcon
         self.errorMessage = errorMessage
         self.minHeight = minHeight
         self.trailing = trailing
@@ -24,8 +24,8 @@ public struct Field<TrailingContent: View>: View {
     public var body: some View {
         VStack(alignment: .leading, spacing: Theme.Spacing.xxs) {
             HStack(alignment: .center, spacing: Theme.Spacing.lg) {
-                if let leadingSystemImage {
-                    leadingIcon(systemName: leadingSystemImage)
+                if let leadingIcon {
+                    leadingIconView(leadingIcon)
                 }
 
                 if let label = normalizedLabel {
@@ -72,9 +72,8 @@ public struct Field<TrailingContent: View>: View {
         errorMessage?.nilIfBlank
     }
 
-    private func leadingIcon(systemName: String) -> some View {
-        Image(systemName: systemName)
-            .font(.system(size: Theme.IconSize.small, weight: .semibold))
+    private func leadingIconView(_ icon: Icon) -> some View {
+        AppIcon(icon, size: Theme.IconSize.small, weight: .semibold)
             .foregroundStyle(Theme.Palette.tealDeep)
     }
 }
@@ -90,7 +89,7 @@ private struct FieldPreview: View {
         AppUIPreviewSurface(title: "Field") {
             VStack(alignment: .leading, spacing: Theme.Spacing.md) {
                 Field(
-                    leadingSystemImage: Icon.sidebarInstitutions.systemImage
+                    leadingIcon: .sidebarInstitutions
                 ) {
                     Text("Banco Inter")
                         .font(Theme.Typography.bodyEmphasis)
@@ -98,7 +97,7 @@ private struct FieldPreview: View {
                 }
 
                 Field(
-                    leadingSystemImage: Icon.edit.systemImage,
+                    leadingIcon: .edit,
                     errorMessage: "O campo não pode ficar vazio."
                 ) {
                     Text("Compra do mês")

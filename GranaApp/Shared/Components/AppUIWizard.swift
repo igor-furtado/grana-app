@@ -97,7 +97,6 @@ private extension Wizard {
             .granaSurface(.solid, cornerRadius: Theme.Radius.card)
         }
 
-        @ViewBuilder
         private func stepRow(_ step: Step, index: Int) -> some View {
             HStack(alignment: .center, spacing: Theme.Spacing.sm) {
                 ZStack {
@@ -109,8 +108,7 @@ private extension Wizard {
                         .frame(width: 24, height: 24)
 
                     if step.state == .completed {
-                        Image(systemName: "checkmark")
-                            .font(.system(size: Theme.IconSize.micro, weight: .bold))
+                        AppIcon(.completedStep, size: Theme.IconSize.micro, weight: .bold)
                             .foregroundStyle(Theme.Palette.creamText)
                     } else {
                         Text("\(index + 1)")

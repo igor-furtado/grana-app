@@ -59,13 +59,13 @@ struct ProfileView: View {
                     identityCard(session)
                     infoSection(
                         title: "Sessão",
-                        icon: "lock.shield",
+                        icon: .security,
                         rows: sessionRows(for: session)
                     )
                     accessLinkingSection(session)
                     infoSection(
                         title: "Backend",
-                        icon: AppUI.Icon.sidebarInstitutions.systemImage,
+                        icon: .sidebarInstitutions,
                         rows: [backendRow]
                     )
                 }
@@ -133,13 +133,12 @@ struct ProfileView: View {
 
     private func infoSection(
         title: String,
-        icon: String,
+        icon: AppUI.Icon,
         rows: [ProfileRow]
     ) -> some View {
         VStack(alignment: .leading, spacing: AppUI.Theme.Spacing.md) {
             HStack(spacing: AppUI.Theme.Spacing.xs) {
-                Image(systemName: icon)
-                    .font(.system(size: AppUI.Theme.IconSize.medium))
+                AppIcon(icon, size: AppUI.Theme.IconSize.medium)
                     .foregroundStyle(AppUI.Theme.Palette.tealDeep)
 
                 Text(title)
@@ -182,8 +181,7 @@ struct ProfileView: View {
     private func accessLinkingSection(_ session: AuthSessionContext) -> some View {
         VStack(alignment: .leading, spacing: AppUI.Theme.Spacing.md) {
             HStack(spacing: AppUI.Theme.Spacing.xs) {
-                Image(systemName: "person.badge.key")
-                    .font(.system(size: AppUI.Theme.IconSize.medium))
+                AppIcon(.access, size: AppUI.Theme.IconSize.medium)
                     .foregroundStyle(AppUI.Theme.Palette.tealDeep)
 
                 Text("Métodos de acesso")
@@ -205,7 +203,7 @@ struct ProfileView: View {
                 Button {
                     linkAppleAccess()
                 } label: {
-                    Label("Vincular Apple", systemImage: "apple.logo")
+                    Label("Vincular Apple", systemImage: AppUI.Icon.apple.systemImage)
                         .frame(maxWidth: .infinity)
                 }
                 .buttonStyle(GranaSecondaryButtonStyle())
@@ -250,8 +248,7 @@ struct ProfileView: View {
             Circle()
                 .fill(AppUI.Theme.brandGradient())
 
-            Image(systemName: AppUI.Icon.sidebarProfile.systemImage)
-                .font(.system(size: AppUI.Theme.IconSize.large, weight: .semibold))
+            AppIcon(.sidebarProfile, size: AppUI.Theme.IconSize.large, weight: .semibold)
                 .foregroundStyle(AppUI.Theme.Palette.creamText)
         }
         .frame(width: 64, height: 64)

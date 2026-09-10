@@ -56,7 +56,7 @@ struct AccountFormView: View {
                     .init(id: $0, title: $0.displayName)
                 },
                 selection: $store.type,
-                icon: AppUI.Icon.accountType.systemImage
+                icon: .accountType
             )
             AppUI.Selector(
                 label: "Abrangência",
@@ -64,7 +64,7 @@ struct AccountFormView: View {
                     .init(id: $0, title: $0.displayName)
                 },
                 selection: $store.territorialScope,
-                icon: AppUI.Icon.territorialScope.systemImage
+                icon: .territorialScope
             )
             AppUI.Selector(
                 label: "Instituição financeira",
@@ -73,7 +73,7 @@ struct AccountFormView: View {
                     .init(id: $0.id, title: $0.name)
                 },
                 selection: $store.institutionId,
-                icon: "building.columns"
+                icon: .sidebarInstitutions
             )
             AppUI.TextField(
                 label: "Apelido",
@@ -88,7 +88,7 @@ struct AccountFormView: View {
                         .init(id: $0, title: $0)
                     },
                     selection: $store.currency,
-                    icon: AppUI.Icon.currency.systemImage
+                    icon: .currency
                 )
             }
         } header: {
@@ -149,7 +149,7 @@ struct AccountFormView: View {
                     .font(AppUI.Theme.Typography.callout)
                     .foregroundStyle(.danger)
             } icon: {
-                Image(systemName: "exclamationmark.triangle.fill")
+                AppIcon(.warningFilled)
                     .foregroundStyle(.danger)
             }
         } header: {

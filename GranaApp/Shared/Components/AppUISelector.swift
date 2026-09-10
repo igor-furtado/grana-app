@@ -23,7 +23,7 @@ public struct Selector<ID: Hashable>: View {
     private let options: [SelectorOption<ID>]
     private let includesNoneOption: Bool
     private let noneOptionTitle: String
-    private let icon: String
+    private let icon: Icon?
     private let style: Style
     private let errorMessage: String?
     private let selectedID: () -> ID?
@@ -36,7 +36,7 @@ public struct Selector<ID: Hashable>: View {
         selection: Binding<ID?>,
         includesNoneOption: Bool = false,
         noneOptionTitle: String = "Nenhum",
-        icon: String = "tag",
+        icon: Icon? = .category,
         style: Style = .menu,
         errorMessage: String? = nil
     ) {
@@ -56,7 +56,7 @@ public struct Selector<ID: Hashable>: View {
         label: String? = nil,
         options: [SelectorOption<ID>],
         selection: Binding<ID>,
-        icon: String = "tag",
+        icon: Icon? = .category,
         style: Style = .menu,
         errorMessage: String? = nil
     ) {
@@ -151,7 +151,7 @@ public struct Selector<ID: Hashable>: View {
 
 private struct MenuField<ID: Hashable>: View {
     let label: String?
-    let icon: String
+    let icon: Icon?
     let errorMessage: String?
     let options: [SelectorOption<ID?>]
     let selectedTitle: String
@@ -175,7 +175,7 @@ private struct MenuField<ID: Hashable>: View {
         } label: {
             Field(
                 label: label,
-                leadingSystemImage: icon,
+                leadingIcon: icon,
                 errorMessage: errorMessage
             ) {
                 valueLabel
@@ -207,8 +207,7 @@ private struct MenuField<ID: Hashable>: View {
                     )
             }
 
-            Image(systemName: "chevron.down")
-                .font(.system(size: Theme.IconSize.micro, weight: .semibold))
+            AppIcon(.dropdown, size: Theme.IconSize.micro, weight: .semibold)
                 .foregroundStyle(Theme.Palette.muted)
         }
         .frame(maxWidth: .infinity, alignment: .trailing)
@@ -264,7 +263,7 @@ private struct SelectorPreview: View {
                     options: categoryOptions,
                     selection: $selectedCategory,
                     includesNoneOption: true,
-                    icon: Icon.sidebarCategories.systemImage
+                    icon: .sidebarCategories
                 )
 
                 Selector(

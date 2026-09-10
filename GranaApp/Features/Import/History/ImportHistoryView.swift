@@ -282,14 +282,14 @@ private struct ImportHistoryFilterBar: View {
             AppUI.Selector(
                 options: institutionOptions.map { .init(id: $0, title: $0) },
                 selection: $institutionFilter,
-                icon: "building.columns"
+                icon: .sidebarInstitutions
             )
             .frame(width: 220, alignment: .leading)
 
             AppUI.TextField(
                 text: $filenameFilter,
                 placeholder: "Buscar arquivo",
-                leadingSystemImage: "magnifyingglass",
+                leadingIcon: .search,
                 showsClearButton: true,
                 font: AppUI.Theme.Typography.footnoteEmphasis,
                 textAlignment: .leading
@@ -299,7 +299,7 @@ private struct ImportHistoryFilterBar: View {
             AppUI.TextField(
                 text: $accountFilter,
                 placeholder: "Buscar conta",
-                leadingSystemImage: "magnifyingglass",
+                leadingIcon: .search,
                 showsClearButton: true,
                 font: AppUI.Theme.Typography.footnoteEmphasis,
                 textAlignment: .leading

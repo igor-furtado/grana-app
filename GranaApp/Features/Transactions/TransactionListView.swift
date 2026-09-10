@@ -129,7 +129,7 @@ struct TransactionListView: View {
             Button {
                 store.send(.editButtonTapped(transaction))
             } label: {
-                Image(systemName: AppUI.Icon.edit.systemImage)
+                AppIcon(.edit)
                     .foregroundStyle(AppUI.Theme.Palette.muted)
             }
             .buttonStyle(.borderless)
@@ -139,7 +139,7 @@ struct TransactionListView: View {
             Button(role: .destructive) {
                 store.send(.deleteButtonTapped(transaction))
             } label: {
-                Image(systemName: AppUI.Icon.delete.systemImage)
+                AppIcon(.delete)
                     .foregroundStyle(AppUI.Theme.Palette.muted)
             }
             .buttonStyle(.borderless)
@@ -254,7 +254,7 @@ private struct TransactionsFilterBar: View {
             AppUI.TextField(
                 text: $searchText,
                 placeholder: "Descrição, categoria ou conta",
-                leadingSystemImage: "magnifyingglass",
+                leadingIcon: .search,
                 showsClearButton: true,
                 font: AppUI.Theme.Typography.subheadlineEmphasis,
                 textAlignment: .leading
@@ -266,7 +266,7 @@ private struct TransactionsFilterBar: View {
                 selection: bankSelection,
                 includesNoneOption: true,
                 noneOptionTitle: "Todas instituições",
-                icon: AppUI.Icon.sidebarAccounts.systemImage
+                icon: .sidebarAccounts
             )
             .frame(maxWidth: .infinity, alignment: .leading)
 
@@ -275,21 +275,21 @@ private struct TransactionsFilterBar: View {
                 selection: categorySelection,
                 includesNoneOption: true,
                 noneOptionTitle: "Todas categorias",
-                icon: AppUI.Icon.sidebarCategories.systemImage
+                icon: .sidebarCategories
             )
             .frame(maxWidth: .infinity, alignment: .leading)
 
             AppUI.Selector(
                 options: TransactionPeriodFilter.allCases.map { .init(id: $0, title: $0.name) },
                 selection: periodSelection,
-                icon: AppUI.Icon.sidebarAccounts.systemImage
+                icon: .calendar
             )
             .frame(maxWidth: .infinity, alignment: .leading)
 
             AppUI.Selector(
                 options: TransactionKindFilter.allCases.map { .init(id: $0, title: $0.name) },
                 selection: kindSelection,
-                icon: "line.3.horizontal.decrease.circle"
+                icon: .filter
             )
             .frame(maxWidth: .infinity, alignment: .leading)
 

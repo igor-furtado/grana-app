@@ -31,6 +31,12 @@ public enum Icon: CaseIterable {
     case copy
     case close
     case signOut
+    case refresh
+    case save
+    case filter
+    case search
+    case dropdown
+    case clearText
 
     // MARK: - Métricas / dashboard
 
@@ -64,6 +70,8 @@ public enum Icon: CaseIterable {
     case completedStep
     case invalidDate
     case invalidAmount
+    case warningFilled
+    case access
 
     // MARK: - Sidebar / Seções
 
@@ -76,6 +84,19 @@ public enum Icon: CaseIterable {
     case sidebarInstitutions
     case sidebarDesignSystem
     case sidebarProfile
+
+    // MARK: - Formulários / Campos
+
+    case category
+    case subcategory
+    case transfer
+    case calendar
+    case number
+    case email
+    case security
+    case apple
+    case statement
+    case creditCard
 
     /// Nome estável do caso para catálogos e telas de referência.
     public var catalogTitle: String {
@@ -99,6 +120,12 @@ public enum Icon: CaseIterable {
         case .copy: "doc.on.doc"
         case .close: "xmark"
         case .signOut: "rectangle.portrait.and.arrow.right"
+        case .refresh: "arrow.clockwise"
+        case .save: "tray.and.arrow.down.fill"
+        case .filter: "line.3.horizontal.decrease.circle"
+        case .search: "magnifyingglass"
+        case .dropdown: "chevron.down"
+        case .clearText: "xmark.circle.fill"
         // Métricas
         case .balance: "wallet.pass"
         case .expenseFlow: "arrow.down.right.circle"
@@ -121,6 +148,8 @@ public enum Icon: CaseIterable {
         case .completedStep: "checkmark"
         case .invalidDate: "calendar.badge.exclamationmark"
         case .invalidAmount: "dollarsign.circle.trianglebadge.exclamationmark"
+        case .warningFilled: "exclamationmark.triangle.fill"
+        case .access: "person.badge.key"
         // Sidebar
         case .sidebarDashboard: "chart.pie"
         case .sidebarTransactions: "list.bullet"
@@ -131,6 +160,17 @@ public enum Icon: CaseIterable {
         case .sidebarInstitutions: "building.columns"
         case .sidebarDesignSystem: "paintpalette"
         case .sidebarProfile: "person.crop.circle"
+        // Formulários / Campos
+        case .category: "tag"
+        case .subcategory: "square.grid.2x2"
+        case .transfer: "arrow.left.arrow.right"
+        case .calendar: "calendar"
+        case .number: "number"
+        case .email: "envelope"
+        case .security: "lock.shield"
+        case .apple: "apple.logo"
+        case .statement: "tray"
+        case .creditCard: "creditcard"
         }
     }
 }

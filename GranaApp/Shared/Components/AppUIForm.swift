@@ -134,7 +134,7 @@ public enum Form {
                     .font(Theme.Typography.callout)
                     .foregroundStyle(.danger)
             } icon: {
-                Image(systemName: "exclamationmark.triangle.fill")
+                AppIcon(.warningFilled)
                     .foregroundStyle(.danger)
             }
         }

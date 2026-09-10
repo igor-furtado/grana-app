@@ -122,13 +122,13 @@ struct TransactionFormView: View {
                 label: "Conta",
                 options: accountOptions,
                 selection: $store.accountId,
-                icon: AppUI.Icon.sidebarAccounts.systemImage
+                icon: .sidebarAccounts
             )
             AppUI.Selector(
                 label: "Categoria",
                 options: categoryOptions,
                 selection: $store.categoryId,
-                icon: "tag"
+                icon: .category
             )
 
             if showsSubcategoryRow {
@@ -138,7 +138,7 @@ struct TransactionFormView: View {
                     selection: $store.subcategoryId,
                     includesNoneOption: true,
                     noneOptionTitle: "Sem subcategoria",
-                    icon: "square.grid.2x2"
+                    icon: .subcategory
                 )
             }
 
@@ -149,7 +149,7 @@ struct TransactionFormView: View {
                     selection: $store.destinationAccountId,
                     includesNoneOption: true,
                     noneOptionTitle: "Selecionar depois",
-                    icon: "arrow.left.arrow.right"
+                    icon: .transfer
                 )
             }
         } header: {
@@ -357,7 +357,7 @@ private struct InstallmentStepperField: View {
     let range: ClosedRange<Int>
 
     var body: some View {
-        AppUI.Field(label: label, leadingSystemImage: "number") {
+        AppUI.Field(label: label, leadingIcon: .number) {
             HStack(spacing: AppUI.Theme.Spacing.sm) {
                 Text("\(value)")
                     .font(AppUI.Theme.Typography.bodyEmphasis)

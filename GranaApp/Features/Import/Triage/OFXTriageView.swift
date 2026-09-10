@@ -81,7 +81,7 @@ private struct OFXAccountInfoSection: View {
                         store.send(.accountSelected(statementIndex: statementIndex, accountId: newValue))
                     }
                 ),
-                icon: "building.columns"
+                icon: .sidebarInstitutions
             )
         }
         .frame(maxWidth: .infinity, alignment: .leading)

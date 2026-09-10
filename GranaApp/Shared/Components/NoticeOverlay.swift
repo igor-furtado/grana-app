@@ -1,5 +1,5 @@
-import SwiftUI
 import AppUI
+import SwiftUI
 
 /// Overlay global de toasts. Plugado uma única vez na raiz da árvore
 /// (`ContentView`). Observa o `NoticeCenter.shared` e renderiza um stack de
@@ -69,8 +69,7 @@ struct NoticeCard: View {
             Spacer(minLength: AppUI.Theme.Spacing.none)
 
             Button(action: onDismiss) {
-                Image(systemName: "xmark")
-                    .font(.system(size: AppUI.Theme.IconSize.micro, weight: .bold))
+                AppIcon(.close, size: AppUI.Theme.IconSize.micro, weight: .bold)
                     .foregroundStyle(AppUI.Theme.Palette.muted)
                     .padding(AppUI.Theme.Spacing.xs)
                     .contentShape(Rectangle())

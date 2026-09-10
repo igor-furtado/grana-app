@@ -43,8 +43,7 @@ struct ImportCategorizationView: View {
                     .strokeBorder(AppUI.Theme.Palette.teal.opacity(0.18), lineWidth: 1)
                     .frame(width: 112, height: 112)
 
-                Image(systemName: AppUI.Icon.completedSeal.systemImage)
-                    .font(.system(size: AppUI.Theme.IconSize.hero, weight: .regular))
+                AppIcon(.completedSeal, size: AppUI.Theme.IconSize.hero)
                     .foregroundStyle(AppUI.Theme.Palette.tealDeep)
             }
 

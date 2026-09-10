@@ -82,8 +82,7 @@ struct CreditCardStatementsView: View {
         HStack {
             Spacer()
             VStack(spacing: AppUI.Theme.Spacing.xs) {
-                Image(systemName: "tray")
-                    .font(.system(size: AppUI.Theme.IconSize.medium))
+                AppIcon(.statement, size: AppUI.Theme.IconSize.medium)
                     .foregroundStyle(.secondary)
                 Text("Sem lançamentos nesta fatura")
                     .font(AppUI.Theme.Typography.callout)
@@ -415,8 +414,7 @@ private struct StatementCycleCard: View {
                 Spacer()
                 if let onEditDates {
                     Button(action: onEditDates) {
-                        Image(systemName: AppUI.Icon.edit.systemImage)
-                            .font(.system(size: AppUI.Theme.IconSize.small, weight: .semibold))
+                        AppIcon(.edit, size: AppUI.Theme.IconSize.small, weight: .semibold)
                     }
                     .buttonStyle(.plain)
                     .foregroundStyle(AppUI.Theme.Palette.muted)

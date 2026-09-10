@@ -5,7 +5,7 @@ public struct TextField: View {
     @Binding private var text: String
     private let placeholder: String?
     private let errorMessage: String?
-    private let leadingSystemImage: String?
+    private let leadingIcon: Icon?
     private let showsClearButton: Bool
     private let font: Font
     private let textAlignment: TextAlignment
@@ -15,7 +15,7 @@ public struct TextField: View {
         text: Binding<String>,
         placeholder: String? = nil,
         errorMessage: String? = nil,
-        leadingSystemImage: String? = nil,
+        leadingIcon: Icon? = nil,
         showsClearButton: Bool = false,
         font: Font = Theme.Typography.body,
         textAlignment: TextAlignment = .leading
@@ -24,7 +24,7 @@ public struct TextField: View {
         _text = text
         self.placeholder = placeholder
         self.errorMessage = errorMessage
-        self.leadingSystemImage = leadingSystemImage
+        self.leadingIcon = leadingIcon
         self.showsClearButton = showsClearButton
         self.font = font
         self.textAlignment = textAlignment
@@ -33,8 +33,8 @@ public struct TextField: View {
     public var body: some View {
         Field(
             label: label,
-            leadingSystemImage: leadingSystemImage,
-            errorMessage: errorMessage,
+            leadingIcon: leadingIcon,
+            errorMessage: errorMessage
         ) {
             HStack(spacing: Theme.Spacing.sm) {
                 SwiftUI.TextField(
@@ -63,7 +63,7 @@ public struct TextField: View {
         Button {
             text = ""
         } label: {
-            Image(systemName: "xmark.circle.fill")
+            AppIcon(.clearText)
                 .foregroundStyle(Theme.Palette.muted)
         }
         .buttonStyle(.plain)
@@ -81,7 +81,7 @@ private struct TextFieldPreview: View {
                     label: "Nome",
                     text: $name,
                     placeholder: "Ex.: Nubank",
-                    leadingSystemImage: Icon.sidebarAccounts.systemImage,
+                    leadingIcon: .sidebarAccounts,
                     showsClearButton: true
                 )
 

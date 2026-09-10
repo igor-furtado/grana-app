@@ -39,8 +39,7 @@ struct StatementListView: View {
 
     private var emptyView: some View {
         VStack(spacing: AppUI.Theme.Spacing.xs) {
-            Image(systemName: "tray")
-                .font(.system(size: AppUI.Theme.IconSize.medium))
+            AppIcon(.statement, size: AppUI.Theme.IconSize.medium)
                 .foregroundStyle(AppUI.Theme.Palette.muted)
             Text("Sem lançamentos nesta fatura")
                 .font(AppUI.Theme.Typography.callout)
@@ -114,8 +113,7 @@ struct StatementListView: View {
             .fill(AppUI.Theme.Palette.soft)
             .frame(width: 28, height: 28)
             .overlay {
-                Image(systemName: "questionmark")
-                    .font(.system(size: AppUI.Theme.IconSize.small))
+                AppIcon(.unknown, size: AppUI.Theme.IconSize.small)
                     .foregroundStyle(AppUI.Theme.Palette.muted)
             }
     }
