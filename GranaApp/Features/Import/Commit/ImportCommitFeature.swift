@@ -48,6 +48,10 @@ struct ImportCommitFeature {
                 return .send(.delegate(.completed(result)))
 
             case let .commitResponse(.failure(error)):
+                guard !AppErrorPresentation.isExpectedCancellation(error) else {
+                    state.status = .idle
+                    return .none
+                }
                 let message = error.localizedDescription
                 state.status = .failed(message: message)
                 return .run { send in

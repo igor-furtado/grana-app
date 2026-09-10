@@ -21,7 +21,6 @@ struct ImportTriageView: View {
                     get: { csvStore.state.resolution },
                     set: { csvStore.send(.resolutionUpdated($0)) }
                 ),
-                institutionKind: csvStore.state.bankKind(for: csvStore.state.resolution.accountId),
                 onNegativeSelectionChanged: { rowId, isSelected in
                     csvStore.send(.negativeSelectionChanged(rowId: rowId, isSelected: isSelected))
                 },

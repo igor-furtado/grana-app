@@ -101,6 +101,8 @@ struct ImportFeatureTests {
             $0.pendingDelete = nil
         }
 
+        await store.receive(.delegate(.financialDataChanged))
+
         await store.receive(.refresh) {
             $0.isLoading = true
         }
@@ -109,6 +111,55 @@ struct ImportFeatureTests {
             $0.snapshot = .empty
             $0.isLoading = false
             $0.hasLoaded = true
+        }
+    }
+
+    @Test("Desfazer lote no histórico sinaliza dados financeiros alterados")
+    func historyUndoSignalsFinancialDataChangedFromImportFeature() async {
+        let batchId = UUID()
+        let accountId = UUID()
+        let importedAt = Date(timeIntervalSince1970: 1_787_970_600)
+        let batch = ImportBatch(
+            id: batchId,
+            sourceFilename: "fatura-inter-2024-08.csv",
+            accountId: accountId,
+            rowCount: 70,
+            importedAt: importedAt,
+            createdAt: importedAt,
+            updatedAt: importedAt
+        )
+        let initialState = ImportFeature.State(
+            history: ImportHistoryFeature.State(),
+            wizard: nil
+        )
+        let store = TestStore(initialState: initialState) {
+            ImportFeature()
+        } withDependencies: {
+            $0.importHistoryClient.undo = { undoBatchId in
+                #expect(undoBatchId == batchId)
+            }
+            $0.importHistoryClient.loadSnapshot = { .empty }
+        }
+
+        await store.send(.history(.undoButtonTapped(batch))) {
+            $0.history.pendingDelete = batch
+        }
+
+        await store.send(.history(.deleteConfirmed)) {
+            $0.history.pendingDelete = nil
+        }
+
+        await store.receive(.history(.delegate(.financialDataChanged)))
+        await store.receive(.delegate(.financialDataChanged))
+
+        await store.receive(.history(.refresh)) {
+            $0.history.isLoading = true
+        }
+
+        await store.receive(.history(.snapshotLoaded(.success(.empty)))) {
+            $0.history.snapshot = .empty
+            $0.history.isLoading = false
+            $0.history.hasLoaded = true
         }
     }
 
@@ -230,25 +281,31 @@ struct ImportFeatureTests {
         #expect(input.rows.first?.amount == Decimal(string: "12.34"))
     }
 
-    @Test("CSV conta saldos selecionados na triagem")
-    func csvResolutionCountsSelectedBalances() {
-        let skipped = InterCreditCardCSVReader.SkippedRow(
+    @Test("CSV conta negativos selecionados na triagem")
+    func csvResolutionCountsSelectedNegatives() {
+        let balance = InterCreditCardCSVReader.SkippedRow(
             date: Date(),
             description: "CREDITO FATURA",
             amount: -10,
             kind: .balance
+        )
+        let payment = InterCreditCardCSVReader.SkippedRow(
+            date: Date(),
+            description: "PAGAMENTO FATURA",
+            amount: -20,
+            kind: .payment
         )
         let resolution = CSVStatementResolution(
             sourceFilename: "fatura.csv",
             accountId: UUID(),
             rows: [],
             negativeRows: [
-                CSVNegativePreviewRow(raw: skipped, selected: true),
-                CSVNegativePreviewRow(raw: skipped, selected: false),
+                CSVNegativePreviewRow(raw: balance, selected: true),
+                CSVNegativePreviewRow(raw: payment, selected: true),
             ]
         )
 
-        #expect(resolution.selectedCount == 1)
+        #expect(resolution.selectedCount == 2)
     }
 
     @Test("CSV classifica negativo não pagamento como saldo")
@@ -337,5 +394,179 @@ struct ImportFeatureTests {
         #expect(components.year == 2026)
         #expect(components.month == 3)
         #expect(components.day == 31)
+    }
+
+    @Test("Wizard OFX sem conta detectada pede criação antes da triagem")
+    func wizardOFXWithoutDetectedAccountPromptsCreationBeforeTriage() async {
+        let fileURL = URL(fileURLWithPath: "/tmp/extrato.ofx")
+        let institution = makeCheckingInstitution(code: "001")
+        let resolution = makeOFXResolution(accountId: nil)
+        var initialState = ImportWizardFeature.State()
+        initialState.snapshot = ImportSnapshot(
+            batches: [],
+            accounts: [],
+            institutions: [institution],
+            bankDetails: [],
+            creditCards: [],
+            categories: []
+        )
+        let store = TestStore(initialState: initialState) {
+            ImportWizardFeature()
+        }
+
+        await store.send(.fileLoaded(.success(.ofx(
+            sourceURL: fileURL,
+            resolutions: [resolution]
+        )))) {
+            $0.sourceURL = fileURL
+            $0.phase = .idle
+            $0.pendingOFXSourceURL = fileURL
+            $0.pendingOFXResolutions = [resolution]
+            $0.destination = .accountCreationPrompt(OFXAccountCreationPromptFeature.State(
+                statementIndex: 0,
+                institutionId: institution.id,
+                bankLabel: "Banco",
+                accountLabel: "Ag 0001 Conta 123",
+                accountKey: resolution.statement.account
+            ))
+        }
+    }
+
+    @Test("Wizard OFX seleciona conta criada e só então mostra triagem")
+    func wizardOFXSelectsCreatedAccountBeforeTriage() async throws {
+        let fileURL = URL(fileURLWithPath: "/tmp/extrato.ofx")
+        let institution = makeCheckingInstitution(code: "001")
+        let accountId = try #require(UUID(uuidString: "00000000-0000-0000-0000-000000000777"))
+        let resolution = makeOFXResolution(accountId: nil)
+        let item = makeCheckingAccountItem(
+            id: accountId,
+            institution: institution,
+            accountNumber: "123"
+        )
+        let bankDetails = try #require(item.bankDetails)
+        var initialState = ImportWizardFeature.State()
+        initialState.snapshot = ImportSnapshot(
+            batches: [],
+            accounts: [],
+            institutions: [institution],
+            bankDetails: [],
+            creditCards: [],
+            categories: []
+        )
+        initialState.sourceURL = fileURL
+        initialState.pendingOFXSourceURL = fileURL
+        initialState.pendingOFXResolutions = [resolution]
+        initialState.destination = .accountCreationPrompt(OFXAccountCreationPromptFeature.State(
+            statementIndex: 0,
+            institutionId: institution.id,
+            bankLabel: "Banco",
+            accountLabel: "Ag 0001 Conta 123",
+            accountKey: resolution.statement.account
+        ))
+        let store = TestStore(initialState: initialState) {
+            ImportWizardFeature()
+        } withDependencies: {
+            $0.accountsClient.loadList = {
+                AccountsSnapshot(items: [item], institutions: [institution])
+            }
+            $0.importTriageClient.reloadOFXResolution = { resolution, selectedAccountId in
+                var resolution = resolution
+                resolution.accountId = selectedAccountId
+                return resolution
+            }
+        }
+
+        await store.send(.destination(.presented(.accountCreationPrompt(.delegate(.confirm))))) {
+            $0.accountCreationStatementIndex = 0
+            $0.destination = .accountForm(AccountFormFeature.State(
+                institutions: [institution],
+                checkingAccountPrefill: AccountFormFeature.CheckingAccountPrefill(
+                    institutionId: institution.id,
+                    branchId: "0001",
+                    accountNumber: "123"
+                )
+            ))
+        }
+        await store.send(.destination(.presented(.accountForm(.delegate(.saved))))) {
+            $0.destination = nil
+            $0.accountCreationStatementIndex = nil
+            $0.phase = .loading(progress: "Carregando conta criada…")
+        }
+        await store.receive(.accountSnapshotLoaded(
+            statementIndex: 0,
+            accountKey: resolution.statement.account,
+            .success(AccountsSnapshot(items: [item], institutions: [institution]))
+        )) {
+            $0.snapshot.accounts = [item.account]
+            $0.snapshot.institutions = [institution]
+            $0.snapshot.bankDetails = [bankDetails]
+        }
+        var selectedResolution = resolution
+        selectedResolution.accountId = accountId
+        await store.receive(.fileLoaded(.success(.ofx(
+            sourceURL: fileURL,
+            resolutions: [selectedResolution]
+        )))) {
+            $0.pendingOFXSourceURL = nil
+            $0.pendingOFXResolutions = nil
+            $0.triage = ImportTriageFeature.State(
+                sourceFilename: "extrato.ofx",
+                content: .ofx(OFXTriageFeature.State(
+                    resolutions: [selectedResolution],
+                    accounts: [item.account],
+                    institutions: [institution],
+                    bankDetails: [bankDetails],
+                    creditCards: []
+                ))
+            )
+            $0.phase = .triage
+        }
+    }
+
+    private func decimal(_ string: String) -> Decimal {
+        Decimal(string: string, locale: Locale(identifier: "en_US_POSIX")) ?? 0
+    }
+
+    private func makeOFXResolution(accountId: UUID?) -> OFXStatementResolution {
+        let date = Date(timeIntervalSince1970: 1_787_970_600)
+        let transaction = OFXTransaction(
+            trnType: "DEBIT",
+            datePosted: date,
+            amount: -12,
+            fitid: "FIT-1",
+            name: "Padaria",
+            memo: nil,
+            checkNumber: nil,
+            refNumber: nil
+        )
+        let statement = OFXStatement(
+            currency: "BRL",
+            institutionHeader: OFXInstitutionHeader(organization: "Banco", fid: "001"),
+            account: OFXAccountKey(bankId: "001", branchId: "0001", accountId: "123"),
+            transactions: [transaction],
+            balance: nil
+        )
+        return OFXStatementResolution(
+            statement: statement,
+            accountId: accountId,
+            wasAutoDetected: accountId != nil,
+            ofxBankLabel: "Banco",
+            ofxAccountLabel: "Ag 0001 Conta 123",
+            rows: [
+                OFXPreviewRow(
+                    raw: transaction,
+                    derived: DerivedTransaction(
+                        occurredAt: date,
+                        amount: -12,
+                        description: "Padaria",
+                        notes: nil
+                    ),
+                    isDuplicate: false,
+                    categoryId: UUID(),
+                    subcategoryId: nil,
+                    selected: true
+                ),
+            ]
+        )
     }
 }

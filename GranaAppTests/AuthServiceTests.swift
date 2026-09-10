@@ -537,6 +537,22 @@ struct AppErrorPresentationTests {
         #expect(presentation.title == "Configuração inválida")
         #expect(presentation.message == "Exponha o schema api em Data API > Exposed schemas no projeto Supabase.")
     }
+
+    @MainActor
+    @Test("NoticeCenter ignora cancelamento envelopado como URLError")
+    func noticeCenterIgnoresWrappedCancellation() {
+        let center = NoticeCenter.shared
+        center.dismissAll()
+
+        center.report(URLError(.cancelled))
+        center.report(NSError(
+            domain: "Wrapper",
+            code: 1,
+            userInfo: [NSUnderlyingErrorKey: URLError(.cancelled)]
+        ))
+
+        #expect(center.notices.isEmpty)
+    }
 }
 
 private struct EmailOTPVerification: Equatable {

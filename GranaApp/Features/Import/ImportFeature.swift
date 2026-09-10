@@ -68,6 +68,9 @@ struct ImportFeature {
                 state.wizard = ImportWizardFeature.State(initialFile: file)
                 return .none
 
+            case .history(.delegate(.financialDataChanged)):
+                return .send(.delegate(.financialDataChanged))
+
             case .wizard(.delegate(.close)):
                 state.wizard = nil
                 return .none

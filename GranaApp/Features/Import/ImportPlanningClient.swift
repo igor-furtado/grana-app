@@ -151,19 +151,22 @@ private extension ImportPlanningClient {
         let balancesToImport = resolution.negativeRows.filter {
             $0.raw.kind == .balance && $0.selected
         }
-        guard !purchasesToImport.isEmpty || !balancesToImport.isEmpty else {
+        let paymentsToImport = resolution.negativeRows.filter {
+            $0.raw.kind == .payment && $0.selected
+        }
+        guard !purchasesToImport.isEmpty || !balancesToImport.isEmpty || !paymentsToImport.isEmpty else {
             throw ImportError.noValidRows
         }
 
         let skippedDuplicateRowCount = resolution.rows.filter(\.isDuplicate).count
         let skippedDeselectedRowCount = resolution.rows.filter { !$0.isDuplicate && !$0.selected }.count
-            + resolution.negativeRows.filter { $0.raw.kind == .balance && !$0.selected }.count
+            + resolution.negativeRows.filter { !$0.selected }.count
         let batchId = context.makeID()
         let batch = ImportBatch(
             id: batchId,
             sourceFilename: sourceFilename,
             accountId: accountId,
-            rowCount: purchasesToImport.count + balancesToImport.count,
+            rowCount: purchasesToImport.count + balancesToImport.count + paymentsToImport.count,
             importedAt: context.now,
             createdAt: context.now,
             updatedAt: context.now
@@ -196,6 +199,26 @@ private extension ImportPlanningClient {
                 originOccurredAt: row.raw.date,
                 description: row.raw.description,
                 notes: "Saldo importado do CSV Inter",
+                externalId: InterCreditCardCSVReader.makeExternalId(
+                    date: row.raw.date,
+                    description: row.raw.description,
+                    amount: abs(row.raw.amount),
+                    purchaseType: nil,
+                    installmentIndex: nil,
+                    installmentCount: nil
+                )
+            )
+        })
+        drafts.append(contentsOf: paymentsToImport.map { row in
+            TransactionDraft(
+                id: context.makeID(),
+                accountId: accountId,
+                importBatchId: batchId,
+                signedAmount: abs(row.raw.amount),
+                occurredAt: row.raw.date,
+                originOccurredAt: row.raw.date,
+                description: row.raw.description,
+                notes: "Pagamento importado do CSV Inter",
                 externalId: InterCreditCardCSVReader.makeExternalId(
                     date: row.raw.date,
                     description: row.raw.description,

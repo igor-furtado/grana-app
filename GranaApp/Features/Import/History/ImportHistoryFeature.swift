@@ -46,6 +46,7 @@ struct ImportHistoryFeature {
 
     enum Delegate: Equatable {
         case startImport(URL?)
+        case financialDataChanged
     }
 
     @Dependency(\.importHistoryClient) private var importHistoryClient
@@ -90,6 +91,7 @@ struct ImportHistoryFeature {
                 return .run { send in
                     do {
                         try await importHistoryClient.undo(batch.id)
+                        await send(.delegate(.financialDataChanged))
                         await send(.refresh)
                     } catch {
                         await noticeClient.report(error, "Falha ao desfazer importação")

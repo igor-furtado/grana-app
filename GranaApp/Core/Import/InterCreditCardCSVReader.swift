@@ -15,7 +15,8 @@ import Foundation
 /// decodifica esses bytes como UTF-8.
 ///
 /// Valores negativos são classificados para revisão individual: pagamentos
-/// são ignorados e demais créditos podem ser importados como transação comum.
+/// começam desmarcados e demais créditos podem ser importados como transação
+/// comum.
 struct InterCreditCardCSVReader {
     /// Resultado da leitura: linhas válidas (todas positivas) + linhas
     /// negativas puladas (preservadas pra auditoria na UI) + ano/mês inferido
@@ -165,9 +166,7 @@ struct InterCreditCardCSVReader {
         // Tenta re-encodar como Latin-1; se cada char couber (sempre couber
         // se o conteúdo for Latin-1 puro disfarçado de UTF-8), decoda esses
         // bytes como UTF-8.
-        if let latin1Bytes = utf8.data(using: .isoLatin1, allowLossyConversion: false),
-           let recovered = String(data: latin1Bytes, encoding: .utf8)
-        {
+        if let latin1Bytes = utf8.data(using: .isoLatin1, allowLossyConversion: false), let recovered = String(data: latin1Bytes, encoding: .utf8) {
             return recovered
         }
 

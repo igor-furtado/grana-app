@@ -33,8 +33,7 @@ struct OFXTriageView<SidebarActions: View>: View {
                         get: { store.state.resolutions },
                         set: { store.send(.resolutionsUpdated($0)) }
                     ),
-                    selectedStatementID: $selectedStatementID,
-                    bankKind: { accountId in store.state.bankKind(for: accountId) }
+                    selectedStatementID: $selectedStatementID
                 )
             }
             .padding(.horizontal, AppUI.Theme.Spacing.lg)
@@ -84,44 +83,16 @@ private struct OFXAccountInfoSection: View {
                 ),
                 icon: "building.columns"
             )
-
-            if let resolution {
-                HStack(spacing: AppUI.Theme.Spacing.md) {
-                    ImportWizardInfoRow(label: "Banco") {
-                        Text(resolution.ofxBankLabel)
-                    }
-
-                    ImportWizardInfoRow(label: "Conta do extrato") {
-                        Text(resolution.ofxAccountLabel)
-                    }
-                }
-            }
-        }
-        .frame(maxWidth: .infinity, alignment: .leading)
-    }
-}
-
-private struct ImportWizardInfoRow<Content: View>: View {
-    let label: String
-    @ViewBuilder var content: () -> Content
-
-    var body: some View {
-        VStack(alignment: .leading, spacing: AppUI.Theme.Spacing.xxs) {
-            Text(label)
-                .font(AppUI.Theme.Typography.caption1)
-                .foregroundStyle(AppUI.Theme.Palette.muted)
-            content()
-                .font(AppUI.Theme.Typography.callout)
-                .foregroundStyle(AppUI.Theme.Palette.ink)
         }
         .frame(maxWidth: .infinity, alignment: .leading)
     }
 }
 
 private struct OFXTransactionsListSection: View {
+    private static let numberLocale = Locale(identifier: "pt_BR")
+
     @Binding var resolutions: [OFXStatementResolution]
     @Binding var selectedStatementID: OFXStatementResolution.ID?
-    let bankKind: (UUID?) -> InstitutionKind?
 
     private var selectedIndex: Int {
         guard let selectedStatementID,
@@ -143,7 +114,7 @@ private struct OFXTransactionsListSection: View {
                 description: $0.derived.description,
                 amount: $0.derived.amount.magnitude,
                 amountKind: $0.derived.amount < 0 ? .outgoing : .incoming,
-                status: $0.isDuplicate ? .duplicate : nil
+                badge: $0.isDuplicate ? .duplicate : nil
             )
         }
         .sorted { lhs, rhs in
@@ -186,8 +157,11 @@ private struct OFXTransactionsListSection: View {
                             .toggleStyle(.checkbox)
                             .labelsHidden()
                     } else {
-                        Color.clear
-                            .frame(width: 16, height: 16)
+                        AppUI.Toggle(label: "", isOn: .constant(false))
+                            .toggleStyle(.checkbox)
+                            .labelsHidden()
+                            .disabled(true)
+                            .accessibilityLabel("Linha não selecionável")
                     }
                 }
                 .width(min: 38, ideal: 44, max: 48)
@@ -200,13 +174,11 @@ private struct OFXTransactionsListSection: View {
                 .width(min: 128, ideal: 148, max: 172)
 
                 TableColumn("Descrição") { row in
-                    HStack(spacing: AppUI.Theme.Spacing.sm) {
-                        if let currentResolution {
-                            InstitutionIcon(
-                                kind: bankKind(currentResolution.accountId) ?? .other,
-                                size: 22
-                            )
+                    HStack(spacing: AppUI.Theme.Spacing.xs) {
+                        if let badge = row.badge {
+                            ImportWizardDescriptionBadge(status: badge)
                         }
+
                         Text(row.description)
                             .font(AppUI.Theme.Typography.subheadlineEmphasis)
                             .foregroundStyle(AppUI.Theme.Palette.ink)
@@ -214,20 +186,8 @@ private struct OFXTransactionsListSection: View {
                     }
                 }
 
-                TableColumn("Situação") { row in
-                    if let status = row.status {
-                        ImportWizardTableStatusBadge(status: status)
-                    } else {
-                        Text("Importar")
-                            .font(AppUI.Theme.Typography.caption1Emphasis)
-                            .foregroundStyle(AppUI.Theme.Palette.tealDeep)
-                    }
-                }
-                .width(min: 120, ideal: 146, max: 180)
-
                 TableColumn("Valor") { row in
-                    Text(row.amount.formatted(.currency(code: "BRL")))
-                        .font(AppUI.Theme.Typography.moneySubheadline)
+                    accountingAmount(row.amount)
                         .foregroundStyle(amountColor(for: row.amountKind))
                         .frame(maxWidth: .infinity, alignment: .trailing)
                 }
@@ -291,8 +251,23 @@ private struct OFXTransactionsListSection: View {
         case .transfer:
             .transfer
         case .outgoing:
-            AppUI.Theme.Palette.ink
+            .expense
         }
+    }
+
+    private func accountingAmount(_ amount: Decimal) -> some View {
+        let number = amount.formatted(
+            .number
+                .precision(.fractionLength(2))
+                .locale(Self.numberLocale)
+        )
+        return HStack(spacing: AppUI.Theme.Spacing.xxs) {
+            Text("R$")
+                .foregroundStyle(AppUI.Theme.Palette.muted)
+            Spacer(minLength: AppUI.Theme.Spacing.xxs)
+            Text(number)
+        }
+        .font(AppUI.Theme.Typography.moneySubheadline)
     }
 }
 
@@ -302,5 +277,5 @@ private struct OFXTransactionTableRow: Identifiable {
     let description: String
     let amount: Decimal
     let amountKind: TransactionRow.AmountKind
-    let status: TransactionRow.Status?
+    let badge: TransactionRow.Status?
 }

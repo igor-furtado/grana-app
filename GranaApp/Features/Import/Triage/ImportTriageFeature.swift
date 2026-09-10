@@ -97,7 +97,7 @@ struct OFXTriageFeature {
         var creditCards: [CreditCardDetails]
 
         var totalSelected: Int {
-            resolutions.reduce(0) { $0 + $1.rows.filter(\.selected).count }
+            resolutions.reduce(0) { $0 + $1.rows.filter { !$0.isDuplicate && $0.selected }.count }
         }
 
         var allAccountsSelected: Bool {
@@ -240,7 +240,6 @@ struct CSVTriageFeature {
             case let .negativeSelectionChanged(rowId, isSelected):
                 guard let index = state.resolution.negativeRows.firstIndex(where: { $0.id == rowId })
                 else { return .none }
-                guard state.resolution.negativeRows[index].raw.kind == .balance else { return .none }
                 state.resolution.negativeRows[index].selected = isSelected
                 return .none
 

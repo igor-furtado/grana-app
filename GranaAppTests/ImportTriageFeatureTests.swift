@@ -56,10 +56,41 @@ struct ImportTriageFeatureTests {
         ))))
     }
 
+    @Test("Pagamento CSV pode ser selecionado manualmente")
+    func csvPaymentCanBeSelectedManually() async {
+        let accountId = UUID()
+        let payment = InterCreditCardCSVReader.SkippedRow(
+            date: Date(timeIntervalSince1970: 1_787_970_600),
+            description: "PAGAMENTO FATURA",
+            amount: -120,
+            kind: .payment
+        )
+        var resolution = makeCSVResolution(accountId: accountId)
+        resolution.negativeRows = [
+            CSVNegativePreviewRow(raw: payment, selected: false),
+        ]
+        let store = TestStore(
+            initialState: CSVTriageFeature.State(
+                resolution: resolution,
+                accounts: [],
+                institutions: [],
+                bankDetails: [],
+                creditCards: []
+            )
+        ) {
+            CSVTriageFeature()
+        }
+
+        await store.send(.negativeSelectionChanged(rowId: payment.id, isSelected: true)) {
+            $0.resolution.negativeRows[0].selected = true
+        }
+    }
+
     @Test("Wizard carrega OFX como fase única de triagem")
     func wizardLoadsOFXIntoTriagePhase() async {
         let fileURL = URL(fileURLWithPath: "/tmp/extrato.ofx")
-        let resolution = makeOFXResolution(accountId: nil)
+        let accountId = UUID()
+        let resolution = makeOFXResolution(accountId: accountId)
         let store = TestStore(initialState: ImportWizardFeature.State()) {
             ImportWizardFeature()
         }

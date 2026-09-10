@@ -3,6 +3,12 @@ import Foundation
 
 @Reducer
 struct ImportWizardFeature {
+    @Reducer
+    enum Destination {
+        case accountCreationPrompt(OFXAccountCreationPromptFeature)
+        case accountForm(AccountFormFeature)
+    }
+
     enum Phase: Equatable {
         case idle
         case loading(progress: String)
@@ -26,6 +32,11 @@ struct ImportWizardFeature {
         var categorization: ImportCategorizationFeature.State?
         var review: ImportReviewFeature.State?
         var commit: ImportCommitFeature.State?
+        var pendingOFXSourceURL: URL?
+        var pendingOFXResolutions: [OFXStatementResolution]?
+        var accountCreationStatementIndex: Int?
+
+        @Presents var destination: Destination.State?
 
         static let supportedExtensions: Set<String> = ImportFeatureConfiguration.supportedExtensions
 
@@ -39,6 +50,10 @@ struct ImportWizardFeature {
                 && lhs.categorization == rhs.categorization
                 && lhs.review == rhs.review
                 && lhs.commit == rhs.commit
+                && lhs.pendingOFXSourceURL == rhs.pendingOFXSourceURL
+                && lhs.pendingOFXResolutions == rhs.pendingOFXResolutions
+                && lhs.accountCreationStatementIndex == rhs.accountCreationStatementIndex
+                && lhs.destination == rhs.destination
         }
     }
 
@@ -55,6 +70,8 @@ struct ImportWizardFeature {
         case categorization(ImportCategorizationFeature.Action)
         case review(ImportReviewFeature.Action)
         case commit(ImportCommitFeature.Action)
+        case accountSnapshotLoaded(statementIndex: Int, accountKey: OFXAccountKey, TaskResult<AccountsSnapshot>)
+        case destination(PresentationAction<Destination.Action>)
         case delegate(Delegate)
     }
 
@@ -67,6 +84,8 @@ struct ImportWizardFeature {
     @Dependency(\.importFileLoadingClient) private var importFileLoadingClient
     @Dependency(\.importHistoryClient) private var importHistoryClient
     @Dependency(\.importPlanningClient) private var importPlanningClient
+    @Dependency(\.accountsClient) private var accountsClient
+    @Dependency(\.importTriageClient) private var importTriageClient
     @Dependency(\.noticeClient) private var noticeClient
 
     var body: some Reducer<State, Action> {
@@ -111,17 +130,9 @@ struct ImportWizardFeature {
                 switch file {
                 case let .ofx(sourceURL, resolutions):
                     state.sourceURL = sourceURL
-                    state.triage = ImportTriageFeature.State(
-                        sourceFilename: sourceURL.lastPathComponent,
-                        content: .ofx(OFXTriageFeature.State(
-                            resolutions: resolutions,
-                            accounts: state.snapshot.accounts,
-                            institutions: state.snapshot.institutions,
-                            bankDetails: state.snapshot.bankDetails,
-                            creditCards: state.snapshot.creditCards
-                        ))
-                    )
-                    state.phase = .triage
+                    state.pendingOFXSourceURL = nil
+                    state.pendingOFXResolutions = nil
+                    return prepareOFXFlow(&state, sourceURL: sourceURL, resolutions: resolutions)
 
                 case let .csv(sourceURL, resolution):
                     state.sourceURL = sourceURL
@@ -188,7 +199,87 @@ struct ImportWizardFeature {
                 state.categorization = nil
                 state.review = nil
                 state.commit = nil
+                state.pendingOFXSourceURL = nil
+                state.pendingOFXResolutions = nil
+                state.accountCreationStatementIndex = nil
+                state.destination = nil
                 return .send(.delegate(.close))
+
+            case .destination(.presented(.accountCreationPrompt(.delegate(.cancel)))):
+                return .send(.cancel)
+
+            case .destination(.presented(.accountCreationPrompt(.delegate(.confirm)))):
+                guard let prompt = state.accountCreationPrompt,
+                      let resolutions = state.pendingOFXResolutions,
+                      resolutions.indices.contains(prompt.statementIndex)
+                else {
+                    return .send(.cancel)
+                }
+                state.accountCreationStatementIndex = prompt.statementIndex
+                state.destination = .accountForm(AccountFormFeature.State(
+                    institutions: state.snapshot.institutions,
+                    checkingAccountPrefill: AccountFormFeature.CheckingAccountPrefill(
+                        institutionId: prompt.institutionId,
+                        branchId: prompt.accountKey.branchId ?? "",
+                        accountNumber: prompt.accountKey.accountId
+                    )
+                ))
+                return .none
+
+            case .destination(.presented(.accountForm(.delegate(.cancel)))):
+                return .send(.cancel)
+
+            case .destination(.presented(.accountForm(.delegate(.saved)))):
+                guard let statementIndex = state.accountCreationStatementIndex,
+                      let resolutions = state.pendingOFXResolutions,
+                      resolutions.indices.contains(statementIndex)
+                else {
+                    return .send(.cancel)
+                }
+                let accountKey = resolutions[statementIndex].statement.account
+                state.destination = nil
+                state.accountCreationStatementIndex = nil
+                state.phase = .loading(progress: "Carregando conta criada…")
+                return .run { send in
+                    await send(.accountSnapshotLoaded(
+                        statementIndex: statementIndex,
+                        accountKey: accountKey,
+                        TaskResult { try await accountsClient.loadList() }
+                    ))
+                }
+
+            case let .accountSnapshotLoaded(statementIndex, accountKey, .success(accountsSnapshot)):
+                state.snapshot.accounts = mergeCheckingAccounts(
+                    existingAccounts: state.snapshot.accounts,
+                    checkingAccounts: accountsSnapshot.items.map(\.account)
+                )
+                state.snapshot.institutions = accountsSnapshot.institutions
+                state.snapshot.bankDetails = accountsSnapshot.items.compactMap(\.bankDetails)
+
+                guard let sourceURL = state.pendingOFXSourceURL,
+                      let resolutions = state.pendingOFXResolutions,
+                      resolutions.indices.contains(statementIndex),
+                      let accountId = matchedAccountId(
+                          for: accountKey,
+                          accounts: state.snapshot.accounts,
+                          institutions: state.snapshot.institutions,
+                          bankDetails: state.snapshot.bankDetails
+                      )
+                else {
+                    return fail(&state, error: ImportError.accountNotSelected)
+                }
+
+                let resolution = resolutions[statementIndex]
+                return .run { send in
+                    let updated = await importTriageClient.reloadOFXResolution(resolution, accountId)
+                    await send(.fileLoaded(.success(.ofx(
+                        sourceURL: sourceURL,
+                        resolutions: resolutions.replacingElement(at: statementIndex, with: updated)
+                    ))))
+                }
+
+            case let .accountSnapshotLoaded(_, _, .failure(error)):
+                return fail(&state, error: error)
 
             case .categorization(.delegate(.ready)):
                 guard let plan = state.pendingPlan,
@@ -235,6 +326,9 @@ struct ImportWizardFeature {
             case .commit:
                 return .none
 
+            case .destination:
+                return .none
+
             case .delegate:
                 return .none
             }
@@ -251,6 +345,7 @@ struct ImportWizardFeature {
         .ifLet(\.commit, action: \.commit) {
             ImportCommitFeature()
         }
+        .ifLet(\.$destination, action: \.destination)
     }
 
     private func fail(_ state: inout State, error: Error) -> Effect<Action> {
@@ -259,4 +354,144 @@ struct ImportWizardFeature {
             await noticeClient.report(error, nil)
         }
     }
+
+    private func prepareOFXFlow(
+        _ state: inout State,
+        sourceURL: URL,
+        resolutions: [OFXStatementResolution]
+    ) -> Effect<Action> {
+        if let unresolvedIndex = resolutions.firstIndex(where: { $0.accountId == nil }) {
+            state.phase = .idle
+            state.pendingOFXSourceURL = sourceURL
+            state.pendingOFXResolutions = resolutions
+            state.triage = nil
+            let resolution = resolutions[unresolvedIndex]
+            guard let institution = suggestedInstitution(
+                for: resolution.statement.account,
+                institutions: state.snapshot.institutions
+            ) else {
+                return fail(&state, error: ImportError.accountNotSelected)
+            }
+            state.destination = .accountCreationPrompt(OFXAccountCreationPromptFeature.State(
+                statementIndex: unresolvedIndex,
+                institutionId: institution.id,
+                bankLabel: resolution.ofxBankLabel,
+                accountLabel: resolution.ofxAccountLabel,
+                accountKey: resolution.statement.account
+            ))
+            return .none
+        }
+
+        state.pendingOFXSourceURL = nil
+        state.pendingOFXResolutions = nil
+        state.accountCreationStatementIndex = nil
+        state.destination = nil
+        state.triage = ImportTriageFeature.State(
+            sourceFilename: sourceURL.lastPathComponent,
+            content: .ofx(OFXTriageFeature.State(
+                resolutions: resolutions,
+                accounts: state.snapshot.accounts,
+                institutions: state.snapshot.institutions,
+                bankDetails: state.snapshot.bankDetails,
+                creditCards: state.snapshot.creditCards
+            ))
+        )
+        state.phase = .triage
+        return .none
+    }
+}
+
+extension ImportWizardFeature.Destination.State: Equatable {}
+extension ImportWizardFeature.Destination.Action: Equatable {}
+
+@Reducer
+struct OFXAccountCreationPromptFeature {
+    @ObservableState
+    struct State: Equatable {
+        let statementIndex: Int
+        let institutionId: UUID
+        let bankLabel: String
+        let accountLabel: String
+        let accountKey: OFXAccountKey
+    }
+
+    enum Action: Equatable {
+        case cancelButtonTapped
+        case confirmButtonTapped
+        case delegate(Delegate)
+    }
+
+    enum Delegate: Equatable {
+        case cancel
+        case confirm
+    }
+
+    var body: some Reducer<State, Action> {
+        Reduce { _, action in
+            switch action {
+            case .cancelButtonTapped:
+                return .send(.delegate(.cancel))
+            case .confirmButtonTapped:
+                return .send(.delegate(.confirm))
+            case .delegate:
+                return .none
+            }
+        }
+    }
+}
+
+private extension ImportWizardFeature.State {
+    var accountCreationPrompt: OFXAccountCreationPromptFeature.State? {
+        guard case let .accountCreationPrompt(prompt) = destination else { return nil }
+        return prompt
+    }
+}
+
+private extension Array {
+    func replacingElement(at index: Index, with element: Element) -> [Element] {
+        var copy = self
+        copy[index] = element
+        return copy
+    }
+}
+
+private func suggestedInstitution(
+    for accountKey: OFXAccountKey,
+    institutions: [Institution]
+) -> Institution? {
+    guard let institution = institutions.institution(code: accountKey.bankId, supporting: .ofx),
+          institution.capabilities.supports(.checking)
+    else { return nil }
+
+    return institution
+}
+
+private func mergeCheckingAccounts(
+    existingAccounts: [Account],
+    checkingAccounts: [Account]
+) -> [Account] {
+    let checkingAccountIds = Set(checkingAccounts.map(\.id))
+    return existingAccounts.filter {
+        $0.type != .checking && !checkingAccountIds.contains($0.id)
+    } + checkingAccounts
+}
+
+private func matchedAccountId(
+    for accountKey: OFXAccountKey,
+    accounts: [Account],
+    institutions: [Institution],
+    bankDetails: [BankAccountDetails]
+) -> UUID? {
+    guard let institution = institutions.institution(code: accountKey.bankId, supporting: .ofx) else {
+        return nil
+    }
+
+    return accounts.first { account in
+        guard account.institutionId == institution.id,
+              let details = bankDetails.first(where: { $0.accountId == account.id })
+        else { return false }
+
+        return details.accountNumber == accountKey.accountId
+            && details.branchId == accountKey.branchId
+    }?.id
 }

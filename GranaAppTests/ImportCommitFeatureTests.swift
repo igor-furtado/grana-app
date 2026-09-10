@@ -62,6 +62,27 @@ struct ImportCommitFeatureTests {
         #expect(reportedTitle == "Falha ao finalizar importação")
     }
 
+    @Test("Cancelamento do commit fica silencioso")
+    func commitCancellationIsSilent() async {
+        var reportedTitle: String?
+        let store = TestStore(initialState: ImportCommitFeature.State(
+            commit: makeCommit(),
+            status: .committing
+        )) {
+            ImportCommitFeature()
+        } withDependencies: {
+            $0.noticeClient.report = { _, title in
+                reportedTitle = title
+            }
+        }
+
+        await store.send(.commitResponse(.failure(URLError(.cancelled)))) {
+            $0.status = .idle
+        }
+
+        #expect(reportedTitle == nil)
+    }
+
     @Test("Task não reexecuta commit já iniciado")
     func taskDoesNotRerunStartedCommit() async {
         var commitCount = 0

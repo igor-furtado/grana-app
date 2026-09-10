@@ -3,6 +3,12 @@ import Foundation
 
 @Reducer
 struct AccountFormFeature {
+    struct CheckingAccountPrefill: Equatable {
+        var institutionId: UUID?
+        var branchId: String
+        var accountNumber: String
+    }
+
     @ObservableState
     struct State: Equatable {
         var existingAccount: AccountListItem?
@@ -18,7 +24,8 @@ struct AccountFormFeature {
 
         init(
             existingAccount: AccountListItem? = nil,
-            institutions: [Institution]
+            institutions: [Institution],
+            checkingAccountPrefill: CheckingAccountPrefill? = nil
         ) {
             self.existingAccount = existingAccount
             self.institutions = institutions
@@ -33,7 +40,9 @@ struct AccountFormFeature {
                 self.balanceIsNegative = cents < 0
                 self.balanceCents = abs(cents)
             } else {
-                self.institutionId = availableInstitutions.first?.id
+                self.institutionId = checkingAccountPrefill?.institutionId ?? availableInstitutions.first?.id
+                self.branchId = checkingAccountPrefill?.branchId ?? ""
+                self.accountNumber = checkingAccountPrefill?.accountNumber ?? ""
             }
         }
 

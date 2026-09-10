@@ -108,12 +108,12 @@ struct TransactionsFeatureTests {
 
         await store.send(.destination(.presented(.delete(.delegate(.confirmed))))) {
             $0.destination = nil
-            $0.list.isLoading = true
+            $0.isLoading = true
         }
         await store.receive(.delegate(.financialDataChanged))
         await store.receive(\.postDeleteRefreshCompleted) {
             $0.list.apply(refreshed)
-            $0.list.isLoading = false
+            $0.isLoading = false
             $0.hasLoaded = true
         }
     }

@@ -120,16 +120,33 @@ struct AppErrorPresentation: Equatable {
         return AppErrorPresentation(title: title, message: message)
     }
 
+    static func isExpectedCancellation(_ error: Error) -> Bool {
+        if error is CancellationError { return true }
+
+        if let urlError = error as? URLError, urlError.code == .cancelled {
+            return true
+        }
+
+        let nsError = error as NSError
+        if nsError.domain == NSURLErrorDomain, nsError.code == NSURLErrorCancelled {
+            return true
+        }
+
+        if let underlying = nsError.userInfo[NSUnderlyingErrorKey] as? Error {
+            return isExpectedCancellation(underlying)
+        }
+
+        return false
+    }
+
     private static func normalized(_ error: Error) -> Error {
         guard let postgrestError = error as? PostgrestError else {
             return error
         }
 
-        if postgrestError.code == "PGRST106",
-           let schema = postgrestError.message.split(separator: ":").last?
-               .trimmingCharacters(in: .whitespacesAndNewlines),
-           !schema.isEmpty
-        {
+        let schema = postgrestError.message.split(separator: ":").last?
+            .trimmingCharacters(in: .whitespacesAndNewlines)
+        if postgrestError.code == "PGRST106", let schema, !schema.isEmpty {
             return AppConfigurationError.invalidExposedSchema(schema)
         }
 

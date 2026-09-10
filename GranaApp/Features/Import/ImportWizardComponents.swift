@@ -133,7 +133,7 @@ struct ImportWizardInlineSteps: View {
     }
 }
 
-struct ImportWizardTableStatusBadge: View {
+struct ImportWizardDescriptionBadge: View {
     let status: TransactionRow.Status
 
     var body: some View {

@@ -2,50 +2,42 @@ import AppUI
 import ComposableArchitecture
 import SwiftUI
 
+private let csvTriageNumberLocale = Locale(identifier: "pt_BR")
+
 struct CSVTriageView<SidebarActions: View>: View {
     @Bindable var store: StoreOf<CSVTriageFeature>
     @Binding var resolution: CSVStatementResolution
-    let institutionKind: InstitutionKind?
     let onNegativeSelectionChanged: (UUID, Bool) -> Void
     let sidebarActions: () -> SidebarActions
 
     private var eligibleSelectionCount: Int {
         resolution.rows.filter { !$0.isDuplicate }.count
-            + resolution.negativeRows.filter { $0.raw.kind == .balance }.count
+            + resolution.negativeRows.count
     }
 
     private var allSelected: Bool {
         guard eligibleSelectionCount > 0 else { return false }
         let purchasesSelected = resolution.rows.filter { !$0.isDuplicate && $0.selected }.count
-        let balancesSelected = resolution.negativeRows.filter { $0.raw.kind == .balance && $0.selected }.count
-        return purchasesSelected + balancesSelected == eligibleSelectionCount
+        let negativesSelected = resolution.negativeRows.filter(\.selected).count
+        return purchasesSelected + negativesSelected == eligibleSelectionCount
     }
 
-    private func purchaseMemo(for row: CSVPreviewRow) -> String? {
-        let tipo = row.raw.tipo
-        guard !tipo.isEmpty, tipo != "Compra à vista" else { return nil }
-        return tipo
-    }
-
-    private func negativeMemo(for row: CSVNegativePreviewRow) -> String? {
-        switch row.raw.kind {
-        case .payment:
-            "Pagamento"
-        case .balance:
-            "Saldo"
+    private func installmentLabel(for row: CSVPreviewRow) -> String? {
+        guard row.raw.purchaseType == .installment,
+              let installmentIndex = row.raw.installmentIndex,
+              let installmentCount = row.raw.installmentCount
+        else {
+            return nil
         }
+        return "Parcela \(installmentIndex)/\(installmentCount)"
     }
 
-    private func negativeStatus(for row: CSVNegativePreviewRow) -> TransactionRow.Status {
+    private func negativeBadge(for row: CSVNegativePreviewRow) -> TransactionRow.Status {
         switch row.raw.kind {
         case .payment:
             .init(label: "Pagamento", tint: .neutral)
         case .balance:
-            if row.selected {
-                .init(label: "Saldo", tint: .info)
-            } else {
-                .init(label: "Saldo", tint: .neutral)
-            }
+            .init(label: "Saldo", tint: .info)
         }
     }
 
@@ -56,20 +48,11 @@ struct CSVTriageView<SidebarActions: View>: View {
                 .toggleStyle(.checkbox)
                 .labelsHidden()
         } else {
-            Color.clear
-                .frame(width: 16, height: 16)
-        }
-    }
-
-    private func statusCell(for row: CSVTransactionTableRow) -> some View {
-        VStack(alignment: .leading, spacing: AppUI.Theme.Spacing.xxs) {
-            if let status = row.status {
-                ImportWizardTableStatusBadge(status: status)
-            } else {
-                Text("Importar")
-                    .font(AppUI.Theme.Typography.caption1Emphasis)
-                    .foregroundStyle(AppUI.Theme.Palette.tealDeep)
-            }
+            AppUI.Toggle(label: "", isOn: .constant(false))
+                .toggleStyle(.checkbox)
+                .labelsHidden()
+                .disabled(true)
+                .accessibilityLabel("Linha não selecionável")
         }
     }
 
@@ -79,7 +62,6 @@ struct CSVTriageView<SidebarActions: View>: View {
         }
 
         for index in resolution.negativeRows.indices {
-            guard resolution.negativeRows[index].raw.kind == .balance else { continue }
             onNegativeSelectionChanged(resolution.negativeRows[index].id, value)
         }
     }
@@ -93,9 +75,7 @@ struct CSVTriageView<SidebarActions: View>: View {
                 return nil
             }
             return $resolution.rows[index].selected
-        case .payment:
-            return nil
-        case .balance:
+        case .balance, .payment:
             guard let index = resolution.negativeRows.firstIndex(where: { $0.id == row.rowID }) else {
                 return nil
             }
@@ -106,10 +86,6 @@ struct CSVTriageView<SidebarActions: View>: View {
         }
     }
 
-    private func negativeRow(for row: CSVTransactionTableRow) -> CSVNegativePreviewRow? {
-        resolution.negativeRows.first(where: { $0.id == row.rowID })
-    }
-
     private var tableRows: [CSVTransactionTableRow] {
         let purchaseRows = resolution.rows.map {
             CSVTransactionTableRow(
@@ -117,9 +93,9 @@ struct CSVTriageView<SidebarActions: View>: View {
                 rowID: $0.id,
                 date: $0.raw.date,
                 description: $0.raw.description,
-                memo: purchaseMemo(for: $0),
+                installmentLabel: installmentLabel(for: $0),
+                badge: $0.isDuplicate ? .duplicate : nil,
                 amount: $0.raw.amount,
-                status: $0.isDuplicate ? .duplicate : nil,
                 kind: .purchase
             )
         }
@@ -129,9 +105,9 @@ struct CSVTriageView<SidebarActions: View>: View {
                 rowID: $0.id,
                 date: $0.raw.date,
                 description: $0.raw.description,
-                memo: negativeMemo(for: $0),
+                installmentLabel: nil,
+                badge: negativeBadge(for: $0),
                 amount: abs($0.raw.amount),
-                status: negativeStatus(for: $0),
                 kind: $0.raw.kind == .payment ? .payment : .balance
             )
         }
@@ -204,36 +180,12 @@ struct CSVTriageView<SidebarActions: View>: View {
                 .width(min: 128, ideal: 148, max: 172)
 
                 TableColumn("Descrição") { row in
-                    HStack(spacing: AppUI.Theme.Spacing.sm) {
-                        if let institutionKind {
-                            InstitutionIcon(kind: institutionKind, size: 22)
-                        }
-
-                        VStack(alignment: .leading, spacing: AppUI.Theme.Spacing.xxs) {
-                            Text(row.description)
-                                .font(AppUI.Theme.Typography.subheadlineEmphasis)
-                                .foregroundStyle(AppUI.Theme.Palette.ink)
-                                .lineLimit(1)
-
-                            if let memo = row.memo {
-                                Text(memo)
-                                    .font(AppUI.Theme.Typography.caption1)
-                                    .foregroundStyle(AppUI.Theme.Palette.muted)
-                                    .lineLimit(1)
-                            }
-                        }
-                    }
+                    descriptionCell(for: row)
                 }
-
-                TableColumn("Situação") { row in
-                    statusCell(for: row)
-                }
-                .width(min: 80, ideal: 80, max: 100)
 
                 TableColumn("Valor") { row in
-                    Text(row.amount.formatted(.currency(code: "BRL")))
-                        .font(AppUI.Theme.Typography.moneySubheadline)
-                        .foregroundStyle(AppUI.Theme.Palette.ink)
+                    accountingAmount(row.amount)
+                        .foregroundStyle(amountColor(for: row.kind))
                         .frame(maxWidth: .infinity, alignment: .trailing)
                 }
                 .width(min: 140, ideal: 140, max: 160)
@@ -256,6 +208,52 @@ struct CSVTriageView<SidebarActions: View>: View {
         .labelsHidden()
         .accessibilityLabel(allSelected ? "Desmarcar todas" : "Marcar todas")
     }
+
+    private func descriptionCell(for row: CSVTransactionTableRow) -> some View {
+        HStack(spacing: AppUI.Theme.Spacing.xs) {
+            if let badge = row.badge {
+                ImportWizardDescriptionBadge(status: badge)
+            }
+
+            if let installmentLabel = row.installmentLabel {
+                Text(installmentLabel)
+                    .font(AppUI.Theme.Typography.caption1)
+                    .foregroundStyle(AppUI.Theme.Palette.muted)
+                    .lineLimit(1)
+            }
+
+            Text(row.description)
+                .font(AppUI.Theme.Typography.subheadlineEmphasis)
+                .foregroundStyle(AppUI.Theme.Palette.ink)
+                .lineLimit(1)
+        }
+    }
+
+    private func accountingAmount(_ amount: Decimal) -> some View {
+        let number = amount.formatted(
+            .number
+                .precision(.fractionLength(2))
+                .locale(csvTriageNumberLocale)
+        )
+        return HStack(spacing: AppUI.Theme.Spacing.xxs) {
+            Text("R$")
+                .foregroundStyle(AppUI.Theme.Palette.muted)
+            Spacer(minLength: AppUI.Theme.Spacing.xxs)
+            Text(number)
+        }
+        .font(AppUI.Theme.Typography.moneySubheadline)
+    }
+
+    private func amountColor(for kind: CSVTransactionTableRow.Kind) -> Color {
+        switch kind {
+        case .purchase:
+            .expense
+        case .balance:
+            .income
+        case .payment:
+            AppUI.Theme.Palette.ink
+        }
+    }
 }
 
 private struct CSVTransactionTableRow: Identifiable {
@@ -269,8 +267,8 @@ private struct CSVTransactionTableRow: Identifiable {
     let rowID: UUID
     let date: Date
     let description: String
-    let memo: String?
+    let installmentLabel: String?
+    let badge: TransactionRow.Status?
     let amount: Decimal
-    let status: TransactionRow.Status?
     let kind: Kind
 }

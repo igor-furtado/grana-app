@@ -93,7 +93,7 @@ final class NoticeCenter {
     /// Reporta um `Error`. Filtra `CancellationError` (silencioso) e
     /// duplicatas em janela <1s. Toast vermelho com timeout de 6s.
     func report(_ error: Error, title overrideTitle: String? = nil) {
-        if error is CancellationError { return }
+        if AppErrorPresentation.isExpectedCancellation(error) { return }
         let presentation = AppErrorPresentation.from(error, overrideTitle: overrideTitle)
         post(Notice(
             kind: .error,

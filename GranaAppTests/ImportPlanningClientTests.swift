@@ -5,12 +5,13 @@ import Testing
 @MainActor
 @Suite("ImportPlanningClient")
 struct ImportPlanningClientTests {
-    @Test("CSV confirmado vira plano com lote único, compra e saldo da fatura")
-    func csvTriageBuildsSingleBatchWithPurchaseAndStatementBalance() throws {
+    @Test("CSV confirmado vira plano com compra, saldo e pagamento selecionados")
+    func csvTriageBuildsSingleBatchWithSelectedPurchaseBalanceAndPayment() throws {
         let accountId = try #require(UUID(uuidString: "00000000-0000-0000-0000-000000000001"))
         let batchId = try #require(UUID(uuidString: "00000000-0000-0000-0000-000000000002"))
         let purchaseDraftId = try #require(UUID(uuidString: "00000000-0000-0000-0000-000000000003"))
         let balanceDraftId = try #require(UUID(uuidString: "00000000-0000-0000-0000-000000000004"))
+        let paymentDraftId = try #require(UUID(uuidString: "00000000-0000-0000-0000-000000000005"))
         let now = Date(timeIntervalSince1970: 1_788_000_000)
         let purchaseDate = Date(timeIntervalSince1970: 1_787_000_000)
         let balanceDate = Date(timeIntervalSince1970: 1_787_086_400)
@@ -65,18 +66,18 @@ struct ImportPlanningClientTests {
 
         let plan = try ImportPlanningClient.liveValue.makePendingPlan(
             .interCreditCardCSV(sourceFilename: "fatura-inter.csv", resolution: resolution),
-            .init(now: now, makeID: makeIDGenerator([batchId, purchaseDraftId, balanceDraftId]))
+            .init(now: now, makeID: makeIDGenerator([batchId, purchaseDraftId, balanceDraftId, paymentDraftId]))
         )
 
         #expect(plan.batches.count == 1)
         #expect(plan.batches.first?.batch.id == batchId)
         #expect(plan.batches.first?.batch.sourceFilename == "fatura-inter.csv")
         #expect(plan.batches.first?.batch.accountId == accountId)
-        #expect(plan.batches.first?.batch.rowCount == 2)
+        #expect(plan.batches.first?.batch.rowCount == 3)
         #expect(plan.batches.first?.batch.importedAt == now)
         #expect(plan.batches.first?.importFormat == .interCreditCardCSV)
 
-        #expect(plan.drafts.count == 2)
+        #expect(plan.drafts.count == 3)
         #expect(plan.drafts[0].id == purchaseDraftId)
         #expect(plan.drafts[0].accountId == accountId)
         #expect(plan.drafts[0].importBatchId == batchId)
@@ -97,7 +98,13 @@ struct ImportPlanningClientTests {
         #expect(plan.drafts[1].originOccurredAt == balanceDate)
         #expect(plan.drafts[1].description == "BONUS INTER")
         #expect(plan.drafts[1].notes == "Saldo importado do CSV Inter")
-        #expect(plan.impact.importedRowCount == 2)
+        #expect(plan.drafts[2].id == paymentDraftId)
+        #expect(plan.drafts[2].signedAmount == decimal("120"))
+        #expect(plan.drafts[2].occurredAt == balanceDate)
+        #expect(plan.drafts[2].originOccurredAt == balanceDate)
+        #expect(plan.drafts[2].description == "PAGAMENTO FATURA")
+        #expect(plan.drafts[2].notes == "Pagamento importado do CSV Inter")
+        #expect(plan.impact.importedRowCount == 3)
         #expect(plan.impact.statementBalanceDraftCount == 1)
     }
 

@@ -87,32 +87,10 @@ private struct CreditCardSelectorCard: View {
                     valueColor: AppUI.Theme.Palette.ink
                 )
                 Spacer(minLength: AppUI.Theme.Spacing.none)
-                if let availableLimit {
-                    amountColumn(
-                        title: "Disponível",
-                        value: availableLimit,
-                        alignment: .trailing,
-                        valueFont: AppUI.Theme.Typography.caption1,
-                        valueColor: AppUI.Theme.Palette.muted
-                    )
-                }
+                availableLimitColumn
             }
 
-            if let limit = card.details?.creditLimit, limit > 0 {
-                let progress = usagePercent(limit: limit)
-                VStack(alignment: .leading, spacing: AppUI.Theme.Spacing.xs) {
-                    AppUI.UsageMeterBar(progress: progress)
-                    HStack {
-                        Text("Limite \(limit.formatted(.currency(code: card.account.currency)))")
-                            .font(AppUI.Theme.Typography.caption1)
-                            .foregroundStyle(AppUI.Theme.Palette.muted)
-                        Spacer(minLength: AppUI.Theme.Spacing.none)
-                        Text("\(Int(progress * 100))%")
-                            .font(AppUI.Theme.Typography.caption1Emphasis)
-                            .foregroundStyle(AppUI.Theme.Palette.ink)
-                    }
-                }
-            }
+            limitUsageSection
         }
         .padding(AppUI.Theme.Spacing.md)
         .frame(width: 340, alignment: .leading)
@@ -173,6 +151,56 @@ private struct CreditCardSelectorCard: View {
     private var availableLimit: Decimal? {
         guard let limit = card.details?.creditLimit, limit > 0 else { return nil }
         return max(0, limit - card.currentBalance.magnitude)
+    }
+
+    @ViewBuilder
+    private var availableLimitColumn: some View {
+        if let availableLimit {
+            amountColumn(
+                title: "Disponível",
+                value: availableLimit,
+                alignment: .trailing,
+                valueFont: AppUI.Theme.Typography.caption1,
+                valueColor: AppUI.Theme.Palette.muted
+            )
+        } else {
+            VStack(alignment: .trailing, spacing: AppUI.Theme.Spacing.xxs) {
+                Text("Disponível")
+                    .font(AppUI.Theme.Typography.caption1)
+                    .foregroundStyle(AppUI.Theme.Palette.muted)
+                Text("—")
+                    .font(AppUI.Theme.Typography.caption1)
+                    .foregroundStyle(AppUI.Theme.Palette.muted)
+            }
+        }
+    }
+
+    @ViewBuilder
+    private var limitUsageSection: some View {
+        if let limit = card.details?.creditLimit, limit > 0 {
+            let progress = usagePercent(limit: limit)
+            VStack(alignment: .leading, spacing: AppUI.Theme.Spacing.xs) {
+                AppUI.UsageMeterBar(progress: progress)
+                HStack {
+                    Text("Limite \(limit.formatted(.currency(code: card.account.currency)))")
+                        .font(AppUI.Theme.Typography.caption1)
+                        .foregroundStyle(AppUI.Theme.Palette.muted)
+                    Spacer(minLength: AppUI.Theme.Spacing.none)
+                    Text("\(Int(progress * 100))% usado")
+                        .font(AppUI.Theme.Typography.caption1Emphasis)
+                        .foregroundStyle(AppUI.Theme.Palette.ink)
+                }
+            }
+        } else {
+            VStack(alignment: .leading, spacing: AppUI.Theme.Spacing.xs) {
+                RoundedRectangle(cornerRadius: 999, style: .continuous)
+                    .fill(AppUI.Theme.Palette.soft)
+                    .frame(height: 8)
+                Text("Limite não informado")
+                    .font(AppUI.Theme.Typography.caption1)
+                    .foregroundStyle(AppUI.Theme.Palette.muted)
+            }
+        }
     }
 
     private var placeholderIcon: some View {

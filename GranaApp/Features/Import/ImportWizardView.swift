@@ -12,6 +12,16 @@ struct ImportWizardView: View {
 
     var body: some View {
         wizard
+            .sheet(
+                item: $store.scope(\.$destination, action: \.destination).accountCreationPrompt
+            ) { promptStore in
+                OFXAccountCreationPromptView(store: promptStore)
+            }
+            .sheet(
+                item: $store.scope(\.$destination, action: \.destination).accountForm
+            ) { formStore in
+                AccountFormView(store: formStore)
+            }
             .fileImporter(
                 isPresented: $fileImporterShown,
                 allowedContentTypes: [.data],
@@ -121,6 +131,41 @@ struct ImportWizardView: View {
                 onClose: onClose
             )
         }
+    }
+}
+
+private struct OFXAccountCreationPromptView: View {
+    @Bindable var store: StoreOf<OFXAccountCreationPromptFeature>
+
+    var body: some View {
+        ZStack {
+            GranaBackground()
+
+            AppUI.Form.Shell {
+                AppUI.Form.Header(
+                    title: "Conta não encontrada",
+                    subtitle: message
+                )
+
+                AppUI.Form.Actions {
+                    Button("Cancelar") {
+                        store.send(.cancelButtonTapped)
+                    }
+                    .buttonStyle(GranaSecondaryButtonStyle())
+
+                    Button("Criar conta") {
+                        store.send(.confirmButtonTapped)
+                    }
+                    .buttonStyle(GranaPrimaryButtonStyle())
+                }
+            }
+        }
+        .frame(width: AppUI.Modal.SheetSize.compactWidth)
+        .presentationSizing(.fitted)
+    }
+
+    private var message: String {
+        "O extrato é de \(store.bankLabel), \(store.accountLabel), mas nenhuma conta cadastrada corresponde a esses dados. Deseja criar essa conta para continuar a importação?"
     }
 }
 

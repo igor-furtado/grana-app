@@ -69,4 +69,22 @@ struct AccountFormFeatureTests {
         #expect(state.accountNumber == "5544-0")
         #expect(state.balanceCents == 32145)
     }
+
+    @Test("Criação aceita preenchimento inicial de conta corrente")
+    func createStateLoadsCheckingAccountPrefill() {
+        let institution = makeCheckingInstitution()
+
+        let state = AccountFormFeature.State(
+            institutions: [institution],
+            checkingAccountPrefill: AccountFormFeature.CheckingAccountPrefill(
+                institutionId: institution.id,
+                branchId: "0001",
+                accountNumber: "123"
+            )
+        )
+
+        #expect(state.institutionId == institution.id)
+        #expect(state.branchId == "0001")
+        #expect(state.accountNumber == "123")
+    }
 }

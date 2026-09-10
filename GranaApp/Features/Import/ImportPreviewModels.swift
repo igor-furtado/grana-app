@@ -37,8 +37,8 @@ struct CSVStatementResolution: Equatable {
     }
 
     var selectedCount: Int {
-        rows.filter(\.selected).count
-            + negativeRows.filter { $0.raw.kind == .balance && $0.selected }.count
+        rows.filter { !$0.isDuplicate && $0.selected }.count
+            + negativeRows.filter(\.selected).count
     }
 
     var duplicateCount: Int {
