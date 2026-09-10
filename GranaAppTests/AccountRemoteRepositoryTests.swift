@@ -90,6 +90,39 @@ struct AccountRemoteRepositoryTests {
         }
     }
 
+    @Test("Serializa nulos opcionais no payload de criação")
+    func createPayloadIncludesOptionalNulls() throws {
+        let request = CreateAccountRequest(input: makeMutationInput())
+
+        let keys = try encodedKeys(request)
+
+        #expect(keys.contains("p_nickname"))
+        #expect(keys.contains("p_bank_name"))
+        #expect(keys.contains("p_card_last_four"))
+        #expect(keys.contains("p_credit_limit_cents"))
+        #expect(keys.contains("p_statement_closing_day"))
+        #expect(keys.contains("p_payment_due_day"))
+    }
+
+    @Test("Serializa nulos opcionais no payload de edição")
+    func updatePayloadIncludesOptionalNulls() throws {
+        let request = UpdateAccountRequest(
+            accountId: UUID(),
+            input: makeMutationInput(),
+            cycleEffectiveFrom: nil
+        )
+
+        let keys = try encodedKeys(request)
+
+        #expect(keys.contains("p_nickname"))
+        #expect(keys.contains("p_bank_name"))
+        #expect(keys.contains("p_card_last_four"))
+        #expect(keys.contains("p_credit_limit_cents"))
+        #expect(keys.contains("p_statement_closing_day"))
+        #expect(keys.contains("p_payment_due_day"))
+        #expect(keys.contains("p_cycle_effective_from"))
+    }
+
     @Test("Mapeia bloqueio de apagar conta com transações vinculadas")
     func mapsDeleteBlockedByLinkedTransactionsCode() async {
         let repository = AccountRemoteRepository(
@@ -173,6 +206,7 @@ struct AccountsClientTests {
         #expect(snapshot.items.map(\.id).contains(investmentId))
         #expect(snapshot.items.first?.institution?.code == "077")
         #expect(snapshot.items.first(where: { $0.id == checkingId })?.currentBalance == 450)
+        #expect(snapshot.items.first(where: { $0.id == checkingId })?.nicknameText.isEmpty == true)
         #expect(snapshot.items.first(where: { $0.id == investmentId })?.currentBalance == 1000)
         #expect(snapshot.institutions.map(\.code) == ["077"])
     }
@@ -507,6 +541,12 @@ private func makeMutationInput() -> AccountMutationInput {
         bankDetails: .init(branchId: "0001", accountNumber: "12345-6"),
         creditCardDetails: nil
     )
+}
+
+private func encodedKeys(_ value: some Encodable) throws -> Set<String> {
+    let data = try JSONEncoder().encode(value)
+    let object = try #require(JSONSerialization.jsonObject(with: data) as? [String: Any])
+    return Set(object.keys)
 }
 
 private func makeSnapshot(

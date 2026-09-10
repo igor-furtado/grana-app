@@ -23,7 +23,7 @@ struct AccountListFeature {
                     return false
                 }
                 guard !needle.isEmpty else { return true }
-                return item.displayName.localizedCaseInsensitiveContains(needle)
+                return item.nicknameText.localizedCaseInsensitiveContains(needle)
                     || item.institutionName.localizedCaseInsensitiveContains(needle)
                     || item.typeText.localizedCaseInsensitiveContains(needle)
                     || item.territorialScopeText.localizedCaseInsensitiveContains(needle)

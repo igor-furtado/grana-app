@@ -20,6 +20,13 @@ struct AccountListItem: Equatable, Identifiable {
         )
     }
 
+    var nicknameText: String {
+        guard let nickname = account.nickname?.trimmingCharacters(in: .whitespacesAndNewlines), !nickname.isEmpty else {
+            return ""
+        }
+        return nickname
+    }
+
     var institutionName: String {
         institution?.name ?? "Sem instituição"
     }

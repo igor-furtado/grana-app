@@ -5,7 +5,7 @@ import SwiftUI
 struct AccountListView: View {
     @Bindable var store: StoreOf<AccountListFeature>
     @State private var sortOrder = [
-        KeyPathComparator(\AccountListItem.displayName),
+        KeyPathComparator(\AccountListItem.nicknameText),
     ]
 
     var body: some View {
@@ -21,8 +21,8 @@ struct AccountListView: View {
             }
             .width(min: 210, ideal: 210, max: 240)
 
-            TableColumn("Conta", value: \.displayName) { item in
-                Text(item.displayName)
+            TableColumn("Apelido", value: \.nicknameText) { item in
+                Text(item.nicknameText)
                     .font(AppUI.Theme.Typography.subheadline)
                     .foregroundStyle(AppUI.Theme.Palette.ink)
                     .lineLimit(1)

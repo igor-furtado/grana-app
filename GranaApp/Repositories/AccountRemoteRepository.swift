@@ -269,9 +269,8 @@ final class AccountRemoteRepository: AccountRemoteRepositoryProtocol, Sendable {
                 ))
             }
 
-            if let cardLastFour = row.cardLastFour,
-               let statementClosingDay = row.statementClosingDay,
-               let paymentDueDay = row.paymentDueDay {
+            switch (row.cardLastFour, row.statementClosingDay, row.paymentDueDay) {
+            case let (cardLastFour?, statementClosingDay?, paymentDueDay?):
                 creditCards.append(CreditCardDetails(
                     accountId: row.id,
                     cardLastFour: cardLastFour,
@@ -281,6 +280,8 @@ final class AccountRemoteRepository: AccountRemoteRepositoryProtocol, Sendable {
                     createdAt: row.cardCreatedAt ?? row.createdAt,
                     updatedAt: row.cardUpdatedAt ?? row.updatedAt
                 ))
+            default:
+                break
             }
         }
 
@@ -416,6 +417,24 @@ nonisolated struct CreateAccountRequest: Encodable {
         case pStatementClosingDay = "p_statement_closing_day"
         case pPaymentDueDay = "p_payment_due_day"
     }
+
+    func encode(to encoder: any Encoder) throws {
+        var container = encoder.container(keyedBy: CodingKeys.self)
+        try container.encode(pType, forKey: .pType)
+        try container.encode(pTerritorialScope, forKey: .pTerritorialScope)
+        try container.encode(pNickname, forKey: .pNickname)
+        try container.encode(pInitialBalanceCents, forKey: .pInitialBalanceCents)
+        try container.encode(pArchived, forKey: .pArchived)
+        try container.encode(pInstitutionId, forKey: .pInstitutionId)
+        try container.encode(pCurrency, forKey: .pCurrency)
+        try container.encode(pBranchId, forKey: .pBranchId)
+        try container.encode(pAccountNumber, forKey: .pAccountNumber)
+        try container.encode(pBankName, forKey: .pBankName)
+        try container.encode(pCardLastFour, forKey: .pCardLastFour)
+        try container.encode(pCreditLimitCents, forKey: .pCreditLimitCents)
+        try container.encode(pStatementClosingDay, forKey: .pStatementClosingDay)
+        try container.encode(pPaymentDueDay, forKey: .pPaymentDueDay)
+    }
 }
 
 nonisolated struct UpdateAccountRequest: Encodable {
@@ -476,6 +495,26 @@ nonisolated struct UpdateAccountRequest: Encodable {
         case pStatementClosingDay = "p_statement_closing_day"
         case pPaymentDueDay = "p_payment_due_day"
         case pCycleEffectiveFrom = "p_cycle_effective_from"
+    }
+
+    func encode(to encoder: any Encoder) throws {
+        var container = encoder.container(keyedBy: CodingKeys.self)
+        try container.encode(pAccountId, forKey: .pAccountId)
+        try container.encode(pType, forKey: .pType)
+        try container.encode(pTerritorialScope, forKey: .pTerritorialScope)
+        try container.encode(pNickname, forKey: .pNickname)
+        try container.encode(pInitialBalanceCents, forKey: .pInitialBalanceCents)
+        try container.encode(pArchived, forKey: .pArchived)
+        try container.encode(pInstitutionId, forKey: .pInstitutionId)
+        try container.encode(pCurrency, forKey: .pCurrency)
+        try container.encode(pBranchId, forKey: .pBranchId)
+        try container.encode(pAccountNumber, forKey: .pAccountNumber)
+        try container.encode(pBankName, forKey: .pBankName)
+        try container.encode(pCardLastFour, forKey: .pCardLastFour)
+        try container.encode(pCreditLimitCents, forKey: .pCreditLimitCents)
+        try container.encode(pStatementClosingDay, forKey: .pStatementClosingDay)
+        try container.encode(pPaymentDueDay, forKey: .pPaymentDueDay)
+        try container.encode(pCycleEffectiveFrom, forKey: .pCycleEffectiveFrom)
     }
 }
 
