@@ -96,6 +96,40 @@ struct CategorizationServiceTests {
     }
 
     @MainActor
+    @Test("Ignora sugestão de Transferências retornada pelo GranaAI")
+    func fallsBackWhenGranaAIReturnsTransfer() async throws {
+        let fallbackCategory = makeRootCategory(name: "Não Classificado", slug: "nao-classificado")
+        let transferCategory = makeRootCategory(
+            name: "Transferências",
+            slug: "transferencias",
+            kind: .transfer
+        )
+        let draft = makeDraft(description: "Pix enviado para conta própria")
+        let client = FakeGranaAIClient(
+            response: .init(
+                version: GranaAIContract.version,
+                results: [
+                    .init(
+                        transactionId: draft.id.uuidString,
+                        outcome: .classified(categoryId: "transferencias", subcategoryId: nil)
+                    ),
+                ]
+            )
+        )
+        let service = CategorizationService(
+            categories: StaticCategoryCatalogRepository(categories: [fallbackCategory, transferCategory]),
+            granaAI: client
+        )
+
+        let result = try await service.classifyDrafts([draft])
+        let suggestion = try #require(result.suggestions.first)
+
+        #expect(suggestion.categoryId == fallbackCategory.id)
+        #expect(suggestion.subcategoryId == nil)
+        #expect(suggestion.source == .fallback)
+    }
+
+    @MainActor
     @Test("Cai para Não Classificado quando o GranaAI falha")
     func fallsBackWhenGranaAIFails() async throws {
         let fallbackCategory = makeRootCategory(name: "Não Classificado", slug: "nao-classificado")
@@ -114,12 +148,16 @@ struct CategorizationServiceTests {
     }
 }
 
-private func makeRootCategory(name: String, slug: String) -> GranaApp.Category {
+private func makeRootCategory(
+    name: String,
+    slug: String,
+    kind: CategoryKind = .expense
+) -> GranaApp.Category {
     GranaApp.Category(
         id: UUID(),
         parentId: nil,
         name: name,
-        kind: .expense,
+        kind: kind,
         slug: slug,
         createdAt: Date()
     )

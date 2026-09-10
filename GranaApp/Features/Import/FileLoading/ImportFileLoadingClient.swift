@@ -185,7 +185,7 @@ private enum ImportFileLoadingOperations {
                     occurredAt: transaction.datePosted,
                     amount: transaction.amount,
                     description: transaction.displayDescription,
-                    notes: transaction.memo
+                    notes: transaction.displayNotes
                 ),
                 isDuplicate: isDuplicate,
                 categoryId: heuristic.categoryId(for: transaction),

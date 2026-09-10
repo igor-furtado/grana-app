@@ -67,13 +67,13 @@ nonisolated enum ImportRemoteRepositoryError: UserFacingError, Equatable {
     }
 }
 
-nonisolated struct ImportCommitInput: Hashable, Sendable {
+nonisolated struct ImportCommitInput: Hashable {
     var idempotencyKey: UUID
     var batches: [ImportBatchCommitInput]
     var rows: [ImportTransactionCommitInput]
 }
 
-nonisolated struct ImportBatchCommitInput: Hashable, Sendable {
+nonisolated struct ImportBatchCommitInput: Hashable {
     var batchId: UUID
     var sourceFilename: String
     var accountId: UUID
@@ -81,11 +81,13 @@ nonisolated struct ImportBatchCommitInput: Hashable, Sendable {
     var importFormat: InstitutionImportFormat
 }
 
-nonisolated struct ImportTransactionCommitInput: Hashable, Sendable {
+nonisolated struct ImportTransactionCommitInput: Hashable {
     var transactionId: UUID
     var batchId: UUID
+    var accountId: UUID
     var categorySlug: String
     var subcategoryId: UUID?
+    var destinationAccountId: UUID?
     var amount: Decimal
     var occurredAt: Date
     var originOccurredAt: Date
@@ -97,7 +99,7 @@ nonisolated struct ImportTransactionCommitInput: Hashable, Sendable {
     var externalId: String?
 }
 
-nonisolated struct ImportCommitDuplicateRow: Decodable, Equatable, Sendable {
+nonisolated struct ImportCommitDuplicateRow: Decodable, Equatable {
     let batchId: UUID
     let externalId: String
     let description: String
@@ -111,7 +113,7 @@ nonisolated struct ImportCommitDuplicateRow: Decodable, Equatable, Sendable {
     }
 }
 
-nonisolated struct ImportCommitResult: Decodable, Equatable, Sendable {
+nonisolated struct ImportCommitResult: Decodable, Equatable {
     let batchIds: [UUID]
     let importedRowCount: Int
     let duplicateRows: [ImportCommitDuplicateRow]
@@ -127,7 +129,7 @@ nonisolated struct ImportCommitResult: Decodable, Equatable, Sendable {
     }
 }
 
-nonisolated struct ImportBatchRecordRow: Decodable, Sendable {
+nonisolated struct ImportBatchRecordRow: Decodable {
     let id: UUID
     let sourceFilename: String
     let accountId: UUID
@@ -147,12 +149,12 @@ nonisolated struct ImportBatchRecordRow: Decodable, Sendable {
     }
 }
 
-nonisolated struct ImportMutationResponse: Decodable, Sendable {
+nonisolated struct ImportMutationResponse: Decodable {
     let ok: Bool
     let code: String?
 }
 
-nonisolated struct ImportCommitResponse: Decodable, Sendable {
+nonisolated struct ImportCommitResponse: Decodable {
     let ok: Bool
     let code: String?
     let importedBatchIds: [UUID]
@@ -183,11 +185,12 @@ nonisolated struct ImportCommitResponse: Decodable, Sendable {
 
     init(from decoder: any Decoder) throws {
         let container = try decoder.container(keyedBy: CodingKeys.self)
-        ok = try container.decode(Bool.self, forKey: .ok)
-        code = try container.decodeIfPresent(String.self, forKey: .code)
-        importedBatchIds = try container.decodeIfPresent([UUID].self, forKey: .importedBatchIds) ?? []
-        importedRowCount = try container.decodeIfPresent(Int.self, forKey: .importedRowCount) ?? 0
-        duplicateRows = try container.decodeIfPresent([ImportCommitDuplicateRow].self, forKey: .duplicateRows) ?? []
+        self.ok = try container.decode(Bool.self, forKey: .ok)
+        self.code = try container.decodeIfPresent(String.self, forKey: .code)
+        self.importedBatchIds = try container.decodeIfPresent([UUID].self, forKey: .importedBatchIds) ?? []
+        self.importedRowCount = try container.decodeIfPresent(Int.self, forKey: .importedRowCount) ?? 0
+        self.duplicateRows = try container
+            .decodeIfPresent([ImportCommitDuplicateRow].self, forKey: .duplicateRows) ?? []
     }
 }
 
@@ -332,15 +335,15 @@ struct AuthRequiredImportRemoteRepository: ImportRemoteRepositoryProtocol {
     }
 }
 
-nonisolated struct CommitImportRequest: Encodable, Sendable {
+nonisolated struct CommitImportRequest: Encodable {
     let pIdempotencyKey: UUID
     let pBatches: [CommitImportBatchRequest]
     let pTransactions: [CommitImportTransactionRequest]
 
     init(input: ImportCommitInput) {
-        pIdempotencyKey = input.idempotencyKey
-        pBatches = input.batches.map(CommitImportBatchRequest.init)
-        pTransactions = input.rows.map(CommitImportTransactionRequest.init)
+        self.pIdempotencyKey = input.idempotencyKey
+        self.pBatches = input.batches.map(CommitImportBatchRequest.init)
+        self.pTransactions = input.rows.map(CommitImportTransactionRequest.init)
     }
 
     enum CodingKeys: String, CodingKey {
@@ -350,7 +353,7 @@ nonisolated struct CommitImportRequest: Encodable, Sendable {
     }
 }
 
-nonisolated struct CommitImportBatchRequest: Encodable, Hashable, Sendable {
+nonisolated struct CommitImportBatchRequest: Encodable, Hashable {
     let batchId: UUID
     let sourceFilename: String
     let accountId: UUID
@@ -358,11 +361,11 @@ nonisolated struct CommitImportBatchRequest: Encodable, Hashable, Sendable {
     let importFormat: String
 
     init(input: ImportBatchCommitInput) {
-        batchId = input.batchId
-        sourceFilename = input.sourceFilename
-        accountId = input.accountId
-        importedAt = input.importedAt
-        importFormat = input.importFormat.rawValue
+        self.batchId = input.batchId
+        self.sourceFilename = input.sourceFilename
+        self.accountId = input.accountId
+        self.importedAt = input.importedAt
+        self.importFormat = input.importFormat.rawValue
     }
 
     enum CodingKeys: String, CodingKey {
@@ -374,11 +377,13 @@ nonisolated struct CommitImportBatchRequest: Encodable, Hashable, Sendable {
     }
 }
 
-nonisolated struct CommitImportTransactionRequest: Encodable, Hashable, Sendable {
+nonisolated struct CommitImportTransactionRequest: Encodable, Hashable {
     let transactionId: UUID
     let batchId: UUID
+    let accountId: UUID
     let categorySlug: String
     let subcategoryId: UUID?
+    let destinationAccountId: UUID?
     let amountCents: Int64
     let occurredAt: Date
     let originOccurredAt: Date
@@ -390,26 +395,30 @@ nonisolated struct CommitImportTransactionRequest: Encodable, Hashable, Sendable
     let externalId: String?
 
     init(input: ImportTransactionCommitInput) {
-        transactionId = input.transactionId
-        batchId = input.batchId
-        categorySlug = input.categorySlug
-        subcategoryId = input.subcategoryId
-        amountCents = Converters.decimalToCents(input.amount)
-        occurredAt = input.occurredAt
-        originOccurredAt = input.originOccurredAt
-        purchaseType = input.purchaseType?.rawValue
-        installmentIndex = input.installmentIndex
-        installmentCount = input.installmentCount
-        description = input.description
-        notes = input.notes
-        externalId = input.externalId
+        self.transactionId = input.transactionId
+        self.batchId = input.batchId
+        self.accountId = input.accountId
+        self.categorySlug = input.categorySlug
+        self.subcategoryId = input.subcategoryId
+        self.destinationAccountId = input.destinationAccountId
+        self.amountCents = Converters.decimalToCents(input.amount)
+        self.occurredAt = input.occurredAt
+        self.originOccurredAt = input.originOccurredAt
+        self.purchaseType = input.purchaseType?.rawValue
+        self.installmentIndex = input.installmentIndex
+        self.installmentCount = input.installmentCount
+        self.description = input.description
+        self.notes = input.notes
+        self.externalId = input.externalId
     }
 
     enum CodingKeys: String, CodingKey {
         case transactionId = "transaction_id"
         case batchId = "batch_id"
+        case accountId = "account_id"
         case categorySlug = "category_slug"
         case subcategoryId = "subcategory_id"
+        case destinationAccountId = "destination_account_id"
         case amountCents = "amount_cents"
         case occurredAt = "occurred_at"
         case originOccurredAt = "origin_occurred_at"
@@ -422,11 +431,11 @@ nonisolated struct CommitImportTransactionRequest: Encodable, Hashable, Sendable
     }
 }
 
-nonisolated struct DeleteImportBatchRequest: Encodable, Sendable {
+nonisolated struct DeleteImportBatchRequest: Encodable {
     let pBatchId: UUID
 
     init(batchId: UUID) {
-        pBatchId = batchId
+        self.pBatchId = batchId
     }
 
     enum CodingKeys: String, CodingKey {

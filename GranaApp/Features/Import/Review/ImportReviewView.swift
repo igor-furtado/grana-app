@@ -55,7 +55,7 @@ struct ImportReviewView: View {
                     .frame(maxWidth: .infinity)
                     Button("Importar") { store.send(.importButtonTapped) }
                         .buttonStyle(GranaPrimaryButtonStyle())
-                        .disabled(store.suggestions.isEmpty)
+                        .disabled(!store.canImport)
                         .frame(maxWidth: .infinity)
                 }
             }
@@ -95,8 +95,12 @@ struct ImportReviewView: View {
                 }
                 .width(min: 170, ideal: 220, max: 260)
 
-                TableColumn("Subcategoria") { row in
-                    subcategoryMenu(for: row)
+                TableColumn("Detalhe") { row in
+                    if row.isTransfer {
+                        transferAccountMenu(for: row)
+                    } else {
+                        subcategoryMenu(for: row)
+                    }
                 }
                 .width(min: 170, ideal: 220, max: 260)
 
@@ -125,12 +129,17 @@ struct ImportReviewView: View {
             let suggestion = store.suggestions[index]
             return ImportReviewTableRow(
                 id: suggestion.id,
+                transactionId: suggestion.transactionId,
                 index: index,
                 occurredAt: suggestion.transactionOccurredAt,
                 description: suggestion.transactionDescription,
                 amount: suggestion.transactionAmount,
                 categoryId: suggestion.categoryId,
                 subcategoryId: suggestion.subcategoryId,
+                statementAccountId: suggestion.transactionAccountId,
+                isTransfer: store.state.isTransfer(categoryId: suggestion.categoryId),
+                isTransferIncomplete: store.state.invalidTransferTransactionIds.contains(suggestion.transactionId),
+                transferAccountLabel: transferAccountLabel(for: suggestion),
                 institutionKind: store.state.institutionKind(forAccountId: suggestion.transactionAccountId)
             )
         }
@@ -185,6 +194,24 @@ struct ImportReviewView: View {
         .help(subName(for: row) ?? "Sem subcategoria")
     }
 
+    private func transferAccountMenu(for row: ImportReviewTableRow) -> some View {
+        Menu {
+            Button("Selecionar") {
+                store.send(.transferAccountChanged(index: row.index, accountId: nil))
+            }
+            ForEach(transferAccountOptions(excluding: row.statementAccountId)) { account in
+                Button(accountLabel(for: account)) {
+                    store.send(.transferAccountChanged(index: row.index, accountId: account.id))
+                }
+            }
+        } label: {
+            tableMenuLabel(text: row.transferAccountLabel)
+        }
+        .menuStyle(.borderlessButton)
+        .help(row.isTransferIncomplete ? "Escolha a \(transferAccountFieldName(for: row).lowercased())" : row
+            .transferAccountLabel)
+    }
+
     private func rootName(for row: ImportReviewTableRow) -> String {
         store.state.category(for: row.categoryId)?.name ?? "Categoria"
     }
@@ -192,6 +219,37 @@ struct ImportReviewView: View {
     private func subName(for row: ImportReviewTableRow) -> String? {
         guard let subcategoryId = row.subcategoryId else { return nil }
         return store.state.category(for: subcategoryId)?.name
+    }
+
+    private func transferAccountLabel(for suggestion: CategorizationSuggestion) -> String {
+        let fieldName = transferAccountFieldName(transactionId: suggestion.transactionId)
+        if let accountId = store.state.transferAccountSelections[suggestion.transactionId] {
+            if let account = store.accounts.first(where: { $0.id == accountId }) {
+                return "\(fieldName): \(accountLabel(for: account))"
+            }
+        }
+        return fieldName
+    }
+
+    private func transferAccountFieldName(for row: ImportReviewTableRow) -> String {
+        transferAccountFieldName(transactionId: row.transactionId)
+    }
+
+    private func transferAccountFieldName(transactionId: UUID) -> String {
+        store.state.transferCounterpartyRole(forTransactionId: transactionId)
+    }
+
+    private func transferAccountOptions(excluding accountId: UUID) -> [Account] {
+        store.accounts.filter { $0.id != accountId && !$0.archived }
+    }
+
+    private func accountLabel(for account: Account) -> String {
+        if let institutionId = account.institutionId {
+            if let institution = store.institutions.first(where: { $0.id == institutionId }) {
+                return "\(institution.name) · \(account.type.displayName)"
+            }
+        }
+        return account.type.displayName
     }
 
     private func amountColor(for categoryId: UUID) -> Color {
@@ -244,11 +302,16 @@ enum ImportReviewOrdering {
 
 private struct ImportReviewTableRow: Identifiable {
     let id: UUID
+    let transactionId: UUID
     let index: Int
     let occurredAt: Date
     let description: String
     let amount: Decimal
     let categoryId: UUID
     let subcategoryId: UUID?
+    let statementAccountId: UUID
+    let isTransfer: Bool
+    let isTransferIncomplete: Bool
+    let transferAccountLabel: String
     let institutionKind: InstitutionKind?
 }

@@ -73,6 +73,22 @@ struct ReviewedImportRow: Hashable {
     let draft: TransactionDraft
     let categoryId: UUID?
     let subcategoryId: UUID?
+    var accountId: UUID?
+    var destinationAccountId: UUID?
+
+    init(
+        draft: TransactionDraft,
+        categoryId: UUID?,
+        subcategoryId: UUID?,
+        accountId: UUID? = nil,
+        destinationAccountId: UUID? = nil
+    ) {
+        self.draft = draft
+        self.categoryId = categoryId
+        self.subcategoryId = subcategoryId
+        self.accountId = accountId
+        self.destinationAccountId = destinationAccountId
+    }
 }
 
 struct OFXPreviewRow: Identifiable, Hashable {

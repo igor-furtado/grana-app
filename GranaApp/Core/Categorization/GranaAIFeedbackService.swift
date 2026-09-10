@@ -52,6 +52,9 @@ final class GranaAIFeedbackService: Sendable {
                 guard suggestion.categoryId != fallbackCategoryId else {
                     return nil
                 }
+                guard categories.first(where: { $0.id == suggestion.categoryId })?.kind != .transfer else {
+                    return nil
+                }
 
                 guard let selection = taxonomy.externalSelection(
                     categoryId: suggestion.categoryId,

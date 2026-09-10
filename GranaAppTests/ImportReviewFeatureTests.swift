@@ -70,6 +70,161 @@ struct ImportReviewFeatureTests {
         }
     }
 
+    @Test("Correção para Transferências limpa subcategoria e bloqueia importação sem conta relacionada")
+    func transferCorrectionClearsSubcategoryAndBlocksImportWithoutRelatedAccount() async {
+        let expenseCategory = Category(
+            id: UUID(),
+            parentId: nil,
+            name: "Alimentação",
+            kind: .expense,
+            slug: "alimentacao",
+            createdAt: Date()
+        )
+        let transferCategory = Category(
+            id: UUID(),
+            parentId: nil,
+            name: "Transferências",
+            kind: .transfer,
+            slug: "transferencias",
+            createdAt: Date()
+        )
+        let draft = makeDraft()
+        let suggestion = makeSuggestion(
+            transactionId: draft.id,
+            categoryId: expenseCategory.id,
+            subcategoryId: UUID()
+        )
+        let store = TestStore(
+            initialState: ImportReviewFeature.State(
+                plan: makePlan(drafts: [draft]),
+                suggestions: [suggestion],
+                categories: [expenseCategory, transferCategory]
+            )
+        ) {
+            ImportReviewFeature()
+        }
+
+        await store.send(.applyCorrection(index: 0, categoryId: transferCategory.id, subcategoryId: UUID())) {
+            $0.suggestions[0].categoryId = transferCategory.id
+            $0.suggestions[0].subcategoryId = nil
+            $0.suggestions[0].isReviewed = true
+        }
+
+        #expect(store.state.canImport == false)
+    }
+
+    @Test("Transferência enviada usa conta do extrato como origem e seleção como destino")
+    func outgoingTransferReviewedRowUsesSelectedDestination() throws {
+        let originAccountId = try #require(UUID(uuidString: "00000000-0000-0000-0000-000000000401"))
+        let destinationAccountId = try #require(UUID(uuidString: "00000000-0000-0000-0000-000000000402"))
+        let transferCategory = Category(
+            id: UUID(),
+            parentId: nil,
+            name: "Transferências",
+            kind: .transfer,
+            slug: "transferencias",
+            createdAt: Date()
+        )
+        let draft = makeDraft(accountId: originAccountId, signedAmount: Decimal(-12))
+        let suggestion = makeSuggestion(
+            transactionId: draft.id,
+            categoryId: transferCategory.id,
+            subcategoryId: nil
+        )
+        var state = ImportReviewFeature.State(
+            plan: makePlan(drafts: [draft]),
+            suggestions: [suggestion],
+            categories: [transferCategory],
+            accounts: [
+                makeAccount(id: originAccountId),
+                makeAccount(id: destinationAccountId),
+            ]
+        )
+
+        state.transferAccountSelections[draft.id] = destinationAccountId
+
+        let row = try #require(state.reviewedRows.first)
+        #expect(row.accountId == originAccountId)
+        #expect(row.destinationAccountId == destinationAccountId)
+        #expect(state.canImport)
+    }
+
+    @Test("Transferência recebida usa seleção como origem e conta do extrato como destino")
+    func incomingTransferReviewedRowUsesSelectedOrigin() throws {
+        let destinationAccountId = try #require(UUID(uuidString: "00000000-0000-0000-0000-000000000411"))
+        let originAccountId = try #require(UUID(uuidString: "00000000-0000-0000-0000-000000000412"))
+        let transferCategory = Category(
+            id: UUID(),
+            parentId: nil,
+            name: "Transferências",
+            kind: .transfer,
+            slug: "transferencias",
+            createdAt: Date()
+        )
+        let draft = makeDraft(accountId: destinationAccountId, signedAmount: Decimal(12))
+        let suggestion = makeSuggestion(
+            transactionId: draft.id,
+            categoryId: transferCategory.id,
+            subcategoryId: nil
+        )
+        var state = ImportReviewFeature.State(
+            plan: makePlan(drafts: [draft]),
+            suggestions: [suggestion],
+            categories: [transferCategory],
+            accounts: [
+                makeAccount(id: destinationAccountId),
+                makeAccount(id: originAccountId),
+            ]
+        )
+
+        state.transferAccountSelections[draft.id] = originAccountId
+
+        let row = try #require(state.reviewedRows.first)
+        #expect(row.accountId == originAccountId)
+        #expect(row.destinationAccountId == destinationAccountId)
+        #expect(state.canImport)
+    }
+
+    @Test("Conta relacionada de transferência não propaga por hash")
+    func transferAccountSelectionDoesNotPropagateAcrossMatchingHashes() async {
+        let transferCategory = Category(
+            id: UUID(),
+            parentId: nil,
+            name: "Transferências",
+            kind: .transfer,
+            slug: "transferencias",
+            createdAt: Date()
+        )
+        let firstDraft = makeDraft()
+        let secondDraft = makeDraft()
+        let selectedAccountId = UUID()
+        let first = makeSuggestion(
+            transactionId: firstDraft.id,
+            categoryId: transferCategory.id,
+            subcategoryId: nil,
+            descriptionHash: "same-hash"
+        )
+        let second = makeSuggestion(
+            transactionId: secondDraft.id,
+            categoryId: transferCategory.id,
+            subcategoryId: nil,
+            descriptionHash: "same-hash"
+        )
+        let store = TestStore(
+            initialState: ImportReviewFeature.State(
+                plan: makePlan(drafts: [firstDraft, secondDraft]),
+                suggestions: [first, second],
+                categories: [transferCategory]
+            )
+        ) {
+            ImportReviewFeature()
+        }
+
+        await store.send(.transferAccountChanged(index: 0, accountId: selectedAccountId)) {
+            $0.transferAccountSelections[firstDraft.id] = selectedAccountId
+        }
+    }
+
     @Test("Revisão mantém Não Classificado no topo")
     func reviewOrderingKeepsFallbackRowsAtTop() {
         let earlier = Date(timeIntervalSince1970: 10)
@@ -269,16 +424,34 @@ struct ImportReviewFeatureTests {
         )
     }
 
-    private func makeDraft() -> TransactionDraft {
+    private func makeDraft(
+        accountId: UUID = UUID(),
+        signedAmount: Decimal = Decimal(-12)
+    ) -> TransactionDraft {
         TransactionDraft(
             id: UUID(),
-            accountId: UUID(),
+            accountId: accountId,
             importBatchId: UUID(),
-            signedAmount: Decimal(-12),
+            signedAmount: signedAmount,
             occurredAt: Date(),
             description: "Padaria",
             notes: nil,
             externalId: "FIT-1"
+        )
+    }
+
+    private func makeAccount(
+        id: UUID,
+        archived: Bool = false
+    ) -> Account {
+        Account(
+            id: id,
+            type: .checking,
+            initialBalance: 0,
+            archived: archived,
+            institutionId: nil,
+            createdAt: Date(),
+            updatedAt: Date()
         )
     }
 

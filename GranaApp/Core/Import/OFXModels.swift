@@ -32,12 +32,21 @@ struct OFXTransaction: Hashable {
     var checkNumber: String?
     var refNumber: String?
 
-    /// Descrição "amigável" pra UI/lista. Prefere `name`; cai pra `memo` se
-    /// ausente; cai pra `trnType` em último caso.
+    /// Descrição "amigável" pra UI/lista. Prefere `memo`, que costuma trazer
+    /// mais contexto em OFX do Inter; cai pra `name` se ausente.
     var displayDescription: String {
-        if let name = name?.trimmingCharacters(in: .whitespacesAndNewlines), !name.isEmpty { return name }
         if let memo = memo?.trimmingCharacters(in: .whitespacesAndNewlines), !memo.isEmpty { return memo }
+        if let name = name?.trimmingCharacters(in: .whitespacesAndNewlines), !name.isEmpty { return name }
         return trnType
+    }
+
+    var displayNotes: String? {
+        let trimmedName = name?.trimmingCharacters(in: .whitespacesAndNewlines)
+        let trimmedMemo = memo?.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard let trimmedName, !trimmedName.isEmpty, trimmedName != trimmedMemo else {
+            return nil
+        }
+        return "Nome OFX: \(trimmedName)"
     }
 }
 

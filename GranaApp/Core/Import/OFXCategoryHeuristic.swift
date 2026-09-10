@@ -6,8 +6,8 @@ import Foundation
 /// 1. **Conservador**: na dúvida, manda pra "Não Classificado" em vez de
 ///    inventar uma categoria duvidosa.
 /// 2. **TRNTYPE primeiro, MEMO depois**: o tipo OFX é a fonte mais
-///    estruturada; o MEMO entra pra capturar PIX/TED que vêm como
-///    PAYMENT/CREDIT genéricos mas semanticamente são transferências.
+///    estruturada. MEMO/NAME enriquecem a revisão, mas não bastam para
+///    inferir transferência entre contas próprias.
 /// 3. **Sem tabelas em RAM**: recebemos os IDs das raízes resolvidas pela
 ///    camada de importação e devolvemos um deles — a função fica pura, fácil de testar.
 struct OFXCategoryHeuristic {
@@ -22,35 +22,12 @@ struct OFXCategoryHeuristic {
     let roots: RootCategoryIDs
 
     func categoryId(for transaction: OFXTransaction) -> UUID {
-        // PIX, TED, DOC, TEF — independente do TRNTYPE, são movimentações
-        // entre contas. Transferências são neutras nas agregações do dashboard.
-        if let memo = transaction.memo, memo.containsAny(["pix", "ted ", "doc ", "tef"]) {
-            return roots.transfers ?? roots.unclassified
-        }
-        if let name = transaction.name, name.containsAny(["pix", "ted ", "doc "]) {
-            return roots.transfers ?? roots.unclassified
-        }
-
         switch transaction.trnType.uppercased() {
         case "CREDIT", "DEP", "DIRECTDEP", "INT", "DIV":
             return roots.income ?? roots.unclassified
-        case "XFER":
-            return roots.transfers ?? roots.unclassified
         default:
             // DEBIT/PAYMENT/CHECK/ATM/POS/FEE/SRVCHG/CASH/DIRECTDEBIT/REPEATPMT/OTHER
             return roots.unclassified
         }
-    }
-}
-
-private extension String {
-    /// Busca case-insensitive por qualquer um dos termos. Atalho útil pra
-    /// inspeção rápida de MEMO/NAME.
-    func containsAny(_ needles: [String]) -> Bool {
-        let haystack = lowercased()
-        for needle in needles where haystack.contains(needle) {
-            return true
-        }
-        return false
     }
 }

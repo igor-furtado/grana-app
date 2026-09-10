@@ -101,6 +101,8 @@ struct ImportCommitBuilderTests {
         let key = UUID()
         let occurredAt = Date()
         let originOccurredAt = occurredAt.addingTimeInterval(-86400)
+        let accountId = UUID()
+        let destinationAccountId = UUID()
         let categories = [
             makeCategory(
                 id: fallbackId,
@@ -125,7 +127,7 @@ struct ImportCommitBuilderTests {
             ReviewedImportRow(
                 draft: TransactionDraft(
                     id: transactionId,
-                    accountId: UUID(),
+                    accountId: accountId,
                     importBatchId: batchId,
                     signedAmount: Decimal(string: "-42.50") ?? 0,
                     occurredAt: occurredAt,
@@ -138,7 +140,9 @@ struct ImportCommitBuilderTests {
                     externalId: "FIT-123"
                 ),
                 categoryId: rootCategoryId,
-                subcategoryId: subcategoryId
+                subcategoryId: subcategoryId,
+                accountId: accountId,
+                destinationAccountId: destinationAccountId
             ),
         ]
         let pendingBatches = [
@@ -167,14 +171,18 @@ struct ImportCommitBuilderTests {
         #expect(input.idempotencyKey == key)
         #expect(input.batches.first?.importFormat == .ofx)
         #expect(input.rows.first?.categorySlug == "alimentacao")
+        #expect(input.rows.first?.accountId == accountId)
         #expect(input.rows.first?.subcategoryId == subcategoryId)
+        #expect(input.rows.first?.destinationAccountId == destinationAccountId)
         #expect(input.rows.first?.amount == Decimal(string: "42.50"))
         #expect(input.rows.first?.originOccurredAt == originOccurredAt)
         #expect(input.rows.first?.purchaseType == .installment)
         #expect(input.rows.first?.installmentIndex == 3)
         #expect(input.rows.first?.installmentCount == 10)
         #expect(request.pIdempotencyKey == key)
+        #expect(request.pTransactions.first?.accountId == accountId)
         #expect(request.pTransactions.first?.amountCents == 4250)
+        #expect(request.pTransactions.first?.destinationAccountId == destinationAccountId)
         #expect(request.pTransactions.first?.originOccurredAt == originOccurredAt)
         #expect(request.pTransactions.first?.purchaseType == "installment")
         #expect(request.pTransactions.first?.installmentIndex == 3)
@@ -231,11 +239,6 @@ struct ImportCommitBuilderTests {
             name: "Padarias",
             kind: .expense
         )
-        let fallbackCategory = makeCategory(
-            slug: "nao-classificado",
-            name: "Não Classificado",
-            kind: .expense
-        )
         let draftToLearn = TransactionDraft(
             id: UUID(),
             accountId: UUID(),
@@ -278,6 +281,66 @@ struct ImportCommitBuilderTests {
         #expect(request.confirmedClassifications.first?.description == "PADARIA CENTRAL")
         #expect(request.confirmedClassifications.first?.categoryId == "alimentacao")
         #expect(request.confirmedClassifications.first?.subcategoryId == "padarias")
+    }
+
+    @Test("Payload de learn ignora Não Classificado e Transferências")
+    func buildsLearningPayloadSkippingFallbackAndTransfers() throws {
+        let fallbackCategory = makeCategory(
+            slug: "nao-classificado",
+            name: "Não Classificado",
+            kind: .expense
+        )
+        let transferCategory = makeCategory(
+            slug: "transferencias",
+            name: "Transferências",
+            kind: .transfer
+        )
+        let foodCategory = makeCategory(
+            slug: "alimentacao",
+            name: "Alimentação",
+            kind: .expense
+        )
+        let transferDraft = TransactionDraft(
+            id: UUID(),
+            accountId: UUID(),
+            importBatchId: UUID(),
+            signedAmount: Decimal(-500),
+            occurredAt: Date(),
+            description: "Pix para conta própria",
+            notes: nil,
+            externalId: "FIT-TRANSFER",
+            destinationAccountId: UUID()
+        )
+        let foodDraft = TransactionDraft(
+            id: UUID(),
+            accountId: UUID(),
+            importBatchId: UUID(),
+            signedAmount: Decimal(-42),
+            occurredAt: Date(),
+            description: "PADARIA CENTRAL",
+            notes: nil,
+            externalId: "FIT-FOOD"
+        )
+
+        let request = try #require(GranaAIFeedbackService.buildLearningRequest(
+            suggestions: [
+                makeSuggestion(
+                    draft: transferDraft,
+                    categoryId: transferCategory.id,
+                    subcategoryId: nil
+                ),
+                makeSuggestion(
+                    draft: foodDraft,
+                    categoryId: foodCategory.id,
+                    subcategoryId: nil
+                ),
+            ],
+            categories: [fallbackCategory, transferCategory, foodCategory]
+        ))
+
+        #expect(request.confirmedClassifications.count == 1)
+        #expect(request.confirmedClassifications.first?.description == "PADARIA CENTRAL")
+        #expect(request.confirmedClassifications.first?.categoryId == "alimentacao")
     }
 
     @Test("Executa learn antes do commit remoto")

@@ -237,17 +237,34 @@ struct OFXCategoryHeuristicTests {
         #expect(h.categoryId(for: makeTransaction(trnType: "CREDIT")) != unc)
     }
 
-    @Test("XFER vai pra Transferências")
-    func xferGoesToTransfer() {
-        let (h, _, trn, _) = makeHeuristic()
-        #expect(h.categoryId(for: makeTransaction(trnType: "XFER")) == trn)
+    @Test("XFER não sugere Transferências automaticamente")
+    func xferGoesToUnclassified() {
+        let (h, unc, _, _) = makeHeuristic()
+        #expect(h.categoryId(for: makeTransaction(trnType: "XFER")) == unc)
     }
 
-    @Test("MEMO com PIX força Transferências mesmo em CREDIT")
-    func pixMemoOverridesTrnType() {
-        let (h, _, trn, _) = makeHeuristic()
+    @Test("MEMO com PIX não força Transferências")
+    func pixMemoDoesNotOverrideToTransfer() {
+        let (h, _, _, inc) = makeHeuristic()
         let tx = makeTransaction(trnType: "CREDIT", memo: "Pix recebido")
-        #expect(h.categoryId(for: tx) == trn)
+        #expect(h.categoryId(for: tx) == inc)
+    }
+
+    @Test("OFX usa MEMO como descrição principal e NAME como nota")
+    func ofxRowsPreferMemoAsDescription() {
+        let transaction = OFXTransaction(
+            trnType: "PAYMENT",
+            datePosted: Date(),
+            amount: Decimal(-50),
+            fitid: "FIT-1",
+            name: "Nome Curto",
+            memo: "Pix enviado: \"Cp :12345678-Nome Completo\"",
+            checkNumber: nil,
+            refNumber: nil
+        )
+
+        #expect(transaction.displayDescription == "Pix enviado: \"Cp :12345678-Nome Completo\"")
+        #expect(transaction.displayNotes == "Nome OFX: Nome Curto")
     }
 
     @Test("Sem income root, CREDIT cai pra Não Classificado")

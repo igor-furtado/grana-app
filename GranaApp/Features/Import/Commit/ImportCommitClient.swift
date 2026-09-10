@@ -67,16 +67,23 @@ enum ImportCommitBuilder {
                     category.slug.map { (category.id, $0) }
                 }
         )
+        let categoryKindsById = Dictionary(
+            uniqueKeysWithValues: categories.map { ($0.id, $0.kind) }
+        )
 
         let batchIds = Set(pendingBatches.map(\.batch.id))
         let rows = reviewedRows
             .filter { batchIds.contains($0.draft.importBatchId) }
             .map { row in
-                ImportTransactionCommitInput(
+                let categorySlug = row.categoryId.flatMap { rootSlugsById[$0] } ?? fallbackSlug
+                let isTransfer = row.categoryId.flatMap { categoryKindsById[$0] } == .transfer
+                return ImportTransactionCommitInput(
                     transactionId: row.draft.id,
                     batchId: row.draft.importBatchId,
-                    categorySlug: row.categoryId.flatMap { rootSlugsById[$0] } ?? fallbackSlug,
-                    subcategoryId: row.subcategoryId,
+                    accountId: row.accountId ?? row.draft.accountId,
+                    categorySlug: categorySlug,
+                    subcategoryId: isTransfer ? nil : row.subcategoryId,
+                    destinationAccountId: row.destinationAccountId ?? row.draft.destinationAccountId,
                     amount: abs(row.draft.signedAmount),
                     occurredAt: row.draft.occurredAt,
                     originOccurredAt: row.draft.originOccurredAt,

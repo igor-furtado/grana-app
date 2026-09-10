@@ -82,6 +82,7 @@ final class CategorizationService: Sendable {
                 drafts: drafts,
                 response: response,
                 taxonomy: taxonomy,
+                categories: allCategories,
                 fallbackSuggestions: fallbackSuggestions
             )
             let fallbackCount = suggestions.filter { $0.source == .fallback }.count
@@ -100,6 +101,7 @@ final class CategorizationService: Sendable {
         drafts: [TransactionDraft],
         response: GranaAIClassificationResponse,
         taxonomy: GranaAITaxonomyMapping,
+        categories: [Category],
         fallbackSuggestions: [CategorizationSuggestion]
     ) -> [CategorizationSuggestion] {
         var resultsByTransactionId: [String: GranaAIClassificationResponse.Result] = [:]
@@ -115,6 +117,9 @@ final class CategorizationService: Sendable {
             guard case let .classified(categoryId, subcategoryId) = result.outcome,
                   let selection = taxonomy.resolve(categoryId: categoryId, subcategoryId: subcategoryId)
             else {
+                return fallbackSuggestions[index]
+            }
+            guard categories.first(where: { $0.id == selection.categoryId })?.kind != .transfer else {
                 return fallbackSuggestions[index]
             }
 

@@ -10,6 +10,7 @@ struct ImportReviewFeature {
         var categories: [Category]
         var accounts: [Account]
         var institutions: [Institution]
+        var transferAccountSelections: [UUID: UUID] = [:]
 
         init(
             plan: PendingImportPlan,
@@ -50,15 +51,72 @@ struct ImportReviewFeature {
             return (suggestion.categoryId, suggestion.subcategoryId)
         }
 
+        func draft(forTransactionId id: UUID) -> TransactionDraft? {
+            plan.drafts.first { $0.id == id }
+        }
+
+        func isTransfer(categoryId: UUID?) -> Bool {
+            guard let categoryId else { return false }
+            return category(for: categoryId)?.kind == .transfer
+        }
+
+        func transferCounterpartyRole(forTransactionId id: UUID) -> String {
+            guard let draft = draft(forTransactionId: id) else {
+                return "conta"
+            }
+            return draft.signedAmount < 0 ? "Conta de destino" : "Conta de origem"
+        }
+
+        var canImport: Bool {
+            !suggestions.isEmpty && invalidTransferTransactionIds.isEmpty
+        }
+
+        var invalidTransferTransactionIds: Set<UUID> {
+            Set(suggestions.compactMap { suggestion in
+                guard isTransfer(categoryId: suggestion.categoryId),
+                      let draft = draft(forTransactionId: suggestion.transactionId)
+                else { return nil }
+                guard let selectedAccountId = transferAccountSelections[draft.id],
+                      selectedAccountId != draft.accountId,
+                      accounts.contains(where: { $0.id == selectedAccountId && !$0.archived })
+                else {
+                    return draft.id
+                }
+                return nil
+            })
+        }
+
         var reviewedRows: [ReviewedImportRow] {
             plan.drafts.map { draft in
                 let resolved = resolvedCategory(forTransactionId: draft.id)
+                let transferAccounts = reviewedTransferAccounts(
+                    draft: draft,
+                    categoryId: resolved?.categoryId
+                )
                 return ReviewedImportRow(
                     draft: draft,
                     categoryId: resolved?.categoryId,
-                    subcategoryId: resolved?.subcategoryId
+                    subcategoryId: isTransfer(categoryId: resolved?.categoryId) ? nil : resolved?.subcategoryId,
+                    accountId: transferAccounts.accountId,
+                    destinationAccountId: transferAccounts.destinationAccountId
                 )
             }
+        }
+
+        private func reviewedTransferAccounts(
+            draft: TransactionDraft,
+            categoryId: UUID?
+        ) -> (accountId: UUID?, destinationAccountId: UUID?) {
+            guard isTransfer(categoryId: categoryId),
+                  let relatedAccountId = transferAccountSelections[draft.id],
+                  relatedAccountId != draft.accountId
+            else {
+                return (nil, nil)
+            }
+            if draft.signedAmount < 0 {
+                return (draft.accountId, relatedAccountId)
+            }
+            return (relatedAccountId, draft.accountId)
         }
     }
 
@@ -66,6 +124,7 @@ struct ImportReviewFeature {
         case confirm(Int)
         case confirmAll
         case applyCorrection(index: Int, categoryId: UUID, subcategoryId: UUID?)
+        case transferAccountChanged(index: Int, accountId: UUID?)
         case importButtonTapped
         case delegate(Delegate)
     }
@@ -93,15 +152,31 @@ struct ImportReviewFeature {
             case let .applyCorrection(index, categoryId, subcategoryId):
                 guard state.suggestions.indices.contains(index) else { return .none }
                 let hash = state.suggestions[index].descriptionHash
+                let isTransfer = state.isTransfer(categoryId: categoryId)
                 for suggestionIndex in state.suggestions.indices {
                     guard state.suggestions[suggestionIndex].descriptionHash == hash else { continue }
                     state.suggestions[suggestionIndex].categoryId = categoryId
-                    state.suggestions[suggestionIndex].subcategoryId = subcategoryId
+                    state.suggestions[suggestionIndex].subcategoryId = isTransfer ? nil : subcategoryId
                     state.suggestions[suggestionIndex].isReviewed = true
+                    if !isTransfer {
+                        state.transferAccountSelections[state.suggestions[suggestionIndex].transactionId] = nil
+                    }
+                }
+                return .none
+
+            case let .transferAccountChanged(index, accountId):
+                guard state.suggestions.indices.contains(index),
+                      let draft = state.draft(forTransactionId: state.suggestions[index].transactionId)
+                else { return .none }
+                if accountId == draft.accountId {
+                    state.transferAccountSelections[draft.id] = nil
+                } else {
+                    state.transferAccountSelections[draft.id] = accountId
                 }
                 return .none
 
             case .importButtonTapped:
+                guard state.canImport else { return .none }
                 return .send(.delegate(.completed(ReviewedImportCommit(
                     idempotencyKey: uuid(),
                     reviewedRows: state.reviewedRows,
