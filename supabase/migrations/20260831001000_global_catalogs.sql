@@ -31,7 +31,7 @@ create table if not exists app_private.supported_institutions_catalog (
     id uuid primary key,
     code text not null unique,
     name text not null,
-    kind text not null check (kind in ('inter', 'itau', 'bb', 'caixa', 'c6', 'xp', 'other')),
+    kind text not null check (kind in ('inter', 'itau', 'nubank', 'bb', 'caixa', 'c6', 'xp', 'other')),
     supported_account_types text[] not null check (cardinality(supported_account_types) > 0),
     supported_import_formats text[] not null default '{}'::text[],
     created_at timestamptz not null default timezone('utc', now()),
@@ -250,6 +250,7 @@ insert into app_private.supported_institutions_catalog (id, code, name, kind, su
     ('608d9dc0-0df1-8ae0-aa82-ee90c024dcab', '077', 'Banco Inter', 'inter', array['checking', 'creditCard']::text[], array['ofx', 'inter_credit_card_csv']::text[], timezone('utc', now()), timezone('utc', now())),
     ('7affd84d-2678-8b5d-98ec-be3e1a226c69', '102', 'XP Investimentos', 'xp', array['checking']::text[], array['ofx']::text[], timezone('utc', now()), timezone('utc', now())),
     ('504ee282-013f-8b73-9b7f-a54ec6a8b811', '104', 'Caixa Econômica Federal', 'caixa', array['checking', 'creditCard']::text[], array['ofx']::text[], timezone('utc', now()), timezone('utc', now())),
+    ('948a28ad-3829-49e9-ab8a-d7d850239347', '260', 'Nubank', 'nubank', array['checking', 'creditCard']::text[], array['ofx']::text[], timezone('utc', now()), timezone('utc', now())),
     ('84085364-bc2c-873d-a83b-a71c3b29f5b5', '336', 'C6 Bank', 'c6', array['checking', 'creditCard']::text[], array['ofx']::text[], timezone('utc', now()), timezone('utc', now())),
     ('148f03b9-e514-8f46-b00a-54dadd6006ea', '341', 'Itaú', 'itau', array['checking', 'creditCard']::text[], array['ofx']::text[], timezone('utc', now()), timezone('utc', now()))
 on conflict (id) do update set

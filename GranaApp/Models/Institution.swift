@@ -59,6 +59,7 @@ enum InstitutionImportFormat: String, Codable, CaseIterable, Hashable {
 enum InstitutionKind: String, Codable, CaseIterable {
     case inter
     case itau
+    case nubank
     case bb
     case caixa
     case c6
@@ -69,6 +70,7 @@ enum InstitutionKind: String, Codable, CaseIterable {
         switch self {
         case .inter: "Banco Inter"
         case .itau: "Itaú"
+        case .nubank: "Nubank"
         case .bb: "Banco do Brasil"
         case .caixa: "Caixa Econômica Federal"
         case .c6: "C6 Bank"
@@ -83,6 +85,7 @@ enum InstitutionKind: String, Codable, CaseIterable {
         switch self {
         case .inter: "077"
         case .itau: "341"
+        case .nubank: "260"
         case .bb: "001"
         case .caixa: "104"
         case .c6: "336"
@@ -112,6 +115,7 @@ enum InstitutionKind: String, Codable, CaseIterable {
         switch self {
         case .inter: "inter-logo"
         case .itau: "itau-logo"
+        case .nubank: "nubank-logo"
         case .bb: "bb-logo"
         case .caixa: "caixa-logo"
         case .c6: "c6-logo"
@@ -127,6 +131,7 @@ enum InstitutionKind: String, Codable, CaseIterable {
         switch self {
         case .inter: Color(red: 1.000, green: 0.478, blue: 0.000) // #FF7A00 — Flush Orange
         case .itau: Color(red: 1.00, green: 0.384, blue: 0.000) // #FF6200 — Blaze Orange (Pentagram 2023)
+        case .nubank: Color(red: 0.510, green: 0.000, blue: 0.800) // #8200CC — Electric Violet
         case .bb: Color(red: 0.988, green: 0.988, blue: 0.188) // #FCFC30 — Golden Fizz
         case .caixa: Color(red: 0.004, green: 0.361, blue: 0.663) // #015CA9 — Endeavour
         case .c6: Color(red: 0.141, green: 0.141, blue: 0.161) // #242429 — Shark
@@ -148,8 +153,7 @@ enum InstitutionKind: String, Codable, CaseIterable {
     /// Resolve `InstitutionKind` a partir do código FEBRABAN. Retorna `.other`
     /// pra códigos desconhecidos.
     static func fromCode(_ code: String) -> InstitutionKind {
-        let normalized = code.trimmingCharacters(in: .whitespaces)
-        for kind in allCases where kind.defaultCode == normalized {
+        for kind in allCases where kind.defaultCode.map({ InstitutionCode.matches($0, code) }) == true {
             return kind
         }
         return .other
@@ -164,17 +168,32 @@ enum InstitutionKind: String, Codable, CaseIterable {
 
 extension Sequence where Element == Institution {
     func institution(code: String) -> Institution? {
-        let normalized = code.trimmingCharacters(in: .whitespacesAndNewlines)
-        return first { $0.code == normalized }
+        first { InstitutionCode.matches($0.code, code) }
     }
 
     func institution(
         code: String,
         supporting importFormat: InstitutionImportFormat
     ) -> Institution? {
-        let normalized = code.trimmingCharacters(in: .whitespacesAndNewlines)
         return first {
-            $0.code == normalized && $0.capabilities.supports(importFormat)
+            InstitutionCode.matches($0.code, code) && $0.capabilities.supports(importFormat)
         }
+    }
+}
+
+enum InstitutionCode {
+    static func matches(_ lhs: String, _ rhs: String) -> Bool {
+        normalized(lhs) == normalized(rhs)
+    }
+
+    private static func normalized(_ raw: String) -> String {
+        let digits = raw.filter(\.isNumber)
+        let trimmed = trimLeadingZeros(String(digits))
+        return trimmed.isEmpty ? "0" : trimmed
+    }
+
+    private static func trimLeadingZeros(_ raw: String) -> String {
+        let trimmed = raw.drop { $0 == "0" }
+        return trimmed.isEmpty && !raw.isEmpty ? "0" : String(trimmed)
     }
 }

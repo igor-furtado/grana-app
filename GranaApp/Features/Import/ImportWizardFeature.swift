@@ -482,16 +482,10 @@ private func matchedAccountId(
     institutions: [Institution],
     bankDetails: [BankAccountDetails]
 ) -> UUID? {
-    guard let institution = institutions.institution(code: accountKey.bankId, supporting: .ofx) else {
-        return nil
-    }
-
-    return accounts.first { account in
-        guard account.institutionId == institution.id,
-              let details = bankDetails.first(where: { $0.accountId == account.id })
-        else { return false }
-
-        return details.accountNumber == accountKey.accountId
-            && details.branchId == accountKey.branchId
-    }?.id
+    OFXAccountMatcher.matchedAccountId(
+        for: accountKey,
+        accounts: accounts,
+        institutions: institutions,
+        bankDetails: bankDetails
+    )
 }

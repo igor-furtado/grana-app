@@ -199,18 +199,12 @@ private enum ImportFileLoadingOperations {
         for statement: OFXStatement,
         snapshot: ImportSnapshot
     ) -> UUID? {
-        let code = statement.account.bankId
-        guard let institution = snapshot.institutions.institution(code: code, supporting: .ofx) else {
-            return nil
-        }
-
-        return snapshot.accounts.first { account in
-            guard account.institutionId == institution.id,
-                  let details = snapshot.bankDetails.first(where: { $0.accountId == account.id })
-            else { return false }
-            return details.accountNumber == statement.account.accountId
-                && details.branchId == statement.account.branchId
-        }?.id
+        OFXAccountMatcher.matchedAccountId(
+            for: statement.account,
+            accounts: snapshot.accounts,
+            institutions: snapshot.institutions,
+            bankDetails: snapshot.bankDetails
+        )
     }
 
     static func ofxBankLabel(

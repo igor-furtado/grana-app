@@ -108,6 +108,16 @@ struct InstitutionCatalogRepositoryTests {
                     createdAt: now,
                     updatedAt: now
                 ),
+                InstitutionCatalogRecord(
+                    id: UUID(),
+                    code: "260",
+                    name: "Nubank",
+                    kind: "nubank",
+                    supportedAccountTypes: [.checking, .creditCard],
+                    supportedImportFormats: [.ofx],
+                    createdAt: now,
+                    updatedAt: now
+                ),
             ])
         )
 
@@ -116,6 +126,8 @@ struct InstitutionCatalogRepositoryTests {
         #expect(institutions.institution(code: " 341 ")?.name == "Itaú")
         #expect(institutions.institution(code: "341", supporting: .ofx) != nil)
         #expect(institutions.institution(code: "341", supporting: .interCreditCardCSV) == nil)
+        #expect(institutions.institution(code: "260")?.kind == .nubank)
+        #expect(institutions.institution(code: "260")?.capabilities.supports(.creditCard) == true)
     }
 
     @Test("Propaga erro remoto ao carregar instituições")
@@ -259,6 +271,7 @@ struct CatalogLoadingTests {
 
         #expect(context.categories.rootCategory(slug: "renda-e-pagamentos")?.name == "Renda e Pagamentos")
         #expect(context.institutions.institution(code: "341")?.kind == .itau)
+        #expect(InstitutionKind.fromCode("0260") == .nubank)
         #expect(context.accounts.map(\.id) == [account.id])
     }
 }
