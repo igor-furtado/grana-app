@@ -40,6 +40,8 @@ struct StatementTransactionsSnapshot: Equatable {
 }
 
 struct CreditCardMutationInput: Equatable {
+    var territorialScope: AccountTerritorialScope = .brazilian
+    var nickname: String?
     var institutionId: UUID?
     var currency: String = "BRL"
     var cardLastFour: String
@@ -149,6 +151,8 @@ struct CreditCardsClient {
                     accountId: cardId,
                     input: accountMutationInput(
                         from: CreditCardMutationInput(
+                            territorialScope: account.territorialScope,
+                            nickname: account.nickname,
                             institutionId: account.institutionId,
                             currency: account.currency,
                             cardLastFour: details.cardLastFour,
@@ -173,6 +177,8 @@ struct CreditCardsClient {
     ) -> AccountMutationInput {
         AccountMutationInput(
             type: .creditCard,
+            territorialScope: input.territorialScope,
+            nickname: input.nickname,
             initialBalance: 0,
             archived: archived,
             institutionId: input.institutionId,

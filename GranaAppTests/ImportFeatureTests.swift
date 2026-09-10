@@ -443,13 +443,18 @@ struct ImportFeatureTests {
             institution: institution,
             accountNumber: "123"
         )
+        let investmentItem = makeInvestmentAccountItem(
+            institution: institution,
+            accountNumber: "999"
+        )
         let bankDetails = try #require(item.bankDetails)
+        let investmentBankDetails = try #require(investmentItem.bankDetails)
         var initialState = ImportWizardFeature.State()
         initialState.snapshot = ImportSnapshot(
             batches: [],
-            accounts: [],
+            accounts: [investmentItem.account],
             institutions: [institution],
-            bankDetails: [],
+            bankDetails: [investmentBankDetails],
             creditCards: [],
             categories: []
         )
@@ -467,7 +472,7 @@ struct ImportFeatureTests {
             ImportWizardFeature()
         } withDependencies: {
             $0.accountsClient.loadList = {
-                AccountsSnapshot(items: [item], institutions: [institution])
+                AccountsSnapshot(items: [item, investmentItem], institutions: [institution])
             }
             $0.importTriageClient.reloadOFXResolution = { resolution, selectedAccountId in
                 var resolution = resolution
@@ -495,11 +500,11 @@ struct ImportFeatureTests {
         await store.receive(.accountSnapshotLoaded(
             statementIndex: 0,
             accountKey: resolution.statement.account,
-            .success(AccountsSnapshot(items: [item], institutions: [institution]))
+            .success(AccountsSnapshot(items: [item, investmentItem], institutions: [institution]))
         )) {
-            $0.snapshot.accounts = [item.account]
+            $0.snapshot.accounts = [item.account, investmentItem.account]
             $0.snapshot.institutions = [institution]
-            $0.snapshot.bankDetails = [bankDetails]
+            $0.snapshot.bankDetails = [bankDetails, investmentBankDetails]
         }
         var selectedResolution = resolution
         selectedResolution.accountId = accountId

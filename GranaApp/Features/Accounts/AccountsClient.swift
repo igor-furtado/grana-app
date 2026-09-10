@@ -28,6 +28,14 @@ struct AccountListItem: Equatable, Identifiable {
         institution?.kind ?? .other
     }
 
+    var typeText: String {
+        account.type.displayName
+    }
+
+    var territorialScopeText: String {
+        account.territorialScope.displayName
+    }
+
     var statusText: String {
         account.archived ? "Arquivada" : "Ativa"
     }
@@ -45,10 +53,14 @@ struct AccountsSnapshot: Equatable {
 }
 
 struct CheckingAccountMutationInput: Equatable {
+    var type: AccountType = .checking
+    var territorialScope: AccountTerritorialScope = .brazilian
+    var nickname: String?
     var institutionId: UUID?
     var currency: String = "BRL"
     var branchId: String?
     var accountNumber: String
+    var bankName: String?
     var initialBalance: Decimal
 }
 
@@ -81,7 +93,7 @@ struct AccountsClient {
                 )
 
                 let items = accounts.accounts
-                    .filter { $0.type == .checking }
+                    .filter { $0.type.isListedInAccounts }
                     .map { account in
                         AccountListItem(
                             account: account,
@@ -115,10 +127,14 @@ struct AccountsClient {
                     accountId: accountId,
                     input: accountMutationInput(
                         from: CheckingAccountMutationInput(
+                            type: account.type,
+                            territorialScope: account.territorialScope,
+                            nickname: account.nickname,
                             institutionId: account.institutionId,
                             currency: account.currency,
                             branchId: details.branchId,
                             accountNumber: details.accountNumber,
+                            bankName: details.bankName,
                             initialBalance: account.initialBalance
                         ),
                         archived: archived
@@ -137,14 +153,17 @@ struct AccountsClient {
         archived: Bool
     ) -> AccountMutationInput {
         AccountMutationInput(
-            type: .checking,
+            type: input.type,
+            territorialScope: input.territorialScope,
+            nickname: input.nickname,
             initialBalance: input.initialBalance,
             archived: archived,
             institutionId: input.institutionId,
             currency: input.currency,
             bankDetails: BankAccountDetailsInput(
                 branchId: input.branchId,
-                accountNumber: input.accountNumber
+                accountNumber: input.accountNumber,
+                bankName: input.bankName
             ),
             creditCardDetails: nil
         )
@@ -174,6 +193,17 @@ struct AccountsClient {
         }
 
         return balances
+    }
+}
+
+private extension AccountType {
+    nonisolated var isListedInAccounts: Bool {
+        switch self {
+        case .checking, .investment:
+            return true
+        case .creditCard:
+            return false
+        }
     }
 }
 

@@ -5,17 +5,20 @@ import SwiftUI
 public struct CurrencyField: View {
     private let label: String
     @Binding private var cents: Int
+    private let currencyCode: String
     private let placeholder: String
     private let errorMessage: String?
 
     public init(
         label: String,
         cents: Binding<Int>,
+        currencyCode: String = "BRL",
         placeholder: String = "R$ 0,00",
         errorMessage: String? = nil
     ) {
         self.label = label
         _cents = cents
+        self.currencyCode = currencyCode
         self.placeholder = placeholder
         self.errorMessage = errorMessage
     }
@@ -25,33 +28,34 @@ public struct CurrencyField: View {
             label: label,
             errorMessage: errorMessage
         ) {
-            CurrencyTextField(cents: $cents, placeholder: placeholder)
+            CurrencyTextField(cents: $cents, currencyCode: currencyCode, placeholder: placeholder)
                 .font(Theme.Typography.moneyBody)
                 .frame(maxWidth: .infinity, alignment: .trailing)
         }
     }
 }
 
-/// Formatação reaproveitável para moeda BRL no input visual do app.
 private enum AppUICurrencyFormat {
-    static let formatter: NumberFormatter = {
+    static func format(_ cents: Int, currencyCode: String) -> String {
+        let formatter = formatter(currencyCode: currencyCode)
+        let decimal = Decimal(cents) / 100
+        return formatter.string(from: decimal as NSDecimalNumber) ?? "\(currencyCode) 0.00"
+    }
+
+    private static func formatter(currencyCode: String) -> NumberFormatter {
         let formatter = NumberFormatter()
-        formatter.locale = Locale(identifier: "pt_BR")
+        formatter.locale = currencyCode == "BRL" ? Locale(identifier: "pt_BR") : Locale(identifier: "en_US")
         formatter.numberStyle = .currency
-        formatter.currencyCode = "BRL"
+        formatter.currencyCode = currencyCode
         formatter.minimumFractionDigits = 2
         formatter.maximumFractionDigits = 2
         return formatter
-    }()
-
-    static func format(_ cents: Int) -> String {
-        let decimal = Decimal(cents) / 100
-        return formatter.string(from: decimal as NSDecimalNumber) ?? "R$ 0,00"
     }
 }
 
 private struct CurrencyTextField: NSViewRepresentable {
     @Binding var cents: Int
+    let currencyCode: String
     let placeholder: String
 
     func makeNSView(context: Context) -> NSTextField {
@@ -63,14 +67,14 @@ private struct CurrencyTextField: NSViewRepresentable {
         textField.isBordered = false
         textField.drawsBackground = false
         textField.focusRingType = .none
-        textField.stringValue = AppUICurrencyFormat.format(cents)
+        textField.stringValue = AppUICurrencyFormat.format(cents, currencyCode: currencyCode)
         return textField
     }
 
     func updateNSView(_ nsView: NSTextField, context: Context) {
         nsView.font = Theme.Typography.moneyBodyNSFont
         guard !context.coordinator.isEditing else { return }
-        let expected = AppUICurrencyFormat.format(cents)
+        let expected = AppUICurrencyFormat.format(cents, currencyCode: currencyCode)
         if nsView.stringValue != expected {
             nsView.stringValue = expected
         }
@@ -100,7 +104,7 @@ private struct CurrencyTextField: NSViewRepresentable {
             guard let textField = obj.object as? NSTextField else { return }
             let digits = textField.stringValue.filter(\.isNumber)
             let newCents = Int(digits) ?? 0
-            let formatted = AppUICurrencyFormat.format(newCents)
+            let formatted = AppUICurrencyFormat.format(newCents, currencyCode: parent.currencyCode)
 
             if textField.stringValue != formatted {
                 textField.stringValue = formatted
@@ -117,7 +121,7 @@ private struct CurrencyTextField: NSViewRepresentable {
 }
 
 private struct CurrencyFieldPreview: View {
-    @State private var cents = 249990
+    @State private var cents = 249_990
 
     var body: some View {
         AppUIPreviewSurface(title: "CurrencyField") {

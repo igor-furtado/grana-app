@@ -2,7 +2,7 @@ import AppUI
 import ComposableArchitecture
 import SwiftUI
 
-/// Form de criação/edição de conta corrente da vertical de Contas.
+/// Form de criação/edição de contas com saldo da vertical de Contas.
 struct AccountFormView: View {
     @Bindable var store: StoreOf<AccountFormFeature>
 
@@ -18,7 +18,7 @@ struct AccountFormView: View {
 
                 Form {
                     identitySection
-                    bankIdentitySection
+                    accountIdentitySection
                     balanceSection
                     if let saveError = store.saveError {
                         errorSection(message: saveError)
@@ -51,6 +51,22 @@ struct AccountFormView: View {
     private var identitySection: some View {
         Section {
             AppUI.Selector(
+                label: "Tipo",
+                options: store.availableAccountTypes.map {
+                    .init(id: $0, title: $0.displayName)
+                },
+                selection: $store.type,
+                icon: AppUI.Icon.accountType.systemImage
+            )
+            AppUI.Selector(
+                label: "Abrangência",
+                options: AccountTerritorialScope.allCases.map {
+                    .init(id: $0, title: $0.displayName)
+                },
+                selection: $store.territorialScope,
+                icon: AppUI.Icon.territorialScope.systemImage
+            )
+            AppUI.Selector(
                 label: "Instituição financeira",
                 placeholder: "Selecione…",
                 options: store.availableInstitutions.map {
@@ -59,31 +75,54 @@ struct AccountFormView: View {
                 selection: $store.institutionId,
                 icon: "building.columns"
             )
+            AppUI.TextField(
+                label: "Apelido",
+                text: $store.nickname,
+                placeholder: "Ex: Reserva emergência",
+                textAlignment: .trailing
+            )
+            if store.territorialScope == .global {
+                AppUI.Selector(
+                    label: "Moeda",
+                    options: store.availableCurrencies.map {
+                        .init(id: $0, title: $0)
+                    },
+                    selection: $store.currency,
+                    icon: AppUI.Icon.currency.systemImage
+                )
+            }
         } header: {
             AppUI.Form.SectionHeader(title: "Identidade")
         }
     }
 
-    private var bankIdentitySection: some View {
+    private var accountIdentitySection: some View {
         Section {
+            if store.territorialScope == .brazilian {
+                AppUI.TextField(
+                    label: "Agência",
+                    text: $store.branchId,
+                    placeholder: "Ex: 0001-9",
+                    textAlignment: .trailing
+                )
+            } else {
+                AppUI.TextField(
+                    label: "Banco",
+                    text: $store.bankName,
+                    placeholder: "Ex: Community Federal Savings Bank",
+                    textAlignment: .trailing
+                )
+            }
             AppUI.TextField(
-                label: "Agência",
-                text: $store.branchId,
-                placeholder: "Ex: 0001-9",
-                textAlignment: .trailing
-            )
-            AppUI.TextField(
-                label: "Número da conta",
+                label: accountNumberLabel,
                 text: $store.accountNumber,
-                placeholder: "Ex: 310013887",
+                placeholder: accountNumberPlaceholder,
                 textAlignment: .trailing
             )
         } header: {
-            sectionHeader("Dados da conta")
+            sectionHeader("Identidade da conta")
         } footer: {
-            sectionFooter(
-                "Obrigatórios. Distinguem contas da mesma instituição e ajudam a identificar a conta em importações OFX."
-            )
+            sectionFooter(identityFooter)
         }
     }
 
@@ -91,7 +130,9 @@ struct AccountFormView: View {
         Section {
             AppUI.CurrencyField(
                 label: "Valor",
-                cents: $store.balanceCents
+                cents: $store.balanceCents,
+                currencyCode: store.currency,
+                placeholder: store.currency == "BRL" ? "R$ 0,00" : "US$0.00"
             )
             AppUI.Toggle(label: "Saldo negativo", isOn: $store.balanceIsNegative)
         } header: {
@@ -125,7 +166,24 @@ struct AccountFormView: View {
     }
 
     private var subtitle: String {
-        "Conta corrente com instituição financeira e saldo inicial."
+        "\(store.type.displayName) com identidade, abrangência e saldo inicial."
+    }
+
+    private var accountNumberLabel: String {
+        store.territorialScope == .global ? "Account number" : "Número da conta"
+    }
+
+    private var accountNumberPlaceholder: String {
+        store.territorialScope == .global ? "Ex: 8897077206" : "Ex: 310013887"
+    }
+
+    private var identityFooter: String {
+        switch store.territorialScope {
+        case .brazilian:
+            return "Número da conta é obrigatório. Agência é opcional e ajuda a identificar importações OFX."
+        case .global:
+            return "Banco e account number são obrigatórios para identificar a conta global."
+        }
     }
 
     private func sectionHeader(_ title: String) -> some View {

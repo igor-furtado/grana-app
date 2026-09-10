@@ -9,6 +9,8 @@ struct CreditCardFormFeature {
         var institutions: [Institution]
         var calendar: Calendar = .current
         var referenceDate: Date = .init()
+        var territorialScope: AccountTerritorialScope = .brazilian
+        var nickname = ""
         var institutionId: UUID?
         var currency = "BRL"
         var cardLastFour = ""
@@ -27,6 +29,8 @@ struct CreditCardFormFeature {
             self.institutions = institutions
 
             if let existingCard {
+                self.territorialScope = existingCard.account.territorialScope
+                self.nickname = existingCard.account.nickname ?? ""
                 self.institutionId = existingCard.account.institutionId
                 self.currency = existingCard.account.currency
                 self.cardLastFour = existingCard.details?.cardLastFour ?? ""
@@ -45,8 +49,15 @@ struct CreditCardFormFeature {
             institutions.filter { $0.capabilities.supportedAccountTypes.contains(.creditCard) }
         }
 
+        var availableCurrencies: [String] {
+            switch territorialScope {
+            case .brazilian: ["BRL"]
+            case .global: ["USD"]
+            }
+        }
+
         var canSave: Bool {
-            institutionId != nil && cardLastFour.count == 4
+            institutionId != nil && cardLastFour.count == 4 && availableCurrencies.contains(currency)
         }
 
         var isCardLastFourPartial: Bool {
@@ -66,6 +77,8 @@ struct CreditCardFormFeature {
         func mutationInput() -> CreditCardMutationInput? {
             guard let institutionId, cardLastFour.count == 4 else { return nil }
             return CreditCardMutationInput(
+                territorialScope: territorialScope,
+                nickname: nickname.trimmingCharacters(in: .whitespacesAndNewlines).nilIfEmpty,
                 institutionId: institutionId,
                 currency: currency,
                 cardLastFour: cardLastFour,
@@ -98,6 +111,10 @@ struct CreditCardFormFeature {
 
         Reduce { state, action in
             switch action {
+            case .binding(\.territorialScope):
+                state.currency = state.availableCurrencies.first ?? "BRL"
+                return .none
+
             case .binding(\.cardLastFour):
                 let digits = state.cardLastFour.filter(\.isNumber)
                 state.cardLastFour = String(digits.prefix(4))
@@ -150,5 +167,11 @@ struct CreditCardFormFeature {
                 await send(.saveFailed(error.localizedDescription))
             }
         }
+    }
+}
+
+private extension String {
+    var nilIfEmpty: String? {
+        isEmpty ? nil : self
     }
 }

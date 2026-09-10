@@ -1,6 +1,6 @@
+import AppUI
 import ComposableArchitecture
 import SwiftUI
-import AppUI
 
 struct CreditCardFormView: View {
     @Bindable var store: StoreOf<CreditCardFormFeature>
@@ -48,6 +48,14 @@ struct CreditCardFormView: View {
     private var identitySection: some View {
         Section {
             AppUI.Selector(
+                label: "Abrangência",
+                options: AccountTerritorialScope.allCases.map {
+                    .init(id: $0, title: $0.displayName)
+                },
+                selection: $store.territorialScope,
+                icon: AppUI.Icon.territorialScope.systemImage
+            )
+            AppUI.Selector(
                 label: "Emissor",
                 placeholder: "Selecione…",
                 options: store.availableInstitutions.map {
@@ -56,6 +64,22 @@ struct CreditCardFormView: View {
                 selection: $store.institutionId,
                 icon: "building.columns"
             )
+            AppUI.TextField(
+                label: "Apelido",
+                text: $store.nickname,
+                placeholder: "Ex: Cartão principal",
+                textAlignment: .trailing
+            )
+            if store.territorialScope == .global {
+                AppUI.Selector(
+                    label: "Moeda",
+                    options: store.availableCurrencies.map {
+                        .init(id: $0, title: $0)
+                    },
+                    selection: $store.currency,
+                    icon: AppUI.Icon.currency.systemImage
+                )
+            }
         } header: {
             AppUI.Form.SectionHeader(title: "Identidade")
         }
@@ -71,7 +95,12 @@ struct CreditCardFormView: View {
             )
             AppUI.Toggle(label: "Informar limite de crédito", isOn: $store.hasCreditLimit)
             if store.hasCreditLimit {
-                AppUI.CurrencyField(label: "Limite", cents: $store.creditLimitCents)
+                AppUI.CurrencyField(
+                    label: "Limite",
+                    cents: $store.creditLimitCents,
+                    currencyCode: store.currency,
+                    placeholder: store.currency == "BRL" ? "R$ 0,00" : "US$0.00"
+                )
             }
         } header: {
             AppUI.Form.SectionHeader(title: "Detalhes do cartão")
@@ -124,7 +153,7 @@ struct CreditCardFormView: View {
     private var header: some View {
         AppUI.Form.Header(
             title: store.existingCard == nil ? "Novo cartão" : "Editar cartão",
-            subtitle: "Cartão de crédito com emissor, limite e ciclo padrão da fatura."
+            subtitle: "Cartão de crédito com emissor, abrangência, limite e ciclo padrão da fatura."
         )
     }
 }

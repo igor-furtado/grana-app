@@ -25,6 +25,8 @@ struct AccountListFeature {
                 guard !needle.isEmpty else { return true }
                 return item.displayName.localizedCaseInsensitiveContains(needle)
                     || item.institutionName.localizedCaseInsensitiveContains(needle)
+                    || item.typeText.localizedCaseInsensitiveContains(needle)
+                    || item.territorialScopeText.localizedCaseInsensitiveContains(needle)
             }
         }
 

@@ -6,7 +6,7 @@ import Testing
 @MainActor
 @Suite("AccountFormFeature")
 struct AccountFormFeatureTests {
-    @Test("Salvar criação envia payload de conta corrente")
+    @Test("Salvar criação envia payload de conta corrente com agência opcional")
     func formSavesNewCheckingAccount() async {
         let institution = makeCheckingInstitution()
         let createdInputs = LockIsolated<[CheckingAccountMutationInput]>([])
@@ -24,9 +24,6 @@ struct AccountFormFeatureTests {
         }
 
         await store.send(.binding(.set(\.institutionId, institution.id)))
-        await store.send(.binding(.set(\.branchId, "0001"))) {
-            $0.branchId = "0001"
-        }
         await store.send(.binding(.set(\.accountNumber, "9988-1"))) {
             $0.accountNumber = "9988-1"
         }
@@ -46,8 +43,52 @@ struct AccountFormFeatureTests {
         #expect(payloads.count == 1)
         #expect(payloads.first?.institutionId == institution.id)
         #expect(payloads.first?.accountNumber == "9988-1")
-        #expect(payloads.first?.branchId == "0001")
+        #expect(payloads.first?.branchId == nil)
         #expect(payloads.first?.initialBalance == Decimal(string: "1500"))
+    }
+
+    @Test("Salvar criação envia payload de conta global")
+    func formSavesGlobalAccount() async {
+        let institution = makeCheckingInstitution()
+        let createdInputs = LockIsolated<[CheckingAccountMutationInput]>([])
+
+        let store = TestStore(
+            initialState: AccountFormFeature.State(
+                institutions: [institution]
+            )
+        ) {
+            AccountFormFeature()
+        } withDependencies: {
+            $0.accountsClient.create = { input in
+                createdInputs.withValue { $0.append(input) }
+            }
+        }
+
+        await store.send(.binding(.set(\.territorialScope, .global))) {
+            $0.territorialScope = .global
+            $0.currency = "USD"
+            $0.branchId = ""
+        }
+        await store.send(.binding(.set(\.accountNumber, "8897077206"))) {
+            $0.accountNumber = "8897077206"
+        }
+        await store.send(.binding(.set(\.bankName, "Community Federal Savings Bank"))) {
+            $0.bankName = "Community Federal Savings Bank"
+        }
+        await store.send(.saveButtonTapped) {
+            $0.isSaving = true
+            $0.saveError = nil
+        }
+        await store.receive(.saveSucceeded) {
+            $0.isSaving = false
+        }
+        await store.receive(.delegate(.saved))
+
+        let payloads = createdInputs.value
+        #expect(payloads.first?.territorialScope == .global)
+        #expect(payloads.first?.currency == "USD")
+        #expect(payloads.first?.branchId == nil)
+        #expect(payloads.first?.bankName == "Community Federal Savings Bank")
     }
 
     @Test("Edição carrega campos existentes")

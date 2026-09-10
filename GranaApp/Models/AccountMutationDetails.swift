@@ -3,6 +3,7 @@ import Foundation
 nonisolated struct BankAccountDetailsInput: Hashable {
     var branchId: String?
     var accountNumber: String
+    var bankName: String?
 }
 
 nonisolated struct CreditCardDetailsInput: Hashable {

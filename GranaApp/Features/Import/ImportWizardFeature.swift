@@ -249,9 +249,9 @@ struct ImportWizardFeature {
                 }
 
             case let .accountSnapshotLoaded(statementIndex, accountKey, .success(accountsSnapshot)):
-                state.snapshot.accounts = mergeCheckingAccounts(
+                state.snapshot.accounts = mergeBalanceAccounts(
                     existingAccounts: state.snapshot.accounts,
-                    checkingAccounts: accountsSnapshot.items.map(\.account)
+                    balanceAccounts: accountsSnapshot.items.map(\.account)
                 )
                 state.snapshot.institutions = accountsSnapshot.institutions
                 state.snapshot.bankDetails = accountsSnapshot.items.compactMap(\.bankDetails)
@@ -466,14 +466,14 @@ private func suggestedInstitution(
     return institution
 }
 
-private func mergeCheckingAccounts(
+private func mergeBalanceAccounts(
     existingAccounts: [Account],
-    checkingAccounts: [Account]
+    balanceAccounts: [Account]
 ) -> [Account] {
-    let checkingAccountIds = Set(checkingAccounts.map(\.id))
+    let balanceAccountIds = Set(balanceAccounts.map(\.id))
     return existingAccounts.filter {
-        $0.type != .checking && !checkingAccountIds.contains($0.id)
-    } + checkingAccounts
+        ($0.type != .checking && $0.type != .investment) && !balanceAccountIds.contains($0.id)
+    } + balanceAccounts
 }
 
 private func matchedAccountId(

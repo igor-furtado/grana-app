@@ -38,6 +38,9 @@ public enum Icon: CaseIterable {
     case expenseFlow
     case incomeFlow
     case netResult
+    case accountType
+    case territorialScope
+    case currency
 
     // MARK: - Empty states de charts do dashboard
 
@@ -101,6 +104,9 @@ public enum Icon: CaseIterable {
         case .expenseFlow: "arrow.down.right.circle"
         case .incomeFlow: "arrow.up.right.circle"
         case .netResult: "chart.line.uptrend.xyaxis"
+        case .accountType: "wallet.pass"
+        case .territorialScope: "globe.americas"
+        case .currency: "dollarsign.circle"
         // Charts do dashboard
         case .chartCategoryRanking: "chart.bar.xaxis"
         case .chartIncomeExpense: "arrow.up.arrow.down"

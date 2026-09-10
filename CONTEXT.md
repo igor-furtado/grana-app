@@ -1,12 +1,16 @@
-# Finanças Pessoais
+# Finanças
 
-Este contexto organiza a vida financeira de uma única pessoa a partir de contas, movimentações, categorias e faturas. O produto apoia análise e organização; não movimenta dinheiro nem substitui bancos ou corretoras.
+Este contexto organiza uma contabilidade financeira isolada a partir de contas, movimentações, categorias e faturas. O produto apoia análise e organização; não movimenta dinheiro nem substitui bancos ou corretoras.
 
 ## Identidade e propriedade
 
 **Usuário**:
-Pessoa cuja vida financeira é organizada pelo produto. No contexto atual, cada usuário possui um histórico financeiro isolado dos demais.
-_Evite_: Household, perfil compartilhado, titular secundário
+Identidade financeira cuja contabilidade é organizada pelo produto. Uma pessoa física e uma empresa são usuários distintos quando seus planejamentos financeiros não devem se misturar.
+_Evite_: Household, perfil compartilhado, titular secundário, titularidade da conta
+
+**Contabilidade**:
+Histórico financeiro isolado de um usuário, com planejamento, contas, movimentações, categorias e faturas próprios. Contabilidades pessoal e empresarial não se misturam mesmo quando pertencem à mesma pessoa no mundo real.
+_Evite_: Titularidade da conta, perfil compartilhado
 
 **Sessão**:
 Estado de autenticação remota que permite ao app identificar um usuário e acessar seus dados financeiros. Pode estar ausente ou válida; sem sessão remota válida, o app não exibe dados financeiros.
@@ -35,6 +39,34 @@ Local financeiro no qual existe dinheiro ou dívida do usuário. Toda transaçã
 Uma conta sem transações vinculadas pode ser removida mesmo que ainda existam artefatos organizacionais vazios associados a ela.
 _Evite_: Banco, instituição, carteira
 
+**Apelido da conta**:
+Nome livre escolhido pelo usuário para reconhecer uma conta no uso cotidiano, sem substituir sua instituição, tipo ou identidade financeira.
+_Evite_: Instituição, número da conta, titularidade
+
+**Identidade da conta**:
+Conjunto de dados usados para distinguir uma conta dentro de uma instituição financeira. A identidade varia conforme tipo e abrangência da conta, podendo incluir agência e número, número de conta global ou apenas um identificador informado pela instituição.
+_Evite_: Identidade bancária, quando estiver falando de contas que não são estritamente bancárias
+
+**Abrangência territorial**:
+Classificação de uma conta como brasileira ou global, independente do tipo da conta. A abrangência indica qual família de dados financeiros identifica a conta e pode existir em contas correntes, cartões de crédito e contas de investimento.
+_Evite_: Moeda, país, titularidade
+
+**Conta brasileira**:
+Conta cuja identidade financeira segue dados brasileiros. Em contas correntes e contas de investimento, isso pode significar número da conta, agência e instituição financeira brasileira.
+_Evite_: Conta nacional, quando a interface usa brasileira
+
+**Conta global**:
+Conta cuja identidade financeira segue dados globais ou estrangeiros. Em contas correntes globais, isso significa número da conta e nome do banco, sem agência brasileira.
+_Evite_: Conta internacional, conta estrangeira, quando a interface usa global
+
+**Moeda da conta**:
+Moeda na qual o saldo e os lançamentos de uma conta são denominados. Contas brasileiras usam BRL por padrão; contas globais exigem escolha explícita de moeda.
+_Evite_: Abrangência territorial
+
+**Dado financeiro sensível**:
+Dado financeiro que permite identificar, distinguir ou expor uma conta, transação, fatura ou posição financeira do usuário. Deve ser tratado como privado mesmo quando não for suficiente, sozinho, para movimentar dinheiro.
+_Evite_: Credencial, quando o dado não autentica acesso
+
 **Conta corrente**:
 Conta que representa dinheiro disponível em uma instituição financeira.
 _Evite_: Conta bancária, quando for necessário distingui-la de outros tipos de conta
@@ -46,6 +78,10 @@ do app, porém, a vertical de Cartões é autônoma e não depende da feature de
 Mantém datas padrão atuais de fechamento e vencimento para criação automática de novas faturas.
 Um cartão sem transações vinculadas pode ser removido mesmo que existam faturas vazias associadas a ele.
 _Evite_: Cartão, conta-cartão, conta corrente
+
+**Conta de investimento**:
+Conta que representa dinheiro aplicado ou mantido em uma instituição financeira para investimento, como uma posição de reserva em CDB ou uma carteira em corretora. Pode ter identidade semelhante à de uma conta corrente quando a instituição fornece agência e número.
+_Evite_: Conta corrente, produto de investimento, quando estiver falando do local financeiro agregado
 
 **Datas padrão do cartão**:
 Fechamento e vencimento atuais do cartão de crédito usados para criar novas faturas automaticamente. Não representam necessariamente as datas históricas das faturas antigas.

@@ -46,6 +46,40 @@ func makeCheckingAccountItem(
             accountId: id,
             branchId: "0001",
             accountNumber: accountNumber,
+            bankName: nil,
+            createdAt: account.createdAt,
+            updatedAt: account.updatedAt
+        ),
+        currentBalance: balance
+    )
+}
+
+func makeInvestmentAccountItem(
+    id: UUID = UUID(),
+    institution: Institution? = nil,
+    archived: Bool = false,
+    balance: Decimal = 0,
+    accountNumber: String = "1234"
+) -> AccountListItem {
+    let account = Account(
+        id: id,
+        type: .investment,
+        initialBalance: balance,
+        archived: archived,
+        institutionId: institution?.id,
+        currency: "BRL",
+        createdAt: Date(),
+        updatedAt: Date()
+    )
+
+    return AccountListItem(
+        account: account,
+        institution: institution,
+        bankDetails: BankAccountDetails(
+            accountId: id,
+            branchId: "0001",
+            accountNumber: accountNumber,
+            bankName: nil,
             createdAt: account.createdAt,
             updatedAt: account.updatedAt
         ),

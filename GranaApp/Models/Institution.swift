@@ -16,7 +16,7 @@ struct Institution: Identifiable, Codable, Hashable {
     var updatedAt: Date
 }
 
-struct InstitutionCapabilities: Codable, Hashable, Sendable {
+struct InstitutionCapabilities: Codable, Hashable {
     var supportedAccountTypes: Set<AccountType>
     var supportedImportFormats: Set<InstitutionImportFormat>
 
@@ -29,12 +29,12 @@ struct InstitutionCapabilities: Codable, Hashable, Sendable {
     }
 
     static let legacyDefault = InstitutionCapabilities(
-        supportedAccountTypes: Set(AccountType.allCases),
+        supportedAccountTypes: [.checking, .creditCard],
         supportedImportFormats: [.ofx, .interCreditCardCSV]
     )
 }
 
-enum InstitutionImportFormat: String, Codable, CaseIterable, Hashable, Sendable {
+enum InstitutionImportFormat: String, Codable, CaseIterable, Hashable {
     case ofx
     case interCreditCardCSV = "inter_credit_card_csv"
 

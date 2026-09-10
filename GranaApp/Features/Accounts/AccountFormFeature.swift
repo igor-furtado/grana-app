@@ -13,10 +13,14 @@ struct AccountFormFeature {
     struct State: Equatable {
         var existingAccount: AccountListItem?
         var institutions: [Institution]
+        var type: AccountType = .checking
+        var territorialScope: AccountTerritorialScope = .brazilian
+        var nickname = ""
         var institutionId: UUID?
         var currency = "BRL"
         var branchId = ""
         var accountNumber = ""
+        var bankName = ""
         var balanceCents = 0
         var balanceIsNegative = false
         var saveError: String?
@@ -31,10 +35,14 @@ struct AccountFormFeature {
             self.institutions = institutions
 
             if let existingAccount {
+                self.type = existingAccount.account.type
+                self.territorialScope = existingAccount.account.territorialScope
+                self.nickname = existingAccount.account.nickname ?? ""
                 self.institutionId = existingAccount.account.institutionId
                 self.currency = existingAccount.account.currency
                 self.branchId = existingAccount.bankDetails?.branchId ?? ""
                 self.accountNumber = existingAccount.bankDetails?.accountNumber ?? ""
+                self.bankName = existingAccount.bankDetails?.bankName ?? ""
 
                 let cents = Int(truncatingIfNeeded: Converters.decimalToCents(existingAccount.account.initialBalance))
                 self.balanceIsNegative = cents < 0
@@ -46,30 +54,51 @@ struct AccountFormFeature {
             }
         }
 
+        var availableAccountTypes: [AccountType] {
+            [.checking, .investment]
+        }
+
         var availableInstitutions: [Institution] {
-            institutions.filter { $0.capabilities.supportedAccountTypes.contains(.checking) }
+            institutions.filter { $0.capabilities.supportedAccountTypes.contains(type) }
+        }
+
+        var availableCurrencies: [String] {
+            switch territorialScope {
+            case .brazilian: ["BRL"]
+            case .global: ["USD"]
+            }
         }
 
         var canSave: Bool {
             guard institutionId != nil else { return false }
-            return !branchId.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
-                && !accountNumber.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+            guard !accountNumber.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else { return false }
+            if territorialScope == .global {
+                return !bankName.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+                    && availableCurrencies.contains(currency)
+            }
+            return currency == "BRL"
         }
 
         func mutationInput() -> CheckingAccountMutationInput? {
             guard let institutionId else { return nil }
             let trimmedBranch = branchId.trimmingCharacters(in: .whitespacesAndNewlines)
             let trimmedNumber = accountNumber.trimmingCharacters(in: .whitespacesAndNewlines)
-            guard !trimmedBranch.isEmpty, !trimmedNumber.isEmpty else { return nil }
+            let trimmedBankName = bankName.trimmingCharacters(in: .whitespacesAndNewlines)
+            guard !trimmedNumber.isEmpty else { return nil }
+            guard territorialScope == .brazilian || !trimmedBankName.isEmpty else { return nil }
 
             let magnitude = Decimal(balanceCents) / 100
             let initialBalance = balanceIsNegative ? -magnitude : magnitude
 
             return CheckingAccountMutationInput(
+                type: type,
+                territorialScope: territorialScope,
+                nickname: nickname.trimmingCharacters(in: .whitespacesAndNewlines).nilIfEmpty,
                 institutionId: institutionId,
                 currency: currency,
-                branchId: trimmedBranch,
+                branchId: territorialScope == .brazilian ? trimmedBranch.nilIfEmpty : nil,
                 accountNumber: trimmedNumber,
+                bankName: territorialScope == .global ? trimmedBankName : nil,
                 initialBalance: initialBalance
             )
         }
@@ -97,6 +126,21 @@ struct AccountFormFeature {
 
         Reduce { state, action in
             switch action {
+            case .binding(\.type):
+                if !state.availableInstitutions.contains(where: { $0.id == state.institutionId }) {
+                    state.institutionId = state.availableInstitutions.first?.id
+                }
+                return .none
+
+            case .binding(\.territorialScope):
+                state.currency = state.availableCurrencies.first ?? "BRL"
+                if state.territorialScope == .global {
+                    state.branchId = ""
+                } else {
+                    state.bankName = ""
+                }
+                return .none
+
             case .binding:
                 return .none
 
@@ -143,5 +187,11 @@ struct AccountFormFeature {
                 await send(.saveFailed(error.localizedDescription))
             }
         }
+    }
+}
+
+private extension String {
+    var nilIfEmpty: String? {
+        isEmpty ? nil : self
     }
 }

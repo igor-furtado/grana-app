@@ -188,6 +188,7 @@ func makeRemoteSnapshot(
                     accountId: account.id,
                     branchId: "0001",
                     accountNumber: "1234",
+                    bankName: nil,
                     createdAt: account.createdAt,
                     updatedAt: account.updatedAt
                 )

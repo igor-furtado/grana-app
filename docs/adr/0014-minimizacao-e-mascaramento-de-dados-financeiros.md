@@ -1,0 +1,5 @@
+# Minimização e mascaramento de dados financeiros
+
+O GranaApp guarda dados financeiros identificadores somente quando eles têm finalidade direta para distinguir contas, importar extratos ou conciliar histórico. Dados bancários como número de conta, agência, últimos dígitos de cartão e número de conta global são tratados como dados financeiros sensíveis: podem ser persistidos completos quando necessários, mas não devem ser enviados para IA externa, registrados em logs/notices ou exibidos completos fora de telas de cadastro, edição ou detalhe explícito. Campos sem finalidade atual, como ACH Routing Number, WIRE Transfer Routing Number e endereço do banco global, ficam fora do modelo até uma necessidade real aparecer.
+
+Consequência: listas, tabelas, seletores e mensagens de feedback devem preferir identificadores mascarados ou apelidos da conta. O produto privilegia minimização de dados e clareza operacional em vez de espelhar todos os dados disponíveis nos apps das instituições financeiras.

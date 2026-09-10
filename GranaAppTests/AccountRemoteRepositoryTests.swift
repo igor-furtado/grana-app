@@ -16,6 +16,8 @@ struct AccountRemoteRepositoryTests {
                 AccountRecordRow(
                     id: checkingId,
                     type: .checking,
+                    territorialScope: .brazilian,
+                    nickname: "Principal",
                     initialBalanceCents: 12345,
                     archived: false,
                     institutionId: institutionId,
@@ -24,6 +26,7 @@ struct AccountRemoteRepositoryTests {
                     updatedAt: now,
                     branchId: "0001",
                     accountNumber: "12345-6",
+                    bankName: nil,
                     bankCreatedAt: now,
                     bankUpdatedAt: now,
                     cardLastFour: nil,
@@ -36,14 +39,17 @@ struct AccountRemoteRepositoryTests {
                 AccountRecordRow(
                     id: creditCardId,
                     type: .creditCard,
+                    territorialScope: .global,
+                    nickname: "Viagem",
                     initialBalanceCents: 0,
                     archived: false,
                     institutionId: institutionId,
-                    currency: "BRL",
+                    currency: "USD",
                     createdAt: now,
                     updatedAt: now,
                     branchId: nil,
                     accountNumber: nil,
+                    bankName: nil,
                     bankCreatedAt: nil,
                     bankUpdatedAt: nil,
                     cardLastFour: "1234",
@@ -60,6 +66,8 @@ struct AccountRemoteRepositoryTests {
 
         #expect(snapshot.accounts.count == 2)
         #expect(snapshot.accounts.first(where: { $0.id == checkingId })?.initialBalance == Decimal(string: "123.45"))
+        #expect(snapshot.accounts.first(where: { $0.id == checkingId })?.nickname == "Principal")
+        #expect(snapshot.accounts.first(where: { $0.id == creditCardId })?.territorialScope == .global)
         #expect(snapshot.bankDetails.first(where: { $0.accountId == checkingId })?.accountNumber == "12345-6")
         #expect(snapshot.creditCards.first(where: { $0.accountId == creditCardId })?.cardLastFour == "1234")
         #expect(snapshot.creditCards.first(where: { $0.accountId == creditCardId })?.creditLimit == 500)
@@ -103,19 +111,21 @@ struct AccountRemoteRepositoryTests {
 @MainActor
 @Suite("AccountsClient")
 struct AccountsClientTests {
-    @Test("Carrega apenas contas correntes com instituições e saldo atual")
+    @Test("Carrega contas correntes e investimentos com instituições e saldo atual")
     func loadsCheckingAccountsWithInstitutionsAndCurrentBalance() async throws {
         let institution = makeInstitution(
             id: UUID(),
             code: "077",
             name: "Banco Inter",
             kind: .inter,
-            accountTypes: [.checking, .creditCard]
+            accountTypes: [.checking, .creditCard, .investment]
         )
         let checkingId = UUID()
+        let investmentId = UUID()
         let repository = SequencedAccountRemoteRepository(
             snapshots: [makeSnapshot(accounts: [
                 makeCheckingAccount(id: checkingId, institutionId: institution.id, balance: 300),
+                makeInvestmentAccount(id: investmentId, institutionId: institution.id, balance: 1000),
                 makeCreditCardAccount(id: UUID(), institutionId: institution.id),
             ])]
         )
@@ -158,10 +168,12 @@ struct AccountsClientTests {
 
         let snapshot = try await client.loadList()
 
-        #expect(snapshot.items.count == 1)
-        #expect(snapshot.items.first?.id == checkingId)
+        #expect(snapshot.items.count == 2)
+        #expect(snapshot.items.map(\.id).contains(checkingId))
+        #expect(snapshot.items.map(\.id).contains(investmentId))
         #expect(snapshot.items.first?.institution?.code == "077")
-        #expect(snapshot.items.first?.currentBalance == 450)
+        #expect(snapshot.items.first(where: { $0.id == checkingId })?.currentBalance == 450)
+        #expect(snapshot.items.first(where: { $0.id == investmentId })?.currentBalance == 1000)
         #expect(snapshot.institutions.map(\.code) == ["077"])
     }
 
@@ -199,6 +211,45 @@ struct AccountsClientTests {
         #expect(operations.first?.input?.type == .checking)
         #expect(operations.first?.input?.institutionId == institution.id)
         #expect(operations.first?.input?.bankDetails?.accountNumber == "1234")
+    }
+
+    @Test("Encaminha criação de conta de investimento global")
+    func createsGlobalInvestmentAccount() async throws {
+        let institution = makeInstitution(
+            id: UUID(),
+            code: "102",
+            name: "XP Investimentos",
+            kind: .xp,
+            accountTypes: [.investment]
+        )
+        let repository = SequencedAccountRemoteRepository(snapshots: [.empty])
+        let container = AppContainer.inMemoryForTesting(
+            categoryCatalog: StaticCategoryCatalogRepository(categories: []),
+            institutionCatalog: StaticInstitutionCatalogRepository(institutions: [institution]),
+            remoteAccounts: repository,
+            remoteStatements: StaticStatementRemoteRepository(snapshot: .empty)
+        )
+        let client = AccountsClient.live(container: container)
+
+        try await client.create(
+            CheckingAccountMutationInput(
+                type: .investment,
+                territorialScope: .global,
+                nickname: "Reserva",
+                institutionId: institution.id,
+                currency: "USD",
+                branchId: nil,
+                accountNumber: "8897077206",
+                bankName: "Community Federal Savings Bank",
+                initialBalance: 500
+            )
+        )
+
+        let operations = await repository.operations()
+        #expect(operations.first?.input?.type == .investment)
+        #expect(operations.first?.input?.territorialScope == .global)
+        #expect(operations.first?.input?.nickname == "Reserva")
+        #expect(operations.first?.input?.bankDetails?.bankName == "Community Federal Savings Bank")
     }
 
     @Test("Encaminha edição preservando flag de arquivamento")
@@ -467,11 +518,12 @@ private func makeSnapshot(
         accounts: accounts,
         bankDetails: bankDetails.isEmpty
             ? accounts.compactMap { account in
-                if account.type == .checking {
+                if account.type == .checking || account.type == .investment {
                     return BankAccountDetails(
                         accountId: account.id,
                         branchId: "0001",
                         accountNumber: "1234",
+                        bankName: nil,
                         createdAt: account.createdAt,
                         updatedAt: account.updatedAt
                     )
@@ -503,6 +555,20 @@ private func makeCheckingAccount(id: UUID, institutionId: UUID, balance: Decimal
     return Account(
         id: id,
         type: .checking,
+        initialBalance: balance,
+        archived: archived,
+        institutionId: institutionId,
+        currency: "BRL",
+        createdAt: now,
+        updatedAt: now
+    )
+}
+
+private func makeInvestmentAccount(id: UUID, institutionId: UUID, balance: Decimal, archived: Bool = false) -> Account {
+    let now = Date()
+    return Account(
+        id: id,
+        type: .investment,
         initialBalance: balance,
         archived: archived,
         institutionId: institutionId,

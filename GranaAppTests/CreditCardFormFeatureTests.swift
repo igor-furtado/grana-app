@@ -24,6 +24,13 @@ struct CreditCardFormFeatureTests {
         }
 
         await store.send(.binding(.set(\.institutionId, institution.id)))
+        await store.send(.binding(.set(\.territorialScope, .global))) {
+            $0.territorialScope = .global
+            $0.currency = "USD"
+        }
+        await store.send(.binding(.set(\.nickname, "Viagem"))) {
+            $0.nickname = "Viagem"
+        }
         await store.send(.binding(.set(\.cardLastFour, "1234"))) {
             $0.cardLastFour = "1234"
         }
@@ -44,7 +51,10 @@ struct CreditCardFormFeatureTests {
 
         let payloads = createdId.value
         #expect(payloads.count == 1)
+        #expect(payloads.first?.territorialScope == .global)
+        #expect(payloads.first?.nickname == "Viagem")
         #expect(payloads.first?.institutionId == institution.id)
+        #expect(payloads.first?.currency == "USD")
         #expect(payloads.first?.cardLastFour == "1234")
         #expect(payloads.first?.creditLimit == Decimal(string: "1500"))
     }

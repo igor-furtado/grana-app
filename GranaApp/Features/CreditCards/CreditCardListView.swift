@@ -72,6 +72,9 @@ private struct CreditCardSelectorCard: View {
                                 .padding(.vertical, AppUI.Theme.Spacing.xxs)
                                 .background(AppUI.Theme.Palette.soft, in: Capsule())
                         }
+                        Text(card.account.territorialScope.displayName)
+                            .font(AppUI.Theme.Typography.caption2Emphasis)
+                            .foregroundStyle(AppUI.Theme.Palette.muted)
                     }
                 }
 
@@ -140,7 +143,11 @@ private struct CreditCardSelectorCard: View {
     }
 
     private var bankName: String {
-        card.institution?.name ?? "Cartão"
+        let institutionName = card.institution?.name ?? "Cartão"
+        if let nickname = card.account.nickname?.trimmingCharacters(in: .whitespacesAndNewlines), !nickname.isEmpty {
+            return "\(nickname) · \(institutionName)"
+        }
+        return institutionName
     }
 
     private var maskedNumber: String {

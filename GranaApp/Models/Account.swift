@@ -4,19 +4,22 @@ import Foundation
 ///
 /// A partir da Fase 4.6, `Account` é o **primitivo financeiro puro** — só
 /// carrega o que é universal entre tipos. Campos específicos vivem em modelos
-/// irmãos 1:1: `BankAccountDetails` (agência + número) pra contas correntes,
-/// `CreditCardDetails` (last4, limite, dia de fechamento, vencimento) pra
-/// cartões. CRUD sempre escreve `Account` + sibling na mesma `writeTransaction`.
+/// irmãos 1:1: `BankAccountDetails` (identidade da conta) pra contas correntes
+/// e investimentos, `CreditCardDetails` (last4, limite, dia de fechamento,
+/// vencimento) pra cartões. CRUD sempre escreve `Account` + sibling na mesma
+/// `writeTransaction`.
 ///
 /// O nome amigável usado pela UI é derivado em runtime via
 /// `Account.displayName(for:institutions:creditCards:)`.
 struct Account: Identifiable, Codable, Hashable {
     let id: UUID
     var type: AccountType
+    var territorialScope: AccountTerritorialScope
+    var nickname: String?
     var initialBalance: Decimal
     var archived: Bool
     var institutionId: UUID?
-    /// ISO 4217. "BRL" cobre o MVP. Multi-moeda fica fora.
+    /// ISO 4217. Brasileira usa BRL; global usa a moeda suportada no cadastro.
     var currency: String
     let createdAt: Date
     var updatedAt: Date
@@ -24,6 +27,8 @@ struct Account: Identifiable, Codable, Hashable {
     init(
         id: UUID,
         type: AccountType,
+        territorialScope: AccountTerritorialScope = .brazilian,
+        nickname: String? = nil,
         initialBalance: Decimal,
         archived: Bool,
         institutionId: UUID? = nil,
@@ -33,6 +38,8 @@ struct Account: Identifiable, Codable, Hashable {
     ) {
         self.id = id
         self.type = type
+        self.territorialScope = territorialScope
+        self.nickname = nickname
         self.initialBalance = initialBalance
         self.archived = archived
         self.institutionId = institutionId
@@ -45,11 +52,13 @@ struct Account: Identifiable, Codable, Hashable {
 enum AccountType: String, Codable, CaseIterable {
     case checking
     case creditCard
+    case investment
 
     var displayName: String {
         switch self {
-        case .checking: "Conta Corrente"
-        case .creditCard: "Cartão de Crédito"
+        case .checking: "Conta corrente"
+        case .creditCard: "Cartão de crédito"
+        case .investment: "Conta de investimento"
         }
     }
 
@@ -61,17 +70,31 @@ enum AccountType: String, Codable, CaseIterable {
         switch self {
         case .checking: "Corrente"
         case .creditCard: "Cartão"
+        case .investment: "Investimentos"
         }
     }
 }
 
-/// Detalhes específicos de uma conta bancária (`Account.type == .checking`).
+enum AccountTerritorialScope: String, Codable, CaseIterable {
+    case brazilian
+    case global
+
+    var displayName: String {
+        switch self {
+        case .brazilian: "Brasileira"
+        case .global: "Global"
+        }
+    }
+}
+
+/// Detalhes de identidade de contas com saldo (`checking` e `investment`).
 /// 1:1 com `Account` via `accountId`. Habilita o auto-detect de OFX e o
-/// sufixo do display name (`Inter Corrente · 310013887`).
+/// sufixo mascarado do display name.
 struct BankAccountDetails: Codable, Hashable {
     let accountId: UUID
     var branchId: String?
     var accountNumber: String
+    var bankName: String?
     let createdAt: Date
     var updatedAt: Date
 }
@@ -112,7 +135,7 @@ extension Account {
     /// no escopo — evita acoplar o model a um store ou container.
     ///
     /// **Exemplos:**
-    /// - `Inter Corrente · 310013887`
+    /// - `Inter Corrente · ••••3887`
     /// - `Inter Cartão · ••••1234`
     ///
     /// Quando o detail correspondente não está disponível (caso de race com o
@@ -132,14 +155,21 @@ extension Account {
             .compactMap { $0 }
             .joined(separator: " ")
 
+        let identifiedName: String
         if let suffix = identifierSuffix(
             for: account,
             bankAccounts: bankAccounts,
             creditCards: creditCards
         ) {
-            return "\(prefix) · \(suffix)"
+            identifiedName = "\(prefix) · \(suffix)"
+        } else {
+            identifiedName = prefix
         }
-        return prefix
+
+        if let nickname = account.nickname?.trimmingCharacters(in: .whitespacesAndNewlines), !nickname.isEmpty {
+            return "\(nickname) · \(identifiedName)"
+        }
+        return identifiedName
     }
 
     private static func identifierSuffix(
@@ -153,11 +183,19 @@ extension Account {
                   !details.cardLastFour.isEmpty
             else { return nil }
             return "••••\(details.cardLastFour)"
-        case .checking:
+        case .checking, .investment:
             guard let details = bankAccounts.first(where: { $0.accountId == account.id }),
                   !details.accountNumber.isEmpty
             else { return nil }
-            return details.accountNumber
+            return details.accountNumber.maskedAccountIdentifier
         }
+    }
+}
+
+private extension String {
+    var maskedAccountIdentifier: String {
+        let suffix = String(suffix(4))
+        guard count > 4 else { return suffix.isEmpty ? self : "••••\(suffix)" }
+        return "••••\(suffix)"
     }
 }

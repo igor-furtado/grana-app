@@ -27,6 +27,8 @@ protocol AccountRemoteRepositoryProtocol: Sendable {
 nonisolated enum AccountRemoteRepositoryError: UserFacingError, Equatable {
     case authenticationRequired
     case unsupportedInstitution
+    case invalidTerritorialScope
+    case invalidAccountIdentity
     case invalidCheckingAccountDetails
     case invalidCreditCardDetails
     case invalidCurrency
@@ -48,8 +50,12 @@ nonisolated enum AccountRemoteRepositoryError: UserFacingError, Equatable {
             return "É preciso entrar com sua conta para carregar e salvar contas."
         case .unsupportedInstitution:
             return "A instituição selecionada não suporta esse tipo de conta."
+        case .invalidTerritorialScope:
+            return "A abrangência selecionada não é suportada pelo app no momento."
+        case .invalidAccountIdentity:
+            return "Revise os dados de identificação da conta."
         case .invalidCheckingAccountDetails:
-            return "Preencha agência e número da conta para cadastrar a conta corrente."
+            return "Preencha os dados de identificação da conta."
         case .invalidCreditCardDetails:
             return "Informe os 4 dígitos finais e um ciclo válido para cadastrar o cartão."
         case .invalidCurrency:
@@ -65,6 +71,10 @@ nonisolated enum AccountRemoteRepositoryError: UserFacingError, Equatable {
         switch code {
         case "unsupported_institution":
             return .unsupportedInstitution
+        case "invalid_territorial_scope":
+            return .invalidTerritorialScope
+        case "invalid_account_identity":
+            return .invalidAccountIdentity
         case "invalid_checking_account_details":
             return .invalidCheckingAccountDetails
         case "invalid_credit_card_details":
@@ -79,8 +89,10 @@ nonisolated enum AccountRemoteRepositoryError: UserFacingError, Equatable {
     }
 }
 
-nonisolated struct AccountMutationInput: Hashable, Sendable {
+nonisolated struct AccountMutationInput: Hashable {
     var type: AccountType
+    var territorialScope: AccountTerritorialScope = .brazilian
+    var nickname: String?
     var initialBalance: Decimal
     var archived: Bool
     var institutionId: UUID?
@@ -89,9 +101,11 @@ nonisolated struct AccountMutationInput: Hashable, Sendable {
     var creditCardDetails: CreditCardDetailsInput?
 }
 
-nonisolated struct AccountRecordRow: Decodable, Sendable {
+nonisolated struct AccountRecordRow: Decodable {
     let id: UUID
     let type: AccountType
+    let territorialScope: AccountTerritorialScope?
+    let nickname: String?
     let initialBalanceCents: Int64
     let archived: Bool
     let institutionId: UUID?
@@ -100,6 +114,7 @@ nonisolated struct AccountRecordRow: Decodable, Sendable {
     let updatedAt: Date
     let branchId: String?
     let accountNumber: String?
+    let bankName: String?
     let bankCreatedAt: Date?
     let bankUpdatedAt: Date?
     let cardLastFour: String?
@@ -112,6 +127,8 @@ nonisolated struct AccountRecordRow: Decodable, Sendable {
     enum CodingKeys: String, CodingKey {
         case id
         case type
+        case territorialScope = "territorial_scope"
+        case nickname
         case initialBalanceCents = "initial_balance_cents"
         case archived
         case institutionId = "institution_id"
@@ -120,6 +137,7 @@ nonisolated struct AccountRecordRow: Decodable, Sendable {
         case updatedAt = "updated_at"
         case branchId = "branch_id"
         case accountNumber = "account_number"
+        case bankName = "bank_name"
         case bankCreatedAt = "bank_created_at"
         case bankUpdatedAt = "bank_updated_at"
         case cardLastFour = "card_last_four"
@@ -131,7 +149,7 @@ nonisolated struct AccountRecordRow: Decodable, Sendable {
     }
 }
 
-nonisolated struct AccountMutationResponse: Decodable, Sendable {
+nonisolated struct AccountMutationResponse: Decodable {
     let ok: Bool
     let code: String?
     let accountId: UUID?
@@ -230,6 +248,8 @@ final class AccountRemoteRepository: AccountRemoteRepositoryProtocol, Sendable {
             accounts.append(Account(
                 id: row.id,
                 type: row.type,
+                territorialScope: row.territorialScope ?? .brazilian,
+                nickname: row.nickname,
                 initialBalance: Converters.centsToDecimal(row.initialBalanceCents),
                 archived: row.archived,
                 institutionId: row.institutionId,
@@ -243,6 +263,7 @@ final class AccountRemoteRepository: AccountRemoteRepositoryProtocol, Sendable {
                     accountId: row.id,
                     branchId: row.branchId,
                     accountNumber: accountNumber,
+                    bankName: row.bankName,
                     createdAt: row.bankCreatedAt ?? row.createdAt,
                     updatedAt: row.bankUpdatedAt ?? row.updatedAt
                 ))
@@ -250,8 +271,7 @@ final class AccountRemoteRepository: AccountRemoteRepositoryProtocol, Sendable {
 
             if let cardLastFour = row.cardLastFour,
                let statementClosingDay = row.statementClosingDay,
-               let paymentDueDay = row.paymentDueDay
-            {
+               let paymentDueDay = row.paymentDueDay {
                 creditCards.append(CreditCardDetails(
                     accountId: row.id,
                     cardLastFour: cardLastFour,
@@ -347,41 +367,50 @@ struct AuthRequiredAccountRemoteRepository: AccountRemoteRepositoryProtocol {
     }
 }
 
-nonisolated struct CreateAccountRequest: Encodable, Sendable {
+nonisolated struct CreateAccountRequest: Encodable {
     let pType: String
+    let pTerritorialScope: String
+    let pNickname: String?
     let pInitialBalanceCents: Int64
     let pArchived: Bool
     let pInstitutionId: UUID?
     let pCurrency: String
     let pBranchId: String?
     let pAccountNumber: String?
+    let pBankName: String?
     let pCardLastFour: String?
     let pCreditLimitCents: Int64?
     let pStatementClosingDay: Int?
     let pPaymentDueDay: Int?
 
     init(input: AccountMutationInput) {
-        pType = input.type.rawValue
-        pInitialBalanceCents = Converters.decimalToCents(input.initialBalance)
-        pArchived = input.archived
-        pInstitutionId = input.institutionId
-        pCurrency = input.currency
-        pBranchId = input.bankDetails?.branchId
-        pAccountNumber = input.bankDetails?.accountNumber
-        pCardLastFour = input.creditCardDetails?.cardLastFour
-        pCreditLimitCents = input.creditCardDetails?.creditLimit.map(Converters.decimalToCents(_:))
-        pStatementClosingDay = input.creditCardDetails?.statementClosingDay
-        pPaymentDueDay = input.creditCardDetails?.paymentDueDay
+        self.pType = input.type.rawValue
+        self.pTerritorialScope = input.territorialScope.rawValue
+        self.pNickname = input.nickname
+        self.pInitialBalanceCents = Converters.decimalToCents(input.initialBalance)
+        self.pArchived = input.archived
+        self.pInstitutionId = input.institutionId
+        self.pCurrency = input.currency
+        self.pBranchId = input.bankDetails?.branchId
+        self.pAccountNumber = input.bankDetails?.accountNumber
+        self.pBankName = input.bankDetails?.bankName
+        self.pCardLastFour = input.creditCardDetails?.cardLastFour
+        self.pCreditLimitCents = input.creditCardDetails?.creditLimit.map(Converters.decimalToCents(_:))
+        self.pStatementClosingDay = input.creditCardDetails?.statementClosingDay
+        self.pPaymentDueDay = input.creditCardDetails?.paymentDueDay
     }
 
     enum CodingKeys: String, CodingKey {
         case pType = "p_type"
+        case pTerritorialScope = "p_territorial_scope"
+        case pNickname = "p_nickname"
         case pInitialBalanceCents = "p_initial_balance_cents"
         case pArchived = "p_archived"
         case pInstitutionId = "p_institution_id"
         case pCurrency = "p_currency"
         case pBranchId = "p_branch_id"
         case pAccountNumber = "p_account_number"
+        case pBankName = "p_bank_name"
         case pCardLastFour = "p_card_last_four"
         case pCreditLimitCents = "p_credit_limit_cents"
         case pStatementClosingDay = "p_statement_closing_day"
@@ -389,15 +418,18 @@ nonisolated struct CreateAccountRequest: Encodable, Sendable {
     }
 }
 
-nonisolated struct UpdateAccountRequest: Encodable, Sendable {
+nonisolated struct UpdateAccountRequest: Encodable {
     let pAccountId: UUID
     let pType: String
+    let pTerritorialScope: String
+    let pNickname: String?
     let pInitialBalanceCents: Int64
     let pArchived: Bool
     let pInstitutionId: UUID?
     let pCurrency: String
     let pBranchId: String?
     let pAccountNumber: String?
+    let pBankName: String?
     let pCardLastFour: String?
     let pCreditLimitCents: Int64?
     let pStatementClosingDay: Int?
@@ -409,30 +441,36 @@ nonisolated struct UpdateAccountRequest: Encodable, Sendable {
         input: AccountMutationInput,
         cycleEffectiveFrom: Date?
     ) {
-        pAccountId = accountId
-        pType = input.type.rawValue
-        pInitialBalanceCents = Converters.decimalToCents(input.initialBalance)
-        pArchived = input.archived
-        pInstitutionId = input.institutionId
-        pCurrency = input.currency
-        pBranchId = input.bankDetails?.branchId
-        pAccountNumber = input.bankDetails?.accountNumber
-        pCardLastFour = input.creditCardDetails?.cardLastFour
-        pCreditLimitCents = input.creditCardDetails?.creditLimit.map(Converters.decimalToCents(_:))
-        pStatementClosingDay = input.creditCardDetails?.statementClosingDay
-        pPaymentDueDay = input.creditCardDetails?.paymentDueDay
-        pCycleEffectiveFrom = cycleEffectiveFrom
+        self.pAccountId = accountId
+        self.pType = input.type.rawValue
+        self.pTerritorialScope = input.territorialScope.rawValue
+        self.pNickname = input.nickname
+        self.pInitialBalanceCents = Converters.decimalToCents(input.initialBalance)
+        self.pArchived = input.archived
+        self.pInstitutionId = input.institutionId
+        self.pCurrency = input.currency
+        self.pBranchId = input.bankDetails?.branchId
+        self.pAccountNumber = input.bankDetails?.accountNumber
+        self.pBankName = input.bankDetails?.bankName
+        self.pCardLastFour = input.creditCardDetails?.cardLastFour
+        self.pCreditLimitCents = input.creditCardDetails?.creditLimit.map(Converters.decimalToCents(_:))
+        self.pStatementClosingDay = input.creditCardDetails?.statementClosingDay
+        self.pPaymentDueDay = input.creditCardDetails?.paymentDueDay
+        self.pCycleEffectiveFrom = cycleEffectiveFrom
     }
 
     enum CodingKeys: String, CodingKey {
         case pAccountId = "p_account_id"
         case pType = "p_type"
+        case pTerritorialScope = "p_territorial_scope"
+        case pNickname = "p_nickname"
         case pInitialBalanceCents = "p_initial_balance_cents"
         case pArchived = "p_archived"
         case pInstitutionId = "p_institution_id"
         case pCurrency = "p_currency"
         case pBranchId = "p_branch_id"
         case pAccountNumber = "p_account_number"
+        case pBankName = "p_bank_name"
         case pCardLastFour = "p_card_last_four"
         case pCreditLimitCents = "p_credit_limit_cents"
         case pStatementClosingDay = "p_statement_closing_day"
@@ -441,11 +479,11 @@ nonisolated struct UpdateAccountRequest: Encodable, Sendable {
     }
 }
 
-nonisolated struct DeleteAccountRequest: Encodable, Sendable {
+nonisolated struct DeleteAccountRequest: Encodable {
     let pAccountId: UUID
 
     init(accountId: UUID) {
-        pAccountId = accountId
+        self.pAccountId = accountId
     }
 
     enum CodingKeys: String, CodingKey {
