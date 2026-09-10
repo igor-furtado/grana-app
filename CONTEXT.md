@@ -32,6 +32,7 @@ _Evite_: Banco, quando o conceito também puder representar uma corretora
 
 **Instituição financeira suportada**:
 Instituição financeira reconhecida pelo produto para criação de contas. Quando uma instituição não é suportada, o usuário não cria conta para ela até que o produto trate suas particularidades.
+O nome exibido de uma instituição suportada faz parte do suporte do produto, não da contabilidade editável do usuário.
 _Evite_: Outra instituição, banco genérico
 
 **Conta**:

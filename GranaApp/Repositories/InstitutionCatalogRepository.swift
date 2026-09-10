@@ -5,10 +5,9 @@ protocol InstitutionCatalogRepositoryProtocol: Sendable {
     func load() async throws -> [Institution]
 }
 
-struct InstitutionCatalogRecord: Decodable, Sendable {
+struct InstitutionCatalogRecord: Decodable {
     let id: UUID
     let code: String
-    let name: String
     let kind: String
     let supportedAccountTypes: [AccountType]
     let supportedImportFormats: [InstitutionImportFormat]
@@ -18,7 +17,6 @@ struct InstitutionCatalogRecord: Decodable, Sendable {
     enum CodingKeys: String, CodingKey {
         case id
         case code
-        case name
         case kind
         case supportedAccountTypes = "supported_account_types"
         case supportedImportFormats = "supported_import_formats"
@@ -52,7 +50,7 @@ actor SupabaseInstitutionCatalogRemoteStore: InstitutionCatalogRemoteStore {
             .schema("api")
             .from("v1_supported_institution_catalog")
             .select()
-            .order("name", ascending: true)
+            .order("code", ascending: true)
             .execute()
             .value
     }
@@ -83,7 +81,6 @@ final class InstitutionCatalogRepository: InstitutionCatalogRepositoryProtocol, 
             Institution(
                 id: record.id,
                 code: record.code,
-                name: record.name,
                 kind: InstitutionKind(rawValue: record.kind) ?? .other,
                 capabilities: InstitutionCapabilities(
                     supportedAccountTypes: Set(record.supportedAccountTypes),

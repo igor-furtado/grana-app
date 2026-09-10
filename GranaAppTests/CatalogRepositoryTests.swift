@@ -73,7 +73,6 @@ struct InstitutionCatalogRepositoryTests {
                 InstitutionCatalogRecord(
                     id: interId,
                     code: "077",
-                    name: "Banco Inter",
                     kind: "inter",
                     supportedAccountTypes: [.checking, .creditCard],
                     supportedImportFormats: [.ofx, .interCreditCardCSV],
@@ -93,6 +92,29 @@ struct InstitutionCatalogRepositoryTests {
         #expect(inter.capabilities.supports(.interCreditCardCSV))
     }
 
+    @Test("Deriva nome exibido a partir do kind remoto")
+    func derivesDisplayNameFromRemoteKind() async throws {
+        let now = Date()
+        let repository = InstitutionCatalogRepository(
+            remoteStore: FakeInstitutionCatalogRemoteStore(records: [
+                InstitutionCatalogRecord(
+                    id: UUID(),
+                    code: "341",
+                    kind: "itau",
+                    supportedAccountTypes: [.checking],
+                    supportedImportFormats: [.ofx],
+                    createdAt: now,
+                    updatedAt: now
+                ),
+            ])
+        )
+
+        let institutions = try await repository.load()
+
+        #expect(institutions.first?.displayName == "Itaú")
+        #expect(institutions.first?.name == "Itaú")
+    }
+
     @Test("Busca por code ignora whitespace e respeita capability de importação")
     func findsByCodeAndCapability() async throws {
         let now = Date()
@@ -101,7 +123,6 @@ struct InstitutionCatalogRepositoryTests {
                 InstitutionCatalogRecord(
                     id: UUID(),
                     code: "341",
-                    name: "Itaú",
                     kind: "itau",
                     supportedAccountTypes: [.checking],
                     supportedImportFormats: [.ofx],
@@ -111,7 +132,6 @@ struct InstitutionCatalogRepositoryTests {
                 InstitutionCatalogRecord(
                     id: UUID(),
                     code: "260",
-                    name: "Nubank",
                     kind: "nubank",
                     supportedAccountTypes: [.checking, .creditCard],
                     supportedImportFormats: [.ofx],

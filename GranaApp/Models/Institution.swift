@@ -9,11 +9,53 @@ struct Institution: Identifiable, Codable, Hashable {
     /// Código FEBRABAN/COMPE (3 dígitos, ex: "077" para o Inter). É o que o
     /// OFX traz em `<FI><FID>` ou `<BANKID>`.
     var code: String
-    var name: String
     var kind: InstitutionKind
     var capabilities: InstitutionCapabilities = .legacyDefault
     let createdAt: Date
     var updatedAt: Date
+
+    var displayName: String {
+        kind.displayName
+    }
+
+    var name: String {
+        displayName
+    }
+
+    init(
+        id: UUID,
+        code: String,
+        kind: InstitutionKind,
+        capabilities: InstitutionCapabilities = .legacyDefault,
+        createdAt: Date,
+        updatedAt: Date
+    ) {
+        self.id = id
+        self.code = code
+        self.kind = kind
+        self.capabilities = capabilities
+        self.createdAt = createdAt
+        self.updatedAt = updatedAt
+    }
+
+    init(
+        id: UUID,
+        code: String,
+        name _: String,
+        kind: InstitutionKind,
+        capabilities: InstitutionCapabilities = .legacyDefault,
+        createdAt: Date,
+        updatedAt: Date
+    ) {
+        self.init(
+            id: id,
+            code: code,
+            kind: kind,
+            capabilities: capabilities,
+            createdAt: createdAt,
+            updatedAt: updatedAt
+        )
+    }
 }
 
 struct InstitutionCapabilities: Codable, Hashable {
@@ -47,9 +89,9 @@ enum InstitutionImportFormat: String, Codable, CaseIterable, Hashable {
 }
 
 /// Conjunto fechado de instituições com suporte "rico" no app — ícone,
-/// nome canônico, **cor da marca** e auto-detect a partir do código FEBRABAN.
-/// Bancos fora dessa lista entram como `.other` e o usuário preenche o nome
-/// livre na criação da Account.
+/// nome exibido, **cor da marca** e auto-detect a partir do código FEBRABAN.
+/// Bancos fora dessa lista entram como `.other` e não são instituições
+/// suportadas exibíveis no catálogo fechado.
 ///
 /// **Por que enum em vez de dados editáveis pelo usuário:** identidade visual
 /// de banco é dado público fixo — Inter é laranja, Nubank é roxo, etc. Manter
@@ -175,7 +217,7 @@ extension Sequence where Element == Institution {
         code: String,
         supporting importFormat: InstitutionImportFormat
     ) -> Institution? {
-        return first {
+        first {
             InstitutionCode.matches($0.code, code) && $0.capabilities.supports(importFormat)
         }
     }
