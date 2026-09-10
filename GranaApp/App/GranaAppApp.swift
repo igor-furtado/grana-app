@@ -34,7 +34,7 @@ struct GranaAppApp: App {
                         NoticeCenter.shared.report(error, title: "Falha ao iniciar o app")
                     }
                     if let setupError = environment.setupError {
-                        NoticeCenter.shared.report(setupError, title: "Falha ao iniciar o banco")
+                        NoticeCenter.shared.report(setupError, title: "Falha ao iniciar a base de dados")
                     }
                 }
         }

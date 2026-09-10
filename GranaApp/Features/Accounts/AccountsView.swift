@@ -72,7 +72,7 @@ struct AccountsView: View {
         EmptyStateView(
             "Cadastre sua primeira conta",
             icon: .sidebarAccounts,
-            description: "Adicione as contas bancárias que você usa no dia a dia"
+            description: "Adicione as contas correntes que você usa no dia a dia"
         ) {
             Button {
                 store.send(.list(.addButtonTapped))

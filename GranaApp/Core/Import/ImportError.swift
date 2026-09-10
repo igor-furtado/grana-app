@@ -37,7 +37,7 @@ enum ImportError: LocalizedError {
         case .noValidRows:
             return "Nenhuma linha válida encontrada para importar."
         case let .batchInsertFailed(underlying):
-            return "Falha ao gravar o lote no banco: \(underlying.localizedDescription)"
+            return "Falha ao gravar o lote na base de dados: \(underlying.localizedDescription)"
         case .unclassifiedCategoryMissing:
             return "Categoria \"Não Classificado\" não encontrada. Verifique se o catálogo global foi carregado."
         case .templateInvalidJSON:

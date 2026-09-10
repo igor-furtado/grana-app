@@ -82,7 +82,7 @@ private struct ImportHistoryContentView: View {
                 Label("Nova importação", systemImage: AppUI.Icon.add.systemImage)
             }
             .buttonStyle(GranaPrimaryButtonStyle())
-            .help("Importar extrato bancário (OFX ou CSV)")
+            .help("Importar extrato financeiro (OFX ou CSV)")
         }
     }
 

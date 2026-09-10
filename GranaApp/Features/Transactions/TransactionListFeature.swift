@@ -95,9 +95,9 @@ enum TransactionBankFilter: Equatable {
 
     func name(feature: TransactionListFeature.State) -> String {
         if case let .bank(id) = self {
-            return feature.institution(for: id)?.name ?? "Banco"
+            return feature.institution(for: id)?.name ?? "Instituição"
         }
-        return "Todos bancos"
+        return "Todas instituições"
     }
 
     func matches(_ transaction: Transaction, accountsById: [UUID: Account]) -> Bool {
@@ -433,7 +433,8 @@ struct TransactionListFeature {
             }
 
             if let destinationAccountId = transaction.destinationAccountId,
-               account(for: destinationAccountId)?.type == .creditCard {
+               account(for: destinationAccountId)?.type == .creditCard
+            {
                 return false
             }
 

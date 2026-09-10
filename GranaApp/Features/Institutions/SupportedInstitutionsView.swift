@@ -5,27 +5,26 @@ import SwiftUI
 /// Catálogo read-only das instituições com suporte nativo no app — auto-detect
 /// via código FEBRABAN no import OFX, ícone canônico e cor da marca. O
 /// usuário não cria nem edita instituições; o que ele cria é **conta** (que
-/// referencia uma instituição). Esta tela existe pra responder "que bancos
+/// referencia uma instituição). Esta tela existe pra responder "que instituições
 /// o GranaApp reconhece?" sem ter que abrir o form de conta.
 struct SupportedInstitutionsView: View {
     @Bindable var store: StoreOf<SupportedInstitutionsFeature>
-    private let columns = [
-        GridItem(.adaptive(minimum: 240, maximum: 360), spacing: AppUI.Theme.Spacing.md),
-    ]
 
     var body: some View {
-        SupportedInstitutionsLoadedView(store: store, columns: columns)
+        SupportedInstitutionsLoadedView(store: store)
     }
 }
 
 private struct SupportedInstitutionsLoadedView: View {
     @Bindable var store: StoreOf<SupportedInstitutionsFeature>
-    let columns: [GridItem]
+    @State private var sortOrder = [
+        KeyPathComparator(\SupportedInstitutionTableRow.name),
+    ]
 
     var body: some View {
         VStack(spacing: AppUI.Theme.Spacing.sm) {
             AppUI.Layout.ScreenHeader(
-                title: "Bancos suportados",
+                title: "Instituições financeiras",
                 subtitle: store.subtitle
             ) {
                 Button {
@@ -39,7 +38,7 @@ private struct SupportedInstitutionsLoadedView: View {
 
             Group {
                 if store.isLoading {
-                    SupportedInstitutionsSkeletonView(columns: columns)
+                    SupportedInstitutionsSkeletonView()
                         .frame(maxWidth: .infinity, maxHeight: .infinity)
                 } else if let loadErrorMessage = store.loadErrorMessage {
                     EmptyStateView(
@@ -54,25 +53,7 @@ private struct SupportedInstitutionsLoadedView: View {
                         description: "O backend não devolveu instituições suportadas para a sessão atual."
                     )
                 } else {
-                    ScrollView {
-                        VStack(alignment: .leading, spacing: AppUI.Theme.Spacing.md) {
-                            Text(
-                                """
-                                Catálogo global das instituições suportadas pelo produto. Tipos de conta
-                                e formatos de importação vêm do backend e definem o que a UI pode oferecer.
-                                """
-                            )
-                            .font(AppUI.Theme.Typography.callout)
-                            .foregroundStyle(.secondary)
-                            .fixedSize(horizontal: false, vertical: true)
-
-                            LazyVGrid(columns: columns, spacing: AppUI.Theme.Spacing.md) {
-                                ForEach(store.institutions) { institution in
-                                    InstitutionCatalogCard(institution: institution)
-                                }
-                            }
-                        }
-                    }
+                    institutionsTable
                 }
             }
         }
@@ -80,57 +61,99 @@ private struct SupportedInstitutionsLoadedView: View {
             await store.send(.task).finish()
         }
     }
-}
 
-private struct InstitutionCatalogCard: View {
-    let institution: Institution
-
-    var body: some View {
-        HStack(spacing: AppUI.Theme.Spacing.md) {
-            InstitutionIcon(kind: institution.kind, size: 48)
-
-            VStack(alignment: .leading, spacing: AppUI.Theme.Spacing.xs) {
-                Text(institution.name)
-                    .font(AppUI.Theme.Typography.bodyEmphasis)
-                Text("FEBRABAN \(institution.code)")
-                    .font(AppUI.Theme.Typography.code)
-                    .foregroundStyle(.secondary)
-
-                capabilityRow(
-                    title: "Contas",
-                    values: institution.capabilities.supportedAccountTypes
-                        .sorted { $0.displayName < $1.displayName }
-                        .map(\.displayName)
-                )
-                capabilityRow(
-                    title: "Importação",
-                    values: institution.capabilities.supportedImportFormats
-                        .sorted { $0.displayName < $1.displayName }
-                        .map(\.displayName)
-                )
+    private var institutionsTable: some View {
+        AppUI.Table(tableRows, sortOrder: $sortOrder) {
+            TableColumn("Instituição", value: \.name) { row in
+                HStack(spacing: AppUI.Theme.Spacing.sm) {
+                    InstitutionIcon(kind: row.kind, size: 24)
+                    Text(row.name)
+                        .font(AppUI.Theme.Typography.subheadlineEmphasis)
+                        .foregroundStyle(AppUI.Theme.Palette.ink)
+                        .lineLimit(1)
+                }
             }
-            Spacer(minLength: AppUI.Theme.Spacing.none)
+            .width(min: 240, ideal: 280, max: 340)
+
+            TableColumn("FEBRABAN", value: \.code) { row in
+                Text(row.code)
+                    .font(AppUI.Theme.Typography.code)
+                    .foregroundStyle(AppUI.Theme.Palette.muted)
+            }
+            .width(min: 90, ideal: 110, max: 120)
+
+            TableColumn("Tipos", value: \.accountTypesSortLabel) { row in
+                CapabilityBadgeGroup(values: row.accountTypes)
+            }
+            .width(min: 220, ideal: 280, max: 360)
+
+            TableColumn("Importação", value: \.importFormatsSortLabel) { row in
+                CapabilityBadgeGroup(values: row.importFormats)
+            }
         }
-        .padding(AppUI.Theme.Spacing.md)
-        .background(
-            RoundedRectangle(cornerRadius: 12, style: .continuous)
-                .fill(Color(nsColor: .controlBackgroundColor))
-        )
-        .overlay(
-            RoundedRectangle(cornerRadius: 12, style: .continuous)
-                .strokeBorder(institution.kind.brandColor.opacity(0.25), lineWidth: 1)
-        )
     }
 
-    private func capabilityRow(title: String, values: [String]) -> some View {
-        VStack(alignment: .leading, spacing: AppUI.Theme.Spacing.xxs) {
-            Text(title)
-                .font(AppUI.Theme.Typography.caption2Emphasis)
-                .foregroundStyle(.secondary)
-            Text(values.joined(separator: " · "))
-                .font(AppUI.Theme.Typography.caption1)
-                .foregroundStyle(.primary)
-                .fixedSize(horizontal: false, vertical: true)
+    private var tableRows: [SupportedInstitutionTableRow] {
+        store.institutions.map(SupportedInstitutionTableRow.init(institution:))
+    }
+}
+
+private struct SupportedInstitutionTableRow: Identifiable {
+    let id: Institution.ID
+    let name: String
+    let code: String
+    let kind: InstitutionKind
+    let accountTypes: [String]
+    let importFormats: [String]
+
+    var accountTypesSortLabel: String {
+        accountTypes.joined(separator: " ")
+    }
+
+    var importFormatsSortLabel: String {
+        importFormats.joined(separator: " ")
+    }
+
+    init(institution: Institution) {
+        self.id = institution.id
+        self.name = institution.name
+        self.code = institution.code
+        self.kind = institution.kind
+        self.accountTypes = institution.capabilities.supportedAccountTypes
+            .sorted { $0.displayName < $1.displayName }
+            .map(\.displayName)
+        self.importFormats = institution.capabilities.supportedImportFormats
+            .sorted { $0.displayName < $1.displayName }
+            .map(\.displayName)
+    }
+}
+
+private struct CapabilityBadgeGroup: View {
+    let values: [String]
+
+    var body: some View {
+        HStack(spacing: AppUI.Theme.Spacing.xs) {
+            ForEach(values, id: \.self) { value in
+                CapabilityBadge(value)
+            }
         }
+        .lineLimit(1)
+    }
+}
+
+private struct CapabilityBadge: View {
+    let value: String
+
+    init(_ value: String) {
+        self.value = value
+    }
+
+    var body: some View {
+        Text(value)
+            .font(AppUI.Theme.Typography.caption1Emphasis)
+            .foregroundStyle(AppUI.Theme.Palette.tealDeep)
+            .padding(.horizontal, AppUI.Theme.Spacing.xs)
+            .padding(.vertical, AppUI.Theme.Spacing.xxs)
+            .background(AppUI.Theme.Palette.teal.opacity(0.10), in: Capsule())
     }
 }

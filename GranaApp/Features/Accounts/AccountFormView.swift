@@ -1,6 +1,6 @@
+import AppUI
 import ComposableArchitecture
 import SwiftUI
-import AppUI
 
 /// Form de criação/edição de conta corrente da vertical de Contas.
 struct AccountFormView: View {
@@ -12,7 +12,7 @@ struct AccountFormView: View {
 
             AppUI.Form.Shell {
                 AppUI.Form.Header(
-                    title: title, 
+                    title: title,
                     subtitle: subtitle
                 )
 
@@ -51,7 +51,7 @@ struct AccountFormView: View {
     private var identitySection: some View {
         Section {
             AppUI.Selector(
-                label: "Banco",
+                label: "Instituição financeira",
                 placeholder: "Selecione…",
                 options: store.availableInstitutions.map {
                     .init(id: $0.id, title: $0.name)
@@ -79,10 +79,10 @@ struct AccountFormView: View {
                 textAlignment: .trailing
             )
         } header: {
-            sectionHeader("Identidade bancária")
+            sectionHeader("Dados da conta")
         } footer: {
             sectionFooter(
-                "Obrigatórios. Distinguem contas do mesmo banco e ajudam a identificar a conta em importações OFX."
+                "Obrigatórios. Distinguem contas da mesma instituição e ajudam a identificar a conta em importações OFX."
             )
         }
     }
@@ -125,7 +125,7 @@ struct AccountFormView: View {
     }
 
     private var subtitle: String {
-        "Conta corrente com dados bancários e saldo inicial."
+        "Conta corrente com instituição financeira e saldo inicial."
     }
 
     private func sectionHeader(_ title: String) -> some View {
