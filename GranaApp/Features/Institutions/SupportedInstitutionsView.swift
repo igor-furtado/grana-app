@@ -26,15 +26,7 @@ private struct SupportedInstitutionsLoadedView: View {
             AppUI.Layout.ScreenHeader(
                 title: "Instituições financeiras",
                 subtitle: store.subtitle
-            ) {
-                Button {
-                    store.send(.refresh)
-                } label: {
-                    Label("Atualizar", systemImage: "arrow.clockwise")
-                }
-                .buttonStyle(GranaPrimaryButtonStyle())
-                .disabled(store.isLoading)
-            }
+            )
 
             Group {
                 if store.isLoading {

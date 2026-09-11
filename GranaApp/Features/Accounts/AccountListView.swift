@@ -49,6 +49,11 @@ struct AccountListView: View {
                     .foregroundStyle(item.currentBalance < 0 ? AppUI.Theme.Palette.red : AppUI.Theme.Palette.ink)
                     .frame(maxWidth: .infinity, alignment: .trailing)
             }
+            .width(
+                min: AppUI.TableColumnWidth.money.min,
+                ideal: AppUI.TableColumnWidth.money.ideal,
+                max: AppUI.TableColumnWidth.money.max
+            )
 
             TableColumn("Status", value: \.statusRank) { item in
                 Text(item.statusText)

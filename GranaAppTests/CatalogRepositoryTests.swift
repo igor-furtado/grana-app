@@ -133,7 +133,7 @@ struct InstitutionCatalogRepositoryTests {
                     id: UUID(),
                     code: "260",
                     kind: "nubank",
-                    supportedAccountTypes: [.checking, .creditCard],
+                    supportedAccountTypes: [.checking, .creditCard, .investment],
                     supportedImportFormats: [.ofx],
                     createdAt: now,
                     updatedAt: now
@@ -148,6 +148,7 @@ struct InstitutionCatalogRepositoryTests {
         #expect(institutions.institution(code: "341", supporting: .interCreditCardCSV) == nil)
         #expect(institutions.institution(code: "260")?.kind == .nubank)
         #expect(institutions.institution(code: "260")?.capabilities.supports(.creditCard) == true)
+        #expect(institutions.institution(code: "260")?.capabilities.supports(.investment) == true)
     }
 
     @Test("Propaga erro remoto ao carregar instituições")

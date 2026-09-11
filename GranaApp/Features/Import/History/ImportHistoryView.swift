@@ -221,7 +221,11 @@ private struct ImportHistoryMainPanel: View {
                         .foregroundStyle(AppUI.Theme.Palette.muted)
                         .frame(maxWidth: .infinity, alignment: .trailing)
                 }
-                .width(min: 140, ideal: 140, max: 140)
+                .width(
+                    min: AppUI.TableColumnWidth.date.min,
+                    ideal: AppUI.TableColumnWidth.date.ideal,
+                    max: AppUI.TableColumnWidth.date.max
+                )
 
                 TableColumn("Arquivo", value: \.sourceFilename) { row in
                     VStack(alignment: .leading, spacing: AppUI.Theme.Spacing.xxs) {

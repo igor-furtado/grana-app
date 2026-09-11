@@ -78,23 +78,46 @@ actor SupabaseCategoryCatalogRemoteStore: CategoryCatalogRemoteStore {
     }
 }
 
-final class CategoryCatalogRepository: CategoryCatalogRepositoryProtocol, Sendable {
+actor CategoryCatalogRepository: CategoryCatalogRepositoryProtocol {
     private let remoteStore: any CategoryCatalogRemoteStore
+    private var cachedCategories: [Category]?
+    private var inFlightLoad: Task<[Category], any Error>?
 
     init(remoteStore: any CategoryCatalogRemoteStore) {
         self.remoteStore = remoteStore
     }
 
     func load() async throws -> [Category] {
-        try await remoteStore.fetchCategories().map { record in
-            Category(
-                id: record.id,
-                parentId: record.parentId,
-                name: record.name,
-                kind: record.kind,
-                slug: record.slug,
-                createdAt: record.createdAt
-            )
+        if let cachedCategories {
+            return cachedCategories
+        }
+
+        if let inFlightLoad {
+            return try await inFlightLoad.value
+        }
+
+        let task = Task {
+            try await remoteStore.fetchCategories().map { record in
+                Category(
+                    id: record.id,
+                    parentId: record.parentId,
+                    name: record.name,
+                    kind: record.kind,
+                    slug: record.slug,
+                    createdAt: record.createdAt
+                )
+            }
+        }
+        inFlightLoad = task
+
+        do {
+            let categories = try await task.value
+            cachedCategories = categories
+            inFlightLoad = nil
+            return categories
+        } catch {
+            inFlightLoad = nil
+            throw error
         }
     }
 }

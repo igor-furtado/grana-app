@@ -1162,7 +1162,11 @@ private struct TransactionsTableExample: View {
                     .foregroundStyle(row.amountColor)
                     .frame(maxWidth: .infinity, alignment: .trailing)
             }
-            .width(min: 140, ideal: 140, max: 160)
+            .width(
+                min: AppUI.TableColumnWidth.money.min,
+                ideal: AppUI.TableColumnWidth.money.ideal,
+                max: AppUI.TableColumnWidth.money.max
+            )
         } filterBar: {
             AppUI.TableFilterBar {
                 AppUI.TextField(

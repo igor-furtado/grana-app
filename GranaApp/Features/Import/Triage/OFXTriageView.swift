@@ -171,7 +171,11 @@ private struct OFXTransactionsListSection: View {
                         .font(AppUI.Theme.Typography.caption1)
                         .foregroundStyle(AppUI.Theme.Palette.muted)
                 }
-                .width(min: 128, ideal: 148, max: 172)
+                .width(
+                    min: AppUI.TableColumnWidth.date.min,
+                    ideal: AppUI.TableColumnWidth.date.ideal,
+                    max: AppUI.TableColumnWidth.date.max
+                )
 
                 TableColumn("Descrição") { row in
                     HStack(spacing: AppUI.Theme.Spacing.xs) {
@@ -191,7 +195,11 @@ private struct OFXTransactionsListSection: View {
                         .foregroundStyle(amountColor(for: row.amountKind))
                         .frame(maxWidth: .infinity, alignment: .trailing)
                 }
-                .width(min: 140, ideal: 140, max: 160)
+                .width(
+                    min: AppUI.TableColumnWidth.money.min,
+                    ideal: AppUI.TableColumnWidth.money.ideal,
+                    max: AppUI.TableColumnWidth.money.max
+                )
             }
             .overlay(alignment: .topLeading) {
                 allRowsSelectionToggle

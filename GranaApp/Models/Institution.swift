@@ -110,9 +110,9 @@ enum InstitutionKind: String, Codable, CaseIterable {
 
     var displayName: String {
         switch self {
-        case .inter: "Banco Inter"
-        case .itau: "Itaú"
-        case .nubank: "Nubank"
+        case .inter: "Banco Intermedium S.A."
+        case .itau: "Itaú Unibanco S.A."
+        case .nubank: "Nu Pagamentos S.A."
         case .bb: "Banco do Brasil"
         case .caixa: "Caixa Econômica Federal"
         case .c6: "C6 Bank"

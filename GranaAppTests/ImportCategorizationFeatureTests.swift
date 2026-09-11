@@ -88,10 +88,64 @@ struct ImportCategorizationFeatureTests {
             $0.categories = [category]
             $0.accounts = [account]
             $0.institutions = []
+            $0.didLoadContext = true
         }
 
         await store.receive(.suggestionsLoaded(.success([suggestion]))) {
             $0.suggestions = [suggestion]
+            $0.didLoadSuggestions = true
+            $0.status = .ready(total: 1, fallback: 1)
+        }
+
+        await store.receive(.delegate(.ready))
+    }
+
+    @Test("Aguarda contexto antes de liberar revisão")
+    func waitsForContextBeforeReadyDelegate() async {
+        let category = Category(
+            id: UUID(),
+            parentId: nil,
+            name: "Não Classificado",
+            kind: .expense,
+            slug: "nao-classificado",
+            createdAt: Date()
+        )
+        let suggestion = CategorizationSuggestion(
+            id: UUID(),
+            transactionId: UUID(),
+            descriptionHash: "hash",
+            normalizedDescription: "padaria",
+            categoryId: category.id,
+            subcategoryId: nil,
+            source: .fallback,
+            originalCategoryId: nil,
+            originalSubcategoryId: nil,
+            originalCategorySlug: nil,
+            originalSubcategoryName: nil,
+            transactionDescription: "Padaria",
+            transactionAmount: 10,
+            transactionOccurredAt: Date(),
+            transactionAccountId: UUID(),
+            transactionNotes: nil,
+            transactionDestinationAccountId: nil,
+            isReviewed: false
+        )
+        let store = TestStore(initialState: ImportCategorizationFeature.State()) {
+            ImportCategorizationFeature()
+        }
+
+        await store.send(.suggestionsLoaded(.success([suggestion]))) {
+            $0.suggestions = [suggestion]
+            $0.didLoadSuggestions = true
+        }
+
+        await store.send(.contextLoaded(.success(ImportCategorizationContext(
+            categories: [category],
+            accounts: [],
+            institutions: []
+        )))) {
+            $0.categories = [category]
+            $0.didLoadContext = true
             $0.status = .ready(total: 1, fallback: 1)
         }
 

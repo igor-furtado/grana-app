@@ -11,13 +11,13 @@ struct SupportedInstitutionsFeature {
         var loadErrorMessage: String?
 
         var subtitle: String {
-            "\(institutions.count) instituições no catálogo global"
+            let countText = institutions.count == 1 ? "1 instituição" : "\(institutions.count) instituições"
+            return "\(countText) no catálogo"
         }
     }
 
     enum Action: Equatable {
         case task
-        case refresh
         case snapshotLoaded(TaskResult<[Institution]>)
     }
 
@@ -29,9 +29,6 @@ struct SupportedInstitutionsFeature {
             switch action {
             case .task:
                 guard !state.hasLoaded else { return .none }
-                return load(&state)
-
-            case .refresh:
                 return load(&state)
 
             case let .snapshotLoaded(.success(institutions)):

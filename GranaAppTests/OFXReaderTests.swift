@@ -122,6 +122,64 @@ struct OFXReaderTests {
         #expect(bal.amount == Decimal(string: "783.59"))
     }
 
+    @Test("OFX de saldo sem STMTTRN preserva extrato vazio")
+    func balanceOnlyStatementHasNoTransactions() throws {
+        let ofx = """
+        OFXHEADER:100
+        DATA:OFXSGML
+        VERSION:102
+        SECURITY:NONE
+        ENCODING:USASCII
+        CHARSET:1252
+        COMPRESSION:NONE
+        OLDFILEUID:NONE
+        NEWFILEUID:NONE
+
+        <OFX>
+        <SIGNONMSGSRSV1>
+        <SONRS>
+        <STATUS><CODE>0</CODE><SEVERITY>INFO</SEVERITY></STATUS>
+        <DTSERVER>20201001</DTSERVER>
+        <LANGUAGE>POR</LANGUAGE>
+        <FI><ORG>Nubank</ORG><FID>260</FID></FI>
+        </SONRS>
+        </SIGNONMSGSRSV1>
+        <BANKMSGSRSV1>
+        <STMTTRNRS>
+        <TRNUID>1</TRNUID>
+        <STATUS><CODE>0</CODE><SEVERITY>INFO</SEVERITY></STATUS>
+        <STMTRS>
+        <CURDEF>BRL</CURDEF>
+        <BANKACCTFROM>
+        <BANKID>260</BANKID>
+        <BRANCHID>0001</BRANCHID>
+        <ACCTID>123</ACCTID>
+        <ACCTTYPE>CHECKING</ACCTTYPE>
+        </BANKACCTFROM>
+        <BANKTRANLIST>
+        <DTSTART>20200901</DTSTART>
+        <DTEND>20200930</DTEND>
+        </BANKTRANLIST>
+        <LEDGERBAL>
+        <BALAMT>10.00</BALAMT>
+        <DTASOF>20200930</DTASOF>
+        </LEDGERBAL>
+        <BALLIST>
+        <BAL><NAME>Saldo</NAME><DESC>Saldo</DESC><BALTYPE>CLOSINGLEDGER</BALTYPE><VALUE>10.00</VALUE></BAL>
+        </BALLIST>
+        </STMTRS>
+        </STMTTRNRS>
+        </BANKMSGSRSV1>
+        </OFX>
+        """
+
+        let doc = try reader.read(data: #require(ofx.data(using: .ascii)))
+
+        try #require(doc.statements.count == 1)
+        #expect(doc.statements[0].account.bankId == "260")
+        #expect(doc.statements[0].transactions.isEmpty)
+    }
+
     // MARK: - Múltiplas contas
 
     @Test("Múltiplas STMTRS no mesmo arquivo viram vários statements")

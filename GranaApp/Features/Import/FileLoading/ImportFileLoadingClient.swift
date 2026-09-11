@@ -102,7 +102,7 @@ private enum ImportFileLoadingOperations {
         }
 
         guard !resolutions.allSatisfy(\.rows.isEmpty) else {
-            throw ImportError.noValidRows
+            throw ImportError.ofxWithoutTransactions
         }
 
         return .ofx(sourceURL: url, resolutions: resolutions)

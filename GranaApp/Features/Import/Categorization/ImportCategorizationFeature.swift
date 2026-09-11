@@ -73,6 +73,8 @@ struct ImportCategorizationFeature {
         var categories: [Category] = []
         var accounts: [Account] = []
         var institutions: [Institution] = []
+        var didLoadContext = false
+        var didLoadSuggestions = false
 
         var rootCategories: [Category] {
             categories.filter { $0.parentId == nil }
@@ -121,6 +123,11 @@ struct ImportCategorizationFeature {
                     message: "Preparando classificação…"
                 )
                 state.suggestions = []
+                state.categories = []
+                state.accounts = []
+                state.institutions = []
+                state.didLoadContext = false
+                state.didLoadSuggestions = false
                 return .merge(
                     .run { send in
                         await send(
@@ -145,7 +152,8 @@ struct ImportCategorizationFeature {
                 state.categories = context.categories
                 state.accounts = context.accounts
                 state.institutions = context.institutions
-                return .none
+                state.didLoadContext = true
+                return finishIfReady(&state)
 
             case let .contextLoaded(.failure(error)):
                 state.status = .failed(message: error.localizedDescription)
@@ -158,11 +166,8 @@ struct ImportCategorizationFeature {
 
             case let .suggestionsLoaded(.success(suggestions)):
                 state.suggestions = suggestions
-                let fallback = suggestions.filter { suggestion in
-                    state.category(for: suggestion.categoryId)?.slug == "nao-classificado"
-                }.count
-                state.status = .ready(total: suggestions.count, fallback: fallback)
-                return .send(.delegate(.ready))
+                state.didLoadSuggestions = true
+                return finishIfReady(&state)
 
             case let .suggestionsLoaded(.failure(error)):
                 state.status = .failed(message: error.localizedDescription)
@@ -176,11 +181,22 @@ struct ImportCategorizationFeature {
             case .cancel:
                 state.status = .idle
                 state.suggestions = []
+                state.didLoadContext = false
+                state.didLoadSuggestions = false
                 return .cancel(id: "categorization.classify")
 
             case .delegate:
                 return .none
             }
         }
+    }
+
+    private func finishIfReady(_ state: inout State) -> Effect<Action> {
+        guard state.didLoadContext, state.didLoadSuggestions else { return .none }
+        let fallback = state.suggestions.filter { suggestion in
+            state.category(for: suggestion.categoryId)?.slug == "nao-classificado"
+        }.count
+        state.status = .ready(total: state.suggestions.count, fallback: fallback)
+        return .send(.delegate(.ready))
     }
 }

@@ -24,6 +24,21 @@ public struct TableFilterBar<Content: View>: View {
     }
 }
 
+public struct TableColumnWidth {
+    public let min: CGFloat
+    public let ideal: CGFloat
+    public let max: CGFloat
+
+    private init(min: CGFloat, ideal: CGFloat, max: CGFloat) {
+        self.min = min
+        self.ideal = ideal
+        self.max = max
+    }
+
+    public static let date = TableColumnWidth(min: 128, ideal: 148, max: 172)
+    public static let money = TableColumnWidth(min: 128, ideal: 148, max: 172)
+}
+
 public struct Table<RowValue: Identifiable, Sort: SortComparator, FilterBar: View, Columns: TableColumnContent>: View
     where Columns.TableRowValue == RowValue,
     Columns.TableColumnSortComparator == Sort {
@@ -343,7 +358,13 @@ private struct TablePreview: View {
                     Text(row.amount)
                         .font(Theme.Typography.moneySubheadline)
                         .foregroundStyle(Theme.Palette.ink)
+                        .frame(maxWidth: .infinity, alignment: .trailing)
                 }
+                .width(
+                    min: TableColumnWidth.money.min,
+                    ideal: TableColumnWidth.money.ideal,
+                    max: TableColumnWidth.money.max
+                )
             } filterBar: {
                 TableFilterBar {
                     Text("3 itens")

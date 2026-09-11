@@ -64,7 +64,11 @@ struct StatementListView: View {
                     .font(AppUI.Theme.Typography.caption1)
                     .foregroundStyle(AppUI.Theme.Palette.muted)
             }
-            .width(min: 110, ideal: 140, max: 140)
+            .width(
+                min: AppUI.TableColumnWidth.date.min,
+                ideal: AppUI.TableColumnWidth.date.ideal,
+                max: AppUI.TableColumnWidth.date.max
+            )
 
             TableColumn("Categoria", value: \.categorySortLabel) { row in
                 HStack(spacing: AppUI.Theme.Spacing.xs) {
@@ -99,7 +103,11 @@ struct StatementListView: View {
                     .foregroundStyle(amountColor(for: row))
                     .frame(maxWidth: .infinity, alignment: .trailing)
             }
-            .width(min: 140, ideal: 140, max: 160)
+            .width(
+                min: AppUI.TableColumnWidth.money.min,
+                ideal: AppUI.TableColumnWidth.money.ideal,
+                max: AppUI.TableColumnWidth.money.max
+            )
         }
         .frame(minHeight: 260, idealHeight: min(CGFloat(sortedRows.count) * 44 + 44, 520), maxHeight: 520)
     }

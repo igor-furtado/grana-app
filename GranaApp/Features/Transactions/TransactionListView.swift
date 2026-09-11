@@ -34,7 +34,11 @@ struct TransactionListView: View {
                         .font(AppUI.Theme.Typography.caption1)
                         .foregroundStyle(AppUI.Theme.Palette.muted)
                 }
-                .width(min: 110, ideal: 140, max: 140)
+                .width(
+                    min: AppUI.TableColumnWidth.date.min,
+                    ideal: AppUI.TableColumnWidth.date.ideal,
+                    max: AppUI.TableColumnWidth.date.max
+                )
 
                 TableColumn("Categoria", value: \.categorySummary) { row in
                     HStack(spacing: AppUI.Theme.Spacing.xs) {
@@ -64,7 +68,11 @@ struct TransactionListView: View {
                         .foregroundStyle(amountColor(for: row.transaction))
                         .frame(maxWidth: .infinity, alignment: .trailing)
                 }
-                .width(min: 140, ideal: 140, max: 160)
+                .width(
+                    min: AppUI.TableColumnWidth.money.min,
+                    ideal: AppUI.TableColumnWidth.money.ideal,
+                    max: AppUI.TableColumnWidth.money.max
+                )
 
                 TableColumn("Ações") { row in
                     rowActions(row.transaction)

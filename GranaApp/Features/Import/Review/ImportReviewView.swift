@@ -3,6 +3,8 @@ import ComposableArchitecture
 import SwiftUI
 
 struct ImportReviewView: View {
+    private static let numberLocale = Locale(identifier: "pt_BR")
+
     enum Mode {
         case modal
         case wizard(onBack: @MainActor @Sendable () -> Void)
@@ -74,7 +76,11 @@ struct ImportReviewView: View {
                         .font(AppUI.Theme.Typography.caption1)
                         .foregroundStyle(AppUI.Theme.Palette.muted)
                 }
-                .width(min: 128, ideal: 148, max: 172)
+                .width(
+                    min: AppUI.TableColumnWidth.date.min,
+                    ideal: AppUI.TableColumnWidth.date.ideal,
+                    max: AppUI.TableColumnWidth.date.max
+                )
 
                 TableColumn("Descrição") { row in
                     HStack(spacing: AppUI.Theme.Spacing.sm) {
@@ -105,15 +111,33 @@ struct ImportReviewView: View {
                 .width(min: 170, ideal: 220, max: 260)
 
                 TableColumn("Valor") { row in
-                    Text(row.amount.formatted(.currency(code: "BRL")))
-                        .font(AppUI.Theme.Typography.moneySubheadline)
+                    accountingAmount(row.amount)
                         .foregroundStyle(amountColor(for: row.categoryId))
                         .frame(maxWidth: .infinity, alignment: .trailing)
                 }
-                .width(min: 140, ideal: 140, max: 160)
+                .width(
+                    min: AppUI.TableColumnWidth.money.min,
+                    ideal: AppUI.TableColumnWidth.money.ideal,
+                    max: AppUI.TableColumnWidth.money.max
+                )
             }
             .frame(maxHeight: .infinity)
         }
+    }
+
+    private func accountingAmount(_ amount: Decimal) -> some View {
+        let number = amount.formatted(
+            .number
+                .precision(.fractionLength(2))
+                .locale(Self.numberLocale)
+        )
+        return HStack(spacing: AppUI.Theme.Spacing.xxs) {
+            Text("R$")
+                .foregroundStyle(AppUI.Theme.Palette.muted)
+            Spacer(minLength: AppUI.Theme.Spacing.xxs)
+            Text(number)
+        }
+        .font(AppUI.Theme.Typography.moneySubheadline)
     }
 
     private var emptyState: some View {
@@ -161,7 +185,7 @@ struct ImportReviewView: View {
         } label: {
             tableMenuLabel(text: rootName(for: row))
         }
-        .menuStyle(.borderlessButton)
+        .buttonStyle(.plain)
         .help(rootName(for: row))
     }
 
@@ -190,7 +214,7 @@ struct ImportReviewView: View {
         } label: {
             tableMenuLabel(text: subName(for: row) ?? "—")
         }
-        .menuStyle(.borderlessButton)
+        .buttonStyle(.plain)
         .help(subName(for: row) ?? "Sem subcategoria")
     }
 
@@ -207,7 +231,7 @@ struct ImportReviewView: View {
         } label: {
             tableMenuLabel(text: row.transferAccountLabel)
         }
-        .menuStyle(.borderlessButton)
+        .buttonStyle(.plain)
         .help(row.isTransferIncomplete ? "Escolha a \(transferAccountFieldName(for: row).lowercased())" : row
             .transferAccountLabel)
     }
@@ -268,7 +292,7 @@ struct ImportReviewView: View {
             Text(text)
                 .font(AppUI.Theme.Typography.caption1)
                 .lineLimit(1)
-                .frame(maxWidth: .infinity, alignment: .leading)
+                .frame(maxWidth: 140, alignment: .leading)
             AppIcon(.sort, size: AppUI.Theme.IconSize.micro)
                 .foregroundStyle(.secondary)
         }
@@ -276,6 +300,7 @@ struct ImportReviewView: View {
         .padding(.vertical, AppUI.Theme.Spacing.xxs)
         .background(Color(nsColor: .controlBackgroundColor))
         .clipShape(RoundedRectangle(cornerRadius: 6, style: .continuous))
+        .contentShape(RoundedRectangle(cornerRadius: 6, style: .continuous))
     }
 }
 

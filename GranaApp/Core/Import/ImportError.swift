@@ -8,6 +8,7 @@ enum ImportError: LocalizedError {
     case dateParseFailed(row: Int, raw: String)
     case amountParseFailed(row: Int, raw: String)
     case noValidRows
+    case ofxWithoutTransactions
     case batchInsertFailed(underlying: Error)
     case unclassifiedCategoryMissing
     case templateInvalidJSON
@@ -36,6 +37,8 @@ enum ImportError: LocalizedError {
             return "Linha \(row): valor inválido (\"\(raw)\")."
         case .noValidRows:
             return "Nenhuma linha válida encontrada para importar."
+        case .ofxWithoutTransactions:
+            return "O OFX não contém lançamentos no período selecionado."
         case let .batchInsertFailed(underlying):
             return "Falha ao gravar o lote na base de dados: \(underlying.localizedDescription)"
         case .unclassifiedCategoryMissing:
