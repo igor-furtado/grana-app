@@ -33,8 +33,8 @@ struct InterCreditCardCSVReader {
         /// `notes` da transação — útil pra usuário ver o que o Inter sugeriu,
         /// mas **não** é usada pra mapear na nossa taxonomia.
         let interCategory: String
-        /// "Compra à vista" ou "Parcela N/M". Vai pra `notes` também e entra
-        /// no `external_id` sintético pra distinguir parcelas do mesmo mês.
+        /// "Compra à vista" ou "Parcela N/M". Vai pra `notes` também e
+        /// distingue parcelas do mesmo mês.
         let tipo: String
         let purchaseType: TransactionPurchaseType
         let installmentIndex: Int?
@@ -93,7 +93,7 @@ struct InterCreditCardCSVReader {
             }
 
             let dateStr = fields[0]
-            let description = Self.normalizeDescription(fields[1])
+            let description = fields[1]
             let interCategory = fields[2]
             let tipo = fields[3]
             let valueStr = fields[4]
@@ -166,7 +166,10 @@ struct InterCreditCardCSVReader {
         // Tenta re-encodar como Latin-1; se cada char couber (sempre couber
         // se o conteúdo for Latin-1 puro disfarçado de UTF-8), decoda esses
         // bytes como UTF-8.
-        if let latin1Bytes = utf8.data(using: .isoLatin1, allowLossyConversion: false), let recovered = String(data: latin1Bytes, encoding: .utf8) {
+        if let latin1Bytes = utf8.data(using: .isoLatin1, allowLossyConversion: false), let recovered = String(
+            data: latin1Bytes,
+            encoding: .utf8
+        ) {
             return recovered
         }
 
@@ -326,43 +329,6 @@ struct InterCreditCardCSVReader {
         return isNegative ? -value : value
     }
 
-    // MARK: - Description normalization
-
-    /// O Inter grava descrições com colchete largo de espaços pra alinhar
-    /// "merchant + cidade" em colunas de monoespaço (ex:
-    /// `"Uber UBER  TRIP HELP U SAO PAULO     BRA"`). Compacta múltiplos
-    /// espaços em um único para reduzir ruído na revisão e no dedup.
-    static func normalizeDescription(_ raw: String) -> String {
-        let trimmed = raw.trimmingCharacters(in: .whitespacesAndNewlines)
-        // Regex `\s+` cobre NBSP também — `isWhitespace` na lib do Swift
-        // inclui NBSP.
-        return trimmed.split(whereSeparator: { $0.isWhitespace })
-            .joined(separator: " ")
-    }
-
-    /// `external_id` sintético pra dedup. O CSV do Inter não tem ID único
-    /// por linha, então construímos a chave canônica a partir da data de
-    /// origem, descrição normalizada, valor e metadados estruturais da compra.
-    ///
-    /// Prefixo `inter-cc:` distingue do `FITID` do OFX caso descrição/valor
-    /// coincidam por acaso entre fontes distintas.
-    static func makeExternalId(
-        date: Date,
-        description: String,
-        amount: Decimal,
-        purchaseType: TransactionPurchaseType?,
-        installmentIndex: Int?,
-        installmentCount: Int?
-    ) -> String {
-        let dateStr = isoDayFormatter.string(from: date)
-        let amountStr = String(Converters.decimalToCents(amount))
-        let normalizedDescription = normalizeDescription(description).lowercased()
-        let purchaseTypeValue = purchaseType?.rawValue ?? "unknown"
-        let installmentPart = installmentIndex.map(String.init) ?? "-"
-        let countPart = installmentCount.map(String.init) ?? "-"
-        return "inter-cc:\(dateStr)|\(normalizedDescription)|\(amountStr)|\(purchaseTypeValue)|\(installmentPart)|\(countPart)"
-    }
-
     static func competenceDate(
         for row: Row,
         calendar: Calendar = .current
@@ -379,12 +345,4 @@ struct InterCreditCardCSVReader {
             to: row.date
         ) ?? row.date
     }
-
-    private static let isoDayFormatter: DateFormatter = {
-        let f = DateFormatter()
-        f.dateFormat = "yyyy-MM-dd"
-        f.locale = Locale(identifier: "en_US_POSIX")
-        f.timeZone = TimeZone(secondsFromGMT: 0)
-        return f
-    }()
 }

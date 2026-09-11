@@ -117,7 +117,7 @@ private extension ImportPlanningClient {
                     originOccurredAt: row.derived.occurredAt,
                     description: row.derived.description,
                     notes: row.derived.notes,
-                    externalId: row.raw.fitid
+                    externalId: nil
                 )
             })
         }
@@ -185,7 +185,7 @@ private extension ImportPlanningClient {
                 installmentCount: row.raw.installmentCount,
                 description: row.derived.description,
                 notes: row.derived.notes,
-                externalId: row.externalId,
+                externalId: nil,
                 sourceCategoryHint: row.raw.interCategory
             )
         }
@@ -199,14 +199,7 @@ private extension ImportPlanningClient {
                 originOccurredAt: row.raw.date,
                 description: row.raw.description,
                 notes: "Saldo importado do CSV Inter",
-                externalId: InterCreditCardCSVReader.makeExternalId(
-                    date: row.raw.date,
-                    description: row.raw.description,
-                    amount: abs(row.raw.amount),
-                    purchaseType: nil,
-                    installmentIndex: nil,
-                    installmentCount: nil
-                )
+                externalId: nil
             )
         })
         drafts.append(contentsOf: paymentsToImport.map { row in
@@ -219,14 +212,7 @@ private extension ImportPlanningClient {
                 originOccurredAt: row.raw.date,
                 description: row.raw.description,
                 notes: "Pagamento importado do CSV Inter",
-                externalId: InterCreditCardCSVReader.makeExternalId(
-                    date: row.raw.date,
-                    description: row.raw.description,
-                    amount: abs(row.raw.amount),
-                    purchaseType: nil,
-                    installmentIndex: nil,
-                    installmentCount: nil
-                )
+                externalId: nil
             )
         })
 

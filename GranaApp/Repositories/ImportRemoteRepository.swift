@@ -96,18 +96,18 @@ nonisolated struct ImportTransactionCommitInput: Hashable {
     var installmentCount: Int?
     var description: String
     var notes: String?
-    var externalId: String?
+    var dedupKey: String
 }
 
 nonisolated struct ImportCommitDuplicateRow: Decodable, Equatable {
     let batchId: UUID
-    let externalId: String
+    let dedupKey: String
     let description: String
     let occurredAt: Date
 
     enum CodingKeys: String, CodingKey {
         case batchId = "batch_id"
-        case externalId = "external_id"
+        case dedupKey = "dedup_key"
         case description
         case occurredAt = "occurred_at"
     }
@@ -392,7 +392,7 @@ nonisolated struct CommitImportTransactionRequest: Encodable, Hashable {
     let installmentCount: Int?
     let description: String
     let notes: String?
-    let externalId: String?
+    let dedupKey: String
 
     init(input: ImportTransactionCommitInput) {
         self.transactionId = input.transactionId
@@ -409,7 +409,7 @@ nonisolated struct CommitImportTransactionRequest: Encodable, Hashable {
         self.installmentCount = input.installmentCount
         self.description = input.description
         self.notes = input.notes
-        self.externalId = input.externalId
+        self.dedupKey = input.dedupKey
     }
 
     enum CodingKeys: String, CodingKey {
@@ -427,7 +427,7 @@ nonisolated struct CommitImportTransactionRequest: Encodable, Hashable {
         case installmentCount = "installment_count"
         case description
         case notes
-        case externalId = "external_id"
+        case dedupKey = "dedup_key"
     }
 }
 

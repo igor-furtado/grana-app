@@ -26,7 +26,7 @@ struct TransactionDraft: Identifiable, Hashable {
     let installmentCount: Int?
     let description: String
     let notes: String?
-    /// FITID do OFX, quando existir. CSV/XLSX = nil.
+    let dedupKey: String
     let externalId: String?
     let destinationAccountId: UUID?
     /// Categoria fornecida pelo sistema de origem (ex: coluna "Categoria"
@@ -46,7 +46,8 @@ struct TransactionDraft: Identifiable, Hashable {
         installmentCount: Int? = nil,
         description: String,
         notes: String?,
-        externalId: String?,
+        dedupKey: String? = nil,
+        externalId: String? = nil,
         destinationAccountId: UUID? = nil,
         sourceCategoryHint: String? = nil
     ) {
@@ -62,6 +63,17 @@ struct TransactionDraft: Identifiable, Hashable {
         self.installmentCount = installmentCount
         self.description = description
         self.notes = notes
+        self.dedupKey = dedupKey ?? TransactionDedupKey.make(
+            accountId: accountId,
+            amount: abs(signedAmount),
+            occurredAt: occurredAt,
+            originOccurredAt: originOccurredAt ?? occurredAt,
+            description: description,
+            notes: notes,
+            purchaseType: purchaseType,
+            installmentIndex: installmentIndex,
+            installmentCount: installmentCount
+        )
         self.externalId = externalId
         self.destinationAccountId = destinationAccountId
         self.sourceCategoryHint = sourceCategoryHint

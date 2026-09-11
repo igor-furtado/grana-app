@@ -101,13 +101,14 @@ SwiftUI View -> @Observable Store -> Repository -> Supabase backend
 
 - `ImportFeatureConfiguration.supportedExtensions` é a fonte dos formatos aceitos.
 - Importadores aplicam `abs()` antes de persistir valores.
-- Preserve as regras existentes de deduplicação por formato.
+- Deduplicação de importação usa assinatura factual (`dedup_key`) versionada gerada pelo app; não use identificadores
+  externos por formato como critério canônico. Veja `docs/adr/0016-deduplicacao-por-assinatura-factual.md`.
 - Cada `STMTRS` OFX gera um `ImportBatch`; múltiplos extratos são enviados em payload estruturado para commit atômico no
   backend.
 - `ImportBatch` permanece reversível, sem transações órfãs.
 - A revisão de classificação ocorre antes do commit final. Enquanto o projeto local de IA não existir, o app gera
   fallback em **Não Classificado** para revisão manual.
-- Deduplicação de importação é garantia backend com função e constraint; duplicatas são puladas com relatório.
+- Deduplicação de importação é garantia backend com função e índice; duplicatas factuais são puladas com relatório.
 - Não introduza chamadas diretas do GranaApp a APIs públicas de IA. Qualquer integração inteligente futura deve passar
   por contrato local/processo dedicado aprovado.
 

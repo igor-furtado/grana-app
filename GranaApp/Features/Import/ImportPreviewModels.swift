@@ -59,7 +59,6 @@ struct CSVPreviewRow: Identifiable, Hashable {
     let id = UUID()
     let raw: InterCreditCardCSVReader.Row
     var derived: DerivedTransaction
-    let externalId: String
     var isDuplicate: Bool
     var selected: Bool
 }

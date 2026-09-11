@@ -344,27 +344,18 @@ struct ImportFeatureTests {
         #expect(statement.rows[1].installmentCount == 10)
     }
 
-    @Test("CSV gera external_id compatível com a chave persistida pelo backend")
-    func csvReaderBuildsBackendCompatibleExternalId() throws {
-        var calendar = Calendar(identifier: .gregorian)
-        calendar.timeZone = try #require(TimeZone(secondsFromGMT: 0))
-        let date = try #require(calendar.date(from: DateComponents(
-            calendar: calendar,
-            year: 2023,
-            month: 9,
-            day: 5
-        )))
+    @Test("CSV preserva descrição literal")
+    func csvReaderPreservesLiteralDescription() throws {
+        let csv = """
+        Data,Lançamento,Categoria,Tipo,Valor
+        31/08/2026," PIX  JOAO ",OUTROS,Compra à vista,"R$ 50,00"
+        31/08/2026,PIX JOAO,OUTROS,Compra à vista,"R$ 50,00"
+        """
+        let data = csv.data(using: .utf8) ?? Data()
 
-        let externalId = InterCreditCardCSVReader.makeExternalId(
-            date: date,
-            description: "DESCOMPLICA Pos",
-            amount: decimal("1453.50"),
-            purchaseType: .cash,
-            installmentIndex: nil,
-            installmentCount: nil
-        )
+        let statement = try InterCreditCardCSVReader().read(data: data)
 
-        #expect(externalId == "inter-cc:2023-09-05|descomplica pos|145350|cash|-|-")
+        #expect(statement.rows.map(\.description) == [" PIX  JOAO ", "PIX JOAO"])
     }
 
     @Test("CSV calcula competência de parcela a partir da data de origem")

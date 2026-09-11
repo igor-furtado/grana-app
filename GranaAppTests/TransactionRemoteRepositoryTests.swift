@@ -120,7 +120,7 @@ struct TransactionRemoteRepositoryTests {
             subcategoryId: nil,
             amount: Decimal(string: "123.45") ?? 0,
             occurredAt: Date(),
-            originOccurredAt: Date().addingTimeInterval(-86_400),
+            originOccurredAt: Date().addingTimeInterval(-86400),
             purchaseType: .installment,
             installmentIndex: 2,
             installmentCount: 5,
@@ -140,9 +140,11 @@ struct TransactionRemoteRepositoryTests {
         #expect(createRequest.pPurchaseType == "installment")
         #expect(createRequest.pInstallmentIndex == 2)
         #expect(createRequest.pInstallmentCount == 5)
+        #expect(createRequest.pDedupKey == input.dedupKey)
         #expect(updateRequest.pPurchaseType == "installment")
         #expect(updateRequest.pInstallmentIndex == 2)
         #expect(updateRequest.pInstallmentCount == 5)
+        #expect(updateRequest.pDedupKey == input.dedupKey)
     }
 
     @Test("Payload de create preserva parâmetros opcionais nulos para RPC")
@@ -153,6 +155,7 @@ struct TransactionRemoteRepositoryTests {
 
         #expect(payload["p_subcategory_id"] is NSNull)
         #expect(payload["p_notes"] is NSNull)
+        #expect(payload["p_dedup_key"] as? String == request.pDedupKey)
         #expect(payload["p_purchase_type"] is NSNull)
         #expect(payload["p_installment_index"] is NSNull)
         #expect(payload["p_installment_count"] is NSNull)
@@ -170,6 +173,7 @@ struct TransactionRemoteRepositoryTests {
 
         #expect(payload["p_subcategory_id"] is NSNull)
         #expect(payload["p_notes"] is NSNull)
+        #expect(payload["p_dedup_key"] as? String == request.pDedupKey)
         #expect(payload["p_purchase_type"] is NSNull)
         #expect(payload["p_installment_index"] is NSNull)
         #expect(payload["p_installment_count"] is NSNull)

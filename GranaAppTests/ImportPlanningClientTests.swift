@@ -37,7 +37,6 @@ struct ImportPlanningClientTests {
                         description: "Restaurante",
                         notes: "Parcela 2/3 · ALIMENTACAO"
                     ),
-                    externalId: "csv-purchase-1",
                     isDuplicate: false,
                     selected: true
                 ),
@@ -89,7 +88,18 @@ struct ImportPlanningClientTests {
         #expect(plan.drafts[0].installmentCount == 3)
         #expect(plan.drafts[0].description == "Restaurante")
         #expect(plan.drafts[0].notes == "Parcela 2/3 · ALIMENTACAO")
-        #expect(plan.drafts[0].externalId == "csv-purchase-1")
+        #expect(plan.drafts[0].externalId == nil)
+        #expect(plan.drafts[0].dedupKey == TransactionDedupKey.make(
+            accountId: accountId,
+            amount: decimal("129.90"),
+            occurredAt: balanceDate,
+            originOccurredAt: purchaseDate,
+            description: "Restaurante",
+            notes: "Parcela 2/3 · ALIMENTACAO",
+            purchaseType: .installment,
+            installmentIndex: 2,
+            installmentCount: 3
+        ))
         #expect(plan.drafts[0].sourceCategoryHint == "ALIMENTACAO")
 
         #expect(plan.drafts[1].id == balanceDraftId)
@@ -155,7 +165,31 @@ struct ImportPlanningClientTests {
         #expect(plan.drafts.map(\.id) == [firstDraftId, secondDraftId])
         #expect(plan.drafts.map(\.accountId) == [firstAccountId, secondAccountId])
         #expect(plan.drafts.map(\.importBatchId) == [firstBatchId, secondBatchId])
-        #expect(plan.drafts.map(\.externalId) == ["FIT-1", "FIT-2"])
+        #expect(plan.drafts.map(\.externalId) == [nil, nil])
+        #expect(plan.drafts.map(\.dedupKey) == [
+            TransactionDedupKey.make(
+                accountId: firstAccountId,
+                amount: Decimal(42),
+                occurredAt: firstDate,
+                originOccurredAt: firstDate,
+                description: "Linha FIT-1",
+                notes: "Memo FIT-1",
+                purchaseType: nil,
+                installmentIndex: nil,
+                installmentCount: nil
+            ),
+            TransactionDedupKey.make(
+                accountId: secondAccountId,
+                amount: Decimal(120),
+                occurredAt: secondDate,
+                originOccurredAt: secondDate,
+                description: "Linha FIT-2",
+                notes: "Memo FIT-2",
+                purchaseType: nil,
+                installmentIndex: nil,
+                installmentCount: nil
+            ),
+        ])
         #expect(plan.drafts.map(\.signedAmount) == [Decimal(-42), Decimal(120)])
         #expect(plan.drafts.map(\.originOccurredAt) == [firstDate, secondDate])
         #expect(plan.impact.importedRowCount == 2)
@@ -213,7 +247,7 @@ struct ImportPlanningClientTests {
 
         #expect(plan.batches.count == 1)
         #expect(plan.batches.first?.batch.rowCount == 1)
-        #expect(plan.drafts.map(\.externalId) == ["FIT-1"])
+        #expect(plan.drafts.map(\.externalId) == [nil])
         #expect(plan.impact.importedRowCount == 1)
         #expect(plan.impact.skippedDuplicateRowCount == 1)
         #expect(plan.impact.skippedDeselectedRowCount == 1)
@@ -233,14 +267,12 @@ struct ImportPlanningClientTests {
                 makeCSVRow(
                     date: purchaseDate,
                     description: "MERCADO",
-                    externalId: "csv-1",
                     amount: decimal("45.50"),
                     selected: true
                 ),
                 makeCSVRow(
                     date: purchaseDate,
                     description: "DUPLICADA",
-                    externalId: "csv-2",
                     amount: decimal("10"),
                     isDuplicate: true,
                     selected: true
@@ -248,7 +280,6 @@ struct ImportPlanningClientTests {
                 makeCSVRow(
                     date: purchaseDate,
                     description: "DESMARCADA",
-                    externalId: "csv-3",
                     amount: decimal("20"),
                     selected: false
                 ),
@@ -263,7 +294,7 @@ struct ImportPlanningClientTests {
 
         #expect(plan.batches.count == 1)
         #expect(plan.batches.first?.batch.rowCount == 1)
-        #expect(plan.drafts.map(\.externalId) == ["csv-1"])
+        #expect(plan.drafts.map(\.externalId) == [nil])
         #expect(plan.drafts.map(\.description) == ["Mercado"])
         #expect(plan.impact.importedRowCount == 1)
         #expect(plan.impact.skippedDuplicateRowCount == 1)
@@ -321,7 +352,6 @@ struct ImportPlanningClientTests {
     private func makeCSVRow(
         date: Date,
         description: String,
-        externalId: String,
         amount: Decimal,
         isDuplicate: Bool = false,
         selected: Bool
@@ -343,7 +373,6 @@ struct ImportPlanningClientTests {
                 description: description.capitalized,
                 notes: "GERAL"
             ),
-            externalId: externalId,
             isDuplicate: isDuplicate,
             selected: selected
         )

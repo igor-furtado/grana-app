@@ -18,14 +18,12 @@ struct ImportFileLoadingClient {
                 if ext == "csv" {
                     return try await ImportFileLoadingOperations.loadCSV(
                         url: url,
-                        snapshot: snapshot,
-                        remoteTransactions: container.remoteTransactions
+                        snapshot: snapshot
                     )
                 }
                 return try await ImportFileLoadingOperations.loadOFX(
                     url: url,
-                    snapshot: snapshot,
-                    remoteTransactions: container.remoteTransactions
+                    snapshot: snapshot
                 )
             }
         )
@@ -54,8 +52,7 @@ extension DependencyValues {
 private enum ImportFileLoadingOperations {
     static func loadOFX(
         url: URL,
-        snapshot: ImportSnapshot,
-        remoteTransactions: any TransactionRemoteRepositoryProtocol
+        snapshot: ImportSnapshot
     ) async throws -> ImportLoadedFile {
         let reader = OFXReader()
         let document = try reader.read(from: url)
@@ -78,12 +75,6 @@ private enum ImportFileLoadingOperations {
                 for: statement,
                 snapshot: snapshot
             )
-            let existingExternalIds: Set<String>
-            if let matchedAccountId {
-                existingExternalIds = (try? await remoteTransactions.externalIds(forAccount: matchedAccountId)) ?? []
-            } else {
-                existingExternalIds = []
-            }
 
             resolutions.append(
                 OFXStatementResolution(
@@ -94,7 +85,6 @@ private enum ImportFileLoadingOperations {
                     ofxAccountLabel: ofxAccountLabel(for: statement),
                     rows: buildOFXRows(
                         statement: statement,
-                        existingExternalIds: existingExternalIds,
                         heuristic: heuristic
                     )
                 )
@@ -110,8 +100,7 @@ private enum ImportFileLoadingOperations {
 
     static func loadCSV(
         url: URL,
-        snapshot: ImportSnapshot,
-        remoteTransactions: any TransactionRemoteRepositoryProtocol
+        snapshot: ImportSnapshot
     ) async throws -> ImportLoadedFile {
         let reader = InterCreditCardCSVReader()
         let statement = try reader.read(from: url)
@@ -128,7 +117,7 @@ private enum ImportFileLoadingOperations {
         }
 
         let initialAccountId = creditCardAccounts.count == 1 ? creditCardAccounts.first?.id : nil
-        var resolution = CSVStatementResolution(
+        let resolution = CSVStatementResolution(
             sourceFilename: url.lastPathComponent,
             accountId: initialAccountId,
             rows: statement.rows.map { raw in
@@ -141,14 +130,6 @@ private enum ImportFileLoadingOperations {
                         description: raw.description,
                         notes: "\(raw.tipo) · \(raw.interCategory)"
                     ),
-                    externalId: InterCreditCardCSVReader.makeExternalId(
-                        date: raw.date,
-                        description: raw.description,
-                        amount: raw.amount,
-                        purchaseType: raw.purchaseType,
-                        installmentIndex: raw.installmentIndex,
-                        installmentCount: raw.installmentCount
-                    ),
                     isDuplicate: false,
                     selected: true
                 )
@@ -158,14 +139,6 @@ private enum ImportFileLoadingOperations {
             }
         )
 
-        if let initialAccountId {
-            resolution = await ImportDuplicateResolution.reloadCSVResolution(
-                resolution,
-                accountId: initialAccountId,
-                remoteTransactions: remoteTransactions
-            )
-        }
-
         return .csv(
             sourceURL: url,
             resolution: resolution
@@ -174,12 +147,10 @@ private enum ImportFileLoadingOperations {
 
     static func buildOFXRows(
         statement: OFXStatement,
-        existingExternalIds: Set<String>,
         heuristic: OFXCategoryHeuristic
     ) -> [OFXPreviewRow] {
         statement.transactions.map { transaction in
-            let isDuplicate = existingExternalIds.contains(transaction.fitid)
-            return OFXPreviewRow(
+            OFXPreviewRow(
                 raw: transaction,
                 derived: DerivedTransaction(
                     occurredAt: transaction.datePosted,
@@ -187,10 +158,10 @@ private enum ImportFileLoadingOperations {
                     description: transaction.displayDescription,
                     notes: transaction.displayNotes
                 ),
-                isDuplicate: isDuplicate,
+                isDuplicate: false,
                 categoryId: heuristic.categoryId(for: transaction),
                 subcategoryId: nil,
-                selected: !isDuplicate
+                selected: true
             )
         }
     }

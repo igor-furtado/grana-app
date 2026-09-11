@@ -208,7 +208,6 @@ struct ImportTriageFeatureTests {
                         description: "Mercado",
                         notes: nil
                     ),
-                    externalId: "csv-1",
                     isDuplicate: false,
                     selected: true
                 ),

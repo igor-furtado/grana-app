@@ -37,15 +37,6 @@ extension TransactionRemoteRepositoryProtocol {
 
         return all
     }
-
-    func externalIds(forAccount accountId: UUID, pageSize: Int = 200) async throws -> Set<String> {
-        try Set(
-            await loadAll(pageSize: pageSize)
-                .lazy
-                .filter { $0.accountId == accountId }
-                .compactMap(\.externalId)
-        )
-    }
 }
 
 nonisolated enum TransactionRemoteRepositoryError: UserFacingError, Equatable {
@@ -130,6 +121,7 @@ nonisolated struct TransactionMutationInput: Hashable {
     var installmentCount: Int?
     var description: String
     var notes: String?
+    var dedupKey: String
     var destinationAccountId: UUID?
 
     init(
@@ -144,6 +136,7 @@ nonisolated struct TransactionMutationInput: Hashable {
         installmentCount: Int? = nil,
         description: String,
         notes: String?,
+        dedupKey: String? = nil,
         destinationAccountId: UUID?
     ) {
         self.accountId = accountId
@@ -157,6 +150,17 @@ nonisolated struct TransactionMutationInput: Hashable {
         self.installmentCount = installmentCount
         self.description = description
         self.notes = notes
+        self.dedupKey = dedupKey ?? TransactionDedupKey.make(
+            accountId: accountId,
+            amount: amount,
+            occurredAt: occurredAt,
+            originOccurredAt: originOccurredAt ?? occurredAt,
+            description: description,
+            notes: notes,
+            purchaseType: purchaseType,
+            installmentIndex: installmentIndex,
+            installmentCount: installmentCount
+        )
         self.destinationAccountId = destinationAccountId
     }
 }
@@ -175,6 +179,7 @@ nonisolated struct TransactionRecordRow: Decodable {
     let description: String
     let notes: String?
     let importBatchId: UUID?
+    let dedupKey: String?
     let externalId: String?
     let destinationAccountId: UUID?
     let statementId: UUID?
@@ -195,6 +200,7 @@ nonisolated struct TransactionRecordRow: Decodable {
         description: String,
         notes: String?,
         importBatchId: UUID?,
+        dedupKey: String? = nil,
         externalId: String?,
         destinationAccountId: UUID?,
         statementId: UUID?,
@@ -214,6 +220,17 @@ nonisolated struct TransactionRecordRow: Decodable {
         self.description = description
         self.notes = notes
         self.importBatchId = importBatchId
+        self.dedupKey = dedupKey ?? TransactionDedupKey.make(
+            accountId: accountId,
+            amount: Converters.centsToDecimal(amountCents),
+            occurredAt: occurredAt,
+            originOccurredAt: originOccurredAt ?? occurredAt,
+            description: description,
+            notes: notes,
+            purchaseType: purchaseType,
+            installmentIndex: installmentIndex,
+            installmentCount: installmentCount
+        )
         self.externalId = externalId
         self.destinationAccountId = destinationAccountId
         self.statementId = statementId
@@ -235,6 +252,7 @@ nonisolated struct TransactionRecordRow: Decodable {
         case description
         case notes
         case importBatchId = "import_batch_id"
+        case dedupKey = "dedup_key"
         case externalId = "external_id"
         case destinationAccountId = "destination_account_id"
         case statementId = "statement_id"
@@ -398,6 +416,7 @@ final class TransactionRemoteRepository: TransactionRemoteRepositoryProtocol, Se
             description: row.description,
             notes: row.notes,
             importBatchId: row.importBatchId,
+            dedupKey: row.dedupKey,
             externalId: row.externalId,
             destinationAccountId: row.destinationAccountId,
             statementId: row.statementId,
@@ -475,6 +494,7 @@ nonisolated struct CreateTransactionRequest: Encodable {
     let pOriginOccurredAt: Date
     let pDescription: String
     let pNotes: String?
+    let pDedupKey: String
     let pPurchaseType: String?
     let pInstallmentIndex: Int?
     let pInstallmentCount: Int?
@@ -489,6 +509,7 @@ nonisolated struct CreateTransactionRequest: Encodable {
         self.pOriginOccurredAt = input.originOccurredAt
         self.pDescription = input.description
         self.pNotes = input.notes
+        self.pDedupKey = input.dedupKey
         self.pPurchaseType = input.purchaseType?.rawValue
         self.pInstallmentIndex = input.installmentIndex
         self.pInstallmentCount = input.installmentCount
@@ -504,6 +525,7 @@ nonisolated struct CreateTransactionRequest: Encodable {
         case pOriginOccurredAt = "p_origin_occurred_at"
         case pDescription = "p_description"
         case pNotes = "p_notes"
+        case pDedupKey = "p_dedup_key"
         case pPurchaseType = "p_purchase_type"
         case pInstallmentIndex = "p_installment_index"
         case pInstallmentCount = "p_installment_count"
@@ -520,6 +542,7 @@ nonisolated struct CreateTransactionRequest: Encodable {
         try container.encode(pOriginOccurredAt, forKey: .pOriginOccurredAt)
         try container.encode(pDescription, forKey: .pDescription)
         try container.encode(pNotes, forKey: .pNotes)
+        try container.encode(pDedupKey, forKey: .pDedupKey)
         try container.encode(pPurchaseType, forKey: .pPurchaseType)
         try container.encode(pInstallmentIndex, forKey: .pInstallmentIndex)
         try container.encode(pInstallmentCount, forKey: .pInstallmentCount)
@@ -537,6 +560,7 @@ nonisolated struct UpdateTransactionRequest: Encodable {
     let pOriginOccurredAt: Date
     let pDescription: String
     let pNotes: String?
+    let pDedupKey: String
     let pPurchaseType: String?
     let pInstallmentIndex: Int?
     let pInstallmentCount: Int?
@@ -552,6 +576,7 @@ nonisolated struct UpdateTransactionRequest: Encodable {
         self.pOriginOccurredAt = input.originOccurredAt
         self.pDescription = input.description
         self.pNotes = input.notes
+        self.pDedupKey = input.dedupKey
         self.pPurchaseType = input.purchaseType?.rawValue
         self.pInstallmentIndex = input.installmentIndex
         self.pInstallmentCount = input.installmentCount
@@ -568,6 +593,7 @@ nonisolated struct UpdateTransactionRequest: Encodable {
         case pOriginOccurredAt = "p_origin_occurred_at"
         case pDescription = "p_description"
         case pNotes = "p_notes"
+        case pDedupKey = "p_dedup_key"
         case pPurchaseType = "p_purchase_type"
         case pInstallmentIndex = "p_installment_index"
         case pInstallmentCount = "p_installment_count"
@@ -585,6 +611,7 @@ nonisolated struct UpdateTransactionRequest: Encodable {
         try container.encode(pOriginOccurredAt, forKey: .pOriginOccurredAt)
         try container.encode(pDescription, forKey: .pDescription)
         try container.encode(pNotes, forKey: .pNotes)
+        try container.encode(pDedupKey, forKey: .pDedupKey)
         try container.encode(pPurchaseType, forKey: .pPurchaseType)
         try container.encode(pInstallmentIndex, forKey: .pInstallmentIndex)
         try container.encode(pInstallmentCount, forKey: .pInstallmentCount)

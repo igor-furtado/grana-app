@@ -7,20 +7,18 @@ struct ImportTriageClient {
     var reloadCSVResolution: @Sendable (_ resolution: CSVStatementResolution, _ accountId: UUID?) async
         -> CSVStatementResolution
 
-    static func live(container: AppContainer) -> ImportTriageClient {
+    static func live(container _: AppContainer) -> ImportTriageClient {
         ImportTriageClient(
             reloadOFXResolution: { resolution, accountId in
                 await ImportDuplicateResolution.reloadOFXResolution(
                     resolution,
-                    accountId: accountId,
-                    remoteTransactions: container.remoteTransactions
+                    accountId: accountId
                 )
             },
             reloadCSVResolution: { resolution, accountId in
                 await ImportDuplicateResolution.reloadCSVResolution(
                     resolution,
-                    accountId: accountId,
-                    remoteTransactions: container.remoteTransactions
+                    accountId: accountId
                 )
             }
         )

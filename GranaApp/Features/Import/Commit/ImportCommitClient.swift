@@ -77,10 +77,11 @@ enum ImportCommitBuilder {
             .map { row in
                 let categorySlug = row.categoryId.flatMap { rootSlugsById[$0] } ?? fallbackSlug
                 let isTransfer = row.categoryId.flatMap { categoryKindsById[$0] } == .transfer
+                let accountId = row.accountId ?? row.draft.accountId
                 return ImportTransactionCommitInput(
                     transactionId: row.draft.id,
                     batchId: row.draft.importBatchId,
-                    accountId: row.accountId ?? row.draft.accountId,
+                    accountId: accountId,
                     categorySlug: categorySlug,
                     subcategoryId: isTransfer ? nil : row.subcategoryId,
                     destinationAccountId: row.destinationAccountId ?? row.draft.destinationAccountId,
@@ -92,7 +93,17 @@ enum ImportCommitBuilder {
                     installmentCount: row.draft.installmentCount,
                     description: row.draft.description,
                     notes: row.draft.notes,
-                    externalId: row.draft.externalId
+                    dedupKey: TransactionDedupKey.make(
+                        accountId: accountId,
+                        amount: abs(row.draft.signedAmount),
+                        occurredAt: row.draft.occurredAt,
+                        originOccurredAt: row.draft.originOccurredAt,
+                        description: row.draft.description,
+                        notes: row.draft.notes,
+                        purchaseType: row.draft.purchaseType,
+                        installmentIndex: row.draft.installmentIndex,
+                        installmentCount: row.draft.installmentCount
+                    )
                 )
             }
 

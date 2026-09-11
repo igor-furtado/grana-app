@@ -19,7 +19,7 @@ struct ImportRemoteRepositoryTests {
                     duplicateRows: [
                         ImportCommitDuplicateRow(
                             batchId: batchId,
-                            externalId: "FIT-1",
+                            dedupKey: "dedup-1",
                             description: "Pix recebido",
                             occurredAt: occurredAt
                         ),
@@ -39,7 +39,7 @@ struct ImportRemoteRepositoryTests {
         #expect(result.batchIds == [batchId])
         #expect(result.importedRowCount == 2)
         #expect(result.duplicateCount == 1)
-        #expect(result.duplicateRows.first?.externalId == "FIT-1")
+        #expect(result.duplicateRows.first?.dedupKey == "dedup-1")
     }
 
     @Test("Mapeia erro estável de conta inválida")
@@ -179,6 +179,17 @@ struct ImportCommitBuilderTests {
         #expect(input.rows.first?.purchaseType == .installment)
         #expect(input.rows.first?.installmentIndex == 3)
         #expect(input.rows.first?.installmentCount == 10)
+        #expect(input.rows.first?.dedupKey == TransactionDedupKey.make(
+            accountId: accountId,
+            amount: Decimal(string: "42.50") ?? 0,
+            occurredAt: occurredAt,
+            originOccurredAt: originOccurredAt,
+            description: "Mercado",
+            notes: "Compra",
+            purchaseType: .installment,
+            installmentIndex: 3,
+            installmentCount: 10
+        ))
         #expect(request.pIdempotencyKey == key)
         #expect(request.pTransactions.first?.accountId == accountId)
         #expect(request.pTransactions.first?.amountCents == 4250)
@@ -187,6 +198,7 @@ struct ImportCommitBuilderTests {
         #expect(request.pTransactions.first?.purchaseType == "installment")
         #expect(request.pTransactions.first?.installmentIndex == 3)
         #expect(request.pTransactions.first?.installmentCount == 10)
+        #expect(request.pTransactions.first?.dedupKey == input.rows.first?.dedupKey)
     }
 
     @Test("ImportCommitClient.live propaga resultado do commit remoto")

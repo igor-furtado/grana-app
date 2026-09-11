@@ -1,6 +1,6 @@
 import Foundation
 
-enum TransactionPurchaseType: String, Codable, Hashable, Sendable {
+enum TransactionPurchaseType: String, Codable, Hashable {
     case cash
     case installment
 }
@@ -27,11 +27,8 @@ struct Transaction: Identifiable, Codable, Hashable {
     var installmentCount: Int?
     var description: String
     var notes: String?
-    /// Fase 3: NULL para entradas manuais; preenchido pelo commit de import.
     var importBatchId: UUID?
-    /// ID externo (ex: FITID do OFX). Permite detecção exata de duplicata em
-    /// re-imports do mesmo extrato — chave única do banco emissor por conta.
-    /// NULL pra entradas manuais ou imports CSV/XLSX.
+    var dedupKey: String
     var externalId: String?
     /// Conta de destino quando a transação é uma transferência entre contas
     /// próprias do usuário (categoria com `kind = transfer`). Saldo subtrai da
@@ -63,6 +60,7 @@ struct Transaction: Identifiable, Codable, Hashable {
         description: String,
         notes: String? = nil,
         importBatchId: UUID? = nil,
+        dedupKey: String? = nil,
         externalId: String? = nil,
         destinationAccountId: UUID? = nil,
         statementId: UUID? = nil,
@@ -82,6 +80,17 @@ struct Transaction: Identifiable, Codable, Hashable {
         self.description = description
         self.notes = notes
         self.importBatchId = importBatchId
+        self.dedupKey = dedupKey ?? TransactionDedupKey.make(
+            accountId: accountId,
+            amount: amount,
+            occurredAt: occurredAt,
+            originOccurredAt: originOccurredAt ?? occurredAt,
+            description: description,
+            notes: notes,
+            purchaseType: purchaseType,
+            installmentIndex: installmentIndex,
+            installmentCount: installmentCount
+        )
         self.externalId = externalId
         self.destinationAccountId = destinationAccountId
         self.statementId = statementId

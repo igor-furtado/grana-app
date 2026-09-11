@@ -98,6 +98,10 @@ _Evite_: Saldo atual, patrimônio
 Movimento financeiro ocorrido em uma conta, classificado como receita, despesa ou transferência. Seu valor é sempre expresso como magnitude positiva; a classificação determina seu efeito financeiro. Toda transação carrega data de competência e data de origem.
 _Evite_: Lançamento, movimentação, operação
 
+**Assinatura factual da transação**:
+Identidade derivada dos fatos atuais de uma transação, usada para reconhecer duplicidade entre transações com mesma conta, valor, descrição, tipo de compra, parcela e data de origem. Categoria, subcategoria, notas e data de competência não fazem parte dessa identidade.
+_Evite_: Identificador externo, quando estiver falando de identidade factual atual
+
 **Tipo de compra**:
 Classificação estrutural de uma compra de cartão usada para auditoria e deduplicação. Pode ser à vista ou parcelada.
 _Evite_: Texto bruto do banco, modalidade informal
@@ -236,6 +240,10 @@ _Evite_: Sincronização, integração bancária
 **Linha importada**:
 Registro individual lido de um arquivo financeiro. Mesmo quando representa uma parcela de compra, não autoriza o produto a criar transações para parcelas ausentes do arquivo.
 _Evite_: Série parcelada, quando estiver falando da evidência importada
+
+**Duplicata de importação**:
+Linha importada cuja assinatura factual corresponde a uma transação existente no histórico no momento da importação. A duplicidade não depende de identificador externo da fonte.
+_Evite_: Linha repetida por origem, quando estiver falando da regra canônica atual
 
 **Triagem**:
 Primeira etapa do wizard de importação, imediatamente após a leitura do arquivo, em que o usuário distingue transações já importadas, transações que não serão importadas e transações prontas para importação, podendo selecionar ou desmarcar apenas as elegíveis.
