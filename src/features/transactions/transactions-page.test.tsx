@@ -35,9 +35,14 @@ describe("Tela de Transações", () => {
     )
     await user.clear(within(dialog).getByLabelText("Valor"))
     await user.type(within(dialog).getByLabelText("Valor"), "320")
-    await user.click(
-      within(dialog).getByRole("button", { name: "Salvar transação" })
-    )
+    const date = within(dialog).getByLabelText("Data")
+    const save = within(dialog).getByRole("button", {
+      name: "Salvar transação",
+    })
+    await user.clear(date)
+    expect(save).toBeDisabled()
+    await user.type(date, "2026-10-16")
+    await user.click(save)
 
     expect(screen.getByText("Curso de fotografia")).toBeVisible()
     expect(

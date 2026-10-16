@@ -72,7 +72,8 @@ export function TransactionFormDialog({
 
   function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault()
-    if (!draft.description.trim() || draft.amountCents <= 0) return
+    if (!draft.description.trim() || !draft.date || draft.amountCents <= 0)
+      return
     onSubmit({ ...draft, description: draft.description.trim() })
     onOpenChange(false)
   }
@@ -132,6 +133,7 @@ export function TransactionFormDialog({
                 <Input
                   id="date"
                   type="date"
+                  required
                   value={draft.date}
                   onChange={(event) =>
                     setDraft((current) => ({
@@ -230,7 +232,11 @@ export function TransactionFormDialog({
             </DialogClose>
             <Button
               type="submit"
-              disabled={!draft.description.trim() || draft.amountCents <= 0}
+              disabled={
+                !draft.description.trim() ||
+                !draft.date ||
+                draft.amountCents <= 0
+              }
             >
               {isEditing ? "Salvar alterações" : "Salvar transação"}
             </Button>

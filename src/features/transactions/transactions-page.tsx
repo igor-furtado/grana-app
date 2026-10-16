@@ -61,6 +61,10 @@ const dateFormatter = new Intl.DateTimeFormat("pt-BR", {
   year: "numeric",
 })
 
+function institutionInitials(institution: string) {
+  return institution.slice(0, 2)
+}
+
 export function TransactionsPage() {
   const dispatch = useAppDispatch()
   const { items, filters } = useAppSelector((state) => state.transactions)
@@ -379,7 +383,7 @@ function TransactionRow({
       <TableCell className="pl-5">
         <div className="flex items-center gap-3">
           <div className="flex size-9 shrink-0 items-center justify-center rounded-lg border bg-muted text-[11px] font-semibold">
-            {transaction.institutionInitials}
+            {institutionInitials(transaction.institution)}
           </div>
           <div className="min-w-0">
             <p className="truncate font-medium">{transaction.institution}</p>

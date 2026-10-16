@@ -4,7 +4,6 @@ export const transactionFixtures: TransactionListItem[] = [
   {
     id: "tx-001",
     institution: "Nubank",
-    institutionInitials: "Nu",
     account: "Ultravioleta •• 4821",
     date: "2026-10-15",
     category: "Alimentação",
@@ -15,7 +14,6 @@ export const transactionFixtures: TransactionListItem[] = [
   {
     id: "tx-002",
     institution: "Itaú",
-    institutionInitials: "Itaú",
     account: "Conta corrente •• 2034",
     date: "2026-10-14",
     category: "Receitas",
@@ -26,7 +24,6 @@ export const transactionFixtures: TransactionListItem[] = [
   {
     id: "tx-003",
     institution: "Inter",
-    institutionInitials: "IN",
     account: "Cartão Black •• 9012",
     date: "2026-10-13",
     category: "Assinaturas",
@@ -37,7 +34,6 @@ export const transactionFixtures: TransactionListItem[] = [
   {
     id: "tx-004",
     institution: "XP",
-    institutionInitials: "XP",
     account: "Conta investimento •• 1188",
     date: "2026-10-11",
     category: "Transferências",
@@ -48,7 +44,6 @@ export const transactionFixtures: TransactionListItem[] = [
   {
     id: "tx-005",
     institution: "Nubank",
-    institutionInitials: "Nu",
     account: "Conta principal •• 7190",
     date: "2026-10-09",
     category: "Moradia",
@@ -59,7 +54,6 @@ export const transactionFixtures: TransactionListItem[] = [
   {
     id: "tx-006",
     institution: "Itaú",
-    institutionInitials: "Itaú",
     account: "Conta corrente •• 2034",
     date: "2026-10-07",
     category: "Transporte",
@@ -70,7 +64,6 @@ export const transactionFixtures: TransactionListItem[] = [
   {
     id: "tx-007",
     institution: "Inter",
-    institutionInitials: "IN",
     account: "Conta digital •• 5531",
     date: "2026-10-03",
     category: "Receitas",
@@ -81,7 +74,6 @@ export const transactionFixtures: TransactionListItem[] = [
   {
     id: "tx-008",
     institution: "Nubank",
-    institutionInitials: "Nu",
     account: "Ultravioleta •• 4821",
     date: "2026-09-28",
     category: "Saúde",

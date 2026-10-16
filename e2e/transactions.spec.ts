@@ -17,4 +17,8 @@ test("filtra e cria uma transação em memória", async ({ page }) => {
   await page.getByRole("button", { name: "Salvar transação" }).click()
 
   await expect(page.getByText("Curso de fotografia")).toBeVisible()
+
+  await page.reload()
+  await expect(page.getByText("Curso de fotografia")).toHaveCount(0)
+  await expect(page.getByText("8 transações encontradas").first()).toBeVisible()
 })

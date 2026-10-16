@@ -3,7 +3,6 @@ export type TransactionKind = "income" | "expense" | "transfer"
 export type TransactionListItem = {
   id: string
   institution: string
-  institutionInitials: string
   account: string
   date: string
   category: string
@@ -13,10 +12,7 @@ export type TransactionListItem = {
   notes?: string
 }
 
-export type TransactionDraft = Omit<
-  TransactionListItem,
-  "id" | "institutionInitials"
->
+export type TransactionDraft = Omit<TransactionListItem, "id">
 
 export type TransactionFilters = {
   search: string

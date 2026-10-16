@@ -37,7 +37,6 @@ const transactionsSlice = createSlice({
       state.items.unshift({
         ...action.payload,
         id: globalThis.crypto?.randomUUID?.() ?? `tx-${Date.now()}`,
-        institutionInitials: action.payload.institution.slice(0, 2),
       })
     },
     transactionUpdated: (
@@ -52,7 +51,6 @@ const transactionsSlice = createSlice({
       state.items[index] = {
         ...state.items[index],
         ...action.payload.draft,
-        institutionInitials: action.payload.draft.institution.slice(0, 2),
       }
     },
     transactionRemoved: (state, action: PayloadAction<string>) => {
