@@ -1,25 +1,28 @@
-import js from '@eslint/js'
-import globals from 'globals'
-import reactHooks from 'eslint-plugin-react-hooks'
-import reactRefresh from 'eslint-plugin-react-refresh'
-import tseslint from 'typescript-eslint'
-import { defineConfig, globalIgnores } from 'eslint/config'
+import js from "@eslint/js"
+import { defineConfigWithVueTs, vueTsConfigs } from "@vue/eslint-config-typescript"
+import pluginVue from "eslint-plugin-vue"
+import globals from "globals"
+import { globalIgnores } from "eslint/config"
 
-export default defineConfig([
-  globalIgnores(['dist']),
+export default defineConfigWithVueTs(
+  globalIgnores(["dist", "legacy"]),
   {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      js.configs.recommended,
-      tseslint.configs.recommended,
-      reactHooks.configs.flat.recommended,
-      reactRefresh.configs.vite,
-    ],
+    files: ["**/*.{js,mjs,ts,vue}"],
     languageOptions: {
       globals: globals.browser,
     },
+  },
+  js.configs.recommended,
+  pluginVue.configs["flat/recommended"],
+  vueTsConfigs.recommended,
+  {
     rules: {
-      'react-refresh/only-export-components': 'off',
+      "vue/html-self-closing": "off",
+      "vue/html-indent": "off",
+      "vue/max-attributes-per-line": "off",
+      "vue/multi-word-component-names": "off",
+      "vue/require-default-prop": "off",
+      "vue/singleline-html-element-content-newline": "off",
     },
   },
-])
+)

@@ -1,8 +1,8 @@
 # Grana Web
 
-Nova interface web do Grana, construída do zero para navegadores com React, TypeScript, Vite, Redux Toolkit, Tailwind CSS e shadcn/ui.
+Nova interface web do Grana, construída do zero para navegadores com Vue 3, TypeScript, Vite, Pinia, Tailwind CSS e shadcn-vue sobre Reka UI. A tabela interativa usa TanStack Table para filtragem e ordenação.
 
-Nesta fase, o projeto contém somente a tela de transações. Os dados são fixtures mantidas no estado Redux em memória: criar, editar, excluir e filtrar funcionam durante a sessão, e qualquer alteração desaparece ao recarregar a página.
+Nesta fase, o projeto contém somente a tela de transações. Os dados são fixtures mantidas no estado Pinia em memória: criar, editar, excluir, filtrar e ordenar funcionam durante a sessão, e qualquer alteração desaparece ao recarregar a página.
 
 O aplicativo macOS anterior, o backend Supabase, os documentos arquiteturais e os protótipos HTML originais estão preservados sem alterações em [`legacy/`](./legacy/).
 

@@ -13,11 +13,3 @@ export type TransactionListItem = {
 }
 
 export type TransactionDraft = Omit<TransactionListItem, "id">
-
-export type TransactionFilters = {
-  search: string
-  institution: string
-  category: string
-  period: string
-  kind: "all" | TransactionKind
-}

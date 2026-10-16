@@ -1,0 +1,262 @@
+:root {
+  color-scheme: light;
+  --paper: #f7f5ef;
+  --ink: #20201d;
+  --muted: #68675f;
+  --line: #d8d4c8;
+  --accent: #1d5b4f;
+  --accent-soft: #dcebe5;
+  --warning: #86520d;
+  --white: #fffef9;
+  font-family:
+    Inter,
+    ui-sans-serif,
+    system-ui,
+    -apple-system,
+    BlinkMacSystemFont,
+    "Segoe UI",
+    sans-serif;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  background: var(--paper);
+  color: var(--ink);
+  line-height: 1.6;
+}
+
+main {
+  width: min(920px, calc(100% - 32px));
+  margin: 0 auto;
+  padding: 64px 0 96px;
+}
+
+header {
+  margin-bottom: 48px;
+}
+
+.eyebrow {
+  color: var(--accent);
+  font-size: 0.78rem;
+  font-weight: 750;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+h1,
+h2,
+h3 {
+  font-family: Georgia, "Times New Roman", serif;
+  line-height: 1.12;
+}
+
+h1 {
+  max-width: 760px;
+  margin: 10px 0 16px;
+  font-size: clamp(2.5rem, 7vw, 5.3rem);
+  font-weight: 500;
+  letter-spacing: -0.045em;
+}
+
+h2 {
+  margin: 56px 0 20px;
+  font-size: clamp(1.7rem, 4vw, 2.5rem);
+  font-weight: 500;
+}
+
+h3 {
+  margin: 0 0 8px;
+  font-size: 1.25rem;
+}
+
+p {
+  max-width: 72ch;
+}
+
+.lede {
+  max-width: 720px;
+  color: var(--muted);
+  font-family: Georgia, "Times New Roman", serif;
+  font-size: 1.35rem;
+}
+
+.meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-top: 24px;
+}
+
+.pill {
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  padding: 5px 11px;
+  color: var(--muted);
+  font-size: 0.82rem;
+}
+
+.callout,
+.quiz,
+.stack-card {
+  border: 1px solid var(--line);
+  border-radius: 16px;
+  background: color-mix(in srgb, var(--white) 86%, transparent);
+}
+
+.callout {
+  margin: 28px 0;
+  padding: 20px 24px;
+}
+.callout strong {
+  color: var(--accent);
+}
+
+.stack-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 14px;
+}
+
+.stack-card {
+  padding: 20px;
+}
+.stack-card p {
+  margin: 0;
+  color: var(--muted);
+}
+.stack-card .role {
+  color: var(--accent);
+  font-size: 0.8rem;
+  font-weight: 750;
+  text-transform: uppercase;
+}
+
+.flow {
+  display: grid;
+  gap: 0;
+  counter-reset: flow;
+}
+
+.flow-step {
+  position: relative;
+  margin-left: 22px;
+  border-left: 1px solid var(--line);
+  padding: 0 0 28px 36px;
+}
+
+.flow-step:last-child {
+  border-left-color: transparent;
+}
+
+.flow-step::before {
+  counter-increment: flow;
+  content: counter(flow);
+  position: absolute;
+  left: -16px;
+  display: grid;
+  width: 31px;
+  height: 31px;
+  place-items: center;
+  border: 1px solid var(--accent);
+  border-radius: 50%;
+  background: var(--paper);
+  color: var(--accent);
+  font-size: 0.78rem;
+  font-weight: 800;
+}
+
+.flow-step p {
+  margin: 4px 0 0;
+  color: var(--muted);
+}
+
+.quiz {
+  margin: 22px 0;
+  padding: 22px;
+}
+.quiz p {
+  margin-top: 0;
+  font-weight: 650;
+}
+.answers {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+.answers button {
+  min-width: 130px;
+  border: 1px solid var(--line);
+  border-radius: 9px;
+  background: var(--white);
+  padding: 10px 16px;
+  color: var(--ink);
+  cursor: pointer;
+  font: inherit;
+}
+.answers button:hover,
+.answers button:focus-visible {
+  border-color: var(--accent);
+  outline: none;
+}
+.answers button.correct {
+  border-color: var(--accent);
+  background: var(--accent-soft);
+  color: var(--accent);
+}
+.answers button.incorrect {
+  border-color: var(--warning);
+  color: var(--warning);
+}
+.feedback {
+  min-height: 1.6em;
+  margin: 12px 0 0;
+  color: var(--muted);
+  font-size: 0.92rem;
+}
+
+.review-list li {
+  margin-bottom: 12px;
+  padding-left: 4px;
+}
+
+a {
+  color: var(--accent);
+  text-underline-offset: 3px;
+}
+
+footer {
+  margin-top: 64px;
+  border-top: 1px solid var(--line);
+  padding-top: 24px;
+  color: var(--muted);
+  font-size: 0.92rem;
+}
+
+@media (max-width: 680px) {
+  main {
+    padding-top: 36px;
+  }
+  .stack-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media print {
+  body {
+    background: white;
+  }
+  main {
+    width: 100%;
+    padding: 0;
+  }
+  .quiz {
+    break-inside: avoid;
+  }
+  .answers button {
+    display: none;
+  }
+}

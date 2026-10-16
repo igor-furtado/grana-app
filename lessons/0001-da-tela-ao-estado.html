@@ -1,0 +1,94 @@
+<!doctype html>
+<html lang="pt-BR">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Aula 1 — Da tela ao estado</title>
+    <link rel="stylesheet" href="../assets/course.css" />
+    <script src="../assets/lesson.js" defer></script>
+  </head>
+  <body>
+    <main>
+      <header>
+        <p class="eyebrow">Aula 1 · Arquitetura do Grana Web</p>
+        <h1>Da tela ao estado</h1>
+        <p class="lede">Seu primeiro modelo mental para avaliar a stack sem precisar ler detalhes do código.</p>
+        <div class="meta"><span class="pill">8–10 minutos</span><span class="pill">Sem pré-requisitos</span><span class="pill">3 exercícios</span></div>
+      </header>
+
+      <section>
+        <h2>A ideia central</h2>
+        <p>As tecnologias não competem pelo mesmo trabalho. Elas formam um sistema em que cada uma protege ou executa uma responsabilidade diferente.</p>
+        <div class="callout"><strong>Regra de revisão:</strong> antes de perguntar “o código está certo?”, pergunte “esta responsabilidade está na camada certa?”.</div>
+      </section>
+
+      <section>
+        <h2>O elenco, sem jargão</h2>
+        <div class="stack-grid">
+          <article class="stack-card"><p class="role">Interface</p><h3>Vue 3</h3><p>Monta a tela a partir dos dados atuais e reage a cliques, digitação e outras interações.</p></article>
+          <article class="stack-card"><p class="role">Contratos</p><h3>TypeScript</h3><p>Confere antecipadamente se as peças usam formatos compatíveis. Ele não desenha a tela.</p></article>
+          <article class="stack-card"><p class="role">Estado compartilhado</p><h3>Pinia</h3><p>Guarda os dados da sessão e centraliza as regras que descrevem como eles mudam.</p></article>
+          <article class="stack-card"><p class="role">Oficina</p><h3>Vite</h3><p>Mantém o desenvolvimento rápido e prepara o pacote que será publicado. Não decide regras do produto.</p></article>
+          <article class="stack-card"><p class="role">Aparência</p><h3>Tailwind CSS</h3><p>Expressa espaçamento, cores, tamanhos, alinhamento e comportamento responsivo.</p></article>
+          <article class="stack-card"><p class="role">Peças de interface</p><h3>shadcn-vue + Reka UI</h3><p>Entrega componentes Vue como diálogo, botão e tabela diretamente ao projeto; Reka UI sustenta os comportamentos acessíveis.</p></article>
+        </div>
+        <p>Essa separação acompanha as descrições oficiais: Vue organiza componentes e reatividade; TypeScript verifica tipos antes da execução; Vite serve e gera o projeto; Pinia gerencia estado compartilhado; Tailwind compõe estilos com utilitários; e shadcn-vue adiciona o código dos componentes ao próprio projeto.</p>
+      </section>
+
+      <section>
+        <h2>Uma ação atravessando o Grana</h2>
+        <p>Imagine que você cria uma transação. O fluxo atual acontece inteiramente no navegador:</p>
+        <div class="flow">
+          <article class="flow-step"><h3>Você clica</h3><p>O botão do shadcn-vue, posicionado e estilizado com Tailwind, entrega o evento ao Vue.</p></article>
+          <article class="flow-step"><h3>Vue abre o formulário</h3><p>O componente apresenta o diálogo e mantém os campos temporários enquanto você digita.</p></article>
+          <article class="flow-step"><h3>Uma ação é chamada</h3><p>Ao salvar, o componente chama uma action da store Pinia com o novo rascunho.</p></article>
+          <article class="flow-step"><h3>Pinia altera a sessão</h3><p>A store produz o novo estado em memória. Ainda não existe banco nem backend.</p></article>
+          <article class="flow-step"><h3>Vue redesenha</h3><p>Ao perceber o novo estado reativo, Vue atualiza a parte necessária e a tabela ganha uma linha.</p></article>
+          <article class="flow-step"><h3>Recarregar reinicia</h3><p>A página cria uma nova store com as fixtures originais. Por isso a alteração desaparece.</p></article>
+        </div>
+        <div class="callout"><strong>E o Vite?</strong> Ele possibilita que esse código chegue ao navegador, mas não participa da decisão de adicionar a transação. <strong>E o TypeScript?</strong> Ele verifica o encaixe das peças antes desse fluxo executar.</div>
+      </section>
+
+      <section>
+        <h2>Prática de recuperação</h2>
+        <p>Responda sem voltar ao diagrama. Errar aqui é útil: o feedback imediato fortalece a distinção entre as camadas.</p>
+
+        <article class="quiz" data-quiz data-success="Correto. Pinia centraliza o estado compartilhado da sessão." data-retry="Tente novamente: pense em quem guarda dados, não em quem os mostra.">
+          <p>Quem guarda a lista compartilhada de transações durante a sessão?</p>
+          <div class="answers"><button data-answer="wrong">Vue</button><button data-answer="correct">Pinia</button></div>
+          <p class="feedback" data-feedback aria-live="polite"></p>
+        </article>
+
+        <article class="quiz" data-quiz data-success="Correto. Tailwind descreve layout e aparência; shadcn-vue fornece componentes." data-retry="Tente novamente: a pergunta é sobre aparência, não sobre a peça reutilizável.">
+          <p>Quem expressa principalmente espaçamento e responsividade?</p>
+          <div class="answers"><button data-answer="correct">Tailwind</button><button data-answer="wrong">shadcnUI</button></div>
+          <p class="feedback" data-feedback aria-live="polite"></p>
+        </article>
+
+        <article class="quiz" data-quiz data-success="Correto. TypeScript encontra incompatibilidades antes de o navegador executar o JavaScript." data-retry="Tente novamente: procure a camada que verifica contratos antecipadamente.">
+          <p>Quem detecta formatos incompatíveis antes da execução?</p>
+          <div class="answers"><button data-answer="correct">TypeScript</button><button data-answer="wrong">JavaScript</button></div>
+          <p class="feedback" data-feedback aria-live="polite"></p>
+        </article>
+      </section>
+
+      <section>
+        <h2>Como avaliar o próximo agente</h2>
+        <ul class="review-list">
+          <li>Se ele alterar comportamento de dados apenas com classes Tailwind, peça para explicar.</li>
+          <li>Se guardar em um componente algo que várias telas precisam compartilhar, pergunte por que não está no estado compartilhado.</li>
+          <li>Se adicionar uma biblioteca para algo que shadcn-vue já oferece, peça a justificativa do novo custo.</li>
+          <li>Se disser que uma mudança é “do Vite”, confirme se ela trata realmente de desenvolvimento ou build.</li>
+        </ul>
+        <p><a href="../reference/mapa-da-stack.html">Abra o mapa da stack para consulta rápida →</a></p>
+      </section>
+
+      <section>
+        <h2>Leitura primária</h2>
+        <p>Leia apenas a introdução do <a href="https://vuejs.org/guide/introduction.html">guia oficial do Vue</a>, até “Single-File Components”. A meta não é aprender código: é confirmar, na fonte oficial, como uma aplicação Vue organiza peças de interface.</p>
+      </section>
+
+      <footer>Terminou? Conte ao agente, sem consultar a página, o caminho de uma nova transação do clique até a tabela. Pergunte imediatamente sobre qualquer parte que ainda pareça nebulosa.</footer>
+    </main>
+  </body>
+</html>

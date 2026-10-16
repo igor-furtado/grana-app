@@ -1,0 +1,100 @@
+<!doctype html>
+<html lang="pt-BR">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Aula 2 — Estado local e compartilhado</title>
+    <link rel="stylesheet" href="../assets/course.css" />
+    <script src="../assets/lesson.js" defer></script>
+  </head>
+  <body>
+    <main>
+      <header>
+        <p class="eyebrow">Aula 2 · Arquitetura do Grana Web</p>
+        <h1>Estado local e compartilhado</h1>
+        <p class="lede">Nem todo dado pertence ao Pinia. A arquitetura melhora quando cada informação vive somente onde é necessária.</p>
+        <div class="meta"><span class="pill">7–9 minutos</span><span class="pill">Continua a aula 1</span><span class="pill">3 exercícios</span></div>
+      </header>
+
+      <section>
+        <h2>Primeiro: o que é estado?</h2>
+        <p>Estado é uma informação que pode mudar enquanto você usa a aplicação e que influencia o que ela mostra ou como ela se comporta.</p>
+        <div class="callout"><strong>Teste rápido:</strong> se o valor mudar, alguma parte da experiência precisa reagir? Se sim, provavelmente estamos diante de estado.</div>
+        <p>No Grana, a lista de transações é estado. O texto digitado no formulário também é estado. Mas isso não significa que os dois devam morar no mesmo lugar.</p>
+      </section>
+
+      <section>
+        <h2>Duas casas diferentes</h2>
+        <div class="stack-grid">
+          <article class="stack-card">
+            <p class="role">Perto da interface</p>
+            <h3>Estado local do Vue</h3>
+            <p>Pertence a um componente ou interação curta. Exemplos: diálogo aberto, transação selecionada para edição e campos ainda não salvos.</p>
+          </article>
+          <article class="stack-card">
+            <p class="role">Compartilhado pela feature</p>
+            <h3>Estado no Pinia</h3>
+            <p>Precisa sobreviver à abertura e ao fechamento de componentes ou ser observado por mais partes da tela. Exemplo: a lista de transações alterada durante a sessão.</p>
+          </article>
+        </div>
+        <p>A documentação do Vue recomenda manter estado próximo de quem o usa e adotar uma solução dedicada quando ele precisa ser compartilhado. A documentação do Pinia define stores com estado, valores derivados e ações.</p>
+      </section>
+
+      <section>
+        <h2>Editar uma transação</h2>
+        <div class="flow">
+          <article class="flow-step"><h3>Vue abre o diálogo</h3><p>“O diálogo está aberto” e “esta é a transação sendo editada” são estados locais da página.</p></article>
+          <article class="flow-step"><h3>Você altera o rascunho</h3><p>Os campos mudam localmente. A lista oficial da sessão ainda não foi alterada.</p></article>
+          <article class="flow-step"><h3>Você salva</h3><p>O componente Vue chama uma action do Pinia com o identificador e o novo rascunho.</p></article>
+          <article class="flow-step"><h3>Pinia atualiza a lista</h3><p>A lista compartilhada passa a conter a versão atualizada da transação.</p></article>
+          <article class="flow-step"><h3>Vue fecha e redesenha</h3><p>O estado local do diálogo termina; a tabela reage ao estado compartilhado atualizado.</p></article>
+        </div>
+      </section>
+
+      <section>
+        <h2>O risco da cópia dupla</h2>
+        <p>Se o agente mantiver a mesma lista completa no componente Vue e no Pinia, surgem duas versões concorrentes da verdade. Uma pode mudar enquanto a outra permanece antiga.</p>
+        <div class="callout"><strong>Pergunta de revisão:</strong> “Este valor precisa mesmo existir em dois estados, ou um deles pode ser derivado da fonte principal?”</div>
+      </section>
+
+      <section>
+        <h2>Prática de recuperação</h2>
+
+        <article class="quiz" data-quiz data-success="Correto. A abertura do diálogo interessa apenas à interação atual." data-retry="Tente novamente: quem mais precisa saber que esse diálogo está aberto?">
+          <p>Onde deve viver “o diálogo de edição está aberto”?</p>
+          <div class="answers"><button data-answer="correct">Local</button><button data-answer="wrong">Pinia</button></div>
+          <p class="feedback" data-feedback aria-live="polite"></p>
+        </article>
+
+        <article class="quiz" data-quiz data-success="Correto. A lista é a fonte compartilhada da feature." data-retry="Tente novamente: a tabela e as operações precisam observar a mesma lista.">
+          <p>Onde vive a lista de transações nesta arquitetura?</p>
+          <div class="answers"><button data-answer="wrong">Local</button><button data-answer="correct">Pinia</button></div>
+          <p class="feedback" data-feedback aria-live="polite"></p>
+        </article>
+
+        <article class="quiz" data-quiz data-success="Correto. Duas cópias criam risco de divergência e sincronização." data-retry="Tente novamente: pense no que acontece quando apenas uma cópia muda.">
+          <p>É uma boa ideia manter a mesma lista completa no componente Vue e no Pinia?</p>
+          <div class="answers"><button data-answer="wrong">Correto</button><button data-answer="correct">Errado!</button></div>
+          <p class="feedback" data-feedback aria-live="polite"></p>
+        </article>
+      </section>
+
+      <section>
+        <h2>Três perguntas para avaliar agentes</h2>
+        <ol class="review-list">
+          <li>Quem precisa observar esse estado?</li>
+          <li>Por quanto tempo ele precisa existir?</li>
+          <li>Já existe outra fonte para a mesma informação?</li>
+        </ol>
+        <p><a href="../reference/mapa-da-stack.html">Consultar o mapa da stack →</a></p>
+      </section>
+
+      <section>
+        <h2>Leitura primária</h2>
+        <p>Leia a visão geral de <a href="https://vuejs.org/guide/scaling-up/state-management.html">State Management</a> no guia do Vue. Como apoio, a introdução oficial do <a href="https://pinia.vuejs.org/getting-started.html">Pinia</a> explica stores, state e actions.</p>
+      </section>
+
+      <footer><a href="0001-da-tela-ao-estado.html">← Rever a aula 1</a><br /><br />Terminou? Explique ao agente por que o rascunho do formulário pode ser local, mas a lista de transações fica no Pinia.</footer>
+    </main>
+  </body>
+</html>
