@@ -11,6 +11,15 @@ const dateFormatter = new Intl.DateTimeFormat("pt-BR", {
   year: "numeric",
 })
 
+const amountPresentation: Record<
+  TransactionKind,
+  { prefix: string; tone: string }
+> = {
+  expense: { prefix: "−", tone: "text-foreground" },
+  income: { prefix: "+", tone: "text-emerald-700" },
+  transfer: { prefix: "", tone: "text-blue-700" },
+}
+
 export function formatTransactionDate(date: string) {
   return dateFormatter.format(new Date(`${date}T12:00:00`))
 }
@@ -19,12 +28,9 @@ export function formatTransactionAmount(
   amountCents: number,
   kind: TransactionKind
 ) {
-  const prefix = kind === "expense" ? "−" : kind === "income" ? "+" : ""
-  return `${prefix}${moneyFormatter.format(amountCents / 100)}`
+  return `${amountPresentation[kind].prefix}${moneyFormatter.format(amountCents / 100)}`
 }
 
 export function transactionAmountTone(kind: TransactionKind) {
-  if (kind === "income") return "text-emerald-700"
-  if (kind === "transfer") return "text-blue-700"
-  return "text-foreground"
+  return amountPresentation[kind].tone
 }

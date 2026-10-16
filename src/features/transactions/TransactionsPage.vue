@@ -1,18 +1,5 @@
 <script setup lang="ts">
 import { ArrowDownIcon, PlusIcon, RotateCcwIcon, SearchIcon } from "@lucide/vue"
-import {
-  columnFilteringFeature,
-  constructFilterFn,
-  createFilteredRowModel,
-  createSortedRowModel,
-  filterFn_includesString,
-  rowSortingFeature,
-  sortFn_basic,
-  sortFn_text,
-  tableFeatures,
-  useTable,
-  type ColumnDef,
-} from "@tanstack/vue-table"
 import { storeToRefs } from "pinia"
 import { computed, ref } from "vue"
 
@@ -47,85 +34,24 @@ import {
 } from "./transaction-options"
 import type { TransactionDraft, TransactionListItem } from "./transaction"
 import { useTransactionsStore } from "./transactions-store"
-
-const filterFn_isAnyOf = constructFilterFn({
-  filter: (dataValue, filterValue) =>
-    Array.isArray(filterValue) && filterValue.includes(String(dataValue)),
-  autoRemove: (value) => !Array.isArray(value) || value.length === 0,
-})
-
-const features = tableFeatures({
-  columnFilteringFeature,
-  rowSortingFeature,
-  filteredRowModel: createFilteredRowModel(),
-  sortedRowModel: createSortedRowModel(),
-  filterFns: {
-    isAnyOf: filterFn_isAnyOf,
-    includesString: filterFn_includesString,
-  },
-  sortFns: {
-    basic: sortFn_basic,
-    text: sortFn_text,
-  },
-})
-
-type TransactionTableFeatures = typeof features
-
-const columns: ColumnDef<
-  TransactionTableFeatures,
-  TransactionListItem,
-  unknown
->[] = [
-  {
-    accessorKey: "institution",
-    header: "Instituição",
-    filterFn: "isAnyOf",
-    enableSorting: false,
-  },
-  {
-    accessorKey: "date",
-    header: "Data",
-    enableColumnFilter: false,
-    sortFn: "text",
-    sortDescFirst: false,
-  },
-  {
-    accessorKey: "category",
-    header: "Categoria",
-    filterFn: "isAnyOf",
-    enableSorting: false,
-  },
-  {
-    accessorKey: "description",
-    header: "Descrição",
-    filterFn: "includesString",
-    enableSorting: false,
-  },
-  {
-    id: "amount",
-    accessorFn: (transaction) => transaction.amountCents / 100,
-    header: "Valor",
-    enableColumnFilter: false,
-    sortFn: "basic",
-    sortDescFirst: false,
-  },
-]
+import { useTransactionsTable } from "./use-transactions-table"
 
 const store = useTransactionsStore()
 const { items } = storeToRefs(store)
-const table = useTable({
-  features,
-  columns,
-  data: items,
-  initialState: {
-    sorting: [{ id: "date", desc: true }],
-  },
-})
+const {
+  clearFilter,
+  hasFilters,
+  selectFilter,
+  selectedFilterValues,
+  sortingLabel,
+  table,
+  toggleSorting,
+  visibleCount,
+} = useTransactionsTable(items)
 
 const formOpen = ref(false)
 const editing = ref<TransactionListItem | null>(null)
 const deleting = ref<TransactionListItem | null>(null)
-const visibleCount = computed(() => table.getRowModel().rows.length)
 const countText = computed(
   () =>
     `${visibleCount.value} ${
@@ -134,7 +60,6 @@ const countText = computed(
         : "transações encontradas"
     }`
 )
-const hasFilters = computed(() => table.atoms.columnFilters.get().length > 0)
 
 function openNewTransaction() {
   editing.value = null
@@ -161,41 +86,6 @@ function confirmRemoval() {
 
 function handleRemovalDialog(open: boolean) {
   if (!open) queueMicrotask(() => (deleting.value = null))
-}
-
-function toggleSorting(columnId: string) {
-  table.getColumn(columnId)?.toggleSorting()
-}
-
-function sortingLabel(columnId: string, label: string) {
-  const direction = table.getColumn(columnId)?.getIsSorted()
-  if (direction === "asc") return `${label}: ordem crescente. Alterar ordenação`
-  if (direction === "desc")
-    return `${label}: ordem decrescente. Alterar ordenação`
-  return `Ordenar por ${label.toLocaleLowerCase("pt-BR")}`
-}
-
-type MultiFilterColumnId = "institution" | "category"
-
-function selectedFilterValues(columnId: MultiFilterColumnId) {
-  const value = table.getColumn(columnId)?.getFilterValue()
-  return Array.isArray(value)
-    ? value.filter((item): item is string => typeof item === "string")
-    : []
-}
-
-function selectFilter(columnId: MultiFilterColumnId, value: string) {
-  const column = table.getColumn(columnId)
-  const current = selectedFilterValues(columnId)
-  const next = current.includes(value)
-    ? current.filter((item) => item !== value)
-    : [...current, value]
-
-  column?.setFilterValue(next.length > 0 ? next : undefined)
-}
-
-function clearFilter(columnId: MultiFilterColumnId) {
-  table.getColumn(columnId)?.setFilterValue(undefined)
 }
 </script>
 
