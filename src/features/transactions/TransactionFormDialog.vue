@@ -11,6 +11,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog"
 import { Input } from "@/components/ui/input"
+import { Kbd } from "@/components/ui/kbd"
 import { Label } from "@/components/ui/label"
 import {
   Select,
@@ -194,9 +195,11 @@ function submit() {
             @click="$emit('update:open', false)"
           >
             Cancelar
+            <Kbd>Esc</Kbd>
           </Button>
           <Button type="submit" :disabled="!canSubmit">
             {{ isEditing ? "Salvar alterações" : "Salvar transação" }}
+            <Kbd>Enter</Kbd>
           </Button>
         </DialogFooter>
       </form>

@@ -123,12 +123,15 @@ describe("Tela de Transações", () => {
     await user.type(within(dialog).getByLabelText("Valor"), "320")
     const date = within(dialog).getByLabelText("Data")
     const save = within(dialog).getByRole("button", {
-      name: "Salvar transação",
+      name: "Salvar transação Enter",
     })
+    expect(
+      within(dialog).getByRole("button", { name: "Cancelar Esc" })
+    ).toBeVisible()
     await user.clear(date)
     expect(save).toBeDisabled()
     await user.type(date, "2026-10-16")
-    await user.click(save)
+    await user.keyboard("{Enter}")
 
     expect(screen.getByText("Curso de fotografia")).toBeVisible()
     expect(
@@ -165,7 +168,9 @@ describe("Tela de Transações", () => {
     await user.clear(description)
     await user.type(description, "Almoço com o time")
     await user.click(
-      within(dialog).getByRole("button", { name: "Salvar alterações" })
+      within(dialog).getByRole("button", {
+        name: "Salvar alterações Enter",
+      })
     )
 
     expect(screen.getByText("Almoço com o time")).toBeVisible()
@@ -180,11 +185,55 @@ describe("Tela de Transações", () => {
       screen.getByRole("button", { name: "Excluir Almoço no Mercado" })
     )
     const confirmation = screen.getByRole("alertdialog")
-    await user.click(
-      within(confirmation).getByRole("button", { name: "Excluir" })
-    )
+    expect(
+      within(confirmation).getByRole("button", { name: "Cancelar Esc" })
+    ).toBeVisible()
+    const remove = within(confirmation).getByRole("button", {
+      name: "Excluir Enter",
+    })
+    expect(remove).toHaveFocus()
+    await user.keyboard("{Enter}")
 
     expect(screen.queryByText("Almoço no Mercado")).not.toBeInTheDocument()
     expect(screen.getAllByText("7 transações encontradas")[0]).toBeVisible()
+  })
+
+  it("respeita Enter quando o botão Cancelar está focado", async () => {
+    const user = userEvent.setup()
+    renderApp()
+
+    await user.click(
+      screen.getByRole("button", { name: "Excluir Almoço no Mercado" })
+    )
+    const confirmation = screen.getByRole("alertdialog")
+    const cancel = within(confirmation).getByRole("button", {
+      name: "Cancelar Esc",
+    })
+    cancel.focus()
+    await user.keyboard("{Enter}")
+
+    expect(screen.queryByRole("alertdialog")).not.toBeInTheDocument()
+    expect(screen.getByText("Almoço no Mercado")).toBeVisible()
+  })
+
+  it("cancela os diálogos com Escape sem alterar as transações", async () => {
+    const user = userEvent.setup()
+    renderApp()
+
+    await user.click(screen.getByRole("button", { name: "Nova transação" }))
+    await user.keyboard("{Escape}")
+
+    expect(
+      screen.queryByRole("dialog", { name: "Nova transação" })
+    ).not.toBeInTheDocument()
+
+    await user.click(
+      screen.getByRole("button", { name: "Excluir Almoço no Mercado" })
+    )
+    await user.keyboard("{Escape}")
+
+    expect(screen.queryByRole("alertdialog")).not.toBeInTheDocument()
+    expect(screen.getByText("Almoço no Mercado")).toBeVisible()
+    expect(screen.getAllByText("8 transações encontradas")[0]).toBeVisible()
   })
 })

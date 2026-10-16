@@ -6,7 +6,6 @@ import { computed, ref } from "vue"
 import {
   AlertDialog,
   AlertDialogAction,
-  AlertDialogCancel,
   AlertDialogContent,
   AlertDialogDescription,
   AlertDialogFooter,
@@ -16,6 +15,7 @@ import {
 import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
+import { Kbd } from "@/components/ui/kbd"
 import {
   Table,
   TableBody,
@@ -277,10 +277,23 @@ function handleRemovalDialog(open: boolean) {
           </AlertDialogDescription>
         </AlertDialogHeader>
         <AlertDialogFooter>
-          <AlertDialogCancel>Cancelar</AlertDialogCancel>
-          <AlertDialogAction variant="destructive" @click="confirmRemoval">
+          <AlertDialogAction
+            variant="destructive"
+            class="sm:order-2"
+            @click="confirmRemoval"
+          >
             Excluir
+            <Kbd>Enter</Kbd>
           </AlertDialogAction>
+          <Button
+            data-slot="alert-dialog-cancel"
+            variant="outline"
+            class="sm:order-1"
+            @click="deleting = null"
+          >
+            Cancelar
+            <Kbd>Esc</Kbd>
+          </Button>
         </AlertDialogFooter>
       </AlertDialogContent>
     </AlertDialog>
